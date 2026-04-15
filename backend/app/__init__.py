@@ -1,0 +1,1 @@
+"""BizTrack GH FastAPI application."""

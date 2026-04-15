@@ -1,0 +1,22 @@
+# Local Postgres (+ Redis for future workers). From repo root:
+#   docker compose -f infra/docker/docker-compose.local.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: biztrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - biztrack_pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  biztrack_pg_data:

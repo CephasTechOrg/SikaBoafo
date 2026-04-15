@@ -1,0 +1,46 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Python / backend
+backend/.venv/
+backend/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / admin
+admin/node_modules/
+admin/.next/
+admin/out/
+npm-debug.log*
+.pnpm-store/
+
+# Flutter / mobile
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.metadata
+mobile/*.iml
+mobile/.idea/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+!.vscode/extensions.json
+
+# Logs
+*.log
