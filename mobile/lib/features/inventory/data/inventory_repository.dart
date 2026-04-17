@@ -107,6 +107,7 @@ class InventoryRepository {
     String? sku,
     String? category,
     int? lowStockThreshold,
+    int initialQuantity = 0,
   }) async {
     final cleanName = name.trim();
     if (cleanName.length < 2) {
@@ -116,10 +117,14 @@ class InventoryRepository {
     if (price == null || price <= 0) {
       throw ArgumentError('Default price must be greater than 0.');
     }
+    if (initialQuantity < 0) {
+      throw ArgumentError('Initial quantity cannot be negative.');
+    }
 
     final db = await _appDb.database;
     final itemId = _uuid.v4();
     final localOpId = _uuid.v4();
+    final stockInOpId = _uuid.v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final sourceDeviceId = await _appDb.getOrCreateDeviceId();
     await db.transaction((tx) async {
@@ -133,7 +138,7 @@ class InventoryRepository {
           'category': _cleanOptional(category),
           'low_stock_threshold': lowStockThreshold,
           'is_active': 1,
-          'quantity_on_hand': 0,
+          'quantity_on_hand': initialQuantity,
           'created_at': now,
           'updated_at': now,
         },
@@ -156,6 +161,36 @@ class InventoryRepository {
         localOperationId: localOpId,
         executor: tx,
       );
+
+      if (initialQuantity > 0) {
+        await tx.insert(
+          'inventory_movements_local',
+          {
+            'id': _uuid.v4(),
+            'item_id': itemId,
+            'movement_type': 'stock_in',
+            'quantity': initialQuantity,
+            'reason': 'initial stock',
+            'local_operation_id': stockInOpId,
+            'created_at': now,
+          },
+        );
+        await _appDb.syncQueue.enqueue(
+          entityType: 'inventory',
+          operation: 'stock_in',
+          entityId: itemId,
+          payloadJson: jsonEncode(
+            {
+              'item_id': itemId,
+              'quantity': initialQuantity,
+              'reason': 'initial stock',
+            },
+          ),
+          sourceDeviceId: sourceDeviceId,
+          localOperationId: stockInOpId,
+          executor: tx,
+        );
+      }
     });
   }
 
@@ -220,7 +255,8 @@ class InventoryRepository {
       final currentCategoryPayload = current.category ?? '';
       if (nextCategoryPayload != currentCategoryPayload) {
         payload['category'] = nextCategoryPayload;
-        updates['category'] = nextCategoryPayload.isEmpty ? null : nextCategoryPayload;
+        updates['category'] =
+            nextCategoryPayload.isEmpty ? null : nextCategoryPayload;
       }
 
       if (lowStockThreshold != current.lowStockThreshold) {

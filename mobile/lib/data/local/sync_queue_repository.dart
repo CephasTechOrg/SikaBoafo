@@ -99,7 +99,7 @@ class SyncQueueRepository {
       'sync_queue',
       where: 'status IN (?, ?)',
       whereArgs: [pending, failed],
-      orderBy: 'created_at ASC',
+      orderBy: 'created_at ASC, id ASC',
       limit: limit,
     );
   }

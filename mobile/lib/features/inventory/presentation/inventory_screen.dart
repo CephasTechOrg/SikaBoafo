@@ -40,24 +40,25 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         child: SafeArea(
           child: itemsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _InventoryErrorView(message: humanizeInventoryError(error)),
+            error: (error, _) =>
+                _InventoryErrorView(message: humanizeInventoryError(error)),
             data: (items) {
-              final filtered = items
-                  .where((item) {
-                    if (query.isEmpty) return true;
-                    return item.name.toLowerCase().contains(query) ||
-                        (item.category?.toLowerCase().contains(query) ?? false) ||
-                        (item.sku?.toLowerCase().contains(query) ?? false);
-                  })
-                  .toList(growable: false);
+              final filtered = items.where((item) {
+                if (query.isEmpty) return true;
+                return item.name.toLowerCase().contains(query) ||
+                    (item.category?.toLowerCase().contains(query) ?? false) ||
+                    (item.sku?.toLowerCase().contains(query) ?? false);
+              }).toList(growable: false);
 
               return RefreshIndicator(
-                onRefresh: () => ref.read(inventoryControllerProvider.notifier).refresh(),
+                onRefresh: () =>
+                    ref.read(inventoryControllerProvider.notifier).refresh(),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                   children: [
-                    _InventoryHero(onAdd: () => _showCreateItemDialog(context, ref)),
+                    _InventoryHero(
+                        onAdd: () => _showCreateItemDialog(context, ref)),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _searchCtrl,
@@ -120,7 +121,8 @@ class _InventoryHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Inventory', style: Theme.of(context).textTheme.headlineMedium),
+                Text('Inventory',
+                    style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 6),
                 Text(
                   'Track stock, restock quickly, and keep low-stock risk visible.',
@@ -148,7 +150,8 @@ class _InventoryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLowStock = item.lowStockThreshold != null && item.quantityOnHand <= item.lowStockThreshold!;
+    final isLowStock = item.lowStockThreshold != null &&
+        item.quantityOnHand <= item.lowStockThreshold!;
     final stockColor = isLowStock ? AppColors.coral : AppColors.forest;
 
     return Card(
@@ -176,7 +179,8 @@ class _InventoryCard extends ConsumerWidget {
                     children: [
                       Text(
                         item.name,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -187,13 +191,16 @@ class _InventoryCard extends ConsumerWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: stockColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    isLowStock ? 'Low ${item.quantityOnHand}' : 'Stock ${item.quantityOnHand}',
+                    isLowStock
+                        ? 'Low ${item.quantityOnHand}'
+                        : 'Stock ${item.quantityOnHand}',
                     style: TextStyle(
                       color: stockColor,
                       fontWeight: FontWeight.w800,
@@ -332,6 +339,7 @@ Future<void> _showCreateItemDialog(BuildContext context, WidgetRef ref) async {
   final skuCtrl = TextEditingController();
   final categoryCtrl = TextEditingController();
   final thresholdCtrl = TextEditingController();
+  final initialQtyCtrl = TextEditingController();
   await showDialog<void>(
     context: context,
     builder: (dialogContext) {
@@ -341,11 +349,14 @@ Future<void> _showCreateItemDialog(BuildContext context, WidgetRef ref) async {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Name')),
               const SizedBox(height: 8),
               TextField(
                 controller: priceCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Default price'),
               ),
               const SizedBox(height: 8),
@@ -356,13 +367,24 @@ Future<void> _showCreateItemDialog(BuildContext context, WidgetRef ref) async {
               const SizedBox(height: 8),
               TextField(
                 controller: categoryCtrl,
-                decoration: const InputDecoration(labelText: 'Category (optional)'),
+                decoration:
+                    const InputDecoration(labelText: 'Category (optional)'),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: thresholdCtrl,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Low stock threshold (optional)'),
+                decoration: const InputDecoration(
+                    labelText: 'Low stock threshold (optional)'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: initialQtyCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Initial stock quantity (optional)',
+                  hintText: 'Default is 0',
+                ),
               ),
             ],
           ),
@@ -374,13 +396,26 @@ Future<void> _showCreateItemDialog(BuildContext context, WidgetRef ref) async {
           ),
           FilledButton(
             onPressed: () async {
+              final initialQtyText = initialQtyCtrl.text.trim();
+              final initialQty =
+                  initialQtyText.isEmpty ? 0 : int.tryParse(initialQtyText);
+              if (initialQtyText.isNotEmpty &&
+                  (initialQty == null || initialQty < 0)) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                      content: Text('Enter a valid initial stock quantity.')),
+                );
+                return;
+              }
               try {
                 await ref.read(inventoryControllerProvider.notifier).createItem(
                       name: nameCtrl.text,
                       defaultPrice: priceCtrl.text,
                       sku: skuCtrl.text,
                       category: categoryCtrl.text,
-                      lowStockThreshold: int.tryParse(thresholdCtrl.text.trim()),
+                      lowStockThreshold:
+                          int.tryParse(thresholdCtrl.text.trim()),
+                      initialQuantity: initialQty ?? 0,
                     );
                 if (dialogContext.mounted) Navigator.of(dialogContext).pop();
               } catch (error) {
@@ -430,18 +465,22 @@ Future<void> _showEditItemDialog(
                   const SizedBox(height: 8),
                   TextField(
                     controller: priceCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Default price'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration:
+                        const InputDecoration(labelText: 'Default price'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: skuCtrl,
-                    decoration: const InputDecoration(labelText: 'SKU (optional)'),
+                    decoration:
+                        const InputDecoration(labelText: 'SKU (optional)'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: categoryCtrl,
-                    decoration: const InputDecoration(labelText: 'Category (optional)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Category (optional)'),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -457,7 +496,8 @@ Future<void> _showEditItemDialog(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Active item'),
                     value: isActive,
-                    onChanged: (value) => setDialogState(() => isActive = value),
+                    onChanged: (value) =>
+                        setDialogState(() => isActive = value),
                   ),
                 ],
               ),
@@ -480,7 +520,9 @@ Future<void> _showEditItemDialog(
                     return;
                   }
                   try {
-                    await ref.read(inventoryControllerProvider.notifier).updateItem(
+                    await ref
+                        .read(inventoryControllerProvider.notifier)
+                        .updateItem(
                           itemId: item.id,
                           name: nameCtrl.text,
                           defaultPrice: priceCtrl.text,
@@ -617,7 +659,9 @@ Future<void> _showAdjustDialog(
                 return;
               }
               try {
-                await ref.read(inventoryControllerProvider.notifier).adjustStock(
+                await ref
+                    .read(inventoryControllerProvider.notifier)
+                    .adjustStock(
                       itemId: item.id,
                       quantityDelta: delta,
                       reason: reasonCtrl.text,

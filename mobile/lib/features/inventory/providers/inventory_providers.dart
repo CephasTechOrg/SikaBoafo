@@ -66,6 +66,7 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
     String? sku,
     String? category,
     int? lowStockThreshold,
+    int initialQuantity = 0,
   }) async {
     await _repo.createItemLocal(
       name: name,
@@ -73,6 +74,7 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
       sku: sku,
       category: category,
       lowStockThreshold: lowStockThreshold,
+      initialQuantity: initialQuantity,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();

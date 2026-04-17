@@ -13,6 +13,8 @@ import 'package:biztrack_gh/data/remote/sync_api.dart';
 import 'package:biztrack_gh/data/sync/sync_queue_runner.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
 import 'package:biztrack_gh/features/expenses/data/expenses_repository.dart';
+import 'package:biztrack_gh/features/inventory/data/inventory_api.dart';
+import 'package:biztrack_gh/features/inventory/data/inventory_repository.dart';
 import 'package:biztrack_gh/features/sales/data/sales_repository.dart';
 
 class _FakeSecureTokenStorage extends SecureTokenStorage {
@@ -31,6 +33,15 @@ class _FakeSyncApi extends SyncApi {
   }) async {
     return const [];
   }
+}
+
+class _FakeInventoryApi extends InventoryApi {
+  _FakeInventoryApi()
+      : super(ApiClient(tokenStorage: _FakeSecureTokenStorage(), dio: Dio()));
+
+  @override
+  Future<List<InventoryItemDto>> fetchItems() async =>
+      const <InventoryItemDto>[];
 }
 
 class _InMemoryAppDatabase extends AppDatabase {
@@ -192,6 +203,49 @@ SyncQueueRunner _unusedRunner(AppDatabase appDb) {
 }
 
 void main() {
+  test(
+      'inventory create with initial stock writes quantity and enqueues item+stock_in',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = InventoryRepository(
+      appDb: appDb,
+      inventoryApi: _FakeInventoryApi(),
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await repo.createItemLocal(
+      name: 'Oil',
+      defaultPrice: '12.00',
+      category: 'groceries',
+      lowStockThreshold: 3,
+      initialQuantity: 7,
+    );
+
+    final itemRows = await db.query('items_local');
+    final movementRows = await db.query('inventory_movements_local');
+    final queueRows = await db.query('sync_queue', orderBy: 'id ASC');
+
+    expect(itemRows, hasLength(1));
+    expect(itemRows.first['quantity_on_hand'], 7);
+
+    expect(movementRows, hasLength(1));
+    expect(movementRows.first['movement_type'], 'stock_in');
+    expect(movementRows.first['quantity'], 7);
+
+    expect(queueRows, hasLength(2));
+    expect(queueRows[0]['entity_type'], 'item');
+    expect(queueRows[0]['operation'], 'create');
+    expect(queueRows[1]['entity_type'], 'inventory');
+    expect(queueRows[1]['operation'], 'stock_in');
+
+    final stockPayload = jsonDecode(queueRows[1]['payload_json'] as String)
+        as Map<String, dynamic>;
+    expect(stockPayload['quantity'], 7);
+
+    await appDb.close();
+  });
+
   test(
       'expenses local-first write persists expense and enqueues sync operation',
       () async {
