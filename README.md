@@ -9,6 +9,7 @@ This is not just a bookkeeping app.
 BizTrack GH is a **merchant operating system** for daily business control.
 
 Core value:
+
 - record sales quickly
 - track stock reliably
 - manage customer debts
@@ -36,6 +37,7 @@ UI reference asset:
 ## Recommended stack
 
 ### Mobile
+
 - Flutter
 - Riverpod
 - GoRouter
@@ -43,6 +45,7 @@ UI reference asset:
 - SQLite
 
 ### Backend
+
 - FastAPI
 - SQLAlchemy 2.x
 - Alembic
@@ -51,16 +54,19 @@ UI reference asset:
 - Celery or Dramatiq
 
 ### Admin
+
 - Next.js
 - TypeScript
 
 ### Infra
+
 - AWS
 - S3
 - RDS PostgreSQL
 - Managed Redis
 
 ### Payments
+
 - **Paystack** is the digital payment provider for collection, webhooks, and (later) QR and reconciliation features supported by Paystack in Ghana.
 
 ---
@@ -199,6 +205,7 @@ flutter run
 ```
 
 ### 4. Recommended early setup tasks
+
 - configure app flavors/environments
 - configure Riverpod
 - configure routing
@@ -211,6 +218,7 @@ flutter run
 ## Local development services
 
 Recommended local stack:
+
 - PostgreSQL
 - Redis
 - FastAPI app
@@ -218,7 +226,70 @@ Recommended local stack:
 - Flutter app
 
 Optional:
+
 - Docker Compose for backend infrastructure (`infra/docker/docker-compose.local.yml`)
+
+---
+
+## Reliability Verification Runbook (MVP Gate)
+
+Use this before merging major changes to auth, sync, sales/expenses/debts, or reports.
+
+### 1) Mobile reliability tests
+
+From `mobile/`:
+
+```bash
+flutter test \
+  test/core/services/api_client_test.dart \
+  test/data/sync/sync_queue_runner_test.dart \
+  test/features/local_first_repositories_test.dart
+```
+
+Expected result: all tests pass.
+
+What this verifies:
+
+- session-expiry handling (401 -> clear session -> redirect)
+- sync queue status transitions (applied/duplicate/failed/conflict)
+- local-first writes for expenses, sales/inventory, and debts
+
+### 2) Backend sync/report consistency tests
+
+From `backend/` (venv active):
+
+```powershell
+python -m pytest \
+  app/tests/test_sync_report_consistency.py \
+  app/tests/test_reports_summary.py \
+  app/tests/test_sales_sync.py \
+  app/tests/test_expenses_sync.py \
+  app/tests/test_inventory_sync.py \
+  app/tests/test_receivables_sync.py -q
+```
+
+Expected result: all tests pass.
+
+What this verifies:
+
+- duplicate sync replay does not duplicate business records
+- replayed sync operations do not inflate dashboard/report totals
+- inventory and debt conflict paths are handled safely
+
+### 3) Device connectivity check (Android phone)
+
+If testing on physical Android under restricted Wi-Fi, use USB reverse.
+See `docs/development/MOBILE_BACKEND_DEBUGGING.md` and `USB_REVERSE_QUICK_START.md`.
+
+### 4) Recovery flow when auth/sync looks stuck
+
+1. Confirm backend is running and health endpoint returns OK.
+2. Confirm phone tunnel/network path is active (USB reverse or LAN path).
+3. Trigger a protected endpoint from app UI.
+4. If token is stale, app should auto-redirect to auth with session-expired message.
+5. Sign in again and re-check dashboard + recent activity.
+
+If step 4 fails, re-run the mobile reliability tests above before shipping.
 
 ---
 
@@ -241,12 +312,15 @@ Optional:
 Digital money movement is implemented **only through Paystack** (API, redirects/checkout as applicable, and **verified webhooks**). The app never treats a payment as final until the backend confirms it via Paystack.
 
 ### Stage 1
+
 Record payment method labels only (cash, mobile money, bank transfer). No live Paystack charge.
 
 ### Stage 2
+
 **Paystack live collection:** initiate Paystack transactions from the app, customer pays via Paystack-supported channels, backend confirms via Paystack webhooks and updates `payments` / linked sale or receivable.
 
 ### Stage 3
+
 **Deep operations:** receipts, reconciliation, refunds where supported, Paystack-backed QR or other flows available in the stack, settlement visibility, future finance hooks.
 
 ---
@@ -256,6 +330,7 @@ Record payment method labels only (cash, mobile money, bank transfer). No live P
 Offline mode is for business continuity.
 
 The app should still allow:
+
 - recording a cash sale
 - recording an expense
 - updating stock
@@ -280,16 +355,16 @@ Use the mockup asset in `docs/mockups/` as the initial visual reference while re
 
 The best **feature** order after the backend shell and data model exist:
 
-- auth  
-- merchant/store setup  
-- inventory  
-- sales  
-- expenses  
-- debts  
-- dashboard  
-- reports  
-- offline sync hardening  
-- Paystack integration (payment stage 2+)  
+- auth
+- merchant/store setup
+- inventory
+- sales
+- expenses
+- debts
+- dashboard
+- reports
+- offline sync hardening
+- Paystack integration (payment stage 2+)
 
 Keep **routers thin**, **services explicit**, and **types/schemas** at system edges so data structures stay the single source of truth for behavior.
 

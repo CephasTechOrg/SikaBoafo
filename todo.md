@@ -614,7 +614,7 @@ The MVP is done when:
 - [x] merchant can record expenses
 - [x] merchant can manage debts/repayments
 - [x] merchant can view dashboard summaries
-- [ ] merchant can use app while offline for core non-payment actions
-- [ ] app syncs reliably when back online
-- [ ] data is stored correctly in backend
-- [ ] setup and run instructions are clear in README
+- [x] merchant can use app while offline for core non-payment actions _(covered by local-first repository tests for sales/expenses/debts)_
+- [x] app syncs reliably when back online _(covered by sync queue runner transition tests and backend replay/idempotency tests)_
+- [x] data is stored correctly in backend _(covered by backend sync + reports consistency and per-domain integration tests)_
+- [x] setup and run instructions are clear in README _(root runbook + backend/mobile startup guides + USB debug docs)_

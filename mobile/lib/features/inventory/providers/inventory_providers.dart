@@ -47,11 +47,15 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
 
   Future<void> refresh() async {
     try {
+      await _repo.syncPendingQueue();
+    } catch (_) {
+      // Keep local-first UX even if immediate sync attempt fails.
+    }
+    try {
       await _repo.refreshFromServer();
     } catch (_) {
       // Ignore network errors during refresh to keep local data visible.
     }
-    await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
     state = AsyncValue.data(await _repo.listLocalItems());
   }
