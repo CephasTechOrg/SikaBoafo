@@ -8,6 +8,8 @@ import '../../inventory/providers/inventory_providers.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 
+enum _SaleAction { edit, voidSale }
+
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
 
@@ -18,6 +20,7 @@ class SalesScreen extends ConsumerStatefulWidget {
 class _SalesScreenState extends ConsumerState<SalesScreen> {
   final Map<String, int> _qtyByItemId = {};
   String _paymentMethod = 'cash';
+  bool _showVoided = false;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +57,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             data: (_) {
               return RefreshIndicator(
                 onRefresh: () async {
-                  await ref.read(inventoryControllerProvider.notifier).refresh();
-                  await ref.read(salesControllerProvider.notifier).refresh();
+                  await ref
+                      .read(inventoryControllerProvider.notifier)
+                      .refresh();
+                  await ref
+                      .read(salesControllerProvider.notifier)
+                      .refresh(includeVoided: _showVoided);
                 },
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -65,7 +72,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     const SizedBox(height: 14),
                     _PaymentSelector(
                       paymentMethod: _paymentMethod,
-                      onSelected: (value) => setState(() => _paymentMethod = value),
+                      onSelected: (value) =>
+                          setState(() => _paymentMethod = value),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -88,15 +96,33 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     SizedBox(
                       height: 54,
                       child: FilledButton.icon(
-                        onPressed: isBusy ? null : () => _recordSale(items: items),
+                        onPressed:
+                            isBusy ? null : () => _recordSale(items: items),
                         icon: const Icon(Icons.check_circle_rounded),
                         label: Text(isBusy ? 'Saving...' : 'Confirm Sale'),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      'Recent Sales',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      children: [
+                        Text(
+                          'Recent Sales',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        FilterChip(
+                          label: const Text('Show voided'),
+                          selected: _showVoided,
+                          onSelected: isBusy
+                              ? null
+                              : (value) async {
+                                  setState(() => _showVoided = value);
+                                  await ref
+                                      .read(salesControllerProvider.notifier)
+                                      .refresh(includeVoided: value);
+                                },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     if (salesAsync.isLoading && recentSales.isEmpty)
@@ -105,10 +131,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (recentSales.isEmpty)
-                      const Card(
+                      Card(
                         child: Padding(
-                          padding: EdgeInsets.all(18),
-                          child: Text('No sales recorded yet.'),
+                          padding: const EdgeInsets.all(18),
+                          child: Text(
+                            _showVoided
+                                ? 'No sales found yet.'
+                                : 'No non-voided sales yet. Toggle Show voided to view corrections.',
+                          ),
                         ),
                       )
                     else
@@ -138,7 +168,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 color: AppColors.mint,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.shopping_bag_outlined, color: AppColors.forest),
+              child: const Icon(Icons.shopping_bag_outlined,
+                  color: AppColors.forest),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -162,19 +193,22 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 _QtyButton(
                   icon: Icons.remove_rounded,
                   enabled: selectedQty > 0,
-                  onTap: () => setState(() => _qtyByItemId[item.id] = selectedQty - 1),
+                  onTap: () =>
+                      setState(() => _qtyByItemId[item.id] = selectedQty - 1),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Text(
                     '$selectedQty',
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 18),
                   ),
                 ),
                 _QtyButton(
                   icon: Icons.add_rounded,
                   enabled: selectedQty < item.quantityOnHand,
-                  onTap: () => setState(() => _qtyByItemId[item.id] = selectedQty + 1),
+                  onTap: () =>
+                      setState(() => _qtyByItemId[item.id] = selectedQty + 1),
                 ),
               ],
             ),
@@ -186,6 +220,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Widget _buildRecentSaleTile(LocalSaleRecord sale) {
     final dt = DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis);
+    final voidedAt = sale.voidedAtMillis == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(sale.voidedAtMillis!);
     final syncColor = switch (sale.syncStatus) {
       'applied' || 'duplicate' => AppColors.success,
       'failed' => AppColors.danger,
@@ -193,22 +230,70 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       _ => AppColors.warning,
     };
 
+    final subtitle = sale.isVoided
+        ? 'Voided${sale.voidReason == null ? '' : ' | ${sale.voidReason}'} '
+            '| ${voidedAt?.toLocal() ?? dt.toLocal()}'
+        : '${_paymentLabel(sale.paymentMethodLabel)} | ${dt.toLocal()}';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         title: Text(
           'GHS ${sale.totalAmount}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            decoration: sale.isVoided ? TextDecoration.lineThrough : null,
+          ),
         ),
         subtitle: Text(
-          '${_paymentLabel(sale.paymentMethodLabel)} | ${dt.toLocal()}',
+          subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Text(
-          sale.syncStatus,
-          style: TextStyle(color: syncColor, fontWeight: FontWeight.w800, fontSize: 12),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              sale.isVoided ? 'voided' : sale.syncStatus,
+              style: TextStyle(
+                color: sale.isVoided ? AppColors.danger : syncColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+            if (!sale.isVoided) ...[
+              const SizedBox(width: 4),
+              PopupMenuButton<_SaleAction>(
+                tooltip: 'Sale actions',
+                onSelected: (_SaleAction action) async {
+                  if (action == _SaleAction.edit) {
+                    await _showEditSaleDialog(sale);
+                    return;
+                  }
+                  await _showVoidSaleDialog(sale);
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem<_SaleAction>(
+                    value: _SaleAction.edit,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Edit sale'),
+                    ),
+                  ),
+                  PopupMenuItem<_SaleAction>(
+                    value: _SaleAction.voidSale,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.delete_outline_rounded),
+                      title: Text('Void sale'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -247,7 +332,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       if (qty <= 0) continue;
       final item = itemById[entry.key];
       if (item == null) continue;
-      lines.add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: item.defaultPrice));
+      lines.add(SaleDraftLine(
+          itemId: item.id, quantity: qty, unitPrice: item.defaultPrice));
     }
     if (lines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -271,6 +357,237 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(humanizeInventoryError(error))),
       );
+    }
+  }
+
+  Future<void> _showEditSaleDialog(LocalSaleRecord sale) async {
+    final editable = await ref
+        .read(salesControllerProvider.notifier)
+        .loadSaleEditable(saleId: sale.saleId);
+    if (editable == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sale cannot be edited anymore.')),
+      );
+      return;
+    }
+
+    var paymentMethod = editable.paymentMethodLabel;
+    final qtyByItem = {
+      for (final line in editable.lines) line.itemId: line.quantity,
+    };
+    var isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Edit Sale'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: paymentMethod,
+                      decoration:
+                          const InputDecoration(labelText: 'Payment method'),
+                      items: const [
+                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                        DropdownMenuItem(
+                          value: 'mobile_money',
+                          child: Text('Mobile Money'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'bank_transfer',
+                          child: Text('Bank Transfer'),
+                        ),
+                      ],
+                      onChanged: isSaving
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setDialogState(() => paymentMethod = value);
+                            },
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Adjust existing line quantities',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    ...editable.lines.map((line) {
+                      final selectedQty =
+                          qtyByItem[line.itemId] ?? line.quantity;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    line.itemName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                  Text(
+                                    'Unit GHS ${line.unitPrice} | Max ${line.maxQuantity}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _QtyButton(
+                              icon: Icons.remove_rounded,
+                              enabled: !isSaving && selectedQty > 1,
+                              onTap: () => setDialogState(
+                                () => qtyByItem[line.itemId] = selectedQty - 1,
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                '$selectedQty',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
+                            _QtyButton(
+                              icon: Icons.add_rounded,
+                              enabled:
+                                  !isSaving && selectedQty < line.maxQuantity,
+                              onTap: () => setDialogState(
+                                () => qtyByItem[line.itemId] = selectedQty + 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setDialogState(() => isSaving = true);
+                          try {
+                            final lines = editable.lines
+                                .map(
+                                  (line) => SaleQuantityUpdateDraft(
+                                    itemId: line.itemId,
+                                    quantity:
+                                        qtyByItem[line.itemId] ?? line.quantity,
+                                  ),
+                                )
+                                .toList(growable: false);
+                            await ref
+                                .read(salesControllerProvider.notifier)
+                                .updateSale(
+                                  saleId: sale.saleId,
+                                  paymentMethodLabel: paymentMethod,
+                                  lines: lines,
+                                );
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Sale updated.')),
+                            );
+                          } catch (error) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(humanizeInventoryError(error))),
+                            );
+                          } finally {
+                            if (dialogContext.mounted) {
+                              setDialogState(() => isSaving = false);
+                            }
+                          }
+                        },
+                  child: Text(isSaving ? 'Saving...' : 'Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showVoidSaleDialog(LocalSaleRecord sale) async {
+    final reasonCtrl = TextEditingController();
+    try {
+      final shouldVoid = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Void Sale'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This will reverse stock quantities and keep the sale as a voided record.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason (optional)',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Void Sale'),
+              ),
+            ],
+          );
+        },
+      );
+      if (shouldVoid != true) {
+        return;
+      }
+
+      await ref.read(salesControllerProvider.notifier).voidSale(
+            saleId: sale.saleId,
+            reason: reasonCtrl.text,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sale voided.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanizeInventoryError(error))),
+      );
+    } finally {
+      reasonCtrl.dispose();
     }
   }
 
@@ -306,7 +623,8 @@ class _SalesHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Record Sale', style: Theme.of(context).textTheme.headlineMedium),
+                Text('Record Sale',
+                    style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 6),
                 Text(
                   'Build the basket quickly and confirm in one tap.',
@@ -331,7 +649,8 @@ class _SalesHero extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'GHS $totalAmount',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -359,7 +678,8 @@ class _PaymentSelector extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Choose Payment Method', style: Theme.of(context).textTheme.titleMedium),
+            Text('Choose Payment Method',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -466,7 +786,9 @@ class _QtyButton extends StatelessWidget {
         width: 34,
         height: 34,
         decoration: BoxDecoration(
-          color: enabled ? AppColors.mint : AppColors.border.withValues(alpha: 0.5),
+          color: enabled
+              ? AppColors.mint
+              : AppColors.border.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(

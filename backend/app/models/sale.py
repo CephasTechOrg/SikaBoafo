@@ -10,15 +10,16 @@ in the same transaction as sale insert/update.
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.constants import PAYMENT_STATUS_RECORDED
+from app.core.constants import PAYMENT_STATUS_RECORDED, SALE_STATUS_RECORDED
 from app.db.base import Base
 from app.models.mixins import SyncableWriteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
@@ -49,6 +50,11 @@ class Sale(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     payment_status: Mapped[str] = mapped_column(
         String(32), default=PAYMENT_STATUS_RECORDED, nullable=False
     )
+    sale_status: Mapped[str] = mapped_column(
+        String(32), default=SALE_STATUS_RECORDED, nullable=False
+    )
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    void_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     store: Mapped[Store] = relationship("Store", lazy="joined")
     customer: Mapped[Customer | None] = relationship("Customer", lazy="joined")

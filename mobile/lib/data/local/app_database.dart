@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 5;
+const _schemaVersion = 6;
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -43,6 +43,9 @@ class AppDatabase {
         }
         if (oldVersion < 5) {
           await _createDebtSchema(db);
+        }
+        if (oldVersion < 6) {
+          await _upgradeSalesSchemaV6(db);
         }
       },
     );
@@ -123,6 +126,9 @@ CREATE TABLE IF NOT EXISTS sales_local (
   id TEXT PRIMARY KEY NOT NULL,
   payment_method_label TEXT NOT NULL,
   total_amount TEXT NOT NULL,
+  sale_status TEXT NOT NULL DEFAULT 'recorded',
+  voided_at INTEGER,
+  void_reason TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -147,8 +153,37 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
       'ON sales_local (created_at DESC)',
     );
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sales_local_status '
+      'ON sales_local (sale_status)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_sale_items_local_sale '
       'ON sale_items_local (sale_id)',
+    );
+  }
+
+  Future<void> _upgradeSalesSchemaV6(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(sales_local)');
+    final names = columns
+        .map((row) => (row['name'] ?? '').toString())
+        .where((name) => name.isNotEmpty)
+        .toSet();
+
+    if (!names.contains('sale_status')) {
+      await db.execute(
+        "ALTER TABLE sales_local "
+        "ADD COLUMN sale_status TEXT NOT NULL DEFAULT 'recorded'",
+      );
+    }
+    if (!names.contains('voided_at')) {
+      await db.execute('ALTER TABLE sales_local ADD COLUMN voided_at INTEGER');
+    }
+    if (!names.contains('void_reason')) {
+      await db.execute('ALTER TABLE sales_local ADD COLUMN void_reason TEXT');
+    }
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sales_local_status '
+      'ON sales_local (sale_status)',
     );
   }
 
@@ -232,7 +267,8 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
   Future<String> getOrCreateDeviceId() async {
     const key = 'device_id';
     final db = await database;
-    final rows = await db.query('local_meta', where: 'key = ?', whereArgs: [key]);
+    final rows =
+        await db.query('local_meta', where: 'key = ?', whereArgs: [key]);
     if (rows.isNotEmpty) {
       return rows.first['value']! as String;
     }

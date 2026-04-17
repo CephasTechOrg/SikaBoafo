@@ -189,3 +189,68 @@ def test_sync_replay_does_not_inflate_report_totals_or_activity() -> None:
         assert {row["activity_type"] for row in activity_body} == {"sale", "expense"}
     finally:
         app.dependency_overrides.clear()
+
+
+def test_voided_sale_is_excluded_from_report_totals_and_activity() -> None:
+    client, session_local, _, store_id = _build_sqlite_test_stack()
+    item_id = _seed_item(session_local, store_id=store_id)
+    sale_id = str(uuid4())
+    create_payload = {
+        "device_id": "device-accra-consistency-void-01",
+        "operations": [
+            {
+                "local_operation_id": "sale-create-op-void-001",
+                "entity_type": "sale",
+                "action_type": "create",
+                "payload": {
+                    "sale_id": sale_id,
+                    "payment_method_label": "cash",
+                    "lines": [
+                        {
+                            "item_id": item_id,
+                            "quantity": 2,
+                            "unit_price": "10.00",
+                        }
+                    ],
+                },
+            }
+        ],
+    }
+    void_payload = {
+        "device_id": "device-accra-consistency-void-01",
+        "operations": [
+            {
+                "local_operation_id": "sale-void-op-void-002",
+                "entity_type": "sale",
+                "action_type": "void",
+                "payload": {
+                    "sale_id": sale_id,
+                    "reason": "correction",
+                },
+            }
+        ],
+    }
+
+    try:
+        create_resp = client.post("/api/v1/sync/apply", json=create_payload)
+        assert create_resp.status_code == 200
+        assert create_resp.json()["results"][0]["status"] == "applied"
+
+        void_resp = client.post("/api/v1/sync/apply", json=void_payload)
+        assert void_resp.status_code == 200
+        assert void_resp.json()["results"][0]["status"] == "applied"
+
+        summary = client.get(
+            "/api/v1/reports/summary",
+            params={"as_of_utc": datetime.now(tz=UTC).isoformat()},
+        )
+        assert summary.status_code == 200
+        body = summary.json()
+        assert Decimal(str(body["today_sales_total"])) == Decimal("0.00")
+        assert Decimal(str(body["today_estimated_profit"])) == Decimal("0.00")
+
+        activity = client.get("/api/v1/reports/recent-activity", params={"limit": 8})
+        assert activity.status_code == 200
+        assert activity.json() == []
+    finally:
+        app.dependency_overrides.clear()

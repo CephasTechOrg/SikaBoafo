@@ -59,7 +59,6 @@
 ## 🔁 Payment Flow
 
 - Merchant can request payment
-- Customer pays externally
 - System confirms payment
 - Debt is marked as paid
 

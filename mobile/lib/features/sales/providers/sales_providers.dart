@@ -18,6 +18,11 @@ final salesControllerProvider =
 
 class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
   SalesRepository get _repo => ref.read(salesRepositoryProvider);
+  bool _includeVoided = false;
+
+  Future<List<LocalSaleRecord>> _loadSales() {
+    return _repo.listRecentSales(includeVoided: _includeVoided);
+  }
 
   @override
   Future<List<LocalSaleRecord>> build() async {
@@ -27,13 +32,16 @@ class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
       // Keep offline mode resilient; failed queue rows remain for retry.
     }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    return _repo.listRecentSales();
+    return _loadSales();
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool? includeVoided}) async {
+    if (includeVoided != null) {
+      _includeVoided = includeVoided;
+    }
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listRecentSales());
+    state = AsyncValue.data(await _loadSales());
   }
 
   Future<void> recordSale({
@@ -48,11 +56,54 @@ class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
       );
       await _repo.syncPendingQueue();
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-      state = AsyncValue.data(await _repo.listRecentSales());
+      state = AsyncValue.data(await _loadSales());
     } catch (error, stackTrace) {
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.error(error, stackTrace);
       rethrow;
     }
+  }
+
+  Future<void> updateSale({
+    required String saleId,
+    required String paymentMethodLabel,
+    required List<SaleQuantityUpdateDraft> lines,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      await _repo.updateSaleLocal(
+        saleId: saleId,
+        paymentMethodLabel: paymentMethodLabel,
+        lines: lines,
+      );
+      await _repo.syncPendingQueue();
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.data(await _loadSales());
+    } catch (error, stackTrace) {
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> voidSale({
+    required String saleId,
+    String? reason,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      await _repo.voidSaleLocal(saleId: saleId, reason: reason);
+      await _repo.syncPendingQueue();
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.data(await _loadSales());
+    } catch (error, stackTrace) {
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<LocalSaleEditable?> loadSaleEditable({required String saleId}) {
+    return _repo.loadSaleEditable(saleId: saleId);
   }
 }

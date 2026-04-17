@@ -34,6 +34,7 @@ from app.schemas.receivable import (
     SyncReceivablePaymentCreateIn,
 )
 from app.schemas.sale import SaleCreateIn, SyncSaleCreateIn
+from app.schemas.sale import SaleUpdateIn, SaleVoidIn, SyncSaleUpdateIn, SyncSaleVoidIn
 from app.schemas.sync import SyncOperationIn
 from app.services.expense_service import ExpenseContextMissingError, ExpenseService
 from app.services.inventory_service import (
@@ -51,8 +52,11 @@ from app.services.receivables_service import (
 )
 from app.services.sales_service import (
     InsufficientStockError,
+    SaleAlreadyVoidedError,
     SaleContextMissingError,
     SaleItemNotFoundError,
+    SaleNotFoundError,
+    SaleUpdateScopeError,
     SalesService,
 )
 
@@ -145,6 +149,7 @@ class SyncService:
                 ExpenseContextMissingError,
                 ReceivableContextMissingError,
                 SaleContextMissingError,
+                SaleUpdateScopeError,
                 ValueError,
             ) as exc:
                 self.db.rollback()
@@ -164,6 +169,8 @@ class SyncService:
                 ReceivableNotFoundError,
                 InvalidRepaymentError,
                 SaleItemNotFoundError,
+                SaleNotFoundError,
+                SaleAlreadyVoidedError,
                 InsufficientStockError,
             ) as exc:
                 self.db.rollback()
@@ -255,6 +262,32 @@ class SyncService:
             sale_payload = SaleCreateIn.model_validate(payload.model_dump())
             sale = sales_service.create_sale(
                 user_id=user_id,
+                payload=sale_payload,
+                source_device_id=device_id,
+                local_operation_id=operation.local_operation_id,
+                commit=False,
+            )
+            return sale.sale_id
+
+        if entity_type == "sale" and action_type == "update":
+            payload = SyncSaleUpdateIn.model_validate(operation.payload)
+            sale_payload = SaleUpdateIn.model_validate(payload.model_dump(exclude={"sale_id"}))
+            sale = sales_service.update_sale(
+                user_id=user_id,
+                sale_id=payload.sale_id,
+                payload=sale_payload,
+                source_device_id=device_id,
+                local_operation_id=operation.local_operation_id,
+                commit=False,
+            )
+            return sale.sale_id
+
+        if entity_type == "sale" and action_type == "void":
+            payload = SyncSaleVoidIn.model_validate(operation.payload)
+            sale_payload = SaleVoidIn.model_validate(payload.model_dump(exclude={"sale_id"}))
+            sale = sales_service.void_sale(
+                user_id=user_id,
+                sale_id=payload.sale_id,
                 payload=sale_payload,
                 source_device_id=device_id,
                 local_operation_id=operation.local_operation_id,

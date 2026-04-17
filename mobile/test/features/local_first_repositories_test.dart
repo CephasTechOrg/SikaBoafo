@@ -120,6 +120,9 @@ CREATE TABLE sales_local (
   id TEXT PRIMARY KEY NOT NULL,
   payment_method_label TEXT NOT NULL,
   total_amount TEXT NOT NULL,
+  sale_status TEXT NOT NULL DEFAULT 'recorded',
+  voided_at INTEGER,
+  void_reason TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -343,6 +346,123 @@ void main() {
     final lines = (payload['lines'] as List<dynamic>);
     expect(lines, hasLength(1));
     expect((lines.first as Map<String, dynamic>)['item_id'], 'item-1');
+
+    await appDb.close();
+  });
+
+  test(
+      'sales local-first update adjusts stock/total and enqueues update operation',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = SalesRepository(
+      appDb: appDb,
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Bread',
+      'default_price': '3.00',
+      'sku': null,
+      'category': 'food',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 10,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.createSaleLocal(
+      paymentMethodLabel: 'cash',
+      lines: const [
+        SaleDraftLine(itemId: 'item-1', quantity: 2, unitPrice: '3.00'),
+      ],
+    );
+
+    final createdSaleRows = await db.query('sales_local');
+    final saleId = createdSaleRows.first['id'] as String;
+    await repo.updateSaleLocal(
+      saleId: saleId,
+      paymentMethodLabel: 'mobile_money',
+      lines: const [
+        SaleQuantityUpdateDraft(itemId: 'item-1', quantity: 4),
+      ],
+    );
+
+    final itemRows =
+        await db.query('items_local', where: 'id = ?', whereArgs: ['item-1']);
+    final saleRows = await db.query('sales_local');
+    final saleItemRows = await db.query('sale_items_local');
+    final queueRows = await db.query('sync_queue', orderBy: 'id ASC');
+
+    expect(itemRows.first['quantity_on_hand'], 6);
+    expect(saleRows.first['payment_method_label'], 'mobile_money');
+    expect(saleRows.first['total_amount'], '12.00');
+    expect(saleRows.first['sale_status'], 'recorded');
+    expect(saleItemRows.first['quantity'], 4);
+
+    expect(queueRows, hasLength(2));
+    expect(queueRows[1]['entity_type'], 'sale');
+    expect(queueRows[1]['operation'], 'update');
+    final payload = jsonDecode(queueRows[1]['payload_json'] as String)
+        as Map<String, dynamic>;
+    expect(payload['sale_id'], saleId);
+    expect(payload['payment_method_label'], 'mobile_money');
+
+    await appDb.close();
+  });
+
+  test('sales local-first void restores stock and enqueues void operation',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = SalesRepository(
+      appDb: appDb,
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Bread',
+      'default_price': '3.00',
+      'sku': null,
+      'category': 'food',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 10,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.createSaleLocal(
+      paymentMethodLabel: 'cash',
+      lines: const [
+        SaleDraftLine(itemId: 'item-1', quantity: 3, unitPrice: '3.00'),
+      ],
+    );
+    final createdSaleRows = await db.query('sales_local');
+    final saleId = createdSaleRows.first['id'] as String;
+
+    await repo.voidSaleLocal(saleId: saleId, reason: 'customer returned');
+
+    final itemRows =
+        await db.query('items_local', where: 'id = ?', whereArgs: ['item-1']);
+    final saleRows = await db.query('sales_local');
+    final queueRows = await db.query('sync_queue', orderBy: 'id ASC');
+
+    expect(itemRows.first['quantity_on_hand'], 10);
+    expect(saleRows.first['sale_status'], 'voided');
+    expect(saleRows.first['void_reason'], 'customer returned');
+    expect(saleRows.first['voided_at'], isNotNull);
+
+    expect(queueRows, hasLength(2));
+    expect(queueRows[1]['entity_type'], 'sale');
+    expect(queueRows[1]['operation'], 'void');
+    final payload = jsonDecode(queueRows[1]['payload_json'] as String)
+        as Map<String, dynamic>;
+    expect(payload['sale_id'], saleId);
+    expect(payload['reason'], 'customer returned');
 
     await appDb.close();
   });

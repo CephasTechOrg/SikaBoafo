@@ -70,7 +70,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (items.isEmpty)
-                      const _InventoryEmptyView()
+                      _InventoryEmptyView(
+                        onAdd: () => _showCreateItemDialog(context, ref),
+                      )
                     else if (filtered.isEmpty)
                       const Card(
                         child: Padding(
@@ -296,7 +298,9 @@ class _InventoryErrorView extends StatelessWidget {
 }
 
 class _InventoryEmptyView extends StatelessWidget {
-  const _InventoryEmptyView();
+  const _InventoryEmptyView({required this.onAdd});
+
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -326,9 +330,68 @@ class _InventoryEmptyView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Recommended first fields',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const _InventoryHintRow(
+              icon: Icons.label_important_outline,
+              text: 'Item name and default selling price',
+            ),
+            const SizedBox(height: 6),
+            const _InventoryHintRow(
+              icon: Icons.inventory_2_outlined,
+              text: 'Initial stock quantity so stock is not zero',
+            ),
+            const SizedBox(height: 6),
+            const _InventoryHintRow(
+              icon: Icons.warning_amber_rounded,
+              text: 'Low stock threshold to trigger risk visibility',
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_box_outlined),
+                label: const Text('Add First Item'),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _InventoryHintRow extends StatelessWidget {
+  const _InventoryHintRow({
+    required this.icon,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.forest),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
     );
   }
 }

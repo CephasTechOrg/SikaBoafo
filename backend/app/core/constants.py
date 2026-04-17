@@ -15,6 +15,10 @@ PAYMENT_STATUS_PENDING_PROVIDER: Final[str] = "pending_provider"
 PAYMENT_STATUS_SUCCEEDED: Final[str] = "succeeded"
 PAYMENT_STATUS_FAILED: Final[str] = "failed"
 
+# Sale.sale_status — lifecycle of the sale record itself.
+SALE_STATUS_RECORDED: Final[str] = "recorded"
+SALE_STATUS_VOIDED: Final[str] = "voided"
+
 # Payment.status — Paystack row lifecycle (server is source of truth after webhooks).
 PROVIDER_PAYMENT_PENDING: Final[str] = "pending"
 PROVIDER_PAYMENT_SUCCEEDED: Final[str] = "succeeded"

@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.constants import RECEIVABLE_STATUS_OPEN
+from app.core.constants import RECEIVABLE_STATUS_OPEN, SALE_STATUS_RECORDED
 from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
@@ -208,6 +208,7 @@ class ReportsService:
         value = self.db.scalar(
             select(func.coalesce(func.sum(Sale.total_amount), Decimal("0.00"))).where(
                 Sale.store_id == store_id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -283,6 +284,7 @@ class ReportsService:
             )
             .where(
                 Sale.store_id == store_id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -323,6 +325,7 @@ class ReportsService:
             .join(Item, Item.id == SaleItem.item_id)
             .where(
                 Sale.store_id == store_id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -347,7 +350,10 @@ class ReportsService:
     def _recent_sales(self, *, store_id: UUID, limit: int) -> list[ReportActivitySnapshot]:
         rows = self.db.execute(
             select(Sale.total_amount, Sale.payment_method_label, Sale.created_at)
-            .where(Sale.store_id == store_id)
+            .where(
+                Sale.store_id == store_id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
+            )
             .order_by(Sale.created_at.desc())
             .limit(limit)
         ).all()

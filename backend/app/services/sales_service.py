@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.constants import INVENTORY_MOVEMENT_SALE, PAYMENT_STATUS_RECORDED
+from app.core.constants import (
+    INVENTORY_MOVEMENT_ADJUSTMENT,
+    INVENTORY_MOVEMENT_SALE,
+    PAYMENT_STATUS_RECORDED,
+    SALE_STATUS_RECORDED,
+    SALE_STATUS_VOIDED,
+)
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
 from app.models.merchant import Merchant
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
-from app.schemas.sale import SaleCreateIn
+from app.schemas.sale import SaleCreateIn, SaleUpdateIn, SaleVoidIn
 
 _MONEY_SCALE = Decimal("0.01")
 
@@ -31,6 +37,18 @@ class SaleItemNotFoundError(Exception):
 
 class InsufficientStockError(Exception):
     """Sale line quantity exceeds available stock."""
+
+
+class SaleNotFoundError(Exception):
+    """Sale does not exist for the user's default store."""
+
+
+class SaleAlreadyVoidedError(Exception):
+    """Sale has already been voided and cannot be edited."""
+
+
+class SaleUpdateScopeError(Exception):
+    """Requested sale edit includes unsupported line changes."""
 
 
 @dataclass(slots=True)
@@ -48,6 +66,9 @@ class SaleSnapshot:
     total_amount: Decimal
     payment_method_label: str
     payment_status: str
+    sale_status: str
+    voided_at: datetime | None
+    void_reason: str | None
     created_at: datetime
     lines: list[SaleLineSnapshot]
 
@@ -56,15 +77,22 @@ class SaleSnapshot:
 class SalesService:
     db: Session
 
-    def list_sales_for_user(self, *, user_id: UUID, limit: int = 50) -> list[SaleSnapshot]:
+    def list_sales_for_user(
+        self,
+        *,
+        user_id: UUID,
+        limit: int = 50,
+        include_voided: bool = False,
+    ) -> list[SaleSnapshot]:
         store = self._get_default_store_for_user(user_id=user_id)
-        sales = self.db.scalars(
+        query = (
             select(Sale)
             .options(selectinload(Sale.lines))
             .where(Sale.store_id == store.id)
-            .order_by(Sale.created_at.desc())
-            .limit(limit)
-        ).all()
+        )
+        if not include_voided:
+            query = query.where(Sale.sale_status == SALE_STATUS_RECORDED)
+        sales = self.db.scalars(query.order_by(Sale.created_at.desc()).limit(limit)).all()
         return [self._to_sale_snapshot(sale=sale) for sale in sales]
 
     def create_sale(
@@ -95,6 +123,7 @@ class SalesService:
             total_amount=Decimal("0.00"),
             payment_method_label=payload.payment_method_label,
             payment_status=PAYMENT_STATUS_RECORDED,
+            sale_status=SALE_STATUS_RECORDED,
             source_device_id=source_device_id,
             local_operation_id=local_operation_id,
         )
@@ -160,9 +189,156 @@ class SalesService:
             total_amount=sale.total_amount,
             payment_method_label=sale.payment_method_label,
             payment_status=sale.payment_status,
+            sale_status=sale.sale_status,
+            voided_at=sale.voided_at,
+            void_reason=sale.void_reason,
             created_at=sale.created_at,
             lines=line_snapshots,
         )
+
+    def update_sale(
+        self,
+        *,
+        user_id: UUID,
+        sale_id: UUID,
+        payload: SaleUpdateIn,
+        source_device_id: str | None = None,
+        local_operation_id: str | None = None,
+        commit: bool = True,
+    ) -> SaleSnapshot:
+        store = self._get_default_store_for_user(user_id=user_id)
+        sale = self._load_sale_for_store(store_id=store.id, sale_id=sale_id)
+        if sale.sale_status == SALE_STATUS_VOIDED:
+            raise SaleAlreadyVoidedError(f"Sale {sale_id} is already voided.")
+
+        if payload.payment_method_label is not None:
+            sale.payment_method_label = payload.payment_method_label
+
+        if payload.lines is not None:
+            requested_quantities = self._aggregate_update_quantities(payload=payload)
+            existing_by_item = {line.item_id: line for line in sale.lines}
+            if set(requested_quantities) != set(existing_by_item):
+                msg = (
+                    "Sale edit can only update quantities for existing lines; "
+                    "adding or removing items is not allowed."
+                )
+                raise SaleUpdateScopeError(msg)
+
+            balances = self._load_balances(item_ids=list(existing_by_item))
+            deltas_by_item: dict[UUID, int] = {}
+            for item_id, new_qty in requested_quantities.items():
+                old_qty = existing_by_item[item_id].quantity
+                delta = new_qty - old_qty
+                deltas_by_item[item_id] = delta
+                if delta <= 0:
+                    continue
+                available = balances.get(item_id).quantity_on_hand if item_id in balances else 0
+                if available < delta:
+                    msg = (
+                        f"Insufficient stock for item {item_id}: "
+                        f"available={available}, requested_extra={delta}."
+                    )
+                    raise InsufficientStockError(msg)
+
+            total_amount = Decimal("0.00")
+            for sale_line in sale.lines:
+                next_qty = requested_quantities[sale_line.item_id]
+                sale_line.quantity = next_qty
+                sale_line.line_total = self._money(sale_line.unit_price * next_qty)
+                total_amount += sale_line.line_total
+                self.db.add(sale_line)
+
+            for item_id, delta in deltas_by_item.items():
+                if delta == 0:
+                    continue
+                balance = balances.get(item_id)
+                if balance is None:
+                    balance = InventoryBalance(item_id=item_id, quantity_on_hand=0)
+                    self.db.add(balance)
+                    self.db.flush()
+                balance.quantity_on_hand -= delta
+                self.db.add(balance)
+                self.db.add(
+                    InventoryMovement(
+                        item_id=item_id,
+                        store_id=store.id,
+                        movement_type=INVENTORY_MOVEMENT_ADJUSTMENT,
+                        quantity=-delta,
+                        reason="sale updated",
+                        reference_type="sale",
+                        reference_id=sale.id,
+                    )
+                )
+
+            sale.total_amount = self._money(total_amount)
+
+        if source_device_id is not None:
+            sale.source_device_id = source_device_id
+        if local_operation_id is not None:
+            sale.local_operation_id = local_operation_id
+
+        self.db.add(sale)
+        if commit:
+            self.db.commit()
+            self.db.refresh(sale)
+        else:
+            self.db.flush()
+
+        return self._to_sale_snapshot(sale=sale)
+
+    def void_sale(
+        self,
+        *,
+        user_id: UUID,
+        sale_id: UUID,
+        payload: SaleVoidIn,
+        source_device_id: str | None = None,
+        local_operation_id: str | None = None,
+        commit: bool = True,
+    ) -> SaleSnapshot:
+        store = self._get_default_store_for_user(user_id=user_id)
+        sale = self._load_sale_for_store(store_id=store.id, sale_id=sale_id)
+        if sale.sale_status == SALE_STATUS_VOIDED:
+            raise SaleAlreadyVoidedError(f"Sale {sale_id} is already voided.")
+
+        balances = self._load_balances(item_ids=[line.item_id for line in sale.lines])
+        movement_reason = payload.reason or "sale voided"
+        for sale_line in sale.lines:
+            balance = balances.get(sale_line.item_id)
+            if balance is None:
+                balance = InventoryBalance(item_id=sale_line.item_id, quantity_on_hand=0)
+                self.db.add(balance)
+                self.db.flush()
+            balance.quantity_on_hand += sale_line.quantity
+            self.db.add(balance)
+            self.db.add(
+                InventoryMovement(
+                    item_id=sale_line.item_id,
+                    store_id=store.id,
+                    movement_type=INVENTORY_MOVEMENT_ADJUSTMENT,
+                    quantity=sale_line.quantity,
+                    reason=movement_reason,
+                    reference_type="sale",
+                    reference_id=sale.id,
+                )
+            )
+
+        sale.sale_status = SALE_STATUS_VOIDED
+        sale.voided_at = datetime.now(tz=UTC)
+        sale.void_reason = payload.reason
+        if source_device_id is not None:
+            sale.source_device_id = source_device_id
+        if local_operation_id is not None:
+            sale.local_operation_id = local_operation_id
+
+        self.db.add(sale)
+        if commit:
+            self.db.commit()
+            self.db.refresh(sale)
+        else:
+            self.db.flush()
+
+        return self._to_sale_snapshot(sale=sale)
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
@@ -200,11 +376,36 @@ class SalesService:
         ).all()
         return {balance.item_id: balance for balance in balances}
 
+    def _load_sale_for_store(self, *, store_id: UUID, sale_id: UUID) -> Sale:
+        sale = self.db.scalar(
+            select(Sale)
+            .options(selectinload(Sale.lines))
+            .where(
+                Sale.store_id == store_id,
+                Sale.id == sale_id,
+            )
+        )
+        if sale is None:
+            raise SaleNotFoundError(f"Sale {sale_id} not found.")
+        return sale
+
     @staticmethod
     def _aggregate_quantities(*, payload: SaleCreateIn) -> dict[UUID, int]:
         quantities: dict[UUID, int] = {}
         for line in payload.lines:
             quantities[line.item_id] = quantities.get(line.item_id, 0) + line.quantity
+        return quantities
+
+    @staticmethod
+    def _aggregate_update_quantities(*, payload: SaleUpdateIn) -> dict[UUID, int]:
+        quantities: dict[UUID, int] = {}
+        if payload.lines is None:
+            return quantities
+        for line in payload.lines:
+            if line.item_id in quantities:
+                msg = f"Duplicate item_id in sale update: {line.item_id}"
+                raise ValueError(msg)
+            quantities[line.item_id] = line.quantity
         return quantities
 
     @staticmethod
@@ -218,6 +419,9 @@ class SalesService:
             total_amount=sale.total_amount,
             payment_method_label=sale.payment_method_label,
             payment_status=sale.payment_status,
+            sale_status=sale.sale_status,
+            voided_at=sale.voided_at,
+            void_reason=sale.void_reason,
             created_at=sale.created_at,
             lines=[
                 SaleLineSnapshot(
