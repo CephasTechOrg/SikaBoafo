@@ -45,7 +45,7 @@ class _BusinessOnboardingScreenState extends ConsumerState<BusinessOnboardingScr
             storeName: _storeNameCtrl.text.trim(),
           );
       if (!mounted) return;
-      context.go(AppRoute.home.path);
+      context.go(AppRoute.setPin.path);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = humanizeDioError(e));

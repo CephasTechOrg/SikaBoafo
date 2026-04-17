@@ -10,6 +10,7 @@ class AuthSession {
     required this.refreshToken,
     required this.isNewUser,
     required this.onboardingRequired,
+    required this.pinSet,
   });
 
   final String userId;
@@ -18,6 +19,7 @@ class AuthSession {
   final String refreshToken;
   final bool isNewUser;
   final bool onboardingRequired;
+  final bool pinSet;
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
@@ -27,6 +29,7 @@ class AuthSession {
       refreshToken: (json['refresh_token'] ?? '') as String,
       isNewUser: (json['is_new_user'] ?? false) as bool,
       onboardingRequired: (json['onboarding_required'] ?? false) as bool,
+      pinSet: (json['pin_set'] ?? false) as bool,
     );
   }
 }
@@ -63,6 +66,28 @@ class AuthApi {
     return AuthSession.fromJson(body);
   }
 
+  Future<AuthSession> loginWithPin({
+    required String phoneNumber,
+    required String pin,
+  }) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/auth/pin/login',
+      data: {'phone_number': phoneNumber, 'pin': pin},
+    );
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected auth response payload.');
+    }
+    return AuthSession.fromJson(body);
+  }
+
+  Future<void> setPin(String pin) async {
+    await _apiClient.dio.post<dynamic>(
+      '/auth/pin/set',
+      data: {'pin': pin},
+    );
+  }
+
   Future<void> completeOnboarding({
     required String businessName,
     String? businessType,
@@ -83,7 +108,12 @@ String humanizeDioError(Object error) {
   if (error is DioException) {
     final detail = error.response?.data;
     if (detail is Map<String, dynamic> && detail['detail'] is String) {
-      return detail['detail'] as String;
+      final d = detail['detail'] as String;
+      if (d == 'pin_not_set') {
+        return 'No PIN for this number yet. Use Create account, or Forgot PIN after '
+            'trying to sign in.';
+      }
+      return d;
     }
     if (error.type == DioExceptionType.connectionError) {
       return 'Cannot reach server. Check API_BASE_URL and network.';

@@ -17,6 +17,7 @@ from app.models.merchant import Merchant
 from app.models.store import Store
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.services.pin_hash import hash_pin
 
 
 class _FakeDbSession:
@@ -115,6 +116,7 @@ def test_auth_service_verify_otp_creates_user_and_tokens() -> None:
     assert result.access_token
     assert result.refresh_token
     assert result.onboarding_required is True
+    assert result.pin_set is False
     assert otp.last_verified_phone == "233244123456"
     assert otp.last_verified_code == "123456"
 
@@ -151,6 +153,7 @@ def test_auth_endpoints_request_and_verify_with_mock_otp() -> None:
         assert body["access_token"]
         assert body["refresh_token"]
         assert body["onboarding_required"] is True
+        assert body["pin_set"] is False
     finally:
         app.dependency_overrides.clear()
 
@@ -174,6 +177,125 @@ def test_auth_verify_rejects_wrong_code_with_mock_otp() -> None:
         )
         assert resp.status_code == 401
         assert resp.json()["detail"] == "Invalid verification code."
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_pin_login_success() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    user.pin_hash = hash_pin("4242")
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        resp = client.post(
+            "/api/v1/auth/pin/login",
+            json={"phone_number": "0244123456", "pin": "4242"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["pin_set"] is True
+        assert body["phone_number"] == "233244123456"
+        assert body["access_token"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_pin_login_rejects_when_pin_not_set() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        resp = client.post(
+            "/api/v1/auth/pin/login",
+            json={"phone_number": "0244123456", "pin": "4242"},
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "pin_not_set"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_pin_login_rejects_wrong_pin() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    user.pin_hash = hash_pin("4242")
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        resp = client.post(
+            "/api/v1/auth/pin/login",
+            json={"phone_number": "0244123456", "pin": "9999"},
+        )
+        assert resp.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_pin_set_saves_hash() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_current_user() -> User:
+        return user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
+    client = TestClient(app)
+    try:
+        access_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_ACCESS,
+            expires_in_minutes=60,
+        )
+        resp = client.post(
+            "/api/v1/auth/pin/set",
+            json={"pin": "9876"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert resp.status_code == 200
+        assert user.pin_hash is not None
     finally:
         app.dependency_overrides.clear()
 

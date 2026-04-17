@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class OtpRequestIn(BaseModel):
@@ -32,6 +32,37 @@ class UserSessionOut(BaseModel):
     token_type: str = "bearer"
     access_token_expires_in_minutes: int
     onboarding_required: bool
+    pin_set: bool
+
+
+class PinLoginIn(BaseModel):
+    phone_number: str = Field(min_length=8, max_length=20)
+    pin: str = Field(min_length=4, max_length=6)
+
+    @field_validator("pin")
+    @classmethod
+    def pin_digits(cls, v: str) -> str:
+        if not v.isdigit():
+            msg = "PIN must contain only digits."
+            raise ValueError(msg)
+        return v
+
+
+class PinSetIn(BaseModel):
+    pin: str = Field(min_length=4, max_length=6)
+
+    @field_validator("pin")
+    @classmethod
+    def pin_digits(cls, v: str) -> str:
+        if not v.isdigit():
+            msg = "PIN must contain only digits."
+            raise ValueError(msg)
+        return v
+
+
+class PinSetOut(BaseModel):
+    status: str = "ok"
+    detail: str = "PIN saved."
 
 
 class OnboardingIn(BaseModel):

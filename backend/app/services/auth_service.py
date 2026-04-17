@@ -1,4 +1,4 @@
-"""Auth service: request/verify OTP and issue tokens."""
+"""Auth service: OTP verification, PIN login, PIN set, and token issuance."""
 
 from __future__ import annotations
 
@@ -21,6 +21,16 @@ from app.services.otp_provider import (
     OtpVerificationFailedError,
 )
 from app.services.phone_number import normalize_phone_number
+from app.services.pin_hash import hash_pin, is_valid_pin_format
+from app.services.pin_hash import verify_pin as verify_pin_hash
+
+
+class PinNotSetError(Exception):
+    """Account exists but merchant has not set a PIN yet — use OTP once."""
+
+
+class InvalidPinLoginError(Exception):
+    """Wrong phone, wrong PIN, or inactive user (generic client message)."""
 
 
 @dataclass(slots=True)
@@ -54,6 +64,28 @@ class AuthService:
                     raise
                 user = existing
 
+        return self._issue_session(user=user, is_new_user=is_new_user)
+
+    def login_with_pin(self, *, phone_number: str, pin: str) -> UserSessionOut:
+        normalized = normalize_phone_number(phone_number)
+        user = self._get_user_by_phone(normalized)
+        if user is None or not user.is_active:
+            raise InvalidPinLoginError
+        if user.pin_hash is None:
+            raise PinNotSetError
+        if not verify_pin_hash(pin, user.pin_hash):
+            raise InvalidPinLoginError
+        return self._issue_session(user=user, is_new_user=False)
+
+    def set_pin(self, *, user: User, pin: str) -> None:
+        if not is_valid_pin_format(pin):
+            msg = "PIN must be 4–6 digits."
+            raise ValueError(msg)
+        user.pin_hash = hash_pin(pin)
+        self.db.add(user)
+        self.db.commit()
+
+    def _issue_session(self, *, user: User, is_new_user: bool) -> UserSessionOut:
         access_token = create_session_token(
             user_id=user.id,
             phone_number=user.phone_number,
@@ -67,6 +99,7 @@ class AuthService:
             expires_in_minutes=self.settings.auth_refresh_token_exp_minutes,
         )
         onboarding_required = self._get_owner_merchant(user_id=user.id) is None
+        pin_set = user.pin_hash is not None
         return UserSessionOut(
             user_id=user.id,
             phone_number=user.phone_number,
@@ -75,6 +108,7 @@ class AuthService:
             refresh_token=refresh_token,
             access_token_expires_in_minutes=self.settings.auth_access_token_exp_minutes,
             onboarding_required=onboarding_required,
+            pin_set=pin_set,
         )
 
     def _get_user_by_phone(self, phone_number: str) -> User | None:
@@ -86,4 +120,9 @@ class AuthService:
         return self.db.scalar(stmt)
 
 
-__all__ = ["AuthService", "OtpVerificationFailedError"]
+__all__ = [
+    "AuthService",
+    "InvalidPinLoginError",
+    "OtpVerificationFailedError",
+    "PinNotSetError",
+]

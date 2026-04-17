@@ -62,36 +62,36 @@ Confirm who exactly we are building for first and what pain matters most.
 ### Purpose
 Turn mockups into implementation-ready UI direction.
 
-- [ ] review generated mockups screen by screen
+- [x] review generated mockups screen by screen *(used `mobile/UI MockUps` to guide dashboard, inventory, sales, debts, and report polish)*
 - [ ] name each mockup screen explicitly
 - [ ] create screen list from mockups:
   - [ ] splash / welcome
-  - [ ] login / OTP
-  - [ ] dashboard
-  - [ ] record sale
-  - [ ] choose payment method
-  - [ ] manage debts
-  - [ ] inventory
-  - [ ] receive payment
-  - [ ] daily report
+  - [x] login / OTP
+  - [x] dashboard
+  - [x] record sale
+  - [x] choose payment method
+  - [x] manage debts
+  - [x] inventory
+  - [x] receive payment
+  - [x] daily report *(report UI baseline in app; deeper reporting remains in §12)*
 - [ ] document which mockup parts are reference only vs required MVP behavior
-- [ ] define design tokens
-  - [ ] colors
-  - [ ] spacing
-  - [ ] typography
+- [x] define design tokens
+  - [x] colors
+  - [x] spacing
+  - [x] typography
   - [ ] icon set
-  - [ ] card styles
-  - [ ] input styles
-  - [ ] button hierarchy
-- [ ] define reusable components
-  - [ ] primary button
-  - [ ] secondary button
-  - [ ] summary stat card
-  - [ ] quick action card
-  - [ ] list tile
-  - [ ] empty state
+  - [x] card styles
+  - [x] input styles
+  - [x] button hierarchy
+- [x] define reusable components
+  - [x] primary button
+  - [x] secondary button
+  - [x] summary stat card
+  - [x] quick action card
+  - [x] list tile
+  - [x] empty state
   - [ ] offline banner
-  - [ ] sync status pill
+  - [x] sync status pill
 - [ ] write `docs/product/screen_specs.md`
 - [ ] write `docs/product/user_flows.md`
 
@@ -163,12 +163,12 @@ Set up the backend properly so future work sits on a stable base.
 - [x] create versioned API base (`/api/v1/…`)
 
 #### 4.3 Database and migrations
-- [ ] set up PostgreSQL locally *(use Docker: `infra/docker/docker-compose.local.yml` or install Postgres)*
+- [x] set up PostgreSQL locally *(local Postgres reachable via `.env` and migration run validated)*
 - [x] configure DB session
 - [x] configure SQLAlchemy models **with sync fields on all offline-capable writes** (`source_device_id`, `local_operation_id`, timestamps as in `architecture.md` §7.3)
 - [x] configure Alembic
 - [x] create initial migration(s); revision `001` uses `metadata.create_all` once; later use autogenerate
-- [ ] run `alembic upgrade head` *(requires Postgres running + `.env`)*
+- [x] run `alembic upgrade head` *(validated to `002 (head)`)*
 - [x] create seed script in `backend/scripts/seed_dev.py`
 - [x] add sample merchant/store/items seed data
 - [ ] review indexes for list/hot paths *(add when sync/report endpoints land)*
@@ -224,10 +224,16 @@ Set up the Flutter app correctly before feature work.
 ### Purpose
 Give merchants a simple, trustworthy entry into the app.
 
+- [x] status note: OTP auth flow + onboarding flow implemented end-to-end (backend + mobile)
+- [x] status note: login/OTP UI refreshed against mockup references and polished for responsive phone layouts
+- [x] document **PIN + OTP split** (daily login vs SMS cost) — `docs/auth/pin-and-otp-flow.md`
+
 - [x] define auth domain model *(phone normalization + OTP provider adapter + token shape)*
 - [x] implement phone number input screen
 - [x] implement OTP request endpoint
 - [x] implement OTP verification endpoint
+- [x] implement **PIN login** endpoint *(phone + PIN, no SMS)*
+- [x] implement **PIN set / reset** endpoint *(authenticated; after OTP for recovery)*
 - [x] create token issuance flow
 - [x] add secure token storage on mobile
 - [x] create login state restoration
@@ -236,6 +242,7 @@ Give merchants a simple, trustworthy entry into the app.
 - [x] capture business type/category
 - [x] create first store automatically
 - [x] create logout flow
+- [x] mobile: **Sign in** = phone + PIN; **Create account / Forgot PIN** = OTP then set PIN
 
 ---
 
@@ -244,12 +251,12 @@ Give merchants a simple, trustworthy entry into the app.
 ### Purpose
 Represent the merchant cleanly from the start.
 
-- [ ] create merchant entity/model
-- [ ] create store entity/model
+- [x] create merchant entity/model
+- [x] create store entity/model
 - [ ] support single-store MVP cleanly
 - [ ] design multi-store compatibility without exposing it in MVP UI
 - [ ] store default currency and locale info
-- [ ] store simple location metadata
+- [x] store simple location metadata
 
 ---
 
@@ -258,17 +265,17 @@ Represent the merchant cleanly from the start.
 ### Purpose
 Give merchants visibility into what they have and what is running out.
 
-- [ ] define item entity/model
-- [ ] define inventory balance model
-- [ ] define inventory movement model
-- [ ] implement create item flow
-- [ ] implement edit item flow
-- [ ] implement stock-in flow
-- [ ] implement stock adjustment flow
-- [ ] implement low stock threshold
-- [ ] show inventory list
-- [ ] show low stock widgets on dashboard
-- [ ] create inventory history / audit trail
+- [x] define item entity/model
+- [x] define inventory balance model
+- [x] define inventory movement model
+- [x] implement create item flow
+- [x] implement edit item flow *(mobile edit dialog now updates locally first and syncs through `sync_queue`)*
+- [x] implement stock-in flow
+- [x] implement stock adjustment flow
+- [x] implement low stock threshold *(persisted on item create/update)*
+- [x] show inventory list
+- [x] show low stock widgets on dashboard
+- [x] create inventory history / audit trail *(movement rows stored locally + backend)*
 - [ ] support search/filter later if needed
 
 ---
@@ -278,18 +285,18 @@ Give merchants visibility into what they have and what is running out.
 ### Purpose
 This is the highest-frequency flow and must feel excellent.
 
-- [ ] define sale model
-- [ ] define sale item model
-- [ ] build quick sale entry screen from mockup reference
-- [ ] allow item selection
-- [ ] allow quantity entry
+- [x] define sale model
+- [x] define sale item model
+- [x] build quick sale entry screen from mockup reference *(functional baseline UI in app)*
+- [x] allow item selection
+- [x] allow quantity entry
 - [ ] allow unit price override where appropriate
-- [ ] allow payment method tagging
-- [ ] save sale locally first
-- [ ] update local inventory immediately
-- [ ] queue sale for sync
-- [ ] sync sale to backend
-- [ ] show sale history
+- [x] allow payment method tagging
+- [x] save sale locally first
+- [x] update local inventory immediately
+- [x] queue sale for sync
+- [x] sync sale to backend
+- [x] show sale history *(recent sales list with sync status)*
 - [ ] support note on sale if needed
 - [ ] define future digital receipt placeholder
 
@@ -306,13 +313,13 @@ This is the highest-frequency flow and must feel excellent.
 ### Purpose
 Capture money leaving the business clearly.
 
-- [ ] define expense model
-- [ ] create expense categories
-- [ ] build add expense screen
-- [ ] save expense locally first
-- [ ] queue expense for sync
-- [ ] sync expense to backend
-- [ ] show expense history
+- [x] define expense model
+- [x] create expense categories
+- [x] build add expense screen
+- [x] save expense locally first
+- [x] queue expense for sync
+- [x] sync expense to backend
+- [x] show expense history
 - [ ] decide edit/delete policy
 
 ---
@@ -322,18 +329,18 @@ Capture money leaving the business clearly.
 ### Purpose
 Help the merchant track who owes them and when money comes back.
 
-- [ ] define customer model
-- [ ] define receivable model
-- [ ] define receivable payment model
-- [ ] build customer creation flow
-- [ ] build add debt flow
-- [ ] capture customer name and phone
-- [ ] capture due date
-- [ ] support partial repayment
-- [ ] support full repayment
-- [ ] show outstanding balances
-- [ ] show debt status clearly
-- [ ] create debt detail screen
+- [x] define customer model
+- [x] define receivable model
+- [x] define receivable payment model
+- [x] build customer creation flow
+- [x] build add debt flow
+- [x] capture customer name and phone
+- [x] capture due date
+- [x] support partial repayment
+- [x] support full repayment
+- [x] show outstanding balances
+- [x] show debt status clearly
+- [x] create debt detail screen
 - [ ] create receive repayment screen from mockup direction
 - [ ] add future reminder hooks
 - [ ] add future SMS/WhatsApp reminder plan
@@ -345,14 +352,14 @@ Help the merchant track who owes them and when money comes back.
 ### Purpose
 Turn raw records into immediate clarity for the merchant.
 
-- [ ] implement dashboard summary cards
-- [ ] calculate today's sales
-- [ ] calculate today's expenses
-- [ ] calculate today's estimated profit (`sales − expenses` per `project_description.md` §8.9)
-- [ ] show low stock summary
-- [ ] show debt summary
-- [ ] show recent activity
-- [ ] build daily report screen
+- [x] implement dashboard summary cards *(UI shell + backend summary API wiring for key totals done)*
+- [x] calculate today's sales
+- [x] calculate today's expenses
+- [x] calculate today's estimated profit (`sales − expenses` per `project_description.md` §8.9)
+- [x] show low stock summary
+- [x] show debt summary
+- [x] show recent activity
+- [x] build daily report screen *(visual baseline report screen with live summary metrics; deeper time-range reporting still pending below)*
 - [ ] build weekly summary
 - [ ] build monthly summary
 - [ ] build top-selling items report
@@ -367,19 +374,19 @@ Turn raw records into immediate clarity for the merchant.
 ### Purpose
 Make the app reliable in poor network conditions.
 
-- [ ] define local SQLite schema
-- [ ] define sync queue table
-- [ ] define sync status enum
-- [ ] define device ID strategy
-- [ ] define local operation ID strategy
-- [ ] save all core write actions locally first
-- [ ] detect connectivity changes
-- [ ] process queued operations in order
-- [ ] make sync operations idempotent
-- [ ] handle retry behavior
-- [ ] display sync states in UI
-- [ ] support manual retry on failed sync
-- [ ] implement conflict handling per `architecture.md` §8.3 (MVP: server wins, client refresh)
+- [x] define local SQLite schema
+- [x] define sync queue table
+- [x] define sync status enum *(pending/sending/applied/duplicate/failed/conflict tracked locally and surfaced in UI)*
+- [x] define device ID strategy
+- [x] define local operation ID strategy
+- [x] save all core write actions locally first *(inventory + sales + expense + debt writes)*
+- [x] detect connectivity changes *(backend reachability polling + automatic sync attempts on reconnect in app shell state)*
+- [x] process queued operations in order
+- [x] make sync operations idempotent
+- [x] handle retry behavior
+- [x] display sync states in UI *(live sync pill with pending/failed/offline/synced states)*
+- [x] support manual retry on failed sync
+- [x] implement conflict handling per `architecture.md` §8.3 (MVP: server wins, client refresh)
 - [ ] test no-network scenarios thoroughly
 - [ ] test reconnect scenarios thoroughly
 
@@ -392,10 +399,10 @@ Prepare the system properly so **Paystack** collection and webhooks are safe and
 
 #### 14.1 Current foundation
 - [ ] define internal payment domain model
-- [ ] record payment method labels on sales
-- [ ] support cash
-- [ ] support manually recorded mobile money
-- [ ] support manually recorded bank transfer
+- [x] record payment method labels on sales
+- [x] support cash
+- [x] support manually recorded mobile money
+- [x] support manually recorded bank transfer
 - [ ] support `pending_payment` state for future payment requests
 
 #### 14.2 Paystack integration
@@ -545,16 +552,16 @@ Align day-to-day work with **§3.5** and `README.md` (“If you are starting the
 
 ### Best build order
 - [x] repo/docs foundation
-- [x] backend setup *(mostly done — finish Postgres + `alembic upgrade`)*
-- [ ] DB/migrations/seed *(verify locally)*
+- [x] backend setup *(Postgres + Alembic upgrade validated locally)*
+- [ ] DB/migrations/seed *(migrations verified locally; seed verification still pending in this pass)*
 - [x] mobile setup *(§5 scaffold — run `flutter create` + `pub get` locally)*
-- [ ] auth + onboarding
-- [ ] inventory foundation
-- [ ] sales flow
-- [ ] expense flow
-- [ ] debt flow
-- [ ] dashboard + reports
-- [ ] offline sync hardening
+- [x] auth + onboarding
+- [x] inventory foundation
+- [x] sales flow
+- [x] expense flow
+- [x] debt flow
+- [x] dashboard + reports
+- [x] offline sync hardening
 - [ ] admin basics
 - [ ] Paystack integration (payment stage 2, then 3)
 - [ ] post-MVP improvements (product milestones M2+)
@@ -564,13 +571,13 @@ Align day-to-day work with **§3.5** and `README.md` (“If you are starting the
 ## 22. Definition of done for MVP
 
 The MVP is done when:
-- [ ] merchant can sign in with phone and OTP
-- [ ] merchant can set up business profile
-- [ ] merchant can create items
-- [ ] merchant can record sales quickly
-- [ ] merchant can record expenses
-- [ ] merchant can manage debts/repayments
-- [ ] merchant can view dashboard summaries
+- [x] merchant can sign in with phone + **PIN** for daily use *(OTP only for first-time / recovery — see `docs/auth/pin-and-otp-flow.md`)*
+- [x] merchant can set up business profile
+- [x] merchant can create items
+- [x] merchant can record sales quickly
+- [x] merchant can record expenses
+- [x] merchant can manage debts/repayments
+- [x] merchant can view dashboard summaries
 - [ ] merchant can use app while offline for core non-payment actions
 - [ ] app syncs reliably when back online
 - [ ] data is stored correctly in backend

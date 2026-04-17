@@ -30,6 +30,23 @@ PAYMENT_PROVIDER_PAYSTACK: Final[str] = "paystack"
 # users.role (expand when staff/cashier exist)
 USER_ROLE_MERCHANT_OWNER: Final[str] = "merchant_owner"
 
+# inventory movement_type
+INVENTORY_MOVEMENT_STOCK_IN: Final[str] = "stock_in"
+INVENTORY_MOVEMENT_ADJUSTMENT: Final[str] = "adjustment"
+INVENTORY_MOVEMENT_SALE: Final[str] = "sale"
+
+# sync apply status labels
+SYNC_STATUS_APPLIED: Final[str] = "applied"
+SYNC_STATUS_DUPLICATE: Final[str] = "duplicate"
+SYNC_STATUS_CONFLICT: Final[str] = "conflict"
+SYNC_STATUS_FAILED: Final[str] = "failed"
+SYNC_STATUS_REJECTED: Final[str] = "rejected"
+
+# Sale.payment_method_label (MVP)
+PAYMENT_METHOD_CASH: Final[str] = "cash"
+PAYMENT_METHOD_MOBILE_MONEY: Final[str] = "mobile_money"
+PAYMENT_METHOD_BANK_TRANSFER: Final[str] = "bank_transfer"
+
 # auth tokens
 AUTH_TOKEN_TYPE_ACCESS: Final[str] = "access"
 AUTH_TOKEN_TYPE_REFRESH: Final[str] = "refresh"

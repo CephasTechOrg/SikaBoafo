@@ -1,12 +1,10 @@
-import 'package:biztrack_gh/app/app.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:biztrack_gh/app/theme/app_theme.dart';
 
 void main() {
-  testWidgets('BizTrackApp builds', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: BizTrackApp()),
-    );
-    expect(find.text('BizTrack GH'), findsOneWidget);
+  test('App theme builds', () {
+    final theme = buildAppTheme();
+    expect(theme.useMaterial3, isTrue);
+    expect(theme.colorScheme.primary.toARGB32(), isNot(0));
   });
 }

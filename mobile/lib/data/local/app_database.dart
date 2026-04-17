@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 1;
+const _schemaVersion = 5;
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -30,6 +30,20 @@ class AppDatabase {
       },
       onCreate: (db, version) async {
         await _createSchema(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createInventorySchema(db);
+        }
+        if (oldVersion < 3) {
+          await _createSalesSchema(db);
+        }
+        if (oldVersion < 4) {
+          await _createExpenseSchema(db);
+        }
+        if (oldVersion < 5) {
+          await _createDebtSchema(db);
+        }
       },
     );
     return _db!;
@@ -60,6 +74,155 @@ CREATE TABLE sync_queue (
 ''');
     await db.execute(
       'CREATE INDEX idx_sync_queue_status ON sync_queue (status)',
+    );
+    await _createInventorySchema(db);
+    await _createSalesSchema(db);
+    await _createExpenseSchema(db);
+    await _createDebtSchema(db);
+  }
+
+  Future<void> _createInventorySchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS items_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  default_price TEXT NOT NULL,
+  sku TEXT,
+  category TEXT,
+  low_stock_threshold INTEGER,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  quantity_on_hand INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)
+''');
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS inventory_movements_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL,
+  movement_type TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  reason TEXT,
+  local_operation_id TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_items_local_name ON items_local (name)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_inventory_movements_item '
+      'ON inventory_movements_local (item_id, created_at DESC)',
+    );
+  }
+
+  Future<void> _createSalesSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS sales_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  payment_method_label TEXT NOT NULL,
+  total_amount TEXT NOT NULL,
+  local_operation_id TEXT NOT NULL UNIQUE,
+  source_device_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL
+)
+''');
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS sale_items_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  sale_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  unit_price TEXT NOT NULL,
+  line_total TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (sale_id) REFERENCES sales_local(id) ON DELETE CASCADE,
+  FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE RESTRICT
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sales_local_created_at '
+      'ON sales_local (created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sale_items_local_sale '
+      'ON sale_items_local (sale_id)',
+    );
+  }
+
+  Future<void> _createExpenseSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS expenses_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  category TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  note TEXT,
+  local_operation_id TEXT NOT NULL UNIQUE,
+  source_device_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_expenses_local_created_at '
+      'ON expenses_local (created_at DESC)',
+    );
+  }
+
+  Future<void> _createDebtSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS customers_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  phone_number TEXT,
+  local_operation_id TEXT NOT NULL UNIQUE,
+  source_device_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)
+''');
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS receivables_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  customer_id TEXT NOT NULL,
+  original_amount TEXT NOT NULL,
+  outstanding_amount TEXT NOT NULL,
+  due_date TEXT,
+  status TEXT NOT NULL,
+  local_operation_id TEXT NOT NULL UNIQUE,
+  source_device_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (customer_id) REFERENCES customers_local(id) ON DELETE RESTRICT
+)
+''');
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS receivable_payments_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  receivable_id TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  payment_method_label TEXT NOT NULL,
+  local_operation_id TEXT NOT NULL UNIQUE,
+  source_device_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (receivable_id) REFERENCES receivables_local(id) ON DELETE CASCADE
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_customers_local_name '
+      'ON customers_local (name)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_receivables_local_created_at '
+      'ON receivables_local (created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_receivable_payments_receivable '
+      'ON receivable_payments_local (receivable_id, created_at DESC)',
     );
   }
 

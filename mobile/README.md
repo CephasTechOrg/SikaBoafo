@@ -40,7 +40,7 @@ Default API base is `http://127.0.0.1:8000` (works for desktop/web; use `10.0.2.
 
 | Area | Notes |
 |------|--------|
-| **Routing** | `go_router`: splash → auth placeholder → dashboard shell |
+| **Routing** | `go_router`: splash → auth (phone+PIN sign-in; SMS OTP for create/recover) → set-PIN → onboarding → home — see `../docs/auth/pin-and-otp-flow.md` |
 | **State** | `flutter_riverpod` + `core_providers.dart` |
 | **HTTP** | `dio` + `ApiClient` (`AppConfig.apiV1`) + bearer from `SecureTokenStorage` |
 | **Secrets** | `flutter_secure_storage` for access/refresh tokens |

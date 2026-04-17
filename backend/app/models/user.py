@@ -1,4 +1,4 @@
-"""User accounts (phone OTP — auth logic comes in `todo.md` §6)."""
+"""User accounts (phone OTP + PIN — see `docs/auth/pin-and-otp-flow.md`)."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("phone_number", name="uq_users_phone_number"),)
 
     phone_number: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
+    pin_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(
         String(32), default=USER_ROLE_MERCHANT_OWNER, nullable=False
     )

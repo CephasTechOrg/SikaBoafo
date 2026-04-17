@@ -1,0 +1,130 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/sync_providers.dart';
+import '../data/inventory_api.dart';
+import '../data/inventory_repository.dart';
+
+final inventoryApiProvider = Provider<InventoryApi>((ref) {
+  return InventoryApi(ref.watch(apiClientProvider));
+});
+
+final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
+  return InventoryRepository(
+    appDb: ref.watch(appDatabaseProvider),
+    inventoryApi: ref.watch(inventoryApiProvider),
+    syncQueueRunner: ref.watch(syncQueueRunnerProvider),
+  );
+});
+
+final inventoryControllerProvider =
+    AsyncNotifierProvider<InventoryController, List<LocalInventoryItem>>(
+  InventoryController.new,
+);
+
+class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
+  InventoryRepository get _repo => ref.read(inventoryRepositoryProvider);
+
+  @override
+  Future<List<LocalInventoryItem>> build() async {
+    try {
+      await _repo.syncPendingQueue();
+    } catch (_) {
+      // Ignore initial sync failures; queue stays for retry.
+    }
+    var local = await _repo.listLocalItems();
+    if (local.isEmpty) {
+      try {
+        await _repo.refreshFromServer();
+        local = await _repo.listLocalItems();
+      } catch (_) {
+        // Keep local-first behavior: fallback to whatever is available locally.
+      }
+    }
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    return local;
+  }
+
+  Future<void> refresh() async {
+    try {
+      await _repo.refreshFromServer();
+    } catch (_) {
+      // Ignore network errors during refresh to keep local data visible.
+    }
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
+  Future<void> createItem({
+    required String name,
+    required String defaultPrice,
+    String? sku,
+    String? category,
+    int? lowStockThreshold,
+  }) async {
+    await _repo.createItemLocal(
+      name: name,
+      defaultPrice: defaultPrice,
+      sku: sku,
+      category: category,
+      lowStockThreshold: lowStockThreshold,
+    );
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
+  Future<void> updateItem({
+    required String itemId,
+    required String name,
+    required String defaultPrice,
+    String? sku,
+    String? category,
+    int? lowStockThreshold,
+    required bool isActive,
+  }) async {
+    await _repo.updateItemLocal(
+      itemId: itemId,
+      name: name,
+      defaultPrice: defaultPrice,
+      sku: sku,
+      category: category,
+      lowStockThreshold: lowStockThreshold,
+      isActive: isActive,
+    );
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
+  Future<void> stockIn({
+    required String itemId,
+    required int quantity,
+    String? reason,
+  }) async {
+    await _repo.stockInLocal(
+      itemId: itemId,
+      quantity: quantity,
+      reason: reason,
+    );
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
+  Future<void> adjustStock({
+    required String itemId,
+    required int quantityDelta,
+    String? reason,
+  }) async {
+    await _repo.adjustStockLocal(
+      itemId: itemId,
+      quantityDelta: quantityDelta,
+      reason: reason,
+    );
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+}

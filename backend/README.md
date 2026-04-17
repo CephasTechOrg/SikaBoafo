@@ -48,7 +48,11 @@ uvicorn app.main:app --reload
 - OpenAPI: `http://127.0.0.1:8000/docs`
 - OTP request: `POST http://127.0.0.1:8000/api/v1/auth/otp/request`
 - OTP verify: `POST http://127.0.0.1:8000/api/v1/auth/otp/verify`
+- PIN login: `POST http://127.0.0.1:8000/api/v1/auth/pin/login` (phone + PIN — no SMS)
+- PIN set / reset: `POST http://127.0.0.1:8000/api/v1/auth/pin/set` (Bearer access token)
 - Onboarding complete: `POST http://127.0.0.1:8000/api/v1/auth/onboarding/complete` (Bearer token required)
+
+Full flow and client routing flags: `../docs/auth/pin-and-otp-flow.md`.
 
 ## Auth env (OTP)
 
@@ -61,7 +65,9 @@ Set these in `.env`:
 Flow:
 
 1. `/auth/otp/request` normalizes phone and sends OTP via Arkesel (or mock code).
-2. `/auth/otp/verify` validates code, creates user if needed, returns access/refresh tokens.
+2. `/auth/otp/verify` validates code, creates user if needed, returns access/refresh tokens and `pin_set`.
+3. `/auth/pin/login` returns tokens for returning merchants (no SMS) when a PIN is already set.
+4. `/auth/pin/set` stores a scrypt hash of the merchant PIN (also used after “Forgot PIN” OTP).
 
 ## Tests
 

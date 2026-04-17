@@ -224,7 +224,7 @@ Optional:
 
 ## MVP feature list
 
-- phone number + OTP auth
+- phone number + **PIN** sign-in (SMS OTP only for signup / Forgot PIN — see `docs/auth/pin-and-otp-flow.md`)
 - merchant onboarding
 - dashboard
 - record sale

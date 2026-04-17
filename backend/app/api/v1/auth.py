@@ -1,4 +1,4 @@
-"""Phone OTP auth endpoints."""
+"""Auth endpoints: SMS OTP (signup/recovery) and PIN login/set."""
 
 from __future__ import annotations
 
@@ -16,9 +16,17 @@ from app.schemas.auth import (
     OtpRequestIn,
     OtpRequestOut,
     OtpVerifyIn,
+    PinLoginIn,
+    PinSetIn,
+    PinSetOut,
     UserSessionOut,
 )
-from app.services.auth_service import AuthService, OtpVerificationFailedError
+from app.services.auth_service import (
+    AuthService,
+    InvalidPinLoginError,
+    OtpVerificationFailedError,
+    PinNotSetError,
+)
 from app.services.onboarding_service import OnboardingService
 from app.services.otp_provider import ArkeselOtpProvider, OtpProviderError
 from app.services.phone_number import InvalidPhoneNumberError
@@ -83,6 +91,50 @@ def verify_otp(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/pin/login", response_model=UserSessionOut)
+def login_with_pin(
+    payload: PinLoginIn,
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> UserSessionOut:
+    service = _build_auth_service(db=db, settings=settings)
+    try:
+        return service.login_with_pin(phone_number=payload.phone_number, pin=payload.pin)
+    except InvalidPhoneNumberError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except PinNotSetError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="pin_not_set",
+        ) from exc
+    except InvalidPinLoginError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid phone number or PIN.",
+        ) from exc
+
+
+@router.post("/pin/set", response_model=PinSetOut)
+def set_pin(
+    payload: PinSetIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PinSetOut:
+    service = _build_auth_service(db=db, settings=settings)
+    try:
+        service.set_pin(user=current_user, pin=payload.pin)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return PinSetOut()
 
 
 @router.post("/onboarding/complete", response_model=OnboardingOut)

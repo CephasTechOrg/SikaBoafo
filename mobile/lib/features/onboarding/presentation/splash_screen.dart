@@ -24,6 +24,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
     final token = await ref.read(secureTokenStorageProvider).readAccessToken();
+    if (!mounted) return;
     final route = (token != null && token.isNotEmpty)
         ? AppRoute.home.path
         : AppRoute.auth.path;
