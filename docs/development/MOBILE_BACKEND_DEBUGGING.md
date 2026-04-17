@@ -4,7 +4,7 @@
 **Created:** April 16, 2026  
 **Last Updated:** April 16, 2026  
 **For Project:** BizTrack GH  
-**Method:** USB Reverse Forwarding via ADB  
+**Method:** USB Reverse Forwarding via ADB
 
 ---
 
@@ -132,53 +132,71 @@ This is perfect because:
 
 ### Prerequisites (One-Time Setup)
 
-- USB cable connected to your phone
-- USB Debugging enabled on phone (Settings → Developer Options → USB Debugging)
-- Android SDK installed (you have this)
-- Backend code ready
-- Mobile code ready
+- ✅ USB cable connected to your phone
+- ✅ USB Debugging enabled on phone (Settings → Developer Options → USB Debugging)
+- ✅ Android SDK installed (you have this)
+- ✅ Backend code ready
+- ✅ Mobile code ready
 
-### Every Time You Want to Debug
+---
 
-#### Step 1: Set Up USB Reverse Tunnel
+### Every Time You Want to Debug (4 Simple Steps)
 
-**Terminal 1:**
+#### ⓵ Step 1: Set Up USB Reverse Tunnel
+
+**Terminal 1 (this can close after):**
 
 ```powershell
 C:\Users\USER\AppData\Local\Android\Sdk\platform-tools\adb reverse tcp:8000 tcp:8000
 ```
 
-**Output:** No output = success. The tunnel is now active.
+**Expected Output:**
 
-**What it does:** Creates a bridge so the phone's `127.0.0.1:8000` reaches your computer's `127.0.0.1:8000`.
+```
+(no output = success)
+```
+
+**What it does:**
+Creates a bridge so the phone's `127.0.0.1:8000` reaches your computer's `127.0.0.1:8000`.
+
+**Notes:**
+
+- Run once per USB session
+- Command returns immediately (tunnel stays active in background)
+- Terminal 1 can be closed after this
 
 ---
 
-#### Step 2: Start Your Backend
+#### ⓶ Step 2: Start Your Backend
 
-**Terminal 2:**
+**Terminal 2 (keep open while developing):**
 
 ```powershell
 cd backend
 uvicorn app.main:app --reload
 ```
 
-**Expected output:**
+**Expected Output:**
 
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8000
 INFO:     Application startup complete
 ```
 
-**What it does:** Starts your FastAPI server listening on port 8000.
+**What it does:**
+Starts your FastAPI server listening on port 8000.
 
-**Keep this terminal open** — you'll see all API requests here.
+**Notes:**
+
+- Keep this terminal open — you'll see all API requests here
+- If you see errors, check your database connection
+- Logs from your app's API calls appear here
 
 ---
 
-#### Step 3: Deploy and Run Flutter App
+#### ⓷ Step 3: Deploy and Run Flutter App
 
-**Terminal 3:**
+**Terminal 3 (keep open while developing):**
 
 ```powershell
 cd mobile
@@ -195,7 +213,7 @@ Select a device by number or name: 1
 
 Type `1` and press Enter.
 
-**Expected output:**
+**Expected Output:**
 
 ```
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
@@ -203,15 +221,22 @@ Installing and launching...
 ✓ Installation successful.
 ```
 
-The app appears on your phone. ✅
+**What it does:**
+Builds and deploys the app to your phone.
+
+**Notes:**
+
+- App appears on your phone in 30-60 seconds
+- Keep this terminal open for live debugging
 
 ---
 
-#### Step 4: Test the Connection
+#### ⓸ Step 4: Test the Connection
 
 **On your phone:**
 
 1. Tap any button that calls the backend (e.g., "Request OTP" in login)
+2. Watch Terminal 2 for the request log
 
 **In Terminal 2 (backend logs), you should see:**
 
@@ -219,7 +244,10 @@ The app appears on your phone. ✅
 INFO:     127.0.0.1:52341 - "POST /api/v1/auth/otp/request HTTP/1.1" 200 OK
 ```
 
-**If you see that log, the connection works!** ✅
+**Result:**
+
+- ✅ See the log above? **Connection works!** Ready to develop.
+- ❌ Don't see it? Check the troubleshooting section below.
 
 ---
 
@@ -370,7 +398,54 @@ flutter run
 
 ---
 
-**Created:** April 16, 2026  
-**For:** BizTrack GH Project  
-**Method:** USB Reverse Forwarding  
-**Stack:** Flutter + FastAPI + Android SDK
+## Final Notes
+
+### Tunnel Persistence
+
+- The tunnel created by `adb reverse` stays active in the background
+- You don't need to keep Terminal 1 open
+- The tunnel only works while USB is connected
+- If you unplug USB, plug it back in — the tunnel reactivates
+
+### For Every Development Session
+
+Print this section or save it:
+
+```powershell
+# Terminal 1 - Run once
+C:\Users\USER\AppData\Local\Android\Sdk\platform-tools\adb reverse tcp:8000 tcp:8000
+
+# Terminal 2 - Keep open
+cd backend
+uvicorn app.main:app --reload
+
+# Terminal 3 - Keep open
+cd mobile
+flutter run
+```
+
+### Success Indicator
+
+When you see this in Terminal 2:
+
+```
+INFO:     127.0.0.1:XXXXX - "POST /api/v1/... HTTP/1.1" 200 OK
+```
+
+Your phone is successfully talking to your backend. ✅
+
+---
+
+## Document Information
+
+| Item                 | Details                         |
+| -------------------- | ------------------------------- |
+| **Document Version** | 1.0                             |
+| **Created**          | April 16, 2026                  |
+| **Last Updated**     | April 16, 2026                  |
+| **Project**          | BizTrack GH                     |
+| **Method**           | USB Reverse Forwarding via ADB  |
+| **Stack**            | Flutter + FastAPI + Android SDK |
+| **For**              | Daily Development & Reference   |
+
+**Keep this document in your repository and refer to it every development session.**

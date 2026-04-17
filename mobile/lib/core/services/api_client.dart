@@ -8,8 +8,10 @@ import 'secure_token_storage.dart';
 class ApiClient {
   ApiClient({
     required SecureTokenStorage tokenStorage,
+    Future<void> Function()? onUnauthorized,
     Dio? dio,
-  }) : _tokenStorage = tokenStorage {
+  })  : _tokenStorage = tokenStorage,
+        _onUnauthorized = onUnauthorized {
     _dio = dio ??
         Dio(
           BaseOptions(
@@ -28,9 +30,28 @@ class ApiClient {
           }
           handler.next(options);
         },
-        onError: (e, handler) {
+        onError: (e, handler) async {
+          final statusCode = e.response?.statusCode;
+          final hadAuthHeader =
+              e.requestOptions.headers['Authorization'] != null;
+          final isAuthEndpoint = e.requestOptions.path.contains('/auth/');
+
+          // If a previously authenticated request returns 401, clear session and redirect.
+          if (statusCode == 401 && hadAuthHeader && !isAuthEndpoint) {
+            if (!_isHandlingUnauthorized) {
+              _isHandlingUnauthorized = true;
+              try {
+                await _tokenStorage.clearSession();
+                await _onUnauthorized?.call();
+              } finally {
+                _isHandlingUnauthorized = false;
+              }
+            }
+          }
+
           if (kDebugMode) {
-            debugPrint('API ${e.requestOptions.method} ${e.requestOptions.path}: ${e.message}');
+            debugPrint(
+                'API ${e.requestOptions.method} ${e.requestOptions.path}: ${e.message}');
           }
           handler.next(e);
         },
@@ -39,7 +60,9 @@ class ApiClient {
   }
 
   final SecureTokenStorage _tokenStorage;
+  final Future<void> Function()? _onUnauthorized;
   late final Dio _dio;
+  bool _isHandlingUnauthorized = false;
 
   Dio get dio => _dio;
 }

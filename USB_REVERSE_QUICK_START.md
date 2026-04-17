@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Date:** April 16, 2026  
 **Project:** BizTrack GH  
-**Print this page** and keep it at your desk for daily development.  
+**Print this page** and keep it at your desk for daily development.
 
 ---
 
@@ -29,11 +29,13 @@
 ### ① Terminal 1: Create USB Tunnel
 
 **Run this:**
+
 ```powershell
 C:\Users\USER\AppData\Local\Android\Sdk\platform-tools\adb reverse tcp:8000 tcp:8000
 ```
 
 **Expected Output:**
+
 ```
 (no output = success)
 ```
@@ -42,6 +44,7 @@ C:\Users\USER\AppData\Local\Android\Sdk\platform-tools\adb reverse tcp:8000 tcp:
 Creates a tunnel so your phone's `127.0.0.1:8000` points to your computer's `127.0.0.1:8000`
 
 **Notes:**
+
 - Run once per USB session
 - Command returns immediately
 - Tunnel stays active in background
@@ -52,12 +55,14 @@ Creates a tunnel so your phone's `127.0.0.1:8000` points to your computer's `127
 ### ② Terminal 2: Start Backend
 
 **Run this:**
+
 ```powershell
 cd backend
 uvicorn app.main:app --reload
 ```
 
 **Expected Output:**
+
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8000
 INFO:     Application startup complete
@@ -67,6 +72,7 @@ INFO:     Application startup complete
 Starts your FastAPI backend and listens for requests from the phone
 
 **Notes:**
+
 - Keep this terminal open (don't close it)
 - All API request logs appear here
 - If you see errors, check the database is running
@@ -76,12 +82,14 @@ Starts your FastAPI backend and listens for requests from the phone
 ### ③ Terminal 3: Deploy Mobile App
 
 **Run this:**
+
 ```powershell
 cd mobile
 flutter run
 ```
 
 **When prompted:**
+
 ```
 Connected devices:
 1 • Your Phone (mobile) • android-arm64 • Android
@@ -89,6 +97,7 @@ Select a device by number or name: 1
 ```
 
 **Expected Output:**
+
 ```
 ✓ Built build/app/outputs/flutter-apk/app-debug.apk
 Installing and launching...
@@ -99,6 +108,7 @@ Installing and launching...
 Builds the Flutter app and deploys it to your phone
 
 **Notes:**
+
 - Select your phone device
 - App appears on phone in ~30-60 seconds
 - Keep terminal open for live debugging
@@ -111,15 +121,18 @@ Builds the Flutter app and deploys it to your phone
 (Example: "Request OTP" in login screen)
 
 **Step 2:** In Terminal 2 (backend logs), look for this:
+
 ```
 INFO:     127.0.0.1:52341 - "POST /api/v1/auth/otp/request HTTP/1.1" 200 OK
 ```
 
 **Result:**
+
 - ✅ See the log above? **Connection works!**
 - ❌ Don't see it? Check troubleshooting section below
 
 **What the log means:**
+
 - `127.0.0.1:52341` = phone is calling your computer
 - `POST` = the request type
 - `200 OK` = backend responded successfully
@@ -148,14 +161,15 @@ INFO:     127.0.0.1:52341 - "POST /api/v1/auth/otp/request HTTP/1.1" 200 OK
 
 ## Your Three Terminals Layout
 
-| Terminal | Command | Stays Open? | Shows What |
-|----------|---------|-------------|------------|
-| **T1** | `adb reverse tcp:8000 tcp:8000` | No (returns immediately) | Nothing (unless error) |
-| **T2** | `uvicorn app.main:app --reload` | YES, always | Backend logs + requests |
-| **T3** | `flutter run` | YES, always | App build + debug logs |
-| **Phone** | (user taps buttons) | YES, always | Running app |
+| Terminal  | Command                         | Stays Open?              | Shows What              |
+| --------- | ------------------------------- | ------------------------ | ----------------------- |
+| **T1**    | `adb reverse tcp:8000 tcp:8000` | No (returns immediately) | Nothing (unless error)  |
+| **T2**    | `uvicorn app.main:app --reload` | YES, always              | Backend logs + requests |
+| **T3**    | `flutter run`                   | YES, always              | App build + debug logs  |
+| **Phone** | (user taps buttons)             | YES, always              | Running app             |
 
 **Important:**
+
 - Keep Terminal 2 and 3 open while developing
 - Terminal 1 only needs to run once, then can close
 - When you tap a button on phone → you should see logs in Terminal 2
@@ -181,21 +195,45 @@ Logs reappear in Terminal 2 ✅
 
 ---
 
-## Cheat Sheet (Copy-Paste Ready)
+---
+
+## \u2705 Print & Keep This Page
+
+**Copy & Paste Ready Commands:**
+
+Terminal 1:
 
 ```powershell
-# Terminal 1 - Run once
 C:\Users\USER\AppData\Local\Android\Sdk\platform-tools\adb reverse tcp:8000 tcp:8000
+```
 
-# Terminal 2 - Keep open
-cd backend
-uvicorn app.main:app --reload
+Terminal 2:
 
-# Terminal 3 - Keep open
-cd mobile
-flutter run
+```powershell
+cd backend && uvicorn app.main:app --reload
+```
+
+Terminal 3:
+
+```powershell
+cd mobile && flutter run
 ```
 
 ---
 
-**✅ Print this page and keep it at your desk!**
+## Document Reference
+
+| Item    | Details                     |
+| ------- | --------------------------- |
+| Version | 1.0                         |
+| Created | April 16, 2026              |
+| Project | BizTrack GH                 |
+| Method  | USB Reverse Forwarding      |
+| Use     | Daily Development           |
+| Print?  | **YES** - Keep at your desk |
+
+---
+
+**This document is your go-to reference for mobile-backend debugging.**  
+**Print it. Laminate it if possible. Keep it at your desk.**  
+**Every development session, follow these 3 commands in 3 terminals.**
