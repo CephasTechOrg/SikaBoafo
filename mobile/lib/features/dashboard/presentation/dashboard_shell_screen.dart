@@ -19,7 +19,8 @@ class DashboardShellScreen extends ConsumerStatefulWidget {
   const DashboardShellScreen({super.key});
 
   @override
-  ConsumerState<DashboardShellScreen> createState() => _DashboardShellScreenState();
+  ConsumerState<DashboardShellScreen> createState() =>
+      _DashboardShellScreenState();
 }
 
 class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
@@ -52,11 +53,16 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.point_of_sale_outlined), label: 'Sales'),
-          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Inventory'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Expenses'),
-          NavigationDestination(icon: Icon(Icons.group_outlined), label: 'Debts'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Report'),
+          NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined), label: 'Sales'),
+          NavigationDestination(
+              icon: Icon(Icons.inventory_2_outlined), label: 'Inventory'),
+          NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined), label: 'Expenses'),
+          NavigationDestination(
+              icon: Icon(Icons.group_outlined), label: 'Debts'),
+          NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined), label: 'Report'),
         ],
       ),
     );
@@ -115,7 +121,8 @@ class _HomeDashboard extends ConsumerWidget {
               children: [
                 _DashboardHeader(
                   merchantContext: merchantContext,
-                  onEditBusiness: () => _openBusinessSettings(context, merchantContext),
+                  onEditBusiness: () =>
+                      _openBusinessSettings(context, merchantContext),
                   onSignOut: onSignOut,
                 ),
                 Expanded(
@@ -180,7 +187,8 @@ class _DashboardHeader extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.storefront_rounded, color: Colors.white),
+                child:
+                    const Icon(Icons.storefront_rounded, color: Colors.white),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -215,7 +223,8 @@ class _DashboardHeader extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: onEditBusiness,
-                    icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                    icon:
+                        const Icon(Icons.settings_rounded, color: Colors.white),
                     tooltip: 'Business settings',
                   ),
                   IconButton(
@@ -234,7 +243,8 @@ class _DashboardHeader extends StatelessWidget {
             children: [
               _HeaderBadge(
                 icon: Icons.location_on_outlined,
-                label: merchantContext.storeLocation ?? merchantContext.storeName,
+                label:
+                    merchantContext.storeLocation ?? merchantContext.storeName,
               ),
               _HeaderBadge(
                 icon: Icons.schedule_outlined,
@@ -345,7 +355,9 @@ class _SummaryCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 420;
-              final tileWidth = isCompact ? constraints.maxWidth : (constraints.maxWidth - 12) / 2;
+              final tileWidth = isCompact
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 12) / 2;
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -367,7 +379,8 @@ class _SummaryCard extends StatelessWidget {
             children: [
               _StatusChip(
                 icon: Icons.inventory_2_outlined,
-                label: lowStock == null ? 'Low stock --' : 'Low stock $lowStock',
+                label:
+                    lowStock == null ? 'Low stock --' : 'Low stock $lowStock',
               ),
               _StatusChip(
                 icon: Icons.sync_alt_rounded,
@@ -470,7 +483,8 @@ class _QuickActionGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const actions = [
-      _ActionItem('Record Sale', Icons.point_of_sale_rounded, AppColors.forest, 1),
+      _ActionItem(
+          'Record Sale', Icons.point_of_sale_rounded, AppColors.forest, 1),
       _ActionItem('Add Expense', Icons.receipt_long_rounded, AppColors.gold, 3),
       _ActionItem('Credit Owed', Icons.group_rounded, AppColors.coral, 4),
       _ActionItem('Reports', Icons.bar_chart_rounded, AppColors.sky, 5),
@@ -575,7 +589,8 @@ class _InsightStrip extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 520;
-        final tileWidth = isCompact ? constraints.maxWidth : (constraints.maxWidth - 10) / 2;
+        final tileWidth =
+            isCompact ? constraints.maxWidth : (constraints.maxWidth - 10) / 2;
         return Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -584,7 +599,9 @@ class _InsightStrip extends StatelessWidget {
               width: tileWidth,
               child: _InsightCard(
                 title: 'Healthy Profit',
-                value: summary == null ? '--' : 'GHS ${summary.todayEstimatedProfit}',
+                value: summary == null
+                    ? '--'
+                    : 'GHS ${summary.todayEstimatedProfit}',
                 tint: AppColors.gold,
               ),
             ),
@@ -592,7 +609,9 @@ class _InsightStrip extends StatelessWidget {
               width: tileWidth,
               child: _InsightCard(
                 title: 'Outstanding Debt',
-                value: summary == null ? '--' : 'GHS ${summary.debtOutstandingTotal}',
+                value: summary == null
+                    ? '--'
+                    : 'GHS ${summary.debtOutstandingTotal}',
                 tint: AppColors.coral,
               ),
             ),
@@ -625,7 +644,8 @@ class _InsightCard extends StatelessWidget {
             Container(
               width: 10,
               height: 10,
-              decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(99)),
+              decoration: BoxDecoration(
+                  color: tint, borderRadius: BorderRadius.circular(99)),
             ),
             const SizedBox(height: 14),
             Text(title, style: Theme.of(context).textTheme.bodyMedium),
@@ -652,7 +672,8 @@ class _RecentActivityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Recent Activity', style: Theme.of(context).textTheme.titleMedium),
+            Text('Recent Activity',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 14),
             if (activityAsync.isLoading && rows.isEmpty)
               const Padding(
@@ -661,7 +682,10 @@ class _RecentActivityCard extends StatelessWidget {
               )
             else if (activityAsync.hasError && rows.isEmpty)
               Text(
-                humanizeDashboardError(activityAsync.error!),
+                humanizeDashboardError(
+                  activityAsync.error ??
+                      const FormatException('Unexpected activity error.'),
+                ),
                 style: Theme.of(context).textTheme.bodyMedium,
               )
             else if (rows.isEmpty)

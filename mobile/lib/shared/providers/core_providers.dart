@@ -25,6 +25,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
         return;
       }
       GoRouter.of(context).go(AppRoute.auth.path);
+      rootScaffoldMessengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please sign in again.'),
+          ),
+        );
     },
   );
 });

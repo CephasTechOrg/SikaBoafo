@@ -16,6 +16,7 @@ class BizTrackApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'BizTrack GH',
       theme: buildAppTheme(),
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
