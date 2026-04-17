@@ -3,6 +3,7 @@
 This is the master execution file.
 
 It includes:
+
 - immediate work
 - startup setup work
 - MVP implementation work
@@ -20,6 +21,7 @@ The goal is to make sure we do not forget anything important.
 ## 0. Repository and documentation foundation
 
 ### Purpose
+
 Before building features, make the repo a reliable source of truth.
 
 - [x] place updated docs in repo root
@@ -40,6 +42,7 @@ Before building features, make the repo a reliable source of truth.
 ## 1. Product foundation and validation
 
 ### Purpose
+
 Confirm who exactly we are building for first and what pain matters most.
 
 - [ ] finalize product name
@@ -60,9 +63,10 @@ Confirm who exactly we are building for first and what pain matters most.
 ## 2. Design system and UI planning
 
 ### Purpose
+
 Turn mockups into implementation-ready UI direction.
 
-- [x] review generated mockups screen by screen *(used `mobile/UI MockUps` to guide dashboard, inventory, sales, debts, and report polish)*
+- [x] review generated mockups screen by screen _(used `mobile/UI MockUps` to guide dashboard, inventory, sales, debts, and report polish)_
 - [ ] name each mockup screen explicitly
 - [ ] create screen list from mockups:
   - [ ] splash / welcome
@@ -73,7 +77,7 @@ Turn mockups into implementation-ready UI direction.
   - [x] manage debts
   - [x] inventory
   - [x] receive payment
-  - [x] daily report *(report UI baseline in app; deeper reporting remains in §12)*
+  - [x] daily report _(report UI baseline in app; deeper reporting remains in §12)_
 - [ ] document which mockup parts are reference only vs required MVP behavior
 - [x] define design tokens
   - [x] colors
@@ -100,6 +104,7 @@ Turn mockups into implementation-ready UI direction.
 ## 3. Startup-ready repository structure
 
 ### Purpose
+
 Create the real folder structure before feature work starts.
 
 - [x] create `mobile/`
@@ -139,22 +144,25 @@ Skipping a solid §4.3 to “move faster” usually means **rewrites**—not eff
 ## 4. Backend setup and startup flow
 
 ### Purpose
+
 Set up the backend properly so future work sits on a stable base.
 
 #### 4.1 Environment and dependencies
+
 - [x] initialize backend project
-- [ ] create Python virtual environment inside `backend/.venv` *(run locally: `python -m venv .venv`)*
+- [ ] create Python virtual environment inside `backend/.venv` _(run locally: `python -m venv .venv`)_
 - [ ] activate virtual environment
 - [x] create `requirements.txt` or `pyproject.toml`
-- [x] install FastAPI and core dependencies *(see `requirements.txt`)*
+- [x] install FastAPI and core dependencies _(see `requirements.txt`)_
 - [x] install DB driver
 - [x] install Alembic
-- [x] install Redis client *(dependency present; wire in §4.4)*
-- [ ] install worker dependencies *(deferred to Celery/Dramatiq in §4.4)*
+- [x] install Redis client _(dependency present; wire in §4.4)_
+- [ ] install worker dependencies _(deferred to Celery/Dramatiq in §4.4)_
 - [x] install testing dependencies (`requirements-dev.txt`)
 - [x] install linting/formatting dependencies (`ruff` in dev requirements)
 
 #### 4.2 Config and app skeleton
+
 - [x] create `app/main.py`
 - [x] create config module
 - [x] create settings loading from env
@@ -163,24 +171,27 @@ Set up the backend properly so future work sits on a stable base.
 - [x] create versioned API base (`/api/v1/…`)
 
 #### 4.3 Database and migrations
-- [x] set up PostgreSQL locally *(local Postgres reachable via `.env` and migration run validated)*
+
+- [x] set up PostgreSQL locally _(local Postgres reachable via `.env` and migration run validated)_
 - [x] configure DB session
 - [x] configure SQLAlchemy models **with sync fields on all offline-capable writes** (`source_device_id`, `local_operation_id`, timestamps as in `architecture.md` §7.3)
 - [x] configure Alembic
 - [x] create initial migration(s); revision `001` uses `metadata.create_all` once; later use autogenerate
-- [x] run `alembic upgrade head` *(validated to `002 (head)`)*
+- [x] run `alembic upgrade head` _(validated to `002 (head)`)_
 - [x] create seed script in `backend/scripts/seed_dev.py`
 - [x] add sample merchant/store/items seed data
-- [ ] review indexes for list/hot paths *(add when sync/report endpoints land)*
+- [ ] review indexes for list/hot paths _(add when sync/report endpoints land)_
 
 #### 4.4 Redis and workers
-- [ ] set up Redis locally *(compose file includes Redis)*
+
+- [ ] set up Redis locally _(compose file includes Redis)_
 - [ ] choose Celery or Dramatiq
 - [ ] configure broker connection
 - [ ] create worker entrypoint
 - [ ] test a sample async task
 
 #### 4.5 Dev experience
+
 - [x] add structured logging
 - [x] add local Docker support (`infra/docker/docker-compose.local.yml`)
 - [ ] add Makefile or task runner if desired
@@ -191,12 +202,14 @@ Set up the backend properly so future work sits on a stable base.
 ## 5. Mobile app setup and startup flow
 
 ### Purpose
+
 Set up the Flutter app correctly before feature work.
 
 #### 5.1 App initialization
-- [x] initialize Flutter app in `mobile/` *(Dart sources + `pubspec`; run `flutter create .` locally for `android/` / `ios/` — see `mobile/README.md`)*
-- [ ] run `flutter pub get` *(on dev machine after Flutter install)*
-- [ ] set up environments/flavors *(baseline: `--dart-define=API_BASE_URL=...` in `AppConfig`)*
+
+- [x] initialize Flutter app in `mobile/` _(Dart sources + `pubspec`; run `flutter create .` locally for `android/` / `ios/` — see `mobile/README.md`)_
+- [ ] run `flutter pub get` _(on dev machine after Flutter install)_
+- [ ] set up environments/flavors _(baseline: `--dart-define=API_BASE_URL=...` in `AppConfig`)_
 - [x] set up Riverpod
 - [x] set up GoRouter
 - [x] set up Dio
@@ -206,6 +219,7 @@ Set up the Flutter app correctly before feature work.
 - [ ] set up error handling and logging
 
 #### 5.2 UI shell
+
 - [x] create base app shell
 - [x] create auth flow shell
 - [x] create dashboard navigation shell
@@ -213,6 +227,7 @@ Set up the Flutter app correctly before feature work.
 - [x] create sync status UI component
 
 #### 5.3 Mobile dev notes
+
 - [x] document Flutter startup commands in README
 - [x] document emulator/device setup notes if needed
 - [ ] decide whether to support tablet layouts later
@@ -222,18 +237,19 @@ Set up the Flutter app correctly before feature work.
 ## 6. Authentication and onboarding
 
 ### Purpose
+
 Give merchants a simple, trustworthy entry into the app.
 
 - [x] status note: OTP auth flow + onboarding flow implemented end-to-end (backend + mobile)
 - [x] status note: login/OTP UI refreshed against mockup references and polished for responsive phone layouts
 - [x] document **PIN + OTP split** (daily login vs SMS cost) — `docs/auth/pin-and-otp-flow.md`
 
-- [x] define auth domain model *(phone normalization + OTP provider adapter + token shape)*
+- [x] define auth domain model _(phone normalization + OTP provider adapter + token shape)_
 - [x] implement phone number input screen
 - [x] implement OTP request endpoint
 - [x] implement OTP verification endpoint
-- [x] implement **PIN login** endpoint *(phone + PIN, no SMS)*
-- [x] implement **PIN set / reset** endpoint *(authenticated; after OTP for recovery)*
+- [x] implement **PIN login** endpoint _(phone + PIN, no SMS)_
+- [x] implement **PIN set / reset** endpoint _(authenticated; after OTP for recovery)_
 - [x] create token issuance flow
 - [x] add secure token storage on mobile
 - [x] create login state restoration
@@ -249,6 +265,7 @@ Give merchants a simple, trustworthy entry into the app.
 ## 7. Merchant/store domain
 
 ### Purpose
+
 Represent the merchant cleanly from the start.
 
 - [x] create merchant entity/model
@@ -263,19 +280,20 @@ Represent the merchant cleanly from the start.
 ## 8. Inventory module
 
 ### Purpose
+
 Give merchants visibility into what they have and what is running out.
 
 - [x] define item entity/model
 - [x] define inventory balance model
 - [x] define inventory movement model
 - [x] implement create item flow
-- [x] implement edit item flow *(mobile edit dialog now updates locally first and syncs through `sync_queue`)*
+- [x] implement edit item flow _(mobile edit dialog now updates locally first and syncs through `sync_queue`)_
 - [x] implement stock-in flow
 - [x] implement stock adjustment flow
-- [x] implement low stock threshold *(persisted on item create/update)*
+- [x] implement low stock threshold _(persisted on item create/update)_
 - [x] show inventory list
 - [x] show low stock widgets on dashboard
-- [x] create inventory history / audit trail *(movement rows stored locally + backend)*
+- [x] create inventory history / audit trail _(movement rows stored locally + backend)_
 - [ ] support search/filter later if needed
 
 ---
@@ -283,11 +301,12 @@ Give merchants visibility into what they have and what is running out.
 ## 9. Sales module
 
 ### Purpose
+
 This is the highest-frequency flow and must feel excellent.
 
 - [x] define sale model
 - [x] define sale item model
-- [x] build quick sale entry screen from mockup reference *(functional baseline UI in app)*
+- [x] build quick sale entry screen from mockup reference _(functional baseline UI in app)_
 - [x] allow item selection
 - [x] allow quantity entry
 - [ ] allow unit price override where appropriate
@@ -296,11 +315,12 @@ This is the highest-frequency flow and must feel excellent.
 - [x] update local inventory immediately
 - [x] queue sale for sync
 - [x] sync sale to backend
-- [x] show sale history *(recent sales list with sync status)*
+- [x] show sale history _(recent sales list with sync status)_
 - [ ] support note on sale if needed
 - [ ] define future digital receipt placeholder
 
 ### UX quality tasks for sales flow
+
 - [ ] minimize number of taps
 - [ ] make common items easy to select later
 - [ ] ensure large touch targets
@@ -311,6 +331,7 @@ This is the highest-frequency flow and must feel excellent.
 ## 10. Expense module
 
 ### Purpose
+
 Capture money leaving the business clearly.
 
 - [x] define expense model
@@ -327,6 +348,7 @@ Capture money leaving the business clearly.
 ## 11. Receivables / debt module
 
 ### Purpose
+
 Help the merchant track who owes them and when money comes back.
 
 - [x] define customer model
@@ -350,16 +372,17 @@ Help the merchant track who owes them and when money comes back.
 ## 12. Dashboard and reports
 
 ### Purpose
+
 Turn raw records into immediate clarity for the merchant.
 
-- [x] implement dashboard summary cards *(UI shell + backend summary API wiring for key totals done)*
+- [x] implement dashboard summary cards _(UI shell + backend summary API wiring for key totals done)_
 - [x] calculate today's sales
 - [x] calculate today's expenses
 - [x] calculate today's estimated profit (`sales − expenses` per `project_description.md` §8.9)
 - [x] show low stock summary
 - [x] show debt summary
 - [x] show recent activity
-- [x] build daily report screen *(visual baseline report screen with live summary metrics; deeper time-range reporting still pending below)*
+- [x] build daily report screen _(visual baseline report screen with live summary metrics; deeper time-range reporting still pending below)_
 - [ ] build weekly summary
 - [ ] build monthly summary
 - [ ] build top-selling items report
@@ -372,19 +395,20 @@ Turn raw records into immediate clarity for the merchant.
 ## 13. Offline-first engine
 
 ### Purpose
+
 Make the app reliable in poor network conditions.
 
 - [x] define local SQLite schema
 - [x] define sync queue table
-- [x] define sync status enum *(pending/sending/applied/duplicate/failed/conflict tracked locally and surfaced in UI)*
+- [x] define sync status enum _(pending/sending/applied/duplicate/failed/conflict tracked locally and surfaced in UI)_
 - [x] define device ID strategy
 - [x] define local operation ID strategy
-- [x] save all core write actions locally first *(inventory + sales + expense + debt writes)*
-- [x] detect connectivity changes *(backend reachability polling + automatic sync attempts on reconnect in app shell state)*
+- [x] save all core write actions locally first _(inventory + sales + expense + debt writes)_
+- [x] detect connectivity changes _(backend reachability polling + automatic sync attempts on reconnect in app shell state)_
 - [x] process queued operations in order
 - [x] make sync operations idempotent
 - [x] handle retry behavior
-- [x] display sync states in UI *(live sync pill with pending/failed/offline/synced states)*
+- [x] display sync states in UI _(live sync pill with pending/failed/offline/synced states)_
 - [x] support manual retry on failed sync
 - [x] implement conflict handling per `architecture.md` §8.3 (MVP: server wins, client refresh)
 - [ ] test no-network scenarios thoroughly
@@ -395,9 +419,11 @@ Make the app reliable in poor network conditions.
 ## 14. Payment engine — Paystack (current and future)
 
 ### Purpose
+
 Prepare the system properly so **Paystack** collection and webhooks are safe and idempotent.
 
 #### 14.1 Current foundation
+
 - [ ] define internal payment domain model
 - [x] record payment method labels on sales
 - [x] support cash
@@ -406,6 +432,7 @@ Prepare the system properly so **Paystack** collection and webhooks are safe and
 - [ ] support `pending_payment` state for future payment requests
 
 #### 14.2 Paystack integration
+
 - [ ] create Paystack integration module in backend
 - [ ] define transaction initialization endpoint
 - [ ] define mobile app payment start flow
@@ -419,6 +446,7 @@ Prepare the system properly so **Paystack** collection and webhooks are safe and
 - [ ] build admin payment review screen
 
 #### 14.3 Future payment features
+
 - [ ] customer payment request initiated by merchant
 - [ ] in-app checkout via Paystack (mobile money / cards as Paystack enables)
 - [ ] digital receipts
@@ -437,6 +465,7 @@ Prepare the system properly so **Paystack** collection and webhooks are safe and
 ## 15. Admin dashboard
 
 ### Purpose
+
 Give the internal team visibility and support tools.
 
 - [ ] initialize Next.js admin app
@@ -456,6 +485,7 @@ Give the internal team visibility and support tools.
 ## 16. Notifications and reminders
 
 ### Purpose
+
 Keep merchants informed and support habit formation.
 
 - [ ] define notification model if needed server-side
@@ -474,6 +504,7 @@ Keep merchants informed and support habit formation.
 ## 17. Security and compliance baseline
 
 ### Purpose
+
 Protect merchant data and payment flows.
 
 - [ ] define auth security model
@@ -491,17 +522,18 @@ Protect merchant data and payment flows.
 ## 18. Testing and quality
 
 ### Purpose
+
 Make sure the app is trustworthy enough for daily business use.
 
 - [ ] backend unit tests
-- [ ] backend integration tests
+- [x] backend integration tests _(sync + reports endpoint suites pass, including duplicate-replay consistency check in `test_sync_report_consistency.py`)_
 - [ ] mobile widget tests where useful
 - [ ] mobile integration tests for core flows
-- [ ] offline sync test scenarios
+- [x] offline sync test scenarios _(queue-runner status transitions + local-first repository persistence tests added and passing)_
 - [ ] payment webhook test scenarios
-- [ ] dashboard calculation validation tests
-- [ ] inventory consistency tests
-- [ ] debt calculation tests
+- [x] dashboard calculation validation tests _(report summary/insights/recent-activity tests + sync-replay consistency assertion)_
+- [x] inventory consistency tests _(sales/inventory sync tests cover stock mutation, idempotency, and conflict protection)_
+- [x] debt calculation tests _(receivable repayment tests cover partial/full repayment and overpayment rejection)_
 - [ ] smoke tests for startup scripts
 
 ---
@@ -509,6 +541,7 @@ Make sure the app is trustworthy enough for daily business use.
 ## 19. Deployment and operations
 
 ### Purpose
+
 Make the project startup-ready, not just code-ready.
 
 - [ ] define local environment setup
@@ -527,6 +560,7 @@ Make the project startup-ready, not just code-ready.
 ## 20. Future product expansion backlog
 
 ### Purpose
+
 Keep long-term ideas visible without distracting the MVP.
 
 - [ ] voice-assisted sale entry
@@ -551,10 +585,11 @@ Keep long-term ideas visible without distracting the MVP.
 Align day-to-day work with **§3.5** and `README.md` (“If you are starting the project now”); this list is the same story in checklist form.
 
 ### Best build order
+
 - [x] repo/docs foundation
-- [x] backend setup *(Postgres + Alembic upgrade validated locally)*
-- [ ] DB/migrations/seed *(migrations verified locally; seed verification still pending in this pass)*
-- [x] mobile setup *(§5 scaffold — run `flutter create` + `pub get` locally)*
+- [x] backend setup _(Postgres + Alembic upgrade validated locally)_
+- [ ] DB/migrations/seed _(migrations verified locally; seed verification still pending in this pass)_
+- [x] mobile setup _(§5 scaffold — run `flutter create` + `pub get` locally)_
 - [x] auth + onboarding
 - [x] inventory foundation
 - [x] sales flow
@@ -571,7 +606,8 @@ Align day-to-day work with **§3.5** and `README.md` (“If you are starting the
 ## 22. Definition of done for MVP
 
 The MVP is done when:
-- [x] merchant can sign in with phone + **PIN** for daily use *(OTP only for first-time / recovery — see `docs/auth/pin-and-otp-flow.md`)*
+
+- [x] merchant can sign in with phone + **PIN** for daily use _(OTP only for first-time / recovery — see `docs/auth/pin-and-otp-flow.md`)_
 - [x] merchant can set up business profile
 - [x] merchant can create items
 - [x] merchant can record sales quickly
