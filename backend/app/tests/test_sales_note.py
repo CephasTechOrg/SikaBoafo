@@ -102,12 +102,13 @@ def test_sale_synced_with_note_persists_note() -> None:
         resp = client.post(
             "/api/v1/sync/apply",
             json={
+                "device_id": "test-device-note-001",
                 "operations": [
                     {
                         "entity_type": "sale",
                         "operation": "create",
-                        "source_device_id": "dev-001",
-                        "local_operation_id": "op-note-001",
+                        "source_device_id": "test-device-note-001",
+                        "local_operation_id": "op-note-001-sale",
                         "payload": {
                             "sale_id": str(uuid4()),
                             "payment_method_label": "cash",
@@ -139,12 +140,13 @@ def test_sale_synced_without_note_has_null_note() -> None:
         resp = client.post(
             "/api/v1/sync/apply",
             json={
+                "device_id": "test-device-nonote-001",
                 "operations": [
                     {
                         "entity_type": "sale",
                         "operation": "create",
-                        "source_device_id": "dev-002",
-                        "local_operation_id": "op-nonote-001",
+                        "source_device_id": "test-device-nonote-001",
+                        "local_operation_id": "op-nonote-001-sale",
                         "payload": {
                             "sale_id": str(uuid4()),
                             "payment_method_label": "cash",
