@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     app_env: str = Field(default="local", description="local | staging | production")
-    app_name: str = "BizTrack GH API"
+    app_name: str = "SikaBoafo API"
     api_v1_prefix: str = "/api/v1"
 
     database_url: str = Field(

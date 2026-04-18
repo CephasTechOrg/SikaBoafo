@@ -1,4 +1,4 @@
-# BizTrack GH — Mobile (Flutter)
+# SikaBoafo — Mobile (Flutter)
 
 Offline-first client. Layout follows `folderstructure.md`; `todo.md` §5 tracks setup tasks.
 

@@ -1,1 +1,1 @@
-"""BizTrack GH FastAPI application."""
+"""SikaBoafo FastAPI application."""

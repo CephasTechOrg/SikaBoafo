@@ -1,4 +1,4 @@
-# BizTrack GH — Complete Folder Structure
+# SikaBoafo — Complete Folder Structure
 
 This file defines the **startup-ready folder structure** for the project.
 
@@ -8,7 +8,7 @@ The goal is to make the repository easy to understand, easy to scale, and clear 
 
 ## 1. Top-level structure
 
-Repository root (clone root; e.g. `BizTrackGh/`):
+Repository root (clone root; e.g. `SikaBoafo/`):
 
 ```text
 ./
@@ -46,7 +46,7 @@ Repository root (clone root; e.g. `BizTrackGh/`):
 ```text
 docs/
 ├── mockups/
-│   └── biztrack_gh_mockups_v1.png
+│   └── sikaboafo_mockups_v1.png
 ├── product/
 │   ├── user_flows.md
 │   ├── screen_specs.md
@@ -62,8 +62,9 @@ docs/
 ```
 
 ### Notes
+
 - `docs/mockups/` stores the generated UI references.
-- `biztrack_gh_mockups_v1.png` is the visual starting point for implementation.
+- `sikaboafo_mockups_v1.png` is the visual starting point for implementation.
 - `docs/product/` contains product-specific docs and user journeys.
 - `docs/architecture/` contains deeper implementation notes that may grow beyond the main architecture file.
 
@@ -123,12 +124,14 @@ mobile/
 ```
 
 ### Why this mobile structure is good
+
 - feature-based, so screens and logic stay grouped
 - still keeps shared layers for consistency
 - supports clean growth into payments and sync logic
 - easy to onboard new developers into
 
 ### Important mobile notes
+
 - SQLite implementation belongs under `lib/data/local/`
 - sync queue and local operation models belong under `features/sync/` and/or `data/local/`
 - reusable UI components belong under `shared/components/`
@@ -196,6 +199,7 @@ backend/
 Database migrations live under **`alembic/versions/`** (standard Alembic layout). Point `alembic.ini` at `app` models as usual; do not use a separate `app/db/migrations/` tree unless you standardize that across the team.
 
 ### Why this backend structure is good
+
 - API layer stays separated from business logic
 - integrations are isolated cleanly
 - workers and tasks do not pollute route logic
@@ -203,6 +207,7 @@ Database migrations live under **`alembic/versions/`** (standard Alembic layout)
 - scales well as the product grows
 
 ### Key backend notes
+
 - `api/` only handles request/response concerns
 - `services/` handles business logic
 - `repositories/` handles DB access
@@ -233,9 +238,11 @@ admin/
 ```
 
 ### Admin purpose
+
 The admin app is for internal operations, not merchants.
 
 Use it for:
+
 - merchant lookup
 - payment reconciliation
 - sync failures
@@ -267,6 +274,7 @@ infra/
 ```
 
 ### Infra notes
+
 - start simple locally with Docker Compose for DB and Redis
 - production infra can mature later
 - keep example env files versioned, but never real secrets
@@ -287,6 +295,7 @@ scripts/
 ```
 
 ### Script purpose
+
 These are helper files to make startup easier and keep repetitive commands out of people’s heads.
 
 ---
@@ -308,6 +317,7 @@ These are helper files to make startup easier and keep repetitive commands out o
 ## 9. Recommended repo root docs
 
 Keep these root files visible and maintained:
+
 - `README.md` -> how to start and understand the repo (includes **what to build first**)
 - `project_description.md` -> what we are building and why
 - `architecture.md` -> technical direction, system logic, and **§4.6–§4.8 data/code/comment discipline**
@@ -323,13 +333,14 @@ Code should follow the **layering** shown in this file and the **data-first** ru
 The generated mockup image should stay in:
 
 ```text
-docs/mockups/biztrack_gh_mockups_v1.png
+docs/mockups/sikaboafo_mockups_v1.png
 ```
 
 This gives the team a clear UI reference from the start.
 
 If more mockups are created later, name them like:
-- `biztrack_gh_mockups_v2.png`
+
+- `sikaboafo_mockups_v2.png`
 - `record_sale_flow_v1.png`
 - `dashboard_refinement_v1.png`
 
@@ -338,12 +349,14 @@ If more mockups are created later, name them like:
 ## 11. Final summary
 
 This structure is designed to be:
+
 - easy to start with
 - clear for future contributors
 - clean enough for startup growth
 - organized around the real product lifecycle
 
 It is intentionally structured so future additions like:
+
 - Paystack payment flows
 - QR collection
 - notifications

@@ -1,8 +1,9 @@
-# BizTrack GH — Project Architecture
+# SikaBoafo — Project Architecture
 
 ## 1. Architecture goals
 
 The architecture must support:
+
 - mobile-first product usage
 - offline-first reliability
 - fast daily transactions
@@ -17,6 +18,7 @@ The system should be simple enough to ship early but strong enough that we do no
 ## 2. Recommended stack
 
 ### Mobile app
+
 - Flutter
 - Riverpod
 - GoRouter
@@ -25,6 +27,7 @@ The system should be simple enough to ship early but strong enough that we do no
 - flutter_secure_storage (or equivalent secure token storage)
 
 ### Backend
+
 - FastAPI
 - SQLAlchemy 2.x
 - Alembic
@@ -33,10 +36,12 @@ The system should be simple enough to ship early but strong enough that we do no
 - Celery or Dramatiq
 
 ### Admin / internal web
+
 - Next.js
 - TypeScript
 
 ### Infrastructure
+
 - AWS
 - S3 for file storage
 - RDS for PostgreSQL
@@ -44,6 +49,7 @@ The system should be simple enough to ship early but strong enough that we do no
 - CloudWatch / logging stack
 
 ### Payments
+
 - **Paystack** — sole digital payment provider (Ghana): charges, customer checkout, and server-side verification via **Paystack webhooks**.
 
 ---
@@ -70,19 +76,25 @@ FastAPI Backend
 ## 4. Core architecture principles
 
 ### 4.1 Offline-first capture
+
 The mobile app captures and stores business actions locally first.
 
 ### 4.2 Server-authoritative reconciliation
+
 The backend is the final trusted source after sync and verification.
 
 ### 4.3 Clear domain boundaries
+
 Each business area should have clean module boundaries.
 
 ### 4.4 Event-driven side effects
+
 Important actions should create events so async processing is clean and safe.
 
 ### 4.5 Payment rail is separate from business logic
+
 Paystack helps process payments, but our backend remains the owner of:
+
 - sales records
 - payment state
 - matching and reconciliation
@@ -129,18 +141,23 @@ core/
 ```
 
 ### presentation
+
 Screens, widgets, forms, navigation, visual state.
 
 ### application
+
 State management, use cases, orchestration between UI and data.
 
 ### domain
+
 Core entities and business rules.
 
 ### data
+
 Repositories, API clients, local DB adapters, DTO mapping.
 
 ### core
+
 Constants, utilities, shared helpers, theme, errors.
 
 ---
@@ -148,6 +165,7 @@ Constants, utilities, shared helpers, theme, errors.
 ### 5.2 Local-first strategy with SQLite
 
 SQLite is used on-device for:
+
 - sales recorded locally
 - expenses recorded locally
 - inventory cache
@@ -158,13 +176,16 @@ SQLite is used on-device for:
 - user/session cache where appropriate
 
 ### Why SQLite is required
+
 The merchant must still be able to use the app when:
+
 - internet is weak
 - internet disappears temporarily
 - APIs are slow
 - the merchant is in a market with unstable signal
 
 ### Important clarification
+
 SQLite is **not** for processing online mobile money payments directly.
 It is for storing local business actions so the app remains usable.
 
@@ -173,11 +194,13 @@ It is for storing local business actions so the app remains usable.
 ### 5.3 Sync engine
 
 Each local action creates:
+
 - local record
 - sync queue item
 - sync state
 
 ### Sync states
+
 - pending
 - syncing
 - synced
@@ -185,6 +208,7 @@ Each local action creates:
 - conflict
 
 ### Example: sale recorded offline
+
 1. merchant taps “Confirm Sale”
 2. sale saves to SQLite immediately
 3. local inventory updates immediately
@@ -217,6 +241,7 @@ core/         -> config, security, logging, shared helpers
 ### 6.2 Domain modules
 
 Recommended module boundaries:
+
 - auth
 - merchants
 - stores
@@ -238,37 +263,44 @@ Recommended module boundaries:
 ### 6.3 Service responsibilities
 
 ### Auth service
+
 - OTP request and verification
 - token issuing
 - session validation
 
 ### Merchant service
+
 - merchant creation
 - business metadata
 - store setup
 
 ### Inventory service
+
 - stock movement rules
 - threshold alerts
 - adjustments
 
 ### Sales service
+
 - sale creation
 - line item handling
 - inventory deduction
 - payment-method tagging
 
 ### Expense service
+
 - expense recording
 - categories
 - reporting contribution
 
 ### Receivables service
+
 - create debt
 - partial/full repayment
 - debt status changes
 
 ### Payments service
+
 - payment initiation
 - reference mapping
 - webhook verification
@@ -276,17 +308,20 @@ Recommended module boundaries:
 - reconciliation
 
 ### Reporting service
+
 - dashboard summaries
 - daily/weekly/monthly reports
 - product summaries
 - debt aging
 
 ### Sync service
+
 - sync endpoint logic
 - idempotency
 - conflict handling rules
 
 ### Notification service
+
 - reminders
 - low stock notifications
 - summary alerts
@@ -296,9 +331,11 @@ Recommended module boundaries:
 ## 7. Database architecture
 
 ### 7.1 System of record
+
 PostgreSQL is the primary source of truth for synced and verified records.
 
 ### 7.2 Important database concerns
+
 - transactional consistency
 - auditability
 - idempotent sync processing
@@ -308,6 +345,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 ### 7.3 Core entities
 
 ### users
+
 - id
 - phone_number
 - role
@@ -315,6 +353,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### merchants
+
 - id
 - business_name
 - business_type
@@ -322,6 +361,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### stores
+
 - id
 - merchant_id
 - name
@@ -330,6 +370,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - is_default
 
 ### items
+
 - id
 - store_id
 - name
@@ -340,12 +381,14 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - is_active
 
 ### inventory_balances
+
 - id
 - item_id
 - quantity_on_hand
 - updated_at
 
 ### inventory_movements
+
 - id
 - item_id
 - store_id
@@ -357,6 +400,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### sales
+
 - id
 - store_id
 - customer_id (nullable)
@@ -368,6 +412,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### sale_items
+
 - id
 - sale_id
 - item_id
@@ -376,6 +421,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - line_total
 
 ### expenses
+
 - id
 - store_id
 - category
@@ -386,6 +432,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### customers
+
 - id
 - store_id
 - name
@@ -393,6 +440,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### receivables
+
 - id
 - store_id
 - customer_id
@@ -403,6 +451,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### receivable_payments
+
 - id
 - receivable_id
 - amount
@@ -410,6 +459,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - created_at
 
 ### payments
+
 - id
 - sale_id (nullable)
 - receivable_payment_id (nullable)
@@ -423,6 +473,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - raw_provider_payload
 
 ### sync_operations
+
 - id
 - device_id
 - local_operation_id
@@ -433,6 +484,7 @@ PostgreSQL is the primary source of truth for synced and verified records.
 - processed_at
 
 ### audit_logs
+
 - id
 - actor_user_id
 - action
@@ -448,10 +500,13 @@ PostgreSQL is the primary source of truth for synced and verified records.
 This is one of the most important parts of the architecture.
 
 ### 8.1 Why idempotency matters
+
 If the app retries a sync request because the network fails, the backend must not create duplicate sales or duplicate expenses.
 
 ### 8.2 Strategy
+
 Each write operation should carry:
+
 - device_id
 - local_operation_id
 - timestamp
@@ -460,9 +515,11 @@ Each write operation should carry:
 The backend checks whether the same local operation has already been processed.
 
 If yes:
+
 - return the previously accepted result
 
 If no:
+
 - process and store it
 
 ### 8.3 Sync conflict policy (MVP default)
@@ -478,7 +535,9 @@ Use **payment stage 1 / 2 / 3** in docs and planning. Do not use “Phase 2” f
 ### 9.1 Payment stages
 
 ### Payment stage 1 — recorded payment labels only
+
 The merchant records that a sale was paid by:
+
 - cash
 - mobile money
 - bank transfer
@@ -486,6 +545,7 @@ The merchant records that a sale was paid by:
 No Paystack API call; `payments` rows for digital completion are not required for these sales.
 
 ### Payment stage 2 — Paystack collection
+
 When online, the app can initiate collection through **Paystack** (backend creates the transaction / reference; mobile follows your chosen Paystack flow). Recommended flow:
 
 1. mobile app asks backend to create a Paystack-backed payment intent (amount, metadata, reference)
@@ -497,6 +557,7 @@ When online, the app can initiate collection through **Paystack** (backend creat
 7. app syncs and reflects final result
 
 ### Payment stage 3 — deep Paystack-backed operations
+
 - payment history and admin reconciliation
 - digital receipts
 - refunds where Paystack supports them
@@ -506,6 +567,7 @@ When online, the app can initiate collection through **Paystack** (backend creat
 ---
 
 ### 9.2 Important payment rule
+
 The mobile app must never be the final authority for Paystack payment completion.
 
 The backend must confirm payment from **verified Paystack webhooks** (and internal idempotent processing) and then mark the payment as final.
@@ -519,6 +581,7 @@ Reports should initially be computed server-side from clean records.
 **Estimated profit (MVP):** for the selected period and store timezone, `estimated_profit = total_sales − total_expenses`. This matches `project_description.md` §8.9 and is not full COGS or tax accounting.
 
 Required outputs:
+
 - daily sales total
 - daily expenses total
 - estimated daily profit
@@ -535,6 +598,7 @@ For mobile speed, selected snapshots can be cached locally after sync.
 ## 11. Notifications architecture
 
 Notification sources:
+
 - low stock threshold crossed
 - debt due soon
 - debt overdue
@@ -543,6 +607,7 @@ Notification sources:
 - daily summary reminder
 
 Notification channels:
+
 - in-app first
 - push notifications later
 - SMS/WhatsApp later
@@ -552,6 +617,7 @@ Notification channels:
 ## 12. Security architecture
 
 Minimum security baseline:
+
 - secure OTP flow
 - token-based auth
 - encrypted transport over HTTPS
@@ -567,11 +633,13 @@ Minimum security baseline:
 ## 13. Deployment architecture
 
 ### Environments
+
 - local
 - staging
 - production
 
 ### Suggested deployment approach
+
 - backend containerized
 - PostgreSQL managed service
 - Redis managed or isolated service
@@ -587,7 +655,7 @@ The visual baseline mockups belong inside docs and should be treated as design r
 
 Asset location:
 
-- `docs/mockups/biztrack_gh_mockups_v1.png`
+- `docs/mockups/sikaboafo_mockups_v1.png`
 
 These assets should guide implementation until refined Figma or detailed screen specs exist.
 
@@ -596,6 +664,7 @@ These assets should guide implementation until refined Figma or detailed screen 
 ## 15. Final architecture summary
 
 The architecture is intentionally designed so that:
+
 - merchants can always record business activity
 - the app feels fast on mobile
 - the backend remains financially trustworthy

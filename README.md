@@ -1,12 +1,12 @@
-# BizTrack GH
+# SikaBoafo
 
-BizTrack GH is a mobile-first, offline-first financial inventory system for micro and small businesses. It helps merchants record sales, manage inventory, track expenses, manage debts, understand profit, and grow into digital payment collection.
+SikaBoafo is a mobile-first, offline-first financial inventory system for micro and small businesses. It helps merchants record sales, manage inventory, track expenses, manage debts, understand profit, and grow into digital payment collection.
 
 ## Product idea
 
 This is not just a bookkeeping app.
 
-BizTrack GH is a **merchant operating system** for daily business control.
+SikaBoafo is a **merchant operating system** for daily business control.
 
 Core value:
 
@@ -28,7 +28,7 @@ Core value:
 
 UI reference asset:
 
-- `docs/mockups/biztrack_gh_mockups_v1.png`
+- `docs/mockups/sikaboafo_mockups_v1.png`
 
 **Documentation terms:** **Payment stages** (1–3) describe the Paystack rollout. **Product milestones** (M2–M5) in `project_description.md` describe broader feature waves—do not mix those numbers with payment stages.
 

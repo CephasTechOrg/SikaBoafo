@@ -41,7 +41,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     super.dispose();
   }
 
-  Future<void> _applySession(AuthSession session, {required bool forceSetPin}) async {
+  Future<void> _applySession(AuthSession session,
+      {required bool forceSetPin}) async {
     final secureStore = ref.read(secureTokenStorageProvider);
     await secureStore.writeAccessToken(session.accessToken);
     await secureStore.writeRefreshToken(session.refreshToken);
@@ -61,7 +62,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
       _error = null;
     });
     try {
-      final expires = await ref.read(authApiProvider).requestOtp(_phoneCtrl.text.trim());
+      final expires =
+          await ref.read(authApiProvider).requestOtp(_phoneCtrl.text.trim());
       if (!mounted) return;
       setState(() {
         _otpRequested = true;
@@ -82,9 +84,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     });
     try {
       final session = await ref.read(authApiProvider).verifyOtp(
-        phoneNumber: _phoneCtrl.text.trim(),
-        code: _codeCtrl.text.trim(),
-      );
+            phoneNumber: _phoneCtrl.text.trim(),
+            code: _codeCtrl.text.trim(),
+          );
       final forceSetPin = _otpIntent == _OtpIntent.recovery;
       await _applySession(session, forceSetPin: forceSetPin);
     } catch (e) {
@@ -180,7 +182,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     final titleSize = compact ? 30.0 : 34.0;
     return Padding(
       key: const ValueKey('entry'),
-      padding: EdgeInsets.symmetric(horizontal: size.width < 360 ? 18 : 24, vertical: 16),
+      padding: EdgeInsets.symmetric(
+          horizontal: size.width < 360 ? 18 : 24, vertical: 16),
       child: Column(
         children: [
           Spacer(flex: compact ? 1 : 2),
@@ -191,11 +194,12 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
               color: Color(0xFF0B6B63),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.bar_chart_rounded, color: Colors.white, size: compact ? 46 : 52),
+            child: Icon(Icons.bar_chart_rounded,
+                color: Colors.white, size: compact ? 46 : 52),
           ),
           SizedBox(height: compact ? 10 : 14),
           Text(
-            'BizTrack GH',
+            'SikaBoafo',
             style: TextStyle(
               fontSize: titleSize,
               fontWeight: FontWeight.w800,
@@ -242,12 +246,14 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            padding: EdgeInsets.fromLTRB(6, compact ? 4 : 8, 14, compact ? 8 : 10),
+            padding:
+                EdgeInsets.fromLTRB(6, compact ? 4 : 8, 14, compact ? 8 : 10),
             child: Row(
               children: [
                 IconButton(
                   onPressed: _loading ? null : _backToEntry,
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white),
                   visualDensity: VisualDensity.compact,
                 ),
                 Expanded(
@@ -266,13 +272,15 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(horizontalPadding, compact ? 16 : 20, horizontalPadding, 0),
+            padding: EdgeInsets.fromLTRB(
+                horizontalPadding, compact ? 16 : 20, horizontalPadding, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   'Phone Number',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
                 ),
                 SizedBox(height: compact ? 8 : 10),
                 _CleanInput(
@@ -285,7 +293,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                 SizedBox(height: compact ? 14 : 18),
                 Text(
                   'PIN',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
                 ),
                 SizedBox(height: compact ? 8 : 10),
                 _CleanInput(
@@ -300,7 +309,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                   SizedBox(height: compact ? 8 : 10),
                   Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ],
                 SizedBox(height: compact ? 18 : 24),
@@ -351,12 +361,18 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            padding: EdgeInsets.fromLTRB(6, compact ? 4 : 8, 14, compact ? 8 : 10),
+            padding:
+                EdgeInsets.fromLTRB(6, compact ? 4 : 8, 14, compact ? 8 : 10),
             child: Row(
               children: [
                 IconButton(
-                  onPressed: _loading ? null : (_otpIntent == _OtpIntent.recovery ? _goPinSignIn : _backToEntry),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                  onPressed: _loading
+                      ? null
+                      : (_otpIntent == _OtpIntent.recovery
+                          ? _goPinSignIn
+                          : _backToEntry),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white),
                   visualDensity: VisualDensity.compact,
                 ),
                 Expanded(
@@ -375,13 +391,15 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
             ),
           ),
           Padding(
-            padding: EdgeInsets.fromLTRB(horizontalPadding, compact ? 16 : 20, horizontalPadding, 0),
+            padding: EdgeInsets.fromLTRB(
+                horizontalPadding, compact ? 16 : 20, horizontalPadding, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   'Phone Number',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
                 ),
                 SizedBox(height: compact ? 8 : 10),
                 _CleanInput(
@@ -394,7 +412,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                 SizedBox(height: compact ? 14 : 18),
                 Text(
                   'Enter OTP',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: sectionTitleSize),
                 ),
                 SizedBox(height: compact ? 8 : 10),
                 _CleanInput(
@@ -420,26 +439,35 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                   SizedBox(height: compact ? 8 : 10),
                   Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ],
                 SizedBox(height: compact ? 18 : 24),
                 _PrimaryActionButton(
                   label: _otpRequested ? 'Continue' : 'Send OTP',
-                  icon: _otpRequested ? Icons.check_circle_rounded : Icons.sms_rounded,
+                  icon: _otpRequested
+                      ? Icons.check_circle_rounded
+                      : Icons.sms_rounded,
                   compact: compact,
-                  onPressed: _loading ? null : (_otpRequested ? _verifyOtp : _requestOtp),
+                  onPressed: _loading
+                      ? null
+                      : (_otpRequested ? _verifyOtp : _requestOtp),
                 ),
                 SizedBox(height: compact ? 10 : 12),
                 _SecondaryActionButton(
                   label: _otpRequested ? 'Resend OTP' : 'Back',
-                  icon: _otpRequested ? Icons.refresh_rounded : Icons.arrow_back_rounded,
+                  icon: _otpRequested
+                      ? Icons.refresh_rounded
+                      : Icons.arrow_back_rounded,
                   compact: compact,
                   onPressed: _loading
                       ? null
                       : (_otpRequested
                           ? _requestOtp
-                          : (_otpIntent == _OtpIntent.recovery ? _goPinSignIn : _backToEntry)),
+                          : (_otpIntent == _OtpIntent.recovery
+                              ? _goPinSignIn
+                              : _backToEntry)),
                 ),
                 if (_otpIntent == _OtpIntent.create) ...[
                   SizedBox(height: compact ? 8 : 10),
@@ -488,7 +516,8 @@ class _PrimaryActionButton extends StatelessWidget {
             fontSize: compact ? 20 : 22,
             fontWeight: FontWeight.w700,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         onPressed: onPressed,
         icon: Icon(icon, size: compact ? 18 : 20),
@@ -523,7 +552,8 @@ class _SecondaryActionButton extends StatelessWidget {
             fontSize: compact ? 20 : 22,
             fontWeight: FontWeight.w700,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         onPressed: onPressed,
         icon: Icon(icon, size: compact ? 18 : 20),
@@ -570,7 +600,8 @@ class _CleanInput extends StatelessWidget {
           color: const Color(0xFF9AA5B1),
           fontSize: compact ? 15 : 16,
         ),
-        prefixIcon: Icon(prefixIcon, size: compact ? 19 : 20, color: const Color(0xFF64748B)),
+        prefixIcon: Icon(prefixIcon,
+            size: compact ? 19 : 20, color: const Color(0xFF64748B)),
         filled: true,
         fillColor: enabled ? Colors.white : const Color(0xFFF1F5F9),
         contentPadding: EdgeInsets.symmetric(

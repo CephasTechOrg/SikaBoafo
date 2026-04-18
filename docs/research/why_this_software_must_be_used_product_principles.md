@@ -1,4 +1,4 @@
-# Why This Software Must Be Used (BizTrack GH)
+# Why This Software Must Be Used (SikaBoafo)
 
 ## Purpose of this document
 

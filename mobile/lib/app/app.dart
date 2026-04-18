@@ -14,7 +14,7 @@ class BizTrackApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     return MaterialApp.router(
-      title: 'BizTrack GH',
+      title: 'SikaBoafo',
       theme: buildAppTheme(),
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: router,

@@ -1,4 +1,4 @@
-# BizTrack GH — Phone, OTP, and PIN authentication
+# SikaBoafo — Phone, OTP, and PIN authentication
 
 This document is the **source of truth** for how merchants sign in, how SMS cost is controlled, and how the mobile and backend pieces fit together.
 

@@ -1,4 +1,4 @@
-# BizTrack GH — Detailed To-Do Roadmap
+# SikaBoafo — Detailed To-Do Roadmap
 
 This is the master execution file.
 
@@ -12,7 +12,7 @@ It includes:
 
 The goal is to make sure we do not forget anything important.
 
-**Terms:** **Payment stages** 1–3 = Paystack rollout (see `README.md` / `architecture.md`). **Product milestones** M2–M5 = broader feature waves in `project_description.md`. Digital collection is **Paystack-only** for BizTrack GH.
+**Terms:** **Payment stages** 1–3 = Paystack rollout (see `README.md` / `architecture.md`). **Product milestones** M2–M5 = broader feature waves in `project_description.md`. Digital collection is **Paystack-only** for SikaBoafo.
 
 **How we build:** Step by step, **data model before features**, thin API layers, and comments where behavior is non-obvious (`architecture.md` §4.6–§4.8). See **README → “If you are starting the project now”** for the canonical first steps.
 
@@ -31,7 +31,7 @@ Before building features, make the repo a reliable source of truth.
 - [x] add `todo.md`
 - [x] add root `README.md`
 - [x] create `docs/mockups/` directory
-- [ ] copy mockup image to `docs/mockups/biztrack_gh_mockups_v1.png`
+- [ ] copy mockup image to `docs/mockups/sikaboafo_mockups_v1.png`
 - [ ] decide whether to keep mockups in repo or external design tool as well
 - [x] create `docs/product/` notes area
 - [x] create `docs/architecture/` notes area

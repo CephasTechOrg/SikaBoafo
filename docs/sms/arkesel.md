@@ -1,6 +1,6 @@
 # Arkesel — SMS & phone verification (integration guide)
 
-This document is the **canonical reference for BizTrack GH** when integrating [Arkesel](https://arkesel.com/) for **phone number verification (OTP)** and related SMS. Always treat the vendor’s live documentation as the source of truth for field names and new API versions:
+This document is the **canonical reference for SikaBoafo** when integrating [Arkesel](https://arkesel.com/) for **phone number verification (OTP)** and related SMS. Always treat the vendor’s live documentation as the source of truth for field names and new API versions:
 
 - **Official API docs:** [https://developers.arkesel.com/](https://developers.arkesel.com/)
 
@@ -188,7 +188,7 @@ Support: `support@arkesel.com` (per vendor site).
 
 ---
 
-## 9. BizTrack GH backend checklist
+## 9. SikaBoafo backend checklist
 
 When implementing `todo.md` section 6:
 

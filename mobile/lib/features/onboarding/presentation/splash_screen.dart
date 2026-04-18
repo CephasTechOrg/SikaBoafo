@@ -40,7 +40,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           children: [
             FlutterLogo(size: 72),
             SizedBox(height: 16),
-            Text('BizTrack GH', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+            Text('SikaBoafo',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

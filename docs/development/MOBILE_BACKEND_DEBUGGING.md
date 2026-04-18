@@ -3,7 +3,7 @@
 **Document Version:** 1.0  
 **Created:** April 16, 2026  
 **Last Updated:** April 16, 2026  
-**For Project:** BizTrack GH  
+**For Project:** SikaBoafo  
 **Method:** USB Reverse Forwarding via ADB
 
 ---
@@ -19,7 +19,7 @@
 
 ## Overview
 
-This document explains how to develop and test the BizTrack GH Flutter mobile app on your Android phone while your backend runs locally on your computer.
+This document explains how to develop and test the SikaBoafo Flutter mobile app on your Android phone while your backend runs locally on your computer.
 
 ---
 
@@ -443,7 +443,7 @@ Your phone is successfully talking to your backend. ✅
 | **Document Version** | 1.0                             |
 | **Created**          | April 16, 2026                  |
 | **Last Updated**     | April 16, 2026                  |
-| **Project**          | BizTrack GH                     |
+| **Project**          | SikaBoafo                     |
 | **Method**           | USB Reverse Forwarding via ADB  |
 | **Stack**            | Flutter + FastAPI + Android SDK |
 | **For**              | Daily Development & Reference   |

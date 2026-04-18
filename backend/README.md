@@ -1,4 +1,4 @@
-# BizTrack GH — Backend (FastAPI)
+# SikaBoafo — Backend (FastAPI)
 
 ## Prerequisites
 

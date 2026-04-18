@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Date:** April 16, 2026  
-**Project:** BizTrack GH  
+**Project:** SikaBoafo  
 **Print this page** and keep it at your desk for daily development.
 
 ---
@@ -227,7 +227,7 @@ cd mobile && flutter run
 | ------- | --------------------------- |
 | Version | 1.0                         |
 | Created | April 16, 2026              |
-| Project | BizTrack GH                 |
+| Project | SikaBoafo                 |
 | Method  | USB Reverse Forwarding      |
 | Use     | Daily Development           |
 | Print?  | **YES** - Keep at your desk |

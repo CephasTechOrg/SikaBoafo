@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.biztrackgh.app" "\0"
-            VALUE "FileDescription", "biztrack_gh" "\0"
+            VALUE "FileDescription", "SikaBoafo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "biztrack_gh" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.biztrackgh.app. All rights reserved." "\0"
             VALUE "OriginalFilename", "biztrack_gh.exe" "\0"
-            VALUE "ProductName", "biztrack_gh" "\0"
+            VALUE "ProductName", "SikaBoafo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
