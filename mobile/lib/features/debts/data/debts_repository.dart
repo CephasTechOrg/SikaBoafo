@@ -36,6 +36,7 @@ class LocalReceivableRecord {
     required this.syncStatus,
     required this.createdAtMillis,
     this.dueDateIso,
+    this.note,
   });
 
   final String receivableId;
@@ -47,6 +48,7 @@ class LocalReceivableRecord {
   final String syncStatus;
   final int createdAtMillis;
   final String? dueDateIso;
+  final String? note;
 
   factory LocalReceivableRecord.fromRow(Map<String, Object?> row) {
     return LocalReceivableRecord(
@@ -59,6 +61,7 @@ class LocalReceivableRecord {
       syncStatus: (row['sync_status'] ?? 'pending') as String,
       createdAtMillis: (row['created_at'] as int? ?? 0),
       dueDateIso: row['due_date'] as String?,
+      note: row['note'] as String?,
     );
   }
 }
@@ -260,10 +263,30 @@ ORDER BY p.created_at DESC
     });
   }
 
+  Future<String> getPaidThisMonth() async {
+    final db = await _appDb.database;
+    final monthStart = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+    ).millisecondsSinceEpoch;
+    final rows = await db.query(
+      'receivable_payments_local',
+      columns: ['amount'],
+      where: 'created_at >= ?',
+      whereArgs: [monthStart],
+    );
+    int totalMinor = 0;
+    for (final row in rows) {
+      totalMinor += _moneyToMinor((row['amount'] ?? '0.00') as String);
+    }
+    return _minorToMoney(totalMinor);
+  }
+
   Future<void> createReceivableLocal({
     required String customerId,
     required String originalAmount,
     String? dueDateIso,
+    String? note,
   }) async {
     final amountMinor = _moneyToMinor(originalAmount);
     if (amountMinor <= 0) {
@@ -298,6 +321,7 @@ ORDER BY p.created_at DESC
           'original_amount': amount,
           'outstanding_amount': amount,
           'due_date': normalizedDueDate,
+          if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
           'status': 'open',
           'local_operation_id': localOpId,
           'source_device_id': sourceDeviceId,

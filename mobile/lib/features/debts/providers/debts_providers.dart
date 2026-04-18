@@ -8,10 +8,12 @@ class DebtsViewData {
   const DebtsViewData({
     required this.customers,
     required this.receivables,
+    required this.paidThisMonth,
   });
 
   final List<LocalDebtCustomer> customers;
   final List<LocalReceivableRecord> receivables;
+  final String paidThisMonth;
 }
 
 final debtsRepositoryProvider = Provider<DebtsRepository>((ref) {
@@ -73,6 +75,7 @@ class DebtsController extends AsyncNotifier<DebtsViewData> {
     required String customerId,
     required String originalAmount,
     String? dueDateIso,
+    String? note,
   }) async {
     state = const AsyncLoading();
     try {
@@ -80,6 +83,7 @@ class DebtsController extends AsyncNotifier<DebtsViewData> {
         customerId: customerId,
         originalAmount: originalAmount,
         dueDateIso: dueDateIso,
+        note: note,
       );
       await _repo.syncPendingQueue();
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -114,8 +118,15 @@ class DebtsController extends AsyncNotifier<DebtsViewData> {
   }
 
   Future<DebtsViewData> _loadViewData() async {
-    final customers = await _repo.listCustomers();
-    final receivables = await _repo.listReceivables();
-    return DebtsViewData(customers: customers, receivables: receivables);
+    final results = await Future.wait([
+      _repo.listCustomers(),
+      _repo.listReceivables(),
+      _repo.getPaidThisMonth(),
+    ]);
+    return DebtsViewData(
+      customers: results[0] as List<LocalDebtCustomer>,
+      receivables: results[1] as List<LocalReceivableRecord>,
+      paidThisMonth: results[2] as String,
+    );
   }
 }

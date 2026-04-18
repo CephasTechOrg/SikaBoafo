@@ -34,6 +34,7 @@ def _to_sale_out(sale: SaleSnapshot) -> SaleOut:
         sale_status=sale.sale_status,
         voided_at=sale.voided_at,
         void_reason=sale.void_reason,
+        note=sale.note,
         created_at=sale.created_at,
         lines=[
             SaleLineOut(

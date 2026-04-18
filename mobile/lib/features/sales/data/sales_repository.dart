@@ -65,6 +65,7 @@ class LocalSaleRecord {
     required this.voidedAtMillis,
     required this.voidReason,
     required this.createdAtMillis,
+    this.note,
   });
 
   final String saleId;
@@ -75,6 +76,7 @@ class LocalSaleRecord {
   final int? voidedAtMillis;
   final String? voidReason;
   final int createdAtMillis;
+  final String? note;
 
   bool get isVoided => saleStatus == 'voided';
 
@@ -88,6 +90,7 @@ class LocalSaleRecord {
       voidedAtMillis: row['voided_at'] as int?,
       voidReason: row['void_reason'] as String?,
       createdAtMillis: (row['created_at'] as int? ?? 0),
+      note: row['note'] as String?,
     );
   }
 }
@@ -137,6 +140,7 @@ LIMIT ?
   Future<void> createSaleLocal({
     required String paymentMethodLabel,
     required List<SaleDraftLine> lines,
+    String? note,
   }) async {
     final method = paymentMethodLabel.trim().toLowerCase();
     if (!_allowedPaymentMethods.contains(method)) {
@@ -199,6 +203,7 @@ LIMIT ?
           'source_device_id': sourceDeviceId,
           'status': 'pending',
           'created_at': now,
+          if (note != null) 'note': note,
         },
       );
 
@@ -254,6 +259,7 @@ LIMIT ?
                   'unit_price': _minorToMoney(line.unitPriceMinor),
                 },
             ],
+            if (note != null) 'note': note,
           },
         ),
         sourceDeviceId: sourceDeviceId,

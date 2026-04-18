@@ -69,6 +69,7 @@ class SaleSnapshot:
     sale_status: str
     voided_at: datetime | None
     void_reason: str | None
+    note: str | None
     created_at: datetime
     lines: list[SaleLineSnapshot]
 
@@ -124,6 +125,7 @@ class SalesService:
             payment_method_label=payload.payment_method_label,
             payment_status=PAYMENT_STATUS_RECORDED,
             sale_status=SALE_STATUS_RECORDED,
+            note=payload.note,
             source_device_id=source_device_id,
             local_operation_id=local_operation_id,
         )
@@ -192,6 +194,7 @@ class SalesService:
             sale_status=sale.sale_status,
             voided_at=sale.voided_at,
             void_reason=sale.void_reason,
+            note=sale.note,
             created_at=sale.created_at,
             lines=line_snapshots,
         )
@@ -422,6 +425,7 @@ class SalesService:
             sale_status=sale.sale_status,
             voided_at=sale.voided_at,
             void_reason=sale.void_reason,
+            note=sale.note,
             created_at=sale.created_at,
             lines=[
                 SaleLineSnapshot(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
+import 'receive_repayment_screen.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -92,7 +93,7 @@ class _DetailBody extends ConsumerWidget {
                 ),
                 if (detail.record.status == 'open')
                   FilledButton.icon(
-                    onPressed: () => _showRepaymentSheet(context, ref),
+                    onPressed: () => _openRepaymentScreen(context, ref),
                     icon: const Icon(Icons.payments_outlined),
                     label: const Text('Receive'),
                   ),
@@ -242,19 +243,13 @@ class _DetailBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _showRepaymentSheet(BuildContext context, WidgetRef ref) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _RepaymentSheet(receivableId: receivableId),
+  Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ReceiveRepaymentScreen(receivableId: receivableId),
+      ),
     );
-    if (saved != true) {
-      return;
-    }
-    if (!context.mounted) {
-      return;
-    }
+    if (saved != true || !context.mounted) return;
     ref.invalidate(receivableDetailProvider(receivableId));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Repayment saved.')),

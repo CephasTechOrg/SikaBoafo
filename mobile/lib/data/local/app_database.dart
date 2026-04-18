@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 6;
+const _schemaVersion = 8;
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -46,6 +46,12 @@ class AppDatabase {
         }
         if (oldVersion < 6) {
           await _upgradeSalesSchemaV6(db);
+        }
+        if (oldVersion < 7) {
+          await _upgradeSalesSchemaV7(db);
+        }
+        if (oldVersion < 8) {
+          await _upgradeDebtsSchemaV8(db);
         }
       },
     );
@@ -129,6 +135,7 @@ CREATE TABLE IF NOT EXISTS sales_local (
   sale_status TEXT NOT NULL DEFAULT 'recorded',
   voided_at INTEGER,
   void_reason TEXT,
+  note TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -160,6 +167,22 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
       'CREATE INDEX IF NOT EXISTS idx_sale_items_local_sale '
       'ON sale_items_local (sale_id)',
     );
+  }
+
+  Future<void> _upgradeSalesSchemaV7(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(sales_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('note')) {
+      await db.execute('ALTER TABLE sales_local ADD COLUMN note TEXT');
+    }
+  }
+
+  Future<void> _upgradeDebtsSchemaV8(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(receivables_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('note')) {
+      await db.execute('ALTER TABLE receivables_local ADD COLUMN note TEXT');
+    }
   }
 
   Future<void> _upgradeSalesSchemaV6(Database db) async {
@@ -226,6 +249,7 @@ CREATE TABLE IF NOT EXISTS receivables_local (
   original_amount TEXT NOT NULL,
   outstanding_amount TEXT NOT NULL,
   due_date TEXT,
+  note TEXT,
   status TEXT NOT NULL,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,

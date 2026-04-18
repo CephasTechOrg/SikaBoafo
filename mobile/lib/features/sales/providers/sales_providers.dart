@@ -47,12 +47,14 @@ class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
   Future<void> recordSale({
     required String paymentMethodLabel,
     required List<SaleDraftLine> lines,
+    String? note,
   }) async {
     state = const AsyncLoading();
     try {
       await _repo.createSaleLocal(
         paymentMethodLabel: paymentMethodLabel,
         lines: lines,
+        note: note,
       );
       await _repo.syncPendingQueue();
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();

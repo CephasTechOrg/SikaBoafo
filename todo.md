@@ -309,14 +309,15 @@ This is the highest-frequency flow and must feel excellent.
 - [x] build quick sale entry screen from mockup reference _(functional baseline UI in app)_
 - [x] allow item selection
 - [x] allow quantity entry
-- [ ] allow unit price override where appropriate
+- [x] allow unit price override where appropriate
 - [x] allow payment method tagging
 - [x] save sale locally first
 - [x] update local inventory immediately
 - [x] queue sale for sync
 - [x] sync sale to backend
 - [x] show sale history _(recent sales list with sync status)_
-- [ ] support note on sale if needed
+- [x] support note on sale if needed
+- [x] search/filter items in sale screen
 - [ ] define future digital receipt placeholder
 
 ### UX quality tasks for sales flow
@@ -363,7 +364,7 @@ Help the merchant track who owes them and when money comes back.
 - [x] show outstanding balances
 - [x] show debt status clearly
 - [x] create debt detail screen
-- [ ] create receive repayment screen from mockup direction
+- [x] create receive repayment screen from mockup direction
 - [ ] add future reminder hooks
 - [ ] add future SMS/WhatsApp reminder plan
 
@@ -383,11 +384,11 @@ Turn raw records into immediate clarity for the merchant.
 - [x] show debt summary
 - [x] show recent activity
 - [x] build daily report screen _(visual baseline report screen with live summary metrics; deeper time-range reporting still pending below)_
-- [ ] build weekly summary
-- [ ] build monthly summary
-- [ ] build top-selling items report
-- [ ] build payment method breakdown
-- [ ] build debt aging summary
+- [x] build weekly summary
+- [x] build monthly summary
+- [x] build top-selling items report
+- [x] build payment method breakdown
+- [x] build debt aging summary
 - [ ] add export/share later
 
 ---
@@ -527,7 +528,7 @@ Make sure the app is trustworthy enough for daily business use.
 
 - [ ] backend unit tests
 - [x] backend integration tests _(sync + reports endpoint suites pass, including duplicate-replay consistency check in `test_sync_report_consistency.py`)_
-- [ ] mobile widget tests where useful
+- [x] mobile widget tests where useful _(reports screen, receive repayment screen, sales note migration)_
 - [ ] mobile integration tests for core flows
 - [x] offline sync test scenarios _(queue-runner status transitions + local-first repository persistence tests added and passing)_
 - [ ] payment webhook test scenarios
@@ -547,8 +548,8 @@ Make the project startup-ready, not just code-ready.
 - [ ] define local environment setup
 - [ ] define staging environment
 - [ ] define production environment
-- [ ] configure CI for backend
-- [ ] configure CI for mobile
+- [x] configure CI for backend _(`.github/workflows/backend-ci.yml` — lint + pytest + Docker build)_
+- [x] configure CI for mobile _(`.github/workflows/mobile-ci.yml` — analyze + flutter test)_
 - [ ] configure CI for admin
 - [ ] configure database backups
 - [ ] configure error monitoring

@@ -55,6 +55,7 @@ class Sale(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     )
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     void_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     store: Mapped[Store] = relationship("Store", lazy="joined")
     customer: Mapped[Customer | None] = relationship("Customer", lazy="joined")

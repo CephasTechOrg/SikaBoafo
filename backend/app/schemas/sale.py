@@ -31,6 +31,7 @@ class SaleCreateIn(BaseModel):
     sale_id: UUID | None = None
     payment_method_label: str = Field(min_length=2, max_length=64)
     lines: list[SaleLineIn] = Field(min_length=1, max_length=200)
+    note: str | None = Field(default=None, max_length=500)
 
     @field_validator("payment_method_label")
     @classmethod
@@ -115,5 +116,6 @@ class SaleOut(BaseModel):
     sale_status: str
     voided_at: datetime | None
     void_reason: str | None
+    note: str | None
     created_at: datetime
     lines: list[SaleLineOut]
