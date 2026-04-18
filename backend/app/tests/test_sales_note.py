@@ -59,6 +59,7 @@ def _make_stack() -> tuple[TestClient, sessionmaker[Session], UUID, UUID]:
         is_default=True,
     )
     store.id = uuid4()
+    store_id = store.id  # capture before session expires the object on commit
     with sl() as db:
         db.add(user)
         db.add(merchant)
@@ -75,7 +76,7 @@ def _make_stack() -> tuple[TestClient, sessionmaker[Session], UUID, UUID]:
 
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = lambda: current_user
-    return TestClient(app), sl, user_id, store.id
+    return TestClient(app), sl, user_id, store_id
 
 
 def _seed_item(sl: sessionmaker[Session], *, store_id: UUID, qty: int = 10) -> UUID:
