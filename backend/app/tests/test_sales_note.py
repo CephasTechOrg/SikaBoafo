@@ -106,8 +106,7 @@ def test_sale_synced_with_note_persists_note() -> None:
                 "operations": [
                     {
                         "entity_type": "sale",
-                        "operation": "create",
-                        "source_device_id": "test-device-note-001",
+                        "action_type": "create",
                         "local_operation_id": "op-note-001-sale",
                         "payload": {
                             "sale_id": str(uuid4()),
