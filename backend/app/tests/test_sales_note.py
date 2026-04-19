@@ -15,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user, get_db
 from app.main import app
+from app.models.customer import Customer
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
 from app.models.merchant import Merchant
@@ -35,6 +36,7 @@ def _make_stack() -> tuple[TestClient, sessionmaker[Session], UUID, UUID]:
         User.__table__,
         Merchant.__table__,
         Store.__table__,
+        Customer.__table__,
         Item.__table__,
         InventoryBalance.__table__,
         InventoryMovement.__table__,
@@ -143,8 +145,7 @@ def test_sale_synced_without_note_has_null_note() -> None:
                 "operations": [
                     {
                         "entity_type": "sale",
-                        "operation": "create",
-                        "source_device_id": "test-device-nonote-001",
+                        "action_type": "create",
                         "local_operation_id": "op-nonote-001-sale",
                         "payload": {
                             "sale_id": str(uuid4()),
