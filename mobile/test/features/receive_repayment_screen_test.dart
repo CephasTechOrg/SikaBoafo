@@ -30,12 +30,14 @@ const _stubDetail = LocalReceivableDetail(
 
 Widget _buildScreen({
   LocalReceivableDetail? detail,
+  bool simulateNotFound = false,
   Future<void> Function()? onRecordRepayment,
 }) {
   return ProviderScope(
     overrides: [
       receivableDetailProvider(_receivableId).overrideWith(
-        (_) async => detail ?? _stubDetail,
+        // Return null (not found) when simulateNotFound, else use detail or stub.
+        (_) async => simulateNotFound ? null : (detail ?? _stubDetail),
       ),
       debtsControllerProvider.overrideWith(
         () => _FakeDebtsController(onRecordRepayment: onRecordRepayment),
@@ -138,7 +140,7 @@ void main() {
     });
 
     testWidgets('shows fallback card when detail is null', (tester) async {
-      await tester.pumpWidget(_buildScreen(detail: null));
+      await tester.pumpWidget(_buildScreen(simulateNotFound: true));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 

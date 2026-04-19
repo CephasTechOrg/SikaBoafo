@@ -187,15 +187,23 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
       child: Column(
         children: [
           Spacer(flex: compact ? 1 : 2),
-          Container(
-            width: logoSize,
-            height: logoSize,
-            decoration: const BoxDecoration(
-              color: Color(0xFF0B6B63),
-              shape: BoxShape.circle,
+          ClipOval(
+            child: Image.asset(
+              'assets/images/sikaboafo.png',
+              width: logoSize,
+              height: logoSize,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: logoSize,
+                height: logoSize,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0B6B63),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.bar_chart_rounded,
+                    color: Colors.white, size: compact ? 46 : 52),
+              ),
             ),
-            child: Icon(Icons.bar_chart_rounded,
-                color: Colors.white, size: compact ? 46 : 52),
           ),
           SizedBox(height: compact ? 10 : 14),
           Text(

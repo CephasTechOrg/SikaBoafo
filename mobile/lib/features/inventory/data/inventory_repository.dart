@@ -17,6 +17,7 @@ class LocalInventoryItem {
     this.category,
     this.lowStockThreshold,
     this.isActive = true,
+    this.imageAsset,
   });
 
   final String id;
@@ -27,6 +28,7 @@ class LocalInventoryItem {
   final int? lowStockThreshold;
   final bool isActive;
   final int quantityOnHand;
+  final String? imageAsset;
 
   factory LocalInventoryItem.fromRow(Map<String, Object?> row) {
     return LocalInventoryItem(
@@ -38,6 +40,7 @@ class LocalInventoryItem {
       lowStockThreshold: row['low_stock_threshold'] as int?,
       isActive: (row['is_active'] as int? ?? 1) == 1,
       quantityOnHand: (row['quantity_on_hand'] as int? ?? 0),
+      imageAsset: row['image_asset'] as String?,
     );
   }
 }
@@ -81,6 +84,17 @@ class InventoryRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((tx) async {
       for (final item in items) {
+        // Preserve locally-chosen image_asset — it is not synced to the server.
+        final existing = await tx.query(
+          'items_local',
+          columns: ['image_asset'],
+          where: 'id = ?',
+          whereArgs: [item.itemId],
+          limit: 1,
+        );
+        final existingImage =
+            existing.isNotEmpty ? existing.first['image_asset'] as String? : null;
+
         await tx.insert(
           'items_local',
           {
@@ -92,6 +106,7 @@ class InventoryRepository {
             'low_stock_threshold': item.lowStockThreshold,
             'is_active': item.isActive ? 1 : 0,
             'quantity_on_hand': item.quantityOnHand,
+            'image_asset': existingImage,
             'created_at': now,
             'updated_at': now,
           },
@@ -108,6 +123,7 @@ class InventoryRepository {
     String? category,
     int? lowStockThreshold,
     int initialQuantity = 0,
+    String? imageAsset,
   }) async {
     final cleanName = name.trim();
     if (cleanName.length < 2) {
@@ -139,6 +155,7 @@ class InventoryRepository {
           'low_stock_threshold': lowStockThreshold,
           'is_active': 1,
           'quantity_on_hand': initialQuantity,
+          'image_asset': imageAsset,
           'created_at': now,
           'updated_at': now,
         },
@@ -202,6 +219,8 @@ class InventoryRepository {
     String? category,
     int? lowStockThreshold,
     required bool isActive,
+    String? imageAsset,
+    bool imageAssetChanged = false,
   }) async {
     final cleanName = name.trim();
     if (cleanName.length < 2) {
@@ -269,7 +288,14 @@ class InventoryRepository {
         updates['is_active'] = isActive ? 1 : 0;
       }
 
-      if (payload.length == 1) {
+      var hasLocalOnlyChange = false;
+      if (imageAssetChanged && imageAsset != current.imageAsset) {
+        // image_asset is local-only — stored locally but not synced to server.
+        updates['image_asset'] = imageAsset;
+        hasLocalOnlyChange = true;
+      }
+
+      if (payload.length == 1 && !hasLocalOnlyChange) {
         throw ArgumentError('No item changes to save.');
       }
 
@@ -279,15 +305,18 @@ class InventoryRepository {
         where: 'id = ?',
         whereArgs: [itemId],
       );
-      await _appDb.syncQueue.enqueue(
-        entityType: 'item',
-        operation: 'update',
-        entityId: itemId,
-        payloadJson: jsonEncode(payload),
-        sourceDeviceId: sourceDeviceId,
-        localOperationId: localOpId,
-        executor: tx,
-      );
+      // Only sync if there are server-visible field changes (payload > item_id).
+      if (payload.length > 1) {
+        await _appDb.syncQueue.enqueue(
+          entityType: 'item',
+          operation: 'update',
+          entityId: itemId,
+          payloadJson: jsonEncode(payload),
+          sourceDeviceId: sourceDeviceId,
+          localOperationId: localOpId,
+          executor: tx,
+        );
+      }
     });
   }
 

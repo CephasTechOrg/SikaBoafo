@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/product_image_catalog.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
@@ -1079,19 +1080,13 @@ class _ItemCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Row(
           children: [
-            // Colored icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: palette.bg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                Icons.inventory_2_outlined,
-                color: palette.fg,
-                size: 20,
-              ),
+            ItemImage(
+              imageAsset: item.imageAsset,
+              size: 44,
+              bgColor: palette.bg,
+              iconColor: palette.fg,
+              fallbackIcon: Icons.inventory_2_outlined,
+              borderRadius: BorderRadius.circular(14),
             ),
             const SizedBox(width: 12),
 

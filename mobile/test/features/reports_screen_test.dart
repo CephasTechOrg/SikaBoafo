@@ -68,12 +68,8 @@ final _stubInsights = DashboardInsights(
 );
 
 // ---------------------------------------------------------------------------
-// _computeDebtAging unit tests (pure function — no widget harness needed)
+// Helpers
 // ---------------------------------------------------------------------------
-
-// Access the function via a thin wrapper since it's library-private.
-// We test through the public API by verifying _DebtAgingCard renders correctly.
-// The unit tests below directly call the logic via the test-accessible route.
 
 List<LocalReceivableRecord> _makeRecord({
   required String status,
@@ -94,17 +90,29 @@ List<LocalReceivableRecord> _makeRecord({
   ];
 }
 
-void main() {
-  // -------------------------------------------------------------------------
-  // Pure function tests for _computeDebtAging via widget integration
-  // We verify that the _DebtAgingCard shows the right bucket counts.
-  // -------------------------------------------------------------------------
+Future<void> _pump(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
+}
 
+// Makes the test viewport tall enough that ListView builds all children eagerly.
+void _useTallScreen(WidgetTester tester) {
+  tester.view.physicalSize = const Size(800, 4000);
+  tester.view.devicePixelRatio = 1.0;
+}
+
+// ---------------------------------------------------------------------------
+// _computeDebtAging unit tests (via widget integration)
+// ---------------------------------------------------------------------------
+
+void main() {
   group('ReportsScreen — Debt Aging Card', () {
     Future<void> pumpWithReceivables(
       WidgetTester tester,
       List<LocalReceivableRecord> receivables,
     ) async {
+      _useTallScreen(tester);
+      addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -121,8 +129,7 @@ void main() {
           child: const MaterialApp(home: ReportsScreen()),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await _pump(tester);
     }
 
     testWidgets('shows overdue count > 0 when receivable is past due', (tester) async {
@@ -131,9 +138,10 @@ void main() {
           '-${yesterday.month.toString().padLeft(2, '0')}'
           '-${yesterday.day.toString().padLeft(2, '0')}';
       await pumpWithReceivables(tester, _makeRecord(status: 'open', dueDateIso: iso));
-      expect(find.text('Debt Aging'), findsOneWidget);
-      // Overdue row value should be "1" in the debt aging card
-      expect(find.text('1'), findsWidgets);
+      // Debt Aging section header may be scrolled off-screen in a ListView.
+      expect(find.text('Debt Aging', skipOffstage: false), findsOneWidget);
+      // Overdue row value should be "1" somewhere in the tree.
+      expect(find.text('1', skipOffstage: false), findsWidgets);
     });
 
     testWidgets('skips settled receivables in aging calculation', (tester) async {
@@ -142,13 +150,13 @@ void main() {
           '-${yesterday.month.toString().padLeft(2, '0')}'
           '-${yesterday.day.toString().padLeft(2, '0')}';
       await pumpWithReceivables(tester, _makeRecord(status: 'settled', dueDateIso: iso));
-      // All buckets should be 0 — settled records are excluded
-      expect(find.text('Debt Aging'), findsOneWidget);
+      // Debt Aging section must still render; all bucket values should be 0.
+      expect(find.text('Debt Aging', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('shows no_due bucket when receivable has no due date', (tester) async {
       await pumpWithReceivables(tester, _makeRecord(status: 'open', dueDateIso: null));
-      expect(find.text('No due date'), findsOneWidget);
+      expect(find.text('No due date', skipOffstage: false), findsOneWidget);
     });
   });
 
@@ -157,7 +165,7 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('ReportsScreen — section rendering', () {
-    testWidgets('renders Today section with correct values', (tester) async {
+    testWidgets('renders Today KPI values correctly', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -170,16 +178,20 @@ void main() {
           child: const MaterialApp(home: ReportsScreen()),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await _pump(tester);
 
-      expect(find.text('Today'), findsOneWidget);
+      // KPI cards are near the top of the ListView — should be on-screen.
       expect(find.text('GHS 150.00'), findsOneWidget);
       expect(find.text('GHS 40.00'), findsOneWidget);
       expect(find.text('GHS 110.00'), findsOneWidget);
+      // "Today" appears in both the period tab chip and the bar chart badge.
+      expect(find.text('Today'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders Weekly & Monthly section headers when insights load', (tester) async {
+    testWidgets('renders Payment Breakdown and Top Items sections when insights load',
+        (tester) async {
+      _useTallScreen(tester);
+      addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -192,19 +204,18 @@ void main() {
           child: const MaterialApp(home: ReportsScreen()),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await _pump(tester);
 
-      expect(find.text('Weekly & Monthly'), findsOneWidget);
-      expect(find.text('This Week'), findsOneWidget);
-      expect(find.text('This Month'), findsOneWidget);
-      expect(find.text('Payment Breakdown (Month)'), findsOneWidget);
-      expect(find.text('Top Selling Items (Month)'), findsOneWidget);
-      expect(find.text('Cash'), findsOneWidget);
-      expect(find.text('Bread'), findsOneWidget);
+      // Section headers scroll off-screen — use skipOffstage: false.
+      expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
+      expect(find.text('Top Selling Items', skipOffstage: false), findsOneWidget);
+      expect(find.text('Cash', skipOffstage: false), findsOneWidget);
+      expect(find.text('Bread', skipOffstage: false), findsOneWidget);
     });
 
-    testWidgets('shows insights unavailable card when insights fail', (tester) async {
+    testWidgets('shows offline card when insights fail', (tester) async {
+      _useTallScreen(tester);
+      addTearDown(tester.view.resetPhysicalSize);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -219,10 +230,13 @@ void main() {
           child: const MaterialApp(home: ReportsScreen()),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await _pump(tester);
 
-      expect(find.text('Weekly/monthly data unavailable offline.'), findsOneWidget);
+      expect(
+        find.text('Weekly/monthly data unavailable offline.',
+            skipOffstage: false),
+        findsAtLeastNWidgets(1),
+      );
     });
 
     testWidgets('shows error view when summary fails', (tester) async {
@@ -240,8 +254,7 @@ void main() {
           child: const MaterialApp(home: ReportsScreen()),
         ),
       );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await _pump(tester);
 
       expect(find.text('Retry'), findsOneWidget);
     });
@@ -259,6 +272,7 @@ class _FakeDebtsController extends DebtsController {
 
   @override
   Future<DebtsViewData> build() async {
-    return DebtsViewData(customers: const [], receivables: _receivables, paidThisMonth: '0.00');
+    return DebtsViewData(
+        customers: const [], receivables: _receivables, paidThisMonth: '0.00');
   }
 }

@@ -67,6 +67,7 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
     String? category,
     int? lowStockThreshold,
     int initialQuantity = 0,
+    String? imageAsset,
   }) async {
     await _repo.createItemLocal(
       name: name,
@@ -75,6 +76,7 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
       category: category,
       lowStockThreshold: lowStockThreshold,
       initialQuantity: initialQuantity,
+      imageAsset: imageAsset,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -89,6 +91,8 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
     String? category,
     int? lowStockThreshold,
     required bool isActive,
+    String? imageAsset,
+    bool imageAssetChanged = false,
   }) async {
     await _repo.updateItemLocal(
       itemId: itemId,
@@ -98,6 +102,8 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
       category: category,
       lowStockThreshold: lowStockThreshold,
       isActive: isActive,
+      imageAsset: imageAsset,
+      imageAssetChanged: imageAssetChanged,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();

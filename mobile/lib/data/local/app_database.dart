@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 8;
+const _schemaVersion = 9;
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -52,6 +52,9 @@ class AppDatabase {
         }
         if (oldVersion < 8) {
           await _upgradeDebtsSchemaV8(db);
+        }
+        if (oldVersion < 9) {
+          await _upgradeInventorySchemaV9(db);
         }
       },
     );
@@ -101,6 +104,7 @@ CREATE TABLE IF NOT EXISTS items_local (
   low_stock_threshold INTEGER,
   is_active INTEGER NOT NULL DEFAULT 1,
   quantity_on_hand INTEGER NOT NULL DEFAULT 0,
+  image_asset TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )
@@ -182,6 +186,14 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
     if (!names.contains('note')) {
       await db.execute('ALTER TABLE receivables_local ADD COLUMN note TEXT');
+    }
+  }
+
+  Future<void> _upgradeInventorySchemaV9(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(items_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('image_asset')) {
+      await db.execute('ALTER TABLE items_local ADD COLUMN image_asset TEXT');
     }
   }
 

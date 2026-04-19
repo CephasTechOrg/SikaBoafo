@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/product_image_catalog.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../providers/inventory_providers.dart';
@@ -42,6 +43,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   bool _showForm = false;
   String _searchQuery = '';
   String? _filterCategory;
+  String? _newItemImage;
 
   @override
   void dispose() {
@@ -138,9 +140,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             thresholdCtrl: _thresholdCtrl,
                             qtyCtrl: _qtyCtrl,
                             isLoading: itemsAsync.isLoading,
+                            selectedImage: _newItemImage,
                             onToggle: () =>
                                 setState(() => _showForm = !_showForm),
                             onSave: _saveItem,
+                            onImageChanged: (v) =>
+                                setState(() => _newItemImage = v),
                           ),
                           const SizedBox(height: 20),
 
@@ -248,6 +253,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             lowStockThreshold:
                 int.tryParse(_thresholdCtrl.text.trim()),
             initialQuantity: initialQty ?? 0,
+            imageAsset: _newItemImage,
           );
       _nameCtrl.clear();
       _priceCtrl.clear();
@@ -256,7 +262,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       _thresholdCtrl.clear();
       _qtyCtrl.clear();
       if (!mounted) return;
-      setState(() => _showForm = false);
+      setState(() {
+        _showForm = false;
+        _newItemImage = null;
+      });
       _msg('Item added to inventory.');
     } catch (error) {
       if (!mounted) return;
@@ -413,7 +422,6 @@ class _StatsRow extends StatelessWidget {
             label: 'Total Items',
             value: '$itemCount',
             icon: Icons.inventory_2_rounded,
-            color: AppColors.forest,
           ),
         ),
         const SizedBox(width: 10),
@@ -422,9 +430,7 @@ class _StatsRow extends StatelessWidget {
             label: 'Low Stock',
             value: '$lowStockCount',
             icon: Icons.warning_amber_rounded,
-            color: lowStockCount > 0
-                ? const Color(0xFFDC2626)
-                : AppColors.forest,
+            valueColor: lowStockCount > 0 ? const Color(0xFFDC2626) : null,
           ),
         ),
         const SizedBox(width: 10),
@@ -432,8 +438,7 @@ class _StatsRow extends StatelessWidget {
           child: _StatCard(
             label: 'Est. Value',
             value: _fmtMoney(totalValueMinor),
-            icon: Icons.attach_money_rounded,
-            color: const Color(0xFF7C3AED),
+            icon: Icons.payments_rounded,
           ),
         ),
       ],
@@ -446,11 +451,11 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    required this.color,
+    this.valueColor,
   });
   final String label, value;
   final IconData icon;
-  final Color color;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -459,10 +464,11 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -474,18 +480,18 @@ class _StatCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: AppColors.mint,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 17),
+            child: Icon(icon, color: AppColors.forest, size: 17),
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 12,
-              color: AppColors.ink,
+              color: valueColor ?? AppColors.ink,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -512,15 +518,19 @@ class _AddItemAccordion extends StatelessWidget {
     required this.thresholdCtrl,
     required this.qtyCtrl,
     required this.isLoading,
+    required this.selectedImage,
     required this.onToggle,
     required this.onSave,
+    required this.onImageChanged,
   });
 
   final bool expanded;
   final TextEditingController nameCtrl, priceCtrl, skuCtrl, categoryCtrl,
       thresholdCtrl, qtyCtrl;
   final bool isLoading;
+  final String? selectedImage;
   final VoidCallback onToggle, onSave;
+  final ValueChanged<String?> onImageChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -677,6 +687,11 @@ class _AddItemAccordion extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  ProductImagePicker(
+                    selected: selectedImage,
+                    onChanged: onImageChanged,
                   ),
                   const SizedBox(height: 18),
                   SizedBox(
@@ -875,226 +890,215 @@ class _ItemCard extends StatelessWidget {
     final isLow = hasThreshold &&
         item.quantityOnHand <= item.lowStockThreshold! &&
         !isOut;
-    final Color stockColor;
-    final String stockLabel;
-    if (isOut) {
-      stockColor = const Color(0xFFDC2626);
-      stockLabel = 'Out of Stock';
-    } else if (isLow) {
-      stockColor = const Color(0xFFD97706);
-      stockLabel = 'Low Stock';
-    } else {
-      stockColor = AppColors.forest;
-      stockLabel = 'In Stock';
-    }
 
-    // Progress bar value: qty / (threshold * 2) or qty / 100 if no threshold
-    final double progress;
-    if (hasThreshold && item.lowStockThreshold! > 0) {
-      progress =
-          (item.quantityOnHand / (item.lowStockThreshold! * 2.0))
-              .clamp(0.0, 1.0);
-    } else {
-      progress = item.quantityOnHand > 0 ? 1.0 : 0.0;
-    }
+    final Color stockColor = isOut
+        ? const Color(0xFFDC2626)
+        : isLow
+            ? const Color(0xFFD97706)
+            : AppColors.forest;
+    final String stockLabel =
+        isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock';
+
+    final double progress = hasThreshold && item.lowStockThreshold! > 0
+        ? (item.quantityOnHand / (item.lowStockThreshold! * 2.0))
+            .clamp(0.0, 1.0)
+        : item.quantityOnHand > 0
+            ? 1.0
+            : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── top row ──
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── main info ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: stockColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(Icons.inventory_2_rounded,
-                      color: stockColor, size: 24),
+                // Product image — always neutral background, image contained
+                ItemImage(
+                  imageAsset: item.imageAsset,
+                  size: 56,
+                  fallbackIcon: Icons.inventory_2_outlined,
                 ),
                 const SizedBox(width: 12),
+                // Item details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (!item.isActive)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text(
+                            'INACTIVE',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFDC2626),
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
                       Text(
                         item.name,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           fontSize: 15,
                           color: AppColors.ink,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          if (item.category != null)
-                            _Badge(
-                              label: item.category!,
-                              color: const Color(0xFF2563EB),
-                            ),
-                          if (item.sku != null)
-                            _Badge(
-                              label: item.sku!,
-                              color: AppColors.muted,
-                            ),
-                          if (!item.isActive)
-                            const _Badge(
-                              label: 'Inactive',
-                              color: Color(0xFFDC2626),
-                            ),
-                        ],
+                      const SizedBox(height: 5),
+                      Text(
+                        'GHS ${item.defaultPrice}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.forest,
+                        ),
                       ),
+                      if (item.category != null || item.sku != null) ...[
+                        const SizedBox(height: 5),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 3,
+                          children: [
+                            if (item.category != null)
+                              _SmallBadge(label: item.category!),
+                            if (item.sku != null)
+                              _SmallBadge(label: item.sku!),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                // Stock count bubble
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: stockColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: stockColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${item.quantityOnHand}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          color: stockColor,
-                          height: 1,
-                        ),
+                const SizedBox(width: 10),
+                // Stock quantity
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${item.quantityOnHand}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        color: stockColor,
+                        height: 1,
                       ),
-                      Text(
-                        'units',
+                    ),
+                    Text(
+                      'units',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: stockColor.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: stockColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isOut ? 'Out' : isLow ? 'Low' : 'OK',
                         style: TextStyle(
                           fontSize: 10,
-                          color: stockColor.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w700,
+                          color: stockColor,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+          ),
 
-            // ── stock progress bar ──
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: stockColor,
-                            shape: BoxShape.circle,
+          // ── stock bar (only when threshold set) ──
+          if (hasThreshold)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: stockColor,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          stockLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: stockColor,
+                          const SizedBox(width: 5),
+                          Text(
+                            stockLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: stockColor,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (hasThreshold)
+                        ],
+                      ),
                       Text(
-                        'Alert at ${item.lowStockThreshold} units',
+                        'Alert: ${item.lowStockThreshold} units',
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.muted,
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 6,
-                    backgroundColor:
-                        stockColor.withValues(alpha: 0.12),
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(stockColor),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // ── price row ──
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'GHS ${item.defaultPrice} / unit',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: Color(0xFF7C3AED),
+                  const SizedBox(height: 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 5,
+                      backgroundColor: const Color(0xFFE5E7EB),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(stockColor),
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  'Est. ${_fmtMoney(_priceToMinor(item.defaultPrice) * item.quantityOnHand)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
 
-            // ── action buttons ──
-            Row(
+          // ── divider + actions ──
+          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+            child: Row(
               children: [
                 _ActionBtn(
                   label: 'Edit',
@@ -1102,14 +1106,14 @@ class _ItemCard extends StatelessWidget {
                   color: AppColors.forest,
                   onTap: onEdit,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _ActionBtn(
                   label: 'Stock In',
                   icon: Icons.add_box_rounded,
                   color: const Color(0xFF2563EB),
                   onTap: onStockIn,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _ActionBtn(
                   label: 'Adjust',
                   icon: Icons.tune_rounded,
@@ -1118,32 +1122,31 @@ class _ItemCard extends StatelessWidget {
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.color});
+class _SmallBadge extends StatelessWidget {
+  const _SmallBadge({required this.label});
   final String label;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
+          fontWeight: FontWeight.w500,
+          color: AppColors.muted,
         ),
       ),
     );
@@ -1165,32 +1168,19 @@ class _ActionBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withValues(alpha: 0.25),
-            ),
+      child: TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+        ),
+        icon: Icon(icon, size: 14),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1215,6 +1205,7 @@ class _EditSheetState extends State<_EditSheet> {
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _thresholdCtrl;
   late bool _isActive;
+  late String? _imageAsset;
   bool _saving = false;
 
   @override
@@ -1228,6 +1219,7 @@ class _EditSheetState extends State<_EditSheet> {
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
     _isActive = widget.item.isActive;
+    _imageAsset = widget.item.imageAsset;
   }
 
   @override
@@ -1293,6 +1285,11 @@ class _EditSheetState extends State<_EditSheet> {
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 12),
+          ProductImagePicker(
+            selected: _imageAsset,
+            onChanged: (v) => setState(() => _imageAsset = v),
+          ),
+          const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF6F7F9),
@@ -1347,6 +1344,8 @@ class _EditSheetState extends State<_EditSheet> {
                 : _categoryCtrl.text.trim(),
             lowStockThreshold: threshold,
             isActive: _isActive,
+            imageAsset: _imageAsset,
+            imageAssetChanged: _imageAsset != widget.item.imageAsset,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {

@@ -97,6 +97,7 @@ CREATE TABLE items_local (
   low_stock_threshold INTEGER,
   is_active INTEGER NOT NULL DEFAULT 1,
   quantity_on_hand INTEGER NOT NULL DEFAULT 0,
+  image_asset TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )
