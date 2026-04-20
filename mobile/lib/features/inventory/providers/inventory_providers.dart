@@ -110,6 +110,20 @@ class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
     state = AsyncValue.data(await _repo.listLocalItems());
   }
 
+  Future<void> archiveItem({required String itemId}) async {
+    await _repo.archiveItemLocal(itemId: itemId);
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
+  Future<void> restoreItem({required String itemId}) async {
+    await _repo.restoreItemLocal(itemId: itemId);
+    await _repo.syncPendingQueue();
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
+
   Future<void> stockIn({
     required String itemId,
     required int quantity,

@@ -249,6 +249,132 @@ void main() {
     await appDb.close();
   });
 
+  test('inventory archive flips is_active and enqueues item update', () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = InventoryRepository(
+      appDb: appDb,
+      inventoryApi: _FakeInventoryApi(),
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Soap',
+      'default_price': '4.50',
+      'sku': 'SOAP-1',
+      'category': 'groceries',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.archiveItemLocal(itemId: 'item-1');
+
+    final itemRows =
+        await db.query('items_local', where: 'id = ?', whereArgs: ['item-1']);
+    final queueRows = await db.query('sync_queue');
+
+    expect(itemRows.first['is_active'], 0);
+    expect(queueRows, hasLength(1));
+    expect(queueRows.first['entity_type'], 'item');
+    expect(queueRows.first['operation'], 'update');
+
+    final payload = jsonDecode(queueRows.first['payload_json'] as String)
+        as Map<String, dynamic>;
+    expect(payload['item_id'], 'item-1');
+    expect(payload['is_active'], isFalse);
+
+    await appDb.close();
+  });
+
+  test('inventory restore flips is_active back to true and enqueues item update',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = InventoryRepository(
+      appDb: appDb,
+      inventoryApi: _FakeInventoryApi(),
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Soap',
+      'default_price': '4.50',
+      'sku': 'SOAP-1',
+      'category': 'groceries',
+      'low_stock_threshold': 2,
+      'is_active': 0,
+      'quantity_on_hand': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.restoreItemLocal(itemId: 'item-1');
+
+    final itemRows =
+        await db.query('items_local', where: 'id = ?', whereArgs: ['item-1']);
+    final queueRows = await db.query('sync_queue');
+
+    expect(itemRows.first['is_active'], 1);
+    expect(queueRows, hasLength(1));
+    expect(queueRows.first['entity_type'], 'item');
+    expect(queueRows.first['operation'], 'update');
+
+    final payload = jsonDecode(queueRows.first['payload_json'] as String)
+        as Map<String, dynamic>;
+    expect(payload['item_id'], 'item-1');
+    expect(payload['is_active'], isTrue);
+
+    await appDb.close();
+  });
+
+  test('inventory archive is rejected while stock remains', () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = InventoryRepository(
+      appDb: appDb,
+      inventoryApi: _FakeInventoryApi(),
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Soap',
+      'default_price': '4.50',
+      'sku': 'SOAP-1',
+      'category': 'groceries',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 3,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await expectLater(
+      repo.archiveItemLocal(itemId: 'item-1'),
+      throwsA(
+        isA<ArgumentError>().having(
+          (error) => error.message,
+          'message',
+          archiveRequiresZeroStockMessage,
+        ),
+      ),
+    );
+
+    final itemRows =
+        await db.query('items_local', where: 'id = ?', whereArgs: ['item-1']);
+    final queueRows = await db.query('sync_queue');
+
+    expect(itemRows.first['is_active'], 1);
+    expect(queueRows, isEmpty);
+
+    await appDb.close();
+  });
+
   test(
       'expenses local-first write persists expense and enqueues sync operation',
       () async {

@@ -130,6 +130,56 @@ def test_inventory_item_create_list_stock_and_adjust() -> None:
         app.dependency_overrides.clear()
 
 
+def test_inventory_item_archive_requires_zero_stock_and_can_restore() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    try:
+        create_resp = client.post(
+            "/api/v1/items",
+            json={
+                "name": "Cooking Oil",
+                "default_price": "25.00",
+            },
+        )
+        assert create_resp.status_code == 201
+        item_id = create_resp.json()["item_id"]
+
+        stock_in_resp = client.post(
+            f"/api/v1/items/{item_id}/stock-in",
+            json={"quantity": 5, "reason": "Opening stock"},
+        )
+        assert stock_in_resp.status_code == 200
+
+        archive_resp = client.patch(
+            f"/api/v1/items/{item_id}",
+            json={"is_active": False},
+        )
+        assert archive_resp.status_code == 422
+        assert archive_resp.json()["detail"] == "Adjust stock to 0 before archiving this item."
+
+        adjust_resp = client.post(
+            f"/api/v1/items/{item_id}/adjust",
+            json={"quantity_delta": -5, "reason": "Stock cleared"},
+        )
+        assert adjust_resp.status_code == 200
+        assert adjust_resp.json()["item"]["quantity_on_hand"] == 0
+
+        archive_resp = client.patch(
+            f"/api/v1/items/{item_id}",
+            json={"is_active": False},
+        )
+        assert archive_resp.status_code == 200
+        assert archive_resp.json()["is_active"] is False
+
+        restore_resp = client.patch(
+            f"/api/v1/items/{item_id}",
+            json={"is_active": True},
+        )
+        assert restore_resp.status_code == 200
+        assert restore_resp.json()["is_active"] is True
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_sync_apply_is_idempotent_for_inventory_operations() -> None:
     client, session_local, _ = _build_sqlite_test_stack()
     item_id = str(uuid4())

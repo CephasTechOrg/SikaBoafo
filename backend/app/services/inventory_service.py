@@ -32,6 +32,10 @@ class InvalidInventoryAdjustmentError(Exception):
     """Stock adjustment would break domain invariants."""
 
 
+class InvalidItemArchiveError(Exception):
+    """Item archive request would break inventory invariants."""
+
+
 @dataclass(slots=True)
 class InventoryItemSnapshot:
     item_id: UUID
@@ -111,6 +115,7 @@ class InventoryService:
     ) -> InventoryItemSnapshot:
         store = self._get_default_store_for_user(user_id=user_id)
         item = self._get_item_for_store(store_id=store.id, item_id=item_id)
+        balance = self._get_or_create_balance(item_id=item.id)
         if payload.name is not None:
             item.name = payload.name.strip()
         if payload.default_price is not None:
@@ -122,13 +127,19 @@ class InventoryService:
         if payload.low_stock_threshold is not None:
             item.low_stock_threshold = payload.low_stock_threshold
         if payload.is_active is not None:
+            if (
+                payload.is_active is False
+                and item.is_active
+                and balance.quantity_on_hand > 0
+            ):
+                msg = "Adjust stock to 0 before archiving this item."
+                raise InvalidItemArchiveError(msg)
             item.is_active = payload.is_active
         if source_device_id is not None:
             item.source_device_id = source_device_id
         if local_operation_id is not None:
             item.local_operation_id = local_operation_id
 
-        balance = self._get_or_create_balance(item_id=item.id)
         self._finalize(item=item, balance=balance, commit=commit)
         return self._to_item_snapshot(item=item, quantity_on_hand=balance.quantity_on_hand)
 

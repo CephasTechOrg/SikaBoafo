@@ -31,3 +31,18 @@ flutter:
   assets:
     - assets/images/
     - assets/products/
+  fonts:
+    - family: SegoeUI
+      fonts:
+        - asset: assets/fonts/SegoeUI-Light.ttf
+          weight: 300
+        - asset: assets/fonts/SegoeUI-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/SegoeUI-Bold.ttf
+          weight: 700
+    - family: Constantia
+      fonts:
+        - asset: assets/fonts/Constantia-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Constantia-Bold.ttf
+          weight: 700

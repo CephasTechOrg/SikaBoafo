@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../data/auth_api.dart';
 import '../providers/auth_providers.dart';
 
-/// After onboarding or OTP recovery, merchant sets a 4–6 digit PIN (see `docs/auth/pin-and-otp-flow.md`).
+/// After onboarding or OTP recovery, merchant sets a 4-6 digit PIN.
 class SetPinScreen extends ConsumerStatefulWidget {
   const SetPinScreen({super.key});
 
@@ -31,7 +33,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
     final pin = _pinCtrl.text.trim();
     final confirm = _confirmCtrl.text.trim();
     if (pin.length < 4 || pin.length > 6 || !RegExp(r'^\d+$').hasMatch(pin)) {
-      setState(() => _error = 'PIN must be 4–6 digits.');
+      setState(() => _error = 'PIN must be 4-6 digits.');
       return;
     }
     if (pin != confirm) {
@@ -56,71 +58,131 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final compact = size.height < 720;
-    final horizontalPadding = size.width < 360 ? 18.0 : 24.0;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 24),
+      backgroundColor: AppColors.canvas,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Create PIN',
-                style: TextStyle(
-                  fontSize: compact ? 26 : 28,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0B6B63),
-                ),
-              ),
-              SizedBox(height: compact ? 8 : 10),
-              Text(
-                'Use 4–6 digits. You will use this with your phone number to sign in '
-                'without SMS.',
-                style: TextStyle(
-                  fontSize: compact ? 14 : 15,
-                  color: const Color(0xFF475569),
-                  height: 1.35,
-                ),
-              ),
-              SizedBox(height: compact ? 20 : 24),
-              Text(
-                'New PIN',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: compact ? 17 : 18),
-              ),
-              SizedBox(height: compact ? 8 : 10),
-              _PinField(controller: _pinCtrl, compact: compact, hintText: '4–6 digits'),
-              SizedBox(height: compact ? 16 : 18),
-              Text(
-                'Confirm PIN',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: compact ? 17 : 18),
-              ),
-              SizedBox(height: compact ? 8 : 10),
-              _PinField(controller: _confirmCtrl, compact: compact, hintText: 'Repeat PIN'),
-              if (_error != null) ...[
-                SizedBox(height: compact ? 10 : 12),
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              SizedBox(height: compact ? 22 : 28),
-              SizedBox(
-                height: compact ? 50 : 54,
-                child: FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B6B63),
-                    foregroundColor: Colors.white,
-                    textStyle: TextStyle(
-                      fontSize: compact ? 18 : 20,
-                      fontWeight: FontWeight.w700,
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 12, 24, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumBadge(
+                      label: 'Step 3 of 3',
+                      icon: Icons.lock_person_rounded,
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    SizedBox(height: 18),
+                    Text(
+                      'Create your daily PIN',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Use this with your phone number to get back into your workspace quickly without SMS every time.',
+                      style: TextStyle(
+                        color: Color(0xFFD8E8E4),
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: PremiumSurface(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
+                    children: [
+                      const PremiumPanel(
+                        backgroundColor: Color(0xFFF7F3EA),
+                        child: Row(
+                          children: [
+                            Icon(Icons.shield_moon_rounded, color: AppColors.gold),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Choose a 4-6 digit PIN you can remember quickly during business hours.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.38,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Security setup',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 14),
+                            _PinField(
+                              controller: _pinCtrl,
+                              hintText: 'New PIN',
+                              label: 'New PIN',
+                            ),
+                            const SizedBox(height: 12),
+                            _PinField(
+                              controller: _confirmCtrl,
+                              hintText: 'Repeat PIN',
+                              label: 'Confirm PIN',
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 14),
+                        PremiumPanel(
+                          backgroundColor: const Color(0xFFFFF0ED),
+                          borderColor: const Color(0xFFF4C6BE),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: AppColors.danger,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(color: AppColors.danger),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 22),
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _submit,
+                        icon: _busy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.check_circle_rounded),
+                        label: Text(_busy ? 'Saving PIN...' : 'Save PIN'),
+                      ),
+                    ],
                   ),
-                  child: const Text('Save PIN'),
                 ),
               ),
             ],
@@ -134,13 +196,13 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
 class _PinField extends StatelessWidget {
   const _PinField({
     required this.controller,
-    required this.compact,
     required this.hintText,
+    required this.label,
   });
 
   final TextEditingController controller;
-  final bool compact;
   final String hintText;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -149,35 +211,13 @@ class _PinField extends StatelessWidget {
       keyboardType: TextInputType.number,
       obscureText: true,
       maxLength: 6,
-      buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
-      style: TextStyle(
-        fontSize: compact ? 16 : 17,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF334155),
-        letterSpacing: 2,
-      ),
+      buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+          null,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(letterSpacing: 2),
       decoration: InputDecoration(
+        labelText: label,
         hintText: hintText,
-        hintStyle: TextStyle(
-          color: const Color(0xFF9AA5B1),
-          fontSize: compact ? 15 : 16,
-        ),
-        prefixIcon: Icon(Icons.password_rounded, size: compact ? 19 : 20, color: const Color(0xFF64748B)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: compact ? 14 : 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD7DEE8)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD7DEE8)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0B6B63), width: 1.3),
-        ),
+        prefixIcon: const Icon(Icons.password_rounded),
       ),
     );
   }

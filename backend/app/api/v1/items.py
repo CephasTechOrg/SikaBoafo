@@ -20,6 +20,7 @@ from app.schemas.inventory import (
 )
 from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
+    InvalidItemArchiveError,
     InventoryItemNotFoundError,
     InventoryMutationSnapshot,
     InventoryService,
@@ -91,6 +92,11 @@ def update_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except InventoryItemNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidItemArchiveError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     return InventoryItemOut(
         item_id=item.item_id,
         name=item.name,

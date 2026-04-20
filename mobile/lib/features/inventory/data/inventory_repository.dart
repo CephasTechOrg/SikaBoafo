@@ -7,6 +7,9 @@ import '../../../data/local/app_database.dart';
 import '../../../data/sync/sync_queue_runner.dart';
 import 'inventory_api.dart';
 
+const archiveRequiresZeroStockMessage =
+    'Adjust stock to 0 before archiving this item.';
+
 class LocalInventoryItem {
   const LocalInventoryItem({
     required this.id,
@@ -251,6 +254,9 @@ class InventoryRepository {
       }
 
       final current = LocalInventoryItem.fromRow(rows.first);
+      if (!isActive && current.isActive && current.quantityOnHand > 0) {
+        throw ArgumentError(archiveRequiresZeroStockMessage);
+      }
       final payload = <String, Object?>{'item_id': itemId};
       final updates = <String, Object?>{'updated_at': now};
 
@@ -318,6 +324,54 @@ class InventoryRepository {
         );
       }
     });
+  }
+
+  Future<void> archiveItemLocal({required String itemId}) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'items_local',
+      where: 'id = ?',
+      whereArgs: [itemId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      throw ArgumentError('Item not found.');
+    }
+    final item = LocalInventoryItem.fromRow(rows.first);
+    await updateItemLocal(
+      itemId: itemId,
+      name: item.name,
+      defaultPrice: item.defaultPrice,
+      sku: item.sku,
+      category: item.category,
+      lowStockThreshold: item.lowStockThreshold,
+      isActive: false,
+      imageAsset: item.imageAsset,
+    );
+  }
+
+  Future<void> restoreItemLocal({required String itemId}) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'items_local',
+      where: 'id = ?',
+      whereArgs: [itemId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      throw ArgumentError('Item not found.');
+    }
+    final item = LocalInventoryItem.fromRow(rows.first);
+    await updateItemLocal(
+      itemId: itemId,
+      name: item.name,
+      defaultPrice: item.defaultPrice,
+      sku: item.sku,
+      category: item.category,
+      lowStockThreshold: item.lowStockThreshold,
+      isActive: true,
+      imageAsset: item.imageAsset,
+    );
   }
 
   Future<void> stockInLocal({

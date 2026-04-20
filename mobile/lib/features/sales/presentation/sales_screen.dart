@@ -59,7 +59,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
-    final allItems = inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[];
+    final allItems = (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
+        .where((item) => item.isActive)
+        .toList(growable: false);
     final recentSales = salesAsync.valueOrNull ?? const <LocalSaleRecord>[];
     final isBusy = salesAsync.isLoading;
 

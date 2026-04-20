@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../providers/debts_providers.dart';
 
 class ReceiveRepaymentScreen extends ConsumerStatefulWidget {
@@ -32,129 +33,115 @@ class _ReceiveRepaymentScreenState
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── header ──────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Receive Payment',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
+            PremiumPageHeader(
+              title: 'Receive Payment',
+              subtitle: 'Apply a repayment and keep the outstanding balance accurate.',
+              leading: IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              ),
+              badge: const PremiumBadge(
+                label: 'Debt collection',
+                icon: Icons.payments_rounded,
               ),
             ),
-            // ── scrollable body ──────────────────────────────────────────────
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                children: [
-                  // debt context card
-                  detailAsync.when(
-                    loading: () => const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: CircularProgressIndicator()),
+              child: PremiumSurface(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  children: [
+                    detailAsync.when(
+                      loading: () => const PremiumPanel(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       ),
-                    ),
-                    error: (_, __) => Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
+                      error: (_, __) => PremiumPanel(
+                        backgroundColor: const Color(0xFFFFF0ED),
+                        borderColor: const Color(0xFFF4C6BE),
                         child: Text(
                           'Could not load debt details.',
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
-                              ?.copyWith(color: AppColors.coral),
+                              ?.copyWith(color: AppColors.danger),
                         ),
                       ),
-                    ),
-                    data: (detail) {
-                      if (detail == null) {
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Text(
-                              'Debt record not found.',
-                              style: Theme.of(context).textTheme.bodyMedium,
+                      data: (detail) {
+                        if (detail == null) {
+                          return const PremiumEmptyState(
+                            title: 'Debt record not found.',
+                            message:
+                                'This receivable is no longer available in the active debt list.',
+                            icon: Icons.search_off_rounded,
+                          );
+                        }
+                        final row = detail.record;
+                        return Container(
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(26),
+                            gradient: const LinearGradient(
+                              colors: [AppColors.forestDark, AppColors.forest],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                            boxShadow: kCardShadow,
                           ),
-                        );
-                      }
-                      final row = detail.record;
-                      return Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF1A6B5B), Color(0xFF12473E)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              row.customerName,
-                              style: const TextStyle(
-                                color: Color(0xFFD7F3EA),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'GHS ${row.outstandingAmount}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Outstanding',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 13,
-                              ),
-                            ),
-                            if (row.dueDateIso != null) ...[
-                              const SizedBox(height: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                'Due ${row.dueDateIso}',
+                                row.customerName,
+                                style: const TextStyle(
+                                  color: Color(0xFFD7F3EA),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'GHS ${row.outstandingAmount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Outstanding',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: Colors.white.withValues(alpha: 0.74),
                                   fontSize: 13,
                                 ),
                               ),
+                              if (row.dueDateIso != null) ...[
+                                const SizedBox(height: 12),
+                                PremiumBadge(
+                                  label: 'Due ${row.dueDateIso}',
+                                  icon: Icons.event_note_rounded,
+                                  background: Colors.white.withValues(alpha: 0.1),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // repayment form card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    PremiumPanel(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Record Repayment',
-                            style: Theme.of(context).textTheme.titleMedium,
+                          const PremiumSectionHeading(
+                            title: 'Record Repayment',
+                            caption: 'Enter the amount and payment method used.',
                           ),
                           const SizedBox(height: 14),
                           TextField(
@@ -190,14 +177,13 @@ class _ReceiveRepaymentScreenState
                         ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-      // floating save button — always visible above keyboard
       bottomNavigationBar: Padding(
         padding: EdgeInsets.fromLTRB(
           16,

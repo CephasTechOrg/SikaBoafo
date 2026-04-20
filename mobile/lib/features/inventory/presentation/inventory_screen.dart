@@ -41,6 +41,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _searchCtrl = TextEditingController();
 
   bool _showForm = false;
+  bool _showArchived = false;
   String _searchQuery = '';
   String? _filterCategory;
   String? _newItemImage;
@@ -61,24 +62,30 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryControllerProvider);
     final items = itemsAsync.valueOrNull ?? const <LocalInventoryItem>[];
+    final activeItems =
+        items.where((item) => item.isActive).toList(growable: false);
+    final archivedItems =
+        items.where((item) => !item.isActive).toList(growable: false);
 
     // O(n) stats pass
     int totalValueMinor = 0;
     int lowStockCount = 0;
     final categories = <String>{};
-    for (final item in items) {
+    for (final item in activeItems) {
       totalValueMinor +=
           _priceToMinor(item.defaultPrice) * item.quantityOnHand;
-      if (item.category != null) categories.add(item.category!);
       if (item.lowStockThreshold != null &&
           item.quantityOnHand <= item.lowStockThreshold!) {
         lowStockCount++;
       }
     }
+    for (final item in items) {
+      if (item.category != null) categories.add(item.category!);
+    }
 
     // Filter
     final q = _searchQuery.toLowerCase();
-    final filtered = items.where((item) {
+    bool matchesFilters(LocalInventoryItem item) {
       final matchQuery = q.isEmpty ||
           item.name.toLowerCase().contains(q) ||
           (item.category?.toLowerCase().contains(q) ?? false) ||
@@ -86,7 +93,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       final matchCat =
           _filterCategory == null || item.category == _filterCategory;
       return matchQuery && matchCat;
-    }).toList(growable: false);
+    }
+
+    final filteredActive =
+        activeItems.where(matchesFilters).toList(growable: false);
+    final filteredArchived =
+        archivedItems.where(matchesFilters).toList(growable: false);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -103,7 +115,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           child: Column(
             children: [
               _Header(
-                itemCount: items.length,
+                itemCount: activeItems.length,
                 lowStockCount: lowStockCount,
                 onRefresh: () =>
                     ref.read(inventoryControllerProvider.notifier).refresh(),
@@ -124,7 +136,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             const EdgeInsets.fromLTRB(16, 20, 16, 100),
                         children: [
                           _StatsRow(
-                            itemCount: items.length,
+                            itemCount: activeItems.length,
                             lowStockCount: lowStockCount,
                             totalValueMinor: totalValueMinor,
                           ),
@@ -170,9 +182,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           Row(
                             children: [
                               Text(
-                                filtered.isEmpty && q.isNotEmpty
-                                    ? 'No matches'
-                                    : 'Your Inventory',
+                                filteredActive.isEmpty && q.isNotEmpty
+                                    ? 'No active matches'
+                                    : 'Active Items',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
@@ -182,7 +194,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               const Spacer(),
                               if (items.isNotEmpty)
                                 Text(
-                                  '${filtered.length} of ${items.length}',
+                                  '${filteredActive.length} of ${activeItems.length}',
                                   style: const TextStyle(
                                     color: AppColors.muted,
                                     fontSize: 12,
@@ -204,17 +216,46 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               onAdd: () =>
                                   setState(() => _showForm = true),
                             )
-                          else if (filtered.isEmpty)
+                          else if (filteredActive.isEmpty && activeItems.isEmpty)
+                            _EmptyActiveCard(
+                              archivedCount: archivedItems.length,
+                            )
+                          else if (filteredActive.isEmpty)
                             const _NoMatchCard()
                           else
-                            ...filtered.map(
+                            ...filteredActive.map(
                               (item) => _ItemCard(
                                 item: item,
                                 onEdit: () => _openEdit(item),
                                 onStockIn: () => _openStockIn(item),
                                 onAdjust: () => _openAdjust(item),
+                                onArchive: () => _archiveItem(item),
                               ),
                             ),
+                          if (archivedItems.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            _ArchivedSection(
+                              archivedCount: archivedItems.length,
+                              visibleCount: filteredArchived.length,
+                              expanded: _showArchived,
+                              onToggle: () => setState(
+                                () => _showArchived = !_showArchived,
+                              ),
+                            ),
+                            if (_showArchived) ...[
+                              const SizedBox(height: 10),
+                              if (filteredArchived.isEmpty)
+                                const _ArchivedNoMatchCard()
+                              else
+                                ...filteredArchived.map(
+                                  (item) => _ItemCard(
+                                    item: item,
+                                    onEdit: () => _openEdit(item),
+                                    onRestore: () => _restoreItem(item),
+                                  ),
+                                ),
+                            ],
+                          ],
                         ],
                       ),
                     ),
@@ -301,6 +342,58 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _AdjustSheet(item: item, ref: ref),
     );
+  }
+
+  Future<void> _archiveItem(LocalInventoryItem item) async {
+    if (item.quantityOnHand > 0) {
+      _msg(archiveRequiresZeroStockMessage);
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Archive item'),
+            content: Text(
+              'Archive ${item.name}? It will be removed from new sales until you restore it.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Archive item'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await ref
+          .read(inventoryControllerProvider.notifier)
+          .archiveItem(itemId: item.id);
+      if (!mounted) return;
+      setState(() => _showArchived = true);
+      _msg('${item.name} archived.');
+    } catch (error) {
+      if (!mounted) return;
+      _msg(humanizeInventoryError(error));
+    }
+  }
+
+  Future<void> _restoreItem(LocalInventoryItem item) async {
+    try {
+      await ref
+          .read(inventoryControllerProvider.notifier)
+          .restoreItem(itemId: item.id);
+      if (!mounted) return;
+      _msg('${item.name} restored to active inventory.');
+    } catch (error) {
+      if (!mounted) return;
+      _msg(humanizeInventoryError(error));
+    }
   }
 
   void _msg(String m) => ScaffoldMessenger.of(context)
@@ -875,13 +968,19 @@ class _Chip extends StatelessWidget {
 class _ItemCard extends StatelessWidget {
   const _ItemCard({
     required this.item,
-    required this.onEdit,
-    required this.onStockIn,
-    required this.onAdjust,
+    this.onEdit,
+    this.onStockIn,
+    this.onAdjust,
+    this.onArchive,
+    this.onRestore,
   });
 
   final LocalInventoryItem item;
-  final VoidCallback onEdit, onStockIn, onAdjust;
+  final VoidCallback? onEdit;
+  final VoidCallback? onStockIn;
+  final VoidCallback? onAdjust;
+  final VoidCallback? onArchive;
+  final VoidCallback? onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -951,7 +1050,7 @@ class _ItemCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: const Text(
-                            'INACTIVE',
+                            'ARCHIVED',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -1098,28 +1197,45 @@ class _ItemCard extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFF3F4F6)),
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-            child: Row(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                _ActionBtn(
-                  label: 'Edit',
-                  icon: Icons.edit_rounded,
-                  color: AppColors.forest,
-                  onTap: onEdit,
-                ),
-                const SizedBox(width: 6),
-                _ActionBtn(
-                  label: 'Stock In',
-                  icon: Icons.add_box_rounded,
-                  color: const Color(0xFF2563EB),
-                  onTap: onStockIn,
-                ),
-                const SizedBox(width: 6),
-                _ActionBtn(
-                  label: 'Adjust',
-                  icon: Icons.tune_rounded,
-                  color: const Color(0xFFD97706),
-                  onTap: onAdjust,
-                ),
+                if (onEdit != null)
+                  _ActionBtn(
+                    label: 'Edit',
+                    icon: Icons.edit_rounded,
+                    color: AppColors.forest,
+                    onTap: onEdit!,
+                  ),
+                if (item.isActive && onStockIn != null)
+                  _ActionBtn(
+                    label: 'Stock In',
+                    icon: Icons.add_box_rounded,
+                    color: const Color(0xFF2563EB),
+                    onTap: onStockIn!,
+                  ),
+                if (item.isActive && onAdjust != null)
+                  _ActionBtn(
+                    label: 'Adjust',
+                    icon: Icons.tune_rounded,
+                    color: const Color(0xFFD97706),
+                    onTap: onAdjust!,
+                  ),
+                if (item.isActive && onArchive != null)
+                  _ActionBtn(
+                    label: 'Archive',
+                    icon: Icons.archive_outlined,
+                    color: const Color(0xFF6B7280),
+                    onTap: onArchive!,
+                  ),
+                if (!item.isActive && onRestore != null)
+                  _ActionBtn(
+                    label: 'Restore',
+                    icon: Icons.unarchive_outlined,
+                    color: AppColors.forest,
+                    onTap: onRestore!,
+                  ),
               ],
             ),
           ),
@@ -1167,7 +1283,8 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return SizedBox(
+      width: 116,
       child: TextButton.icon(
         onPressed: onTap,
         style: TextButton.styleFrom(
@@ -1204,7 +1321,6 @@ class _EditSheetState extends State<_EditSheet> {
   late final TextEditingController _skuCtrl;
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _thresholdCtrl;
-  late bool _isActive;
   late String? _imageAsset;
   bool _saving = false;
 
@@ -1218,7 +1334,6 @@ class _EditSheetState extends State<_EditSheet> {
         TextEditingController(text: widget.item.category ?? '');
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
-    _isActive = widget.item.isActive;
     _imageAsset = widget.item.imageAsset;
   }
 
@@ -1295,22 +1410,16 @@ class _EditSheetState extends State<_EditSheet> {
               color: const Color(0xFFF6F7F9),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: SwitchListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14),
-              title: const Text(
-                'Item is Active',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              widget.item.isActive
+                  ? 'Use the Archive item action on the inventory card to remove this item from future sales.'
+                  : 'This item is archived. Use Restore item on the inventory card to make it available for sales again.',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.muted,
+                height: 1.4,
               ),
-              subtitle: Text(
-                _isActive
-                    ? 'Visible on the sales screen'
-                    : 'Hidden from sales',
-                style: const TextStyle(fontSize: 12),
-              ),
-              value: _isActive,
-              onChanged: (v) => setState(() => _isActive = v),
-              activeThumbColor: AppColors.forest,
             ),
           ),
           const SizedBox(height: 18),
@@ -1343,7 +1452,7 @@ class _EditSheetState extends State<_EditSheet> {
                 ? null
                 : _categoryCtrl.text.trim(),
             lowStockThreshold: threshold,
-            isActive: _isActive,
+            isActive: widget.item.isActive,
             imageAsset: _imageAsset,
             imageAssetChanged: _imageAsset != widget.item.imageAsset,
           );
@@ -1791,6 +1900,163 @@ class _HintRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EmptyActiveCard extends StatelessWidget {
+  const _EmptyActiveCard({required this.archivedCount});
+
+  final int archivedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.archive_outlined,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              archivedCount == 1
+                  ? 'Your active inventory is empty. 1 archived item is still available below.'
+                  : 'Your active inventory is empty. $archivedCount archived items are still available below.',
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArchivedSection extends StatelessWidget {
+  const _ArchivedSection({
+    required this.archivedCount,
+    required this.visibleCount,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final int archivedCount;
+  final int visibleCount;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(18),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.archive_outlined,
+                color: AppColors.muted,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Archived Items',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    visibleCount == archivedCount
+                        ? '$archivedCount hidden from sales'
+                        : '$visibleCount of $archivedCount match your filters',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              color: AppColors.muted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ArchivedNoMatchCard extends StatelessWidget {
+  const _ArchivedNoMatchCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.search_off_rounded, color: AppColors.muted),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No archived items match your current search or category filter.',
+              style: TextStyle(color: AppColors.muted),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
