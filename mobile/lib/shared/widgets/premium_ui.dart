@@ -41,7 +41,6 @@ class PremiumPageHeader extends StatelessWidget {
                       title,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             color: Colors.white,
-                            fontFamily: 'SegoeUI',
                             fontWeight: FontWeight.w700,
                           ),
                     ),
@@ -49,7 +48,7 @@ class PremiumPageHeader extends StatelessWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFFCBE3DD),
+                            color: Colors.white.withValues(alpha: 0.78),
                           ),
                     ),
                   ],
@@ -235,10 +234,10 @@ class PremiumEmptyState extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppColors.mint,
+              color: AppColors.infoSoft,
               borderRadius: BorderRadius.circular(18),
             ),
-            child: Icon(icon, color: AppColors.forest, size: 28),
+            child: Icon(icon, color: AppColors.info, size: 28),
           ),
           const SizedBox(height: 14),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
