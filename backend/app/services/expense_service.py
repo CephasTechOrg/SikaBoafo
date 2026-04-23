@@ -11,9 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.expense import Expense
-from app.models.merchant import Merchant
 from app.models.store import Store
 from app.schemas.expense import ExpenseCreateIn
+from app.services.audit_service import log_audit
+from app.services.store_context import StoreContextError, get_merchant_and_store
 
 
 class ExpenseContextMissingError(Exception):
@@ -64,7 +65,16 @@ class ExpenseService:
         if payload.expense_id is not None:
             expense.id = payload.expense_id
         self.db.add(expense)
-
+        self.db.flush()
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="expense.created",
+            entity_type="expense",
+            entity_id=expense.id,
+            meta={"category": expense.category, "amount": str(expense.amount)},
+        )
         if commit:
             self.db.commit()
             self.db.refresh(expense)
@@ -74,19 +84,10 @@ class ExpenseService:
         return self._to_snapshot(expense=expense)
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
-        merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
-        if merchant is None:
-            msg = "Merchant profile not found."
-            raise ExpenseContextMissingError(msg)
-        store = self.db.scalar(
-            select(Store).where(
-                Store.merchant_id == merchant.id,
-                Store.is_default.is_(True),
-            )
-        )
-        if store is None:
-            msg = "Default store not found."
-            raise ExpenseContextMissingError(msg)
+        try:
+            _, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise ExpenseContextMissingError(str(exc)) from exc
         return store
 
     @staticmethod

@@ -16,6 +16,7 @@ class ReportSummaryOut(BaseModel):
     today_sales_total: Decimal
     today_expenses_total: Decimal
     today_estimated_profit: Decimal
+    today_gross_profit: Decimal = Decimal("0.00")
     debt_outstanding_total: Decimal
     low_stock_count: int
 
@@ -26,6 +27,8 @@ class ReportActivityOut(BaseModel):
     detail: str
     amount: Decimal
     created_at: datetime
+    item_id: UUID | None = None
+    item_name: str | None = None
 
 
 class ReportPeriodOut(BaseModel):
@@ -34,6 +37,7 @@ class ReportPeriodOut(BaseModel):
     sales_total: Decimal
     expenses_total: Decimal
     estimated_profit: Decimal
+    gross_profit: Decimal = Decimal("0.00")
 
 
 class ReportPaymentBreakdownOut(BaseModel):

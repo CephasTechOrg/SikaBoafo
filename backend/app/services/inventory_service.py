@@ -15,9 +15,10 @@ from app.core.constants import (
 )
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
-from app.models.merchant import Merchant
 from app.models.store import Store
 from app.schemas.inventory import ItemCreateIn, ItemUpdateIn
+from app.services.audit_service import log_audit
+from app.services.store_context import StoreContextError, get_merchant_and_store
 
 
 class MerchantContextMissingError(Exception):
@@ -41,6 +42,8 @@ class InventoryItemSnapshot:
     item_id: UUID
     name: str
     default_price: Decimal
+    cost_price: Decimal | None
+    unit: str | None
     sku: str | None
     category: str | None
     low_stock_threshold: int | None
@@ -86,6 +89,8 @@ class InventoryService:
             store_id=store.id,
             name=payload.name.strip(),
             default_price=payload.default_price,
+            cost_price=payload.cost_price,
+            unit=self._clean_optional(payload.unit),
             sku=self._clean_optional(payload.sku),
             category=self._clean_optional(payload.category),
             low_stock_threshold=payload.low_stock_threshold,
@@ -100,6 +105,15 @@ class InventoryService:
 
         balance = InventoryBalance(item_id=item.id, quantity_on_hand=0)
         self.db.add(balance)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="item.created",
+            entity_type="item",
+            entity_id=item.id,
+            meta={"name": item.name, "default_price": str(item.default_price)},
+        )
         self._finalize(item=item, balance=balance, commit=commit)
         return self._to_item_snapshot(item=item, quantity_on_hand=balance.quantity_on_hand)
 
@@ -120,6 +134,10 @@ class InventoryService:
             item.name = payload.name.strip()
         if payload.default_price is not None:
             item.default_price = payload.default_price
+        if payload.cost_price is not None:
+            item.cost_price = payload.cost_price
+        if payload.unit is not None:
+            item.unit = self._clean_optional(payload.unit)
         if payload.sku is not None:
             item.sku = self._clean_optional(payload.sku)
         if payload.category is not None:
@@ -140,6 +158,14 @@ class InventoryService:
         if local_operation_id is not None:
             item.local_operation_id = local_operation_id
 
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="item.updated",
+            entity_type="item",
+            entity_id=item.id,
+        )
         self._finalize(item=item, balance=balance, commit=commit)
         return self._to_item_snapshot(item=item, quantity_on_hand=balance.quantity_on_hand)
 
@@ -160,11 +186,21 @@ class InventoryService:
         movement = InventoryMovement(
             item_id=item.id,
             store_id=store.id,
+            user_id=user_id,
             movement_type=INVENTORY_MOVEMENT_STOCK_IN,
             quantity=quantity,
             reason=self._clean_optional(reason),
         )
         self.db.add(movement)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="inventory.stock_in",
+            entity_type="item",
+            entity_id=item.id,
+            meta={"quantity": quantity, "reason": reason},
+        )
         self._finalize(item=item, balance=balance, commit=commit)
         return InventoryMutationSnapshot(
             item=self._to_item_snapshot(item=item, quantity_on_hand=balance.quantity_on_hand),
@@ -194,11 +230,21 @@ class InventoryService:
         movement = InventoryMovement(
             item_id=item.id,
             store_id=store.id,
+            user_id=user_id,
             movement_type=INVENTORY_MOVEMENT_ADJUSTMENT,
             quantity=quantity_delta,
             reason=self._clean_optional(reason),
         )
         self.db.add(movement)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="inventory.adjusted",
+            entity_type="item",
+            entity_id=item.id,
+            meta={"delta": quantity_delta, "reason": reason},
+        )
         self._finalize(item=item, balance=balance, commit=commit)
         return InventoryMutationSnapshot(
             item=self._to_item_snapshot(item=item, quantity_on_hand=balance.quantity_on_hand),
@@ -207,19 +253,10 @@ class InventoryService:
         )
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
-        merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
-        if merchant is None:
-            msg = "Merchant profile not found."
-            raise MerchantContextMissingError(msg)
-        store = self.db.scalar(
-            select(Store).where(
-                Store.merchant_id == merchant.id,
-                Store.is_default.is_(True),
-            )
-        )
-        if store is None:
-            msg = "Default store not found."
-            raise MerchantContextMissingError(msg)
+        try:
+            _, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise MerchantContextMissingError(str(exc)) from exc
         return store
 
     def _get_item_for_store(self, *, store_id: UUID, item_id: UUID) -> Item:
@@ -262,6 +299,8 @@ class InventoryService:
             item_id=item.id,
             name=item.name,
             default_price=item.default_price,
+            cost_price=item.cost_price,
+            unit=item.unit,
             sku=item.sku,
             category=item.category,
             low_stock_threshold=item.low_stock_threshold,

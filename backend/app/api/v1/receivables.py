@@ -12,6 +12,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.user import User
 from app.schemas.receivable import (
     CustomerCreateIn,
+    CustomerDetailOut,
     CustomerOut,
     ReceivableCreateIn,
     ReceivableOut,
@@ -24,10 +25,29 @@ from app.services.receivables_service import (
     InvalidRepaymentError,
     ReceivableContextMissingError,
     ReceivableNotFoundError,
+    ReceivableSnapshot,
     ReceivablesService,
 )
 
 router = APIRouter(prefix="/receivables", tags=["receivables"])
+
+
+def _receivable_out(r: ReceivableSnapshot) -> ReceivableOut:
+    return ReceivableOut(
+        receivable_id=r.receivable_id,
+        customer_id=r.customer_id,
+        customer_name=r.customer_name,
+        original_amount=r.original_amount,
+        outstanding_amount=r.outstanding_amount,
+        due_date=r.due_date,
+        status=r.status,
+        invoice_number=r.invoice_number,
+        sale_id=r.sale_id,
+        created_by_user_id=r.created_by_user_id,
+        payment_link=r.payment_link,
+        payment_provider_reference=r.payment_provider_reference,
+        created_at=r.created_at,
+    )
 
 
 @router.get("/customers", response_model=list[CustomerOut])
@@ -46,6 +66,10 @@ def list_customers(
             customer_id=c.customer_id,
             name=c.name,
             phone_number=c.phone_number,
+            whatsapp_number=c.whatsapp_number,
+            email=c.email,
+            notes=c.notes,
+            total_outstanding=c.total_outstanding,
             created_at=c.created_at,
         )
         for c in customers
@@ -67,7 +91,40 @@ def create_customer(
         customer_id=customer.customer_id,
         name=customer.name,
         phone_number=customer.phone_number,
+        whatsapp_number=customer.whatsapp_number,
+        email=customer.email,
+        notes=customer.notes,
+        total_outstanding=customer.total_outstanding,
         created_at=customer.created_at,
+    )
+
+
+@router.get("/customers/{customer_id}", response_model=CustomerDetailOut)
+def get_customer_detail(
+    customer_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> CustomerDetailOut:
+    service = ReceivablesService(db=db)
+    try:
+        detail = service.get_customer_detail(user_id=current_user.id, customer_id=customer_id)
+    except ReceivableContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except CustomerNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    c = detail.customer
+    return CustomerDetailOut(
+        customer=CustomerOut(
+            customer_id=c.customer_id,
+            name=c.name,
+            phone_number=c.phone_number,
+            whatsapp_number=c.whatsapp_number,
+            email=c.email,
+            notes=c.notes,
+            total_outstanding=c.total_outstanding,
+            created_at=c.created_at,
+        ),
+        receivables=[_receivable_out(r) for r in detail.receivables],
     )
 
 
@@ -82,19 +139,7 @@ def list_receivables(
         receivables = service.list_receivables_for_user(user_id=current_user.id, limit=limit)
     except ReceivableContextMissingError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return [
-        ReceivableOut(
-            receivable_id=r.receivable_id,
-            customer_id=r.customer_id,
-            customer_name=r.customer_name,
-            original_amount=r.original_amount,
-            outstanding_amount=r.outstanding_amount,
-            due_date=r.due_date,
-            status=r.status,
-            created_at=r.created_at,
-        )
-        for r in receivables
-    ]
+    return [_receivable_out(r) for r in receivables]
 
 
 @router.post("", response_model=ReceivableOut, status_code=status.HTTP_201_CREATED)
@@ -110,16 +155,7 @@ def create_receivable(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except CustomerNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return ReceivableOut(
-        receivable_id=receivable.receivable_id,
-        customer_id=receivable.customer_id,
-        customer_name=receivable.customer_name,
-        original_amount=receivable.original_amount,
-        outstanding_amount=receivable.outstanding_amount,
-        due_date=receivable.due_date,
-        status=receivable.status,
-        created_at=receivable.created_at,
-    )
+    return _receivable_out(receivable)
 
 
 @router.post("/{receivable_id}/repayments", response_model=ReceivablePaymentOut)
@@ -156,3 +192,27 @@ def record_repayment(
         payment_method_label=repayment.payment_method_label,
         created_at=repayment.created_at,
     )
+
+
+@router.post("/{receivable_id}/cancel", response_model=ReceivableOut)
+def cancel_receivable(
+    receivable_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ReceivableOut:
+    service = ReceivablesService(db=db)
+    try:
+        receivable = service.cancel_receivable(
+            user_id=current_user.id,
+            receivable_id=receivable_id,
+        )
+    except ReceivableContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ReceivableNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidRepaymentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return _receivable_out(receivable)

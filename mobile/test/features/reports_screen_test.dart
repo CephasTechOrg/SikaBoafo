@@ -16,6 +16,7 @@ const _stubSummary = DashboardSummary(
   todaySalesTotal: '150.00',
   todayExpensesTotal: '40.00',
   todayEstimatedProfit: '110.00',
+  todayGrossProfit: '0.00',
   debtOutstandingTotal: '200.00',
   lowStockCount: 3,
   timezone: 'Africa/Accra',

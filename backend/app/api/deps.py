@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
@@ -47,4 +48,26 @@ def get_current_user(
     return user
 
 
-__all__ = ["get_current_user", "get_db"]
+def require_role(*allowed_roles: str) -> Callable[[User], User]:
+    """Return a FastAPI dependency that enforces role-based access control.
+
+    Usage::
+
+        @router.get("/admin-only")
+        def admin_route(
+            current_user: Annotated[User, Depends(require_role("merchant_owner", "manager"))],
+        ) -> ...:
+    """
+
+    def _check(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions.",
+            )
+        return current_user
+
+    return _check
+
+
+__all__ = ["get_current_user", "get_db", "require_role"]

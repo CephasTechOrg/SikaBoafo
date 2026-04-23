@@ -27,6 +27,8 @@ class UserSessionOut(BaseModel):
     user_id: UUID
     phone_number: str
     is_new_user: bool
+    role: str
+    merchant_id: UUID | None
     access_token: str
     refresh_token: str
     token_type: str = "bearer"

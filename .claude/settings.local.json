@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest backend/ -q)",
+      "Bash(python -m pytest backend/app/tests/ -x -q --tb=short)",
+      "Bash(python -c \"from app.api.v1.receivables import router; from app.services.receivables_service import ReceivablesService, CustomerDetailSnapshot; from app.schemas.receivable import CustomerDetailOut; print\\('OK'\\)\")",
+      "Bash(python -m pytest tests/ -k \"receivable or customer or debt\" -v)"
+    ]
+  }
+}

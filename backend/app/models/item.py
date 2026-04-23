@@ -29,6 +29,8 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     sku: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     category: Mapped[str | None] = mapped_column(String(128), nullable=True)
     default_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    cost_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     low_stock_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

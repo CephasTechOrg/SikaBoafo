@@ -29,50 +29,45 @@ The repo is a monorepo:
 For every table in the docs, here is the actual state in our codebase.
 
 ### A.1 `businesses` (we call it `merchants`)
-File: `backend/app/models/merchant.py` · Status: `[~] 🚧`
+File: `backend/app/models/merchant.py` · Status: `[x] ✅` *(M1 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
 | `id` | `id` | ✅ |
 | `name` | `business_name` | ✅ (renamed) |
 | `type` | `business_type` | ✅ (renamed) |
-| `phone` | — | ❌ **MISSING** |
-| `whatsapp_number` | — | ❌ **MISSING** |
-| `email` | — | ❌ **MISSING** |
-| `address` | — | ❌ **MISSING** |
-| `city` | — | ❌ **MISSING** |
-| `region` | — | ❌ **MISSING** |
-| `country` | — | ❌ **MISSING** (hardcoded GH for now) |
-| `currency_code` | — | ❌ **MISSING** (hardcoded GHS) |
+| `phone` | `phone` | ✅ added M1 |
+| `whatsapp_number` | `whatsapp_number` | ✅ added M1 |
+| `email` | `email` | ✅ added M1 |
+| `address` | `address` | ✅ added M1 |
+| `city` | `city` | ✅ added M1 |
+| `region` | `region` | ✅ added M1 |
+| `country` | `country` | ✅ default "GH" |
+| `currency_code` | `currency_code` | ✅ default "GHS" |
 | `created_at`/`updated_at` | via mixin | ✅ |
 
-**Action**: Add migration to extend `merchants` with `phone`, `whatsapp_number`, `email`, `address`, `city`, `region`, `country`, `currency_code`. All nullable except `country`/`currency_code` which default to `GH`/`GHS`.
-
 ### A.2 `users`
-File: `backend/app/models/user.py` · Status: `[~] 🚧`
+File: `backend/app/models/user.py` · Status: `[x] ✅` *(M1+M2 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
 | `id` | `id` | ✅ |
-| `business_id` | — | ❌ **MISSING** (merchant→user is reverse direction — `merchants.owner_user_id`). Needed once multi-user/RBAC lands. |
-| `full_name` | — | ❌ **MISSING** |
+| `business_id` | `merchant_id` FK | ✅ added M2 (staff FK; owners use `merchants.owner_user_id`) |
+| `full_name` | `full_name` | ✅ added M1 |
 | `phone` | `phone_number` | ✅ (renamed) |
-| `email` | — | ❌ **MISSING** |
+| `email` | `email` | ✅ added M1 |
 | `password_hash` | `pin_hash` | ✅ (PIN-based; better for Ghana, keep) |
 | `is_active` | `is_active` | ✅ |
-| `last_login_at` | — | ❌ **MISSING** |
-
-**Action**: Add `full_name`, `email` (nullable), `last_login_at`. Add `merchant_id` FK when staff/RBAC lands.
+| `last_login_at` | `last_login_at` | ✅ added M1 |
+| `role` | `role` | ✅ M2: owner/manager/cashier/stock_keeper |
 
 ### A.3 `roles` + `user_roles`
-Status: `[ ] ❌` **Entire tables missing**
+Status: `[x] ✅` *(M2 complete — single-table approach)*
 
-Only one hardcoded role `merchant_owner` in `app/core/constants.py`.
-
-**Action**: See §C.1 below (Staff & RBAC milestone).
+`users.role` enum now covers `merchant_owner | manager | cashier | stock_keeper`. `staff_invites` table drives the invite-to-link flow. No separate roles/user_roles tables needed (simpler and sufficient for V1).
 
 ### A.4 `customers`
-File: `backend/app/models/customer.py` · Status: `[~] 🚧`
+File: `backend/app/models/customer.py` · Status: `[x] ✅` *(M1 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
@@ -80,22 +75,20 @@ File: `backend/app/models/customer.py` · Status: `[~] 🚧`
 | `business_id` | via `store_id → stores.merchant_id` | ✅ (indirect) |
 | `full_name` | `name` | ✅ (renamed) |
 | `phone` | `phone_number` | ✅ |
-| `whatsapp_number` | — | ❌ **MISSING** |
-| `email` | — | ❌ **MISSING** |
-| `address` | — | ❌ **MISSING** |
-| `notes` | — | ❌ **MISSING** |
-| `preferred_contact_channel` | — | ❌ **MISSING** (blocker for channel selection in notifications) |
-| `is_active` | — | ❌ **MISSING** |
-
-**Action**: Extend customer table with these fields. `preferred_contact_channel` is critical for §5 messaging.
+| `whatsapp_number` | `whatsapp_number` | ✅ added M1 |
+| `email` | `email` | ✅ added M1 |
+| `address` | `address` | ✅ added M1 |
+| `notes` | `notes` | ✅ added M1 |
+| `preferred_contact_channel` | `preferred_contact_channel` | ✅ added M1 |
+| `is_active` | `is_active` | ✅ added M1 |
 
 ### A.5 `customer_balances`
-Status: `[~] 🚧` Computed on-the-fly, not denormalized.
+Status: `[x] ✅` *(M3 complete — exposed as `total_outstanding` on `CustomerOut`)*
 
-We sum `receivables.outstanding_amount WHERE customer_id = ?` at read time. Works at current scale. **Action**: revisit if reports slow down at 50k+ receivables.
+`list_customers_for_user` computes `SUM(outstanding_amount)` via a single LEFT JOIN + GROUP BY query. Exposed as `total_outstanding: Decimal` on `CustomerOut` (API), `LocalDebtCustomer.totalOutstanding` (mobile), and shown as a badge on the Customers screen. Revisit denormalization if reports slow at 50k+ receivables.
 
 ### A.6 `products` (we call it `items`)
-File: `backend/app/models/item.py` · Status: `[~] 🚧`
+File: `backend/app/models/item.py` · Status: `[x] ✅` *(M1 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
@@ -104,13 +97,13 @@ File: `backend/app/models/item.py` · Status: `[~] 🚧`
 | `name` | `name` | ✅ |
 | `sku` | `sku` | ✅ |
 | `category` | `category` | ✅ |
-| `unit` | — | ❌ **MISSING** (piece / pack / bag / ml / kg) |
-| `cost_price` | — | ❌ **MISSING — BLOCKS PROFIT CALC** |
+| `unit` | `unit` | ✅ added M1 |
+| `cost_price` | `cost_price` | ✅ added M1 |
 | `selling_price` | `default_price` | ✅ (renamed) |
 | `reorder_level` | `low_stock_threshold` | ✅ (renamed) |
 | `is_active` | `is_active` | ✅ |
 
-**Action**: Add `unit` (String 32, nullable) and `cost_price` (Numeric 18,2, nullable). Wire `cost_price` into `reports_service.fetch_summary` to compute real margin instead of the current sales-minus-expenses proxy.
+**M3 complete**: `cost_price_snapshot` added to `sale_items` via migration 007. Snapshot frozen at sale time; gross profit computed as `Σ(unit_price − cost_price_snapshot) × qty` in `reports_service`. Backwards-safe: NULL snapshot rows excluded from gross profit so pre-M3 sales don't distort the metric.
 
 ### A.7 `stock_items` (we call it `inventory_balances`)
 File: `backend/app/models/inventory.py` · Status: `[x] ✅`
@@ -118,26 +111,22 @@ File: `backend/app/models/inventory.py` · Status: `[x] ✅`
 All expected columns present (`item_id`, `quantity_on_hand`, `updated_at`). `quantity_reserved` and `last_counted_at` from the doc are not critical for V1.
 
 ### A.8 `inventory_movements`
-File: `backend/app/models/inventory.py` · Status: `[x] ✅`
+File: `backend/app/models/inventory.py` · Status: `[x] ✅` *(M2 complete)*
 
-**Correction from prior audit:** this IS built. `InventoryMovement` exists and is written to by `sales_service.py` and `inventory_service.py` on every stock change (`stock_in`, `sale_out`, `adjustment_up`, `adjustment_down`, etc.).
-
-Missing from doc schema: `user_id` (who made the movement) — needed once RBAC lands so we can attribute adjustments to a cashier/stock-keeper.
-
-**Action**: Add `user_id` FK when staff lands.
+`InventoryMovement` exists and is written to by `sales_service.py` and `inventory_service.py` on every stock change. `user_id` FK added M2 — every stock-in and adjustment now records the authenticated user.
 
 ### A.9 `sales` + `sale_items`
-File: `backend/app/models/sale.py` · Status: `[~] 🚧`
+File: `backend/app/models/sale.py` · Status: `[x] ✅` *(M1+M2 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
 | `id` | `id` | ✅ |
 | `business_id` | via store | ✅ |
 | `customer_id` | `customer_id` | ✅ |
-| `cashier_id` | — | ❌ **MISSING — BLOCKS STAFF REPORTS** |
-| `subtotal_amount` | — | ❌ **MISSING** (we only store total) |
-| `discount_amount` | — | ❌ **MISSING** |
-| `tax_amount` | — | ❌ **MISSING** |
+| `cashier_id` | `cashier_id` | ✅ added M2 — set to authenticated user on every new sale |
+| `subtotal_amount` | `subtotal_amount` | ✅ added M1 |
+| `discount_amount` | `discount_amount` | ✅ added M1 |
+| `tax_amount` | `tax_amount` | ✅ added M1 |
 | `total_amount` | `total_amount` | ✅ |
 | `payment_status` | `payment_status` | ✅ |
 | `sale_status` | `sale_status` | ✅ |
@@ -147,7 +136,7 @@ File: `backend/app/models/sale.py` · Status: `[~] 🚧`
 
 **`sale_items`**: all doc fields present (`sale_id, product_id, quantity, unit_price, line_total`). ✅
 
-**Action**: Add `subtotal_amount`, `discount_amount`, `tax_amount`, `cashier_id` (FK users). `cashier_id` backfill = `merchants.owner_user_id` for historical rows.
+**Remaining**: Backfill historical `cashier_id = merchants.owner_user_id` (low-priority; only affects pre-M2 rows).
 
 ### A.10 `invoices`
 Status: `[ ] ❌` **Entire table missing.**
@@ -188,23 +177,21 @@ Status: `[ ] ❌` **Entire table missing.**
 Required for §5 messaging. Schema per doc: `business_id, customer_id, channel, template_name, message_body, status, external_reference, related_type, related_id, sent_at`.
 
 ### A.14 `audit_logs`
-File: `backend/app/models/audit_log.py` · Status: `[~] 🚧` (model exists, **zero writes anywhere in the codebase**)
-
-Verified: no file other than the model itself and `models/__init__.py` references `AuditLog(`.
+File: `backend/app/models/audit_log.py` · Status: `[x] ✅` *(M1 complete)*
 
 | Doc field | Our column | Status |
 |---|---|---|
 | `id` | `id` | ✅ |
-| `business_id` | — | ❌ **MISSING** |
+| `business_id` | `business_id` | ✅ added M1 |
 | `user_id` | `actor_user_id` | ✅ (renamed) |
 | `action` | `action` | ✅ |
 | `entity_type` | `entity_type` | ✅ |
 | `entity_id` | `entity_id` | ✅ |
 | `old_values_json` / `new_values_json` | `meta` (single JSONB) | ✅ (combined — acceptable) |
-| `ip_address` | — | ❌ **MISSING** |
-| `user_agent` | — | ❌ **MISSING** |
+| `ip_address` | `ip_address` | ✅ added M1 |
+| `user_agent` | `user_agent` | ✅ added M1 |
 
-**Action**: Add `business_id`, `ip_address`, `user_agent`. Build `audit_service.log()` and call from every mutating service. See §C.3.
+`audit_service.log_audit()` built M1; called from every mutating service (sales, inventory, expenses, receivables). Owner-only read endpoint is M3 backlog.
 
 ### A.15 Indexes required by docs
 Status: `[~] 🚧`
@@ -229,7 +216,7 @@ Status: `[~] 🚧`
 | No inventory reduction without inventory movement row | ✅ (enforced in `sales_service`, `inventory_service`) |
 | No invoice marked paid unless payment verified | N/A (Paystack not built) |
 | All tenant queries filtered by `business_id` | `[~] 🚧` — done manually per-query; no central middleware |
-| Every important mutation writes audit log | `[ ] ❌` — **zero audit writes today** |
+| Every important mutation writes audit log | `[~] 🚧` — writes active on sales/inventory/expenses/receivables (M1). Paystack + role changes pending. |
 
 ### A.17 Tables we have that the docs don't mention (keep)
 - `stores` — multi-location ready (doc assumes 1 business = 1 location)
@@ -261,9 +248,9 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 1.3 | Sales Screen (search, add items, customer, total, pay mode, pay now/later, send receipt) | `[~] 🚧` | `features/sales/` — has first six; **missing send receipt** |
 | 1.4 | Invoice/Debt Screen (customer, outstanding, due, send reminder, status, history) | `[~] 🚧` | `features/debts/` — has customer/outstanding/due/history; **missing send reminder + payment link** |
 | 1.5 | Inventory Screen (list, current stock, reorder warnings, movement history, add/adjust stock) | `[~] 🚧` | `features/inventory/` — has list/stock/reorder/add/adjust; **missing stock movement history UI** |
-| 1.6 | Customers Screen (list, phone, total owed, recent payments, preferred channel, reminder) | `[ ] ❌` | **No dedicated customers screen.** Customer CRUD is embedded inside Debts. Build a standalone customers feature. |
-| 1.7 | Staff Screen (roles, activity, permissions) | `[ ] ❌` | **Not built.** Requires §C.1 RBAC first. |
-| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[ ] ❌` | `features/settings/` folder is empty. |
+| 1.6 | Customers Screen (list, phone, total owed, recent payments, preferred channel, reminder) | `[x] ✅` | Built M3 — `features/customers/` with `CustomersScreen` (list + outstanding badge) and `CustomerDetailScreen` (profile + debt history). Accessible via people icon in Debts header. **Remaining**: send reminder (M5), payment link (M4). |
+| 1.7 | Staff Screen (roles, activity, permissions) | `[x] ✅` | Built M2 — `features/settings/presentation/staff_screen.dart`. Invite, list, change role, deactivate. Accessible from Business Settings sheet. |
+| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[ ] ❌` | `features/settings/` has staff; Paystack screen still missing. |
 | 1.9 | Clickable prototype | `[~] 🚧` | Live app = prototype. Mockups in `mobile/UI UPDATES/`. |
 | 1.10 | Dashboard quick actions: New Sale, **New Invoice**, Record Stock, **Send Reminder**, Add Customer | `[~] 🚧` | Has New Sale and Add Customer. **Missing New Invoice, Record Stock shortcut, Send Reminder shortcut.** |
 | 1.11 | Enterprise UI polish (per `06-ui-design.md` visual tone) | `[~] 🚧` | Dashboard/Inventory/Sales/Debts migrated. **Remaining: Expenses, Auth, Settings, Onboarding.** |
@@ -274,12 +261,12 @@ Per `06-ui-design.md` "Main Screens Needed":
 | # | Task | Status | Notes |
 |---|---|---|---|
 | 2.1 | Backend repo | `[x] ✅` | `backend/` |
-| 2.2 | Mobile repo | `[x] ✅` | `mobile/` — 37 tests green |
-| 2.3 | PostgreSQL | `[x] ✅` | `backend/alembic/versions/` — 4 migrations |
+| 2.2 | Mobile repo | `[x] ✅` | `mobile/` — 37 tests green; 51 backend tests green |
+| 2.3 | PostgreSQL | `[x] ✅` | `backend/alembic/versions/` — 6 migrations |
 | 2.4 | Redis | `[ ] ❌` | Not configured. Blocker for §6 background jobs. |
 | 2.5 | FastAPI structure | `[x] ✅` | Clean layout |
 | 2.6 | Authentication | `[x] ✅` | Phone OTP + PIN (better for Ghana than password) |
-| 2.7 | RBAC / permissions | `[ ] ❌` | Only `merchant_owner` role. No `@require_role`. |
+| 2.7 | RBAC / permissions | `[x] ✅` | M2: 4 roles, `require_role()` dep in `api/deps.py`, staff routes owner-gated. |
 | 2.8 | Tenant middleware | `[~] 🚧` | Per-query `merchant_id` filtering; no central enforcement. Risk: a future endpoint forgets. |
 | 2.9 | Offline-first sync | `[x] ✅` | **Ahead of docs** — `services/sync_service.py` + `features/sync/` |
 
@@ -289,21 +276,21 @@ Per `06-ui-design.md` "Main Screens Needed":
 |---|---|---|---|---|
 | 3.1 | Businesses (merchants) | `[~] 🚧` | `models/merchant.py`, `api/v1/merchants.py` | Schema gap §A.1 (phone, address, etc.) |
 | 3.2 | Stores (branches) | `[x] ✅` | `models/store.py` | Ahead of docs |
-| 3.3 | Users | `[~] 🚧` | `models/user.py` | Schema gap §A.2 (full_name, email, last_login_at) |
-| 3.4 | Roles + user_roles | `[ ] ❌` | — | See §C.1 |
-| 3.5 | Customers | `[~] 🚧` | `models/customer.py` | Schema gap §A.4; no dedicated UI |
+| 3.3 | Users | `[x] ✅` | `models/user.py` | M1+M2: full_name, email, last_login_at, merchant_id, role widened |
+| 3.4 | Roles + user_roles | `[x] ✅` | `models/staff_invite.py`, `core/constants.py` | M2: single-table approach with staff_invites |
+| 3.5 | Customers | `[x] ✅` | `models/customer.py`, `features/customers/` | M1 schema complete; M3: dedicated screen + `GET /receivables/customers/{id}` detail endpoint + `total_outstanding` on list + `whatsapp_number/email/notes` exposed on `CustomerOut` |
 | 3.6 | customer_balances | `[~] 🚧` | Computed | Consider denormalizing at scale |
-| 3.7 | Products (items) | `[~] 🚧` | `models/item.py` | **Missing `cost_price`, `unit`** — §A.6 |
+| 3.7 | Products (items) | `[x] ✅` | `models/item.py` | M1: `cost_price`, `unit` added |
 | 3.8 | stock_items (inventory_balances) | `[x] ✅` | `models/inventory.py` | |
-| 3.9 | inventory_movements | `[x] ✅` | `models/inventory.py` | Add `user_id` when RBAC lands |
-| 3.10 | Sales + sale_items | `[~] 🚧` | `models/sale.py` | Schema gap §A.9 (`subtotal`, `discount`, `tax`, `cashier_id`) |
+| 3.9 | inventory_movements | `[x] ✅` | `models/inventory.py` | M2: `user_id` added |
+| 3.10 | Sales + sale_items | `[x] ✅` | `models/sale.py` | M1+M2: `subtotal`, `discount`, `tax`, `cashier_id` all added |
 | 3.11 | Invoices | `[ ] ❌` | — | See §C.2 decision |
 | 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py` (never written) | Service missing — Phase 4 |
 | 3.13 | payment_provider_connections | `[ ] ❌` | — | Blocker for Paystack |
 | 3.14 | Notifications | `[ ] ❌` | — | Phase 5 |
-| 3.15 | Audit logs | `[~] 🚧` | `models/audit_log.py` (never written) | See §C.3 |
+| 3.15 | Audit logs | `[x] ✅` | `models/audit_log.py`, `services/audit_service.py` | M1: writes on every mutation |
 | 3.16 | Expenses | `[x] ✅` | `models/expense.py` | Ahead of docs |
-| 3.17 | Reports | `[x] ✅` | `services/reports_service.py` | Missing: staff activity; real profit via cost_price |
+| 3.17 | Reports | `[x] ✅` | `services/reports_service.py` | Missing: staff activity. **M3**: gross profit via cost_price snapshot added ✅ |
 
 ### Phase 4 — Payment Integration (Paystack)
 
@@ -363,7 +350,7 @@ Current stubs:
 | 6.4 | Low-stock push / WhatsApp alerts | `[ ] ❌` | Event + Celery |
 | 6.5 | Cashier activity summary report | `[ ] ❌` | Blocked on §A.9 `cashier_id` + §C.1 RBAC |
 | 6.6 | Suspicious action report | `[ ] ❌` | Blocked on §C.3 audit writes |
-| 6.7 | Real profit estimation (via `cost_price`) | `[~] 🚧` | Today = sales − expenses. Need §A.6 cost_price column + per-line cost snapshot on sale_items. |
+| 6.7 | Real profit estimation (via `cost_price`) | `[x] ✅` | M3: `cost_price_snapshot` frozen on `sale_items` at sale time (migration 007). Gross profit = `Σ(unit_price − cost_price_snapshot) × qty` via `_sum_gross_profit` in reports service. Exposed on dashboard summary + period insights. Conditional KPI card in Reports screen (only shown when gross profit > 0). |
 | 6.8 | Redis + Celery setup | `[ ] ❌` | `celery.py` missing, no Docker-compose entry |
 | 6.9 | Celery beat schedule | `[ ] ❌` | For §5.10 / §6.2 / §6.4 |
 | 6.10 | Event bus (sale.created, payment.succeeded, stock.low …) | `[ ] ❌` | `backend/app/events/` folder empty |
@@ -396,19 +383,19 @@ Current stubs:
 
 ## Section C — The Three Structural Gaps (Must-Haves)
 
-### C.1 Staff Roles & RBAC  `[ ] ❌`
+### C.1 Staff Roles & RBAC  `[x] ✅` *(M2 complete)*
 
-Blocks: staff activity reports, meaningful audit logs, multi-user shops.
+All steps done:
+1. `users.merchant_id` FK — staff link added. `users.role` widened to `owner | manager | cashier | stock_keeper`.
+2. `users.full_name` / `email` / `last_login_at` — added M1.
+3. `sales.cashier_id` FK — added M2, populated on every new sale.
+4. `inventory_movements.user_id` FK — added M2, populated on stock-in and adjustments.
+5. Invite flow — `staff_invites` table, `auth_service._accept_pending_invite()` links user on first OTP.
+6. `require_role(*roles)` dependency factory in `api/deps.py`; staff routes are owner-gated.
+7. Mobile Staff screen built at `features/settings/presentation/staff_screen.dart`.
+8. New sales auto-attribute to `cashier_id = current_user.id`. Historical backfill is a low-priority follow-up.
 
-Steps:
-1. Add `users.merchant_id` FK (or create `user_roles` table per doc §A.3). Simpler path: widen existing `users.role` enum to `owner | manager | cashier | stock_keeper` and add `merchant_id`.
-2. Add `users.full_name` / `email` / `last_login_at` (§A.2).
-3. Add `sales.cashier_id` FK (§A.9).
-4. Add `inventory_movements.user_id` FK (§A.8).
-5. "Invite staff" flow: owner enters phone → creates `staff_invite` row → staff signs in via OTP on that phone → completes PIN setup.
-6. `@require_role(…)` decorator on sensitive routes: delete item, adjust stock, connect Paystack, delete debt, void sale, change staff.
-7. Mobile **Staff screen** (`features/settings/presentation/staff_screen.dart`): list users, invite, change role, deactivate.
-8. Attribution fix: every existing sale backfilled to `merchants.owner_user_id` as cashier.
+**Remaining**: Expand `require_role` to cover more sensitive routes (void sale, adjust stock, etc.) as part of future hardening.
 
 ### C.2 Invoice Model Decision  `[ ] ❌`
 
@@ -421,24 +408,17 @@ Docs describe `invoices (invoice_number, status lifecycle, payment_link, provide
 
 **Recommendation: A.** Keep UI unchanged; only external-facing language says "invoice".
 
-### C.3 Audit Log Writes  `[ ] ❌`
+### C.3 Audit Log Writes  `[~] 🚧` *(M1 complete — read endpoint + UI still missing)*
 
-Schema exists, zero writes confirmed via grep across `backend/app/`.
+`services/audit_service.py` built M1. Writes active on:
+- sale create / void (sales_service)
+- inventory stock-in / adjustment / item create / item update (inventory_service)
+- receivable create / payment record (receivables_service)
+- expense create (expense_service)
 
-Steps:
-1. Build `services/audit_service.py` with `log(action, entity_type, entity_id, actor_user_id, meta, business_id=, ip_address=, user_agent=)`.
-2. Add `audit_logs.business_id`, `ip_address`, `user_agent` columns (§A.14).
-3. Call inside the same DB transaction from:
-   - sale create / cancel / void / refund
-   - inventory adjustment (manual, damage, return)
-   - receivable create / edit / delete
-   - receivable payment record / undo
-   - payment connection connect / disconnect
-   - user role change / user deactivation / user invite accepted
-   - expense create / delete
-   - merchant profile edit
-4. Owner-only endpoint `GET /audit-logs` with filters (entity_type, entity_id, actor, date range, action) + paging.
-5. Mobile owner-only **Audit Log screen** (`features/settings/presentation/audit_log_screen.dart`) — timeline view with filters.
+**Remaining (M3 backlog)**:
+4. Owner-only `GET /audit-logs` endpoint with filters + paging.
+5. Mobile **Audit Log screen** (`features/settings/presentation/audit_log_screen.dart`).
 
 ---
 
@@ -446,32 +426,34 @@ Steps:
 
 Each milestone is shippable on its own and unlocks the next.
 
-### M1 — Schema Parity + Inventory Movements + Audit Writes (~1–1.5 weeks)
-Backend-only. No UI changes except audit-log viewer.
+### M1 — Schema Parity + Inventory Movements + Audit Writes  `[x] ✅` *(complete)*
 
-- §A.1 merchants: add phone, whatsapp_number, email, address, city, region, country, currency_code
-- §A.2 users: add full_name, email, last_login_at
-- §A.4 customers: add whatsapp_number, email, address, notes, preferred_contact_channel, is_active
-- §A.6 items: add `cost_price`, `unit`
-- §A.9 sales: add `subtotal_amount`, `discount_amount`, `tax_amount`
-- §A.14 audit_logs: add business_id, ip_address, user_agent
-- §C.3 build `audit_service.log()` + call sites in every mutating service
-- §A.15 composite indexes
+- §A.1 merchants: phone, whatsapp_number, email, address, city, region, country, currency_code ✅
+- §A.2 users: full_name, email, last_login_at ✅
+- §A.4 customers: whatsapp_number, email, address, notes, preferred_contact_channel, is_active ✅
+- §A.6 items: `cost_price`, `unit` ✅
+- §A.9 sales: `subtotal_amount`, `discount_amount`, `tax_amount` ✅
+- §A.14 audit_logs: business_id, ip_address, user_agent ✅
+- §C.3 `audit_service.log_audit()` + call sites in every mutating service ✅
+- §A.15 composite indexes (migration 005) ✅
 
-### M2 — Staff Roles & RBAC (~1.5–2 weeks)
-- §A.9 add `sales.cashier_id`
-- §A.8 add `inventory_movements.user_id`
-- §C.1 widen user roles, add merchant_id FK
-- Invite flow (phone OTP)
-- `@require_role` decorator on sensitive routes
-- Mobile Staff screen
-- Backfill `cashier_id` = owner for historical rows
-- Attribute future sales/movements to actual authenticated user
+### M2 — Staff Roles & RBAC  `[x] ✅` *(complete)*
+
+- §A.9 `sales.cashier_id` — added, populated on every new sale ✅
+- §A.8 `inventory_movements.user_id` — added, populated on stock ops ✅
+- §C.1 roles widened, `users.merchant_id` FK, `staff_invites` table ✅
+- Invite flow: owner invites by phone → staff accepts on first OTP ✅
+- `require_role(*roles)` dependency in `api/deps.py` ✅
+- Mobile Staff screen at `features/settings/presentation/staff_screen.dart` ✅
+- New sales attributed to authenticated user (`cashier_id`) ✅
+- `store_context.get_merchant_and_store()` — unified owner+staff context lookup ✅
 
 ### M3 — Customers Screen + Invoice Extension + Cost-Based Profit (~1 week)
-- §1.6 build standalone Customers feature (`mobile/lib/features/customers/`)
-- §C.2 extend Receivable with `invoice_number`, `payment_link`, `payment_provider_reference`, `created_by_user_id`, `sale_id`, wider status enum
-- §6.7 compute real profit using `cost_price` snapshot on sale_items
+- §1.6 build standalone Customers feature (`mobile/lib/features/customers/`) `[x] ✅` *(done)*
+  - Backend: `CustomerOut` extended with M1 fields + `total_outstanding`; `GET /receivables/customers/{id}` detail endpoint
+  - Mobile: schema v10 migration; `CustomersScreen` + `CustomerDetailScreen`; people icon in Debts header
+- §C.2 extend Receivable with `invoice_number`, `payment_link`, `payment_provider_reference`, `created_by_user_id`, `sale_id`, wider status enum `[ ] ❌`
+- §6.7 compute real profit using `cost_price` snapshot on sale_items `[x] ✅` *(done)*
 
 ### M4 — Paystack Integration (~2–3 weeks)
 The big one. §4.1 through §4.16.
@@ -516,7 +498,7 @@ The big one. §4.1 through §4.16.
 | `backend/app/tasks/` | Build in M5 (Celery task modules) |
 | `backend/app/workers/` | Build in M5 (worker entrypoints) |
 | `mobile/lib/features/payments/` | Build in M4 |
-| `mobile/lib/features/settings/` | Build in M2 (staff) + M4 (Paystack) |
+| `mobile/lib/features/settings/` | Staff screen built M2 ✅. Paystack screen still M4. |
 | `mobile/lib/features/sync/` | Empty — sync logic lives in `core/`. Delete this folder. |
 
 ---
@@ -560,7 +542,7 @@ Original list vs. current reality:
 | # | Original | Revised |
 |---|---|---|
 | 1 | Auth + tenant | ✅ Done |
-| 2 | Customers | ✅ Done (embedded) — M3 standalone |
+| 2 | Customers | ✅ Done — M3 standalone screen built (`features/customers/`) |
 | 3 | Products + stock | ✅ Done — M1 adds cost_price/unit |
 | 4 | Sales | ✅ Done — M1 adds subtotal/discount/tax; M2 adds cashier_id |
 | 5 | Invoices + debt | ✅ Done (as receivables) — M3 extends with invoice fields |

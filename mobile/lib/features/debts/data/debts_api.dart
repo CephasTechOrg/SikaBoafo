@@ -7,17 +7,51 @@ class DebtCustomerDto {
     required this.customerId,
     required this.name,
     this.phoneNumber,
+    this.whatsappNumber,
+    this.email,
+    this.notes,
+    this.totalOutstanding = '0.00',
   });
 
   final String customerId;
   final String name;
   final String? phoneNumber;
+  final String? whatsappNumber;
+  final String? email;
+  final String? notes;
+  final String totalOutstanding;
 
   factory DebtCustomerDto.fromJson(Map<String, dynamic> json) {
     return DebtCustomerDto(
       customerId: (json['customer_id'] ?? '') as String,
       name: (json['name'] ?? '') as String,
       phoneNumber: json['phone_number'] as String?,
+      whatsappNumber: json['whatsapp_number'] as String?,
+      email: json['email'] as String?,
+      notes: json['notes'] as String?,
+      totalOutstanding: '${json['total_outstanding'] ?? '0.00'}',
+    );
+  }
+}
+
+class CustomerDetailDto {
+  const CustomerDetailDto({
+    required this.customer,
+    required this.receivables,
+  });
+
+  final DebtCustomerDto customer;
+  final List<ReceivableDto> receivables;
+
+  factory CustomerDetailDto.fromJson(Map<String, dynamic> json) {
+    return CustomerDetailDto(
+      customer: DebtCustomerDto.fromJson(
+        json['customer'] as Map<String, dynamic>? ?? {},
+      ),
+      receivables: (json['receivables'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(ReceivableDto.fromJson)
+          .toList(growable: false),
     );
   }
 }
@@ -32,6 +66,8 @@ class ReceivableDto {
     required this.status,
     required this.createdAtIso,
     this.dueDateIso,
+    this.invoiceNumber,
+    this.paymentLink,
   });
 
   final String receivableId;
@@ -42,6 +78,8 @@ class ReceivableDto {
   final String status;
   final String createdAtIso;
   final String? dueDateIso;
+  final String? invoiceNumber;
+  final String? paymentLink;
 
   factory ReceivableDto.fromJson(Map<String, dynamic> json) {
     return ReceivableDto(
@@ -53,6 +91,8 @@ class ReceivableDto {
       status: (json['status'] ?? 'open') as String,
       createdAtIso: (json['created_at'] ?? '') as String,
       dueDateIso: json['due_date'] as String?,
+      invoiceNumber: json['invoice_number'] as String?,
+      paymentLink: json['payment_link'] as String?,
     );
   }
 }
@@ -77,6 +117,17 @@ class DebtsApi {
         .toList(growable: false);
   }
 
+  Future<CustomerDetailDto> fetchCustomerDetail(String customerId) async {
+    final response = await _apiClient.dio.get<dynamic>(
+      '/receivables/customers/$customerId',
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected customer detail payload.');
+    }
+    return CustomerDetailDto.fromJson(data);
+  }
+
   Future<List<ReceivableDto>> fetchReceivables({int limit = 100}) async {
     final response = await _apiClient.dio.get<dynamic>(
       '/receivables',
@@ -90,6 +141,17 @@ class DebtsApi {
         .whereType<Map<String, dynamic>>()
         .map(ReceivableDto.fromJson)
         .toList(growable: false);
+  }
+
+  Future<ReceivableDto> cancelReceivable(String receivableId) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/receivables/$receivableId/cancel',
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected cancel payload.');
+    }
+    return ReceivableDto.fromJson(data);
   }
 }
 

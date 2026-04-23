@@ -16,10 +16,10 @@ from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
 from app.models.item import Item
-from app.models.merchant import Merchant
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
+from app.services.store_context import StoreContextError, get_merchant_and_store
 
 _MONEY_SCALE = Decimal("0.01")
 
@@ -36,6 +36,7 @@ class ReportSummarySnapshot:
     today_sales_total: Decimal
     today_expenses_total: Decimal
     today_estimated_profit: Decimal
+    today_gross_profit: Decimal
     debt_outstanding_total: Decimal
     low_stock_count: int
 
@@ -47,6 +48,8 @@ class ReportActivitySnapshot:
     detail: str
     amount: Decimal
     created_at: datetime
+    item_id: str | None = None
+    item_name: str | None = None
 
 
 @dataclass(slots=True)
@@ -56,6 +59,7 @@ class ReportPeriodSnapshot:
     sales_total: Decimal
     expenses_total: Decimal
     estimated_profit: Decimal
+    gross_profit: Decimal
 
 
 @dataclass(slots=True)
@@ -111,6 +115,11 @@ class ReportsService:
             end_utc=period_end_utc,
         )
         profit = self._money(sales_total - expenses_total)
+        gross_profit = self._sum_gross_profit(
+            store_id=store.id,
+            start_utc=period_start_utc,
+            end_utc=period_end_utc,
+        )
         debt_total = self._sum_debt_outstanding(store_id=store.id)
         low_stock_count = self._count_low_stock(store_id=store.id)
 
@@ -121,6 +130,7 @@ class ReportsService:
             today_sales_total=sales_total,
             today_expenses_total=expenses_total,
             today_estimated_profit=profit,
+            today_gross_profit=gross_profit,
             debt_outstanding_total=debt_total,
             low_stock_count=low_stock_count,
         )
@@ -189,19 +199,10 @@ class ReportsService:
         )
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
-        merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
-        if merchant is None:
-            msg = "Merchant profile not found."
-            raise ReportContextMissingError(msg)
-        store = self.db.scalar(
-            select(Store).where(
-                Store.merchant_id == merchant.id,
-                Store.is_default.is_(True),
-            )
-        )
-        if store is None:
-            msg = "Default store not found."
-            raise ReportContextMissingError(msg)
+        try:
+            _, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise ReportContextMissingError(str(exc)) from exc
         return store
 
     def _sum_sales(self, *, store_id: UUID, start_utc: datetime, end_utc: datetime) -> Decimal:
@@ -221,6 +222,30 @@ class ReportsService:
                 Expense.store_id == store_id,
                 Expense.created_at >= start_utc,
                 Expense.created_at < end_utc,
+            )
+        )
+        return self._money(value or Decimal("0.00"))
+
+    def _sum_gross_profit(
+        self, *, store_id: UUID, start_utc: datetime, end_utc: datetime
+    ) -> Decimal:
+        value = self.db.scalar(
+            select(
+                func.coalesce(
+                    func.sum(
+                        (SaleItem.unit_price - SaleItem.cost_price_snapshot) * SaleItem.quantity
+                    ),
+                    Decimal("0.00"),
+                )
+            )
+            .select_from(SaleItem)
+            .join(Sale, Sale.id == SaleItem.sale_id)
+            .where(
+                Sale.store_id == store_id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.created_at >= start_utc,
+                Sale.created_at < end_utc,
+                SaleItem.cost_price_snapshot.is_not(None),
             )
         )
         return self._money(value or Decimal("0.00"))
@@ -261,12 +286,18 @@ class ReportsService:
             start_utc=start_utc,
             end_utc=end_utc,
         )
+        gross_profit = self._sum_gross_profit(
+            store_id=store_id,
+            start_utc=start_utc,
+            end_utc=end_utc,
+        )
         return ReportPeriodSnapshot(
             period_start_utc=start_utc,
             period_end_utc=end_utc,
             sales_total=sales_total,
             expenses_total=expenses_total,
             estimated_profit=self._money(sales_total - expenses_total),
+            gross_profit=gross_profit,
         )
 
     def _payment_breakdown(
@@ -348,8 +379,21 @@ class ReportsService:
         ]
 
     def _recent_sales(self, *, store_id: UUID, limit: int) -> list[ReportActivitySnapshot]:
+        # Correlated subquery: picks one item_id for each sale (first alphabetically by item_id)
+        first_item_id_sq = (
+            select(SaleItem.item_id)
+            .where(SaleItem.sale_id == Sale.id)
+            .limit(1)
+            .correlate(Sale)
+            .scalar_subquery()
+        )
         rows = self.db.execute(
-            select(Sale.total_amount, Sale.payment_method_label, Sale.created_at)
+            select(
+                Sale.total_amount,
+                Sale.payment_method_label,
+                Sale.created_at,
+                first_item_id_sq.label("first_item_id"),
+            )
             .where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
@@ -357,15 +401,29 @@ class ReportsService:
             .order_by(Sale.created_at.desc())
             .limit(limit)
         ).all()
+
+        # Batch-fetch item names for the collected item IDs
+        item_ids = [r.first_item_id for r in rows if r.first_item_id]
+        item_name_map: dict = {}
+        if item_ids:
+            item_rows = self.db.execute(
+                select(Item.id, Item.name).where(Item.id.in_(item_ids))
+            ).all()
+            item_name_map = {str(r.id): r.name for r in item_rows}
+
         return [
             ReportActivitySnapshot(
                 activity_type="sale",
-                title="Sale recorded",
-                detail=self._labelize_payment_method(payment_method_label),
-                amount=self._money(total_amount),
-                created_at=created_at,
+                title=item_name_map.get(str(r.first_item_id), "Sale recorded")
+                if r.first_item_id
+                else "Sale recorded",
+                detail=self._labelize_payment_method(r.payment_method_label),
+                amount=self._money(r.total_amount),
+                created_at=r.created_at,
+                item_id=str(r.first_item_id) if r.first_item_id else None,
+                item_name=item_name_map.get(str(r.first_item_id)) if r.first_item_id else None,
             )
-            for total_amount, payment_method_label, created_at in rows
+            for r in rows
         ]
 
     def _recent_expenses(self, *, store_id: UUID, limit: int) -> list[ReportActivitySnapshot]:

@@ -12,6 +12,7 @@ from app.models.merchant import Merchant
 from app.models.payment import Payment
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
+from app.models.staff_invite import StaffInvite
 from app.models.store import Store
 from app.models.sync_operation import SyncOperation
 from app.models.user import User
@@ -29,6 +30,7 @@ __all__ = [
     "ReceivablePayment",
     "Sale",
     "SaleItem",
+    "StaffInvite",
     "Store",
     "SyncOperation",
     "User",

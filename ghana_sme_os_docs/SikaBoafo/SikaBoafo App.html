@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SikaBoafo — App Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:#0F1724;overflow:hidden}
+.sb-hide{scrollbar-width:none}.sb-hide::-webkit-scrollbar{display:none}
+
+/* Phone shell */
+#phone-wrap{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 40% 30%, #1D2E50 0%, #0F1724 70%);
+}
+#phone{
+  width:390px;height:844px;border-radius:52px;
+  background:#1A2744;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 40px 120px rgba(0,0,0,.7), 0 0 0 10px #111827, 0 0 0 11px rgba(255,255,255,.06);
+  overflow:hidden;position:relative;
+  display:flex;flex-direction:column;
+}
+/* Status bar */
+#status-bar{
+  height:44px;background:#1A2744;display:flex;align-items:center;
+  justify-content:space-between;padding:0 28px 0 24px;
+  flex-shrink:0;position:relative;z-index:10;
+}
+.sb-time{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);font-family:'Plus Jakarta Sans',sans-serif}
+.sb-icons{display:flex;align-items:center;gap:5px}
+/* Dynamic island */
+#island{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:120px;height:34px;background:#000;border-radius:20px;z-index:20;
+}
+/* Screen content */
+#screen-content{flex:1;overflow:hidden;position:relative}
+.screen-enter{animation:slideUp .25s cubic-bezier(.25,.46,.45,.94) forwards}
+@keyframes slideUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* Tweaks panel */
+#tweaks-panel{
+  display:none;position:fixed;bottom:24px;right:24px;
+  background:#fff;border-radius:20px;padding:22px;
+  box-shadow:0 12px 50px rgba(0,0,0,.22);z-index:9999;
+  width:270px;font-family:'DM Sans',sans-serif;
+  border:1px solid rgba(0,0,0,.06);
+}
+#tweaks-panel.open{display:block}
+.tw-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.tw-title{font-weight:800;font-size:16px;color:#1A202C;font-family:'Plus Jakarta Sans',sans-serif}
+.tw-close{border:none;background:none;cursor:pointer;font-size:20px;color:#8892A4;line-height:1;padding:2px 6px;border-radius:8px}
+.tw-close:hover{background:#F0F2F6}
+.tw-lbl{font-size:10px;font-weight:700;color:#8892A4;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+.tw-lbl:first-of-type{margin-top:0}
+.tw-inp{width:100%;padding:9px 12px;border-radius:10px;border:1.5px solid #E4E7EE;font-family:inherit;font-size:13px;color:#1A202C;background:#F6F7FA;outline:none}
+.tw-inp:focus{border-color:#1A2744}
+.tog-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:10px;border:1.5px solid #E4E7EE;background:#F6F7FA;cursor:pointer}
+.tog-dot{width:40px;height:22px;border-radius:11px;background:#C8CEDB;position:relative;transition:background .2s;flex-shrink:0}
+.tog-dot.on{background:#1D7A4E}
+.tog-dot::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tog-dot.on::after{transform:translateX(18px)}
+
+/* Responsive: on small screens, fill the viewport */
+@media(max-height:900px),(max-width:440px){
+  #phone{width:100vw;height:100vh;border-radius:0;box-shadow:none}
+  #phone-wrap{background:#1A2744}
+}
+</style>
+</head>
+<body>
+
+<script type="text/babel" src="sb-shared.jsx"></script>
+<script type="text/babel" src="sb-home.jsx"></script>
+<script type="text/babel" src="sb-sales.jsx"></script>
+<script type="text/babel" src="sb-debt.jsx"></script>
+<script type="text/babel" src="sb-stock.jsx"></script>
+<script type="text/babel" src="sb-reports.jsx"></script>
+
+<div id="phone-wrap">
+  <div id="phone">
+    <!-- Dynamic island -->
+    <div id="island"></div>
+    <!-- Status bar -->
+    <div id="status-bar">
+      <span class="sb-time" id="sb-clock">9:41</span>
+      <div class="sb-icons">
+        <!-- signal -->
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="rgba(255,255,255,.75)">
+          <rect x="0" y="8" width="3" height="4" rx="0.5"/>
+          <rect x="4.5" y="5.5" width="3" height="6.5" rx="0.5"/>
+          <rect x="9" y="3" width="3" height="9" rx="0.5"/>
+          <rect x="13.5" y="0" width="3" height="12" rx="0.5"/>
+        </svg>
+        <!-- wifi -->
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="rgba(255,255,255,.75)" strokeWidth="1.4" strokeLinecap="round">
+          <path d="M1 4c3.8-3.8 10.2-3.8 14 0"/>
+          <path d="M3.5 6.5c2.5-2.5 6.5-2.5 9 0"/>
+          <path d="M6 9c1.1-1.1 3-1.1 4 0"/>
+          <circle cx="8" cy="11" r="1" fill="rgba(255,255,255,.75)" stroke="none"/>
+        </svg>
+        <!-- battery -->
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+          <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="rgba(255,255,255,.5)" strokeWidth="1"/>
+          <rect x="2" y="2" width="16" height="8" rx="2" fill="rgba(255,255,255,.8)"/>
+          <path d="M23 4v4a2 2 0 000-4z" fill="rgba(255,255,255,.4)"/>
+        </svg>
+      </div>
+    </div>
+    <!-- App content rendered here -->
+    <div id="screen-content">
+      <div id="root" style="height:100%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tweaks panel (outside phone frame) -->
+<div id="tweaks-panel">
+  <div class="tw-h">
+    <span class="tw-title">Tweaks</span>
+    <button class="tw-close" onclick="document.getElementById('tweaks-panel').classList.remove('open')">&times;</button>
+  </div>
+  <div class="tw-lbl">Merchant Name</div>
+  <input id="tw-name" class="tw-inp" value="Ama Asante" oninput="window.__tw&&window.__tw.name(this.value)"/>
+  <div class="tw-lbl">Business Type</div>
+  <select id="tw-biz" class="tw-inp" style="cursor:pointer" onchange="window.__tw&&window.__tw.biz(this.value)">
+    <option>Pharmacy</option>
+    <option>Provision Store</option>
+    <option>Electrical Shop</option>
+    <option>Agro-Input Store</option>
+    <option>Fashion Wholesale</option>
+  </select>
+  <div class="tw-lbl">Today's Sales (₵)</div>
+  <input id="tw-sales" type="range" min="500" max="20000" step="50" value="4850" style="width:100%;accent-color:#1A2744" oninput="window.__tw&&window.__tw.sales(this.value)"/>
+  <div style="text-align:right;font-size:11px;color:#8892A4;margin-top:2px" id="tw-sales-lbl">₵4,850</div>
+  <div class="tw-lbl">Twi Greetings</div>
+  <div class="tog-row" onclick="window.__tw&&window.__tw.twi()">
+    <span style="font-size:13px;color:#1A202C">Show Twi phrases</span>
+    <div id="tw-tog" class="tog-dot on"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo, useRef} = React;
+
+const APP_DATA = {
+  name:'Ama Asante', biz:'Pharmacy', sales:4850, salesYest:3920,
+  greet:'Akwaaba!', unpaid:1240, unpaidN:4, lowStock:3, staff:2,
+  activity:[
+    {label:'Kofi Agyemang paid',          amt:480,  time:'2m ago',   st:'paid'},
+    {label:'Akosua Boateng owes',         amt:300,  time:'18m ago',  st:'debt'},
+    {label:'Cash sale recorded',          amt:120,  time:'45m ago',  st:'paid'},
+    {label:'Low stock: Paracetamol',      amt:null, time:'1h ago',   st:'warn'},
+    {label:'Kwame Mensah paid via MoMo',  amt:650,  time:'2h ago',   st:'paid'},
+  ],
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "merchantName": "Ama Asante",
+  "businessType": "Pharmacy",
+  "salesAmount": 4850,
+  "showTwi": true
+}/*EDITMODE-END*/;
+
+const SCREENS = {
+  home:    HomeScreen,
+  sales:   SalesScreen,
+  debt:    DebtScreen,
+  stock:   StockScreen,
+  reports: ReportsScreen,
+};
+
+// Live clock
+function useClock() {
+  const [t, setT] = useState('');
+  useEffect(()=>{
+    const tick = () => {
+      const d = new Date();
+      const h = d.getHours().toString().padStart(2,'0');
+      const m = d.getMinutes().toString().padStart(2,'0');
+      setT(`${h}:${m}`);
+      document.getElementById('sb-clock').textContent = `${h}:${m}`;
+    };
+    tick();
+    const id = setInterval(tick, 10000);
+    return ()=>clearInterval(id);
+  },[]);
+}
+
+function App() {
+  useClock();
+  const [screen, setScreen] = useState(()=>localStorage.getItem('sb_screen')||'home');
+  const [tw, setTw] = useState(()=>{
+    try{return{...TWEAK_DEFAULTS,...JSON.parse(localStorage.getItem('sb_tw')||'{}')};}
+    catch{return TWEAK_DEFAULTS;}
+  });
+  const prevScreen = useRef(screen);
+  const [animKey, setAnimKey] = useState(0);
+
+  useEffect(()=>{ localStorage.setItem('sb_screen', screen); },[screen]);
+  useEffect(()=>{ localStorage.setItem('sb_tw', JSON.stringify(tw)); },[tw]);
+
+  const navigate = (s) => {
+    if(s===screen) return;
+    prevScreen.current = screen;
+    setAnimKey(k=>k+1);
+    setScreen(s);
+  };
+
+  // Sync tweaks UI
+  useEffect(()=>{
+    const n = document.getElementById('tw-name');
+    const b = document.getElementById('tw-biz');
+    const s = document.getElementById('tw-sales');
+    const sl = document.getElementById('tw-sales-lbl');
+    const t = document.getElementById('tw-tog');
+    if(n) n.value = tw.merchantName;
+    if(b) b.value = tw.businessType;
+    if(s) s.value = tw.salesAmount;
+    if(sl) sl.textContent = '\u20B5' + Number(tw.salesAmount).toLocaleString('en-GH',{maximumFractionDigits:0});
+    if(t) t.className = 'tog-dot'+(tw.showTwi?' on':'');
+  },[tw]);
+
+  useEffect(()=>{
+    window.__tw = {
+      name: v => { setTw(t=>({...t,merchantName:v})); window.parent.postMessage({type:'__edit_mode_set_keys',edits:{merchantName:v}},'*'); },
+      biz:  v => { setTw(t=>({...t,businessType:v})); window.parent.postMessage({type:'__edit_mode_set_keys',edits:{businessType:v}},'*'); },
+      sales: v => { setTw(t=>({...t,salesAmount:+v})); const sl=document.getElementById('tw-sales-lbl'); if(sl) sl.textContent='\u20B5'+Number(v).toLocaleString('en-GH',{maximumFractionDigits:0}); },
+      twi: () => setTw(t=>({...t,showTwi:!t.showTwi})),
+    };
+    const handler = e => {
+      if(e.data?.type==='__activate_edit_mode')   document.getElementById('tweaks-panel').classList.add('open');
+      if(e.data?.type==='__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('open');
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return ()=>window.removeEventListener('message', handler);
+  },[]);
+
+  const data = useMemo(()=>({
+    ...APP_DATA,
+    name: tw.merchantName,
+    biz:  tw.businessType,
+    sales: tw.salesAmount,
+    greet: tw.showTwi ? 'Akwaaba!' : 'Welcome,',
+  }),[tw]);
+
+  const Screen = SCREENS[screen];
+
+  return (
+    <div key={animKey} className="screen-enter" style={{height:'100%'}}>
+      <Screen data={data} onNav={navigate}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

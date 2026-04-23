@@ -34,6 +34,7 @@ def get_summary(
         today_sales_total=summary.today_sales_total,
         today_expenses_total=summary.today_expenses_total,
         today_estimated_profit=summary.today_estimated_profit,
+        today_gross_profit=summary.today_gross_profit,
         debt_outstanding_total=summary.debt_outstanding_total,
         low_stock_count=summary.low_stock_count,
     )
@@ -57,6 +58,8 @@ def list_recent_activity(
             detail=row.detail,
             amount=row.amount,
             created_at=row.created_at,
+            item_id=row.item_id,
+            item_name=row.item_name,
         )
         for row in rows
     ]
@@ -86,6 +89,7 @@ def get_insights(
             "sales_total": insights.week.sales_total,
             "expenses_total": insights.week.expenses_total,
             "estimated_profit": insights.week.estimated_profit,
+            "gross_profit": insights.week.gross_profit,
         },
         month={
             "period_start_utc": insights.month.period_start_utc,
@@ -93,6 +97,7 @@ def get_insights(
             "sales_total": insights.month.sales_total,
             "expenses_total": insights.month.expenses_total,
             "estimated_profit": insights.month.estimated_profit,
+            "gross_profit": insights.month.gross_profit,
         },
         monthly_payment_breakdown=[
             {

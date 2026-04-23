@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SikaBoafo — Dashboard Explorations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#EDEAE4;font-family:'DM Sans',sans-serif}
+.sb-hide{scrollbar-width:none}.sb-hide::-webkit-scrollbar{display:none}
+#tweaks-panel{display:none;position:fixed;bottom:20px;right:20px;background:#fff;border-radius:16px;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:9999;width:260px;font-family:'DM Sans',sans-serif}
+#tweaks-panel.open{display:block}
+.tw-lbl{font-size:11px;font-weight:600;color:#8892A4;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+.tw-lbl:first-of-type{margin-top:0}
+.tw-sel,.tw-input{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #E4E7EE;font-family:inherit;font-size:13px;color:#1A202C;background:#F6F7FA}
+.tog-wrap{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;border:1.5px solid #E4E7EE;background:#F6F7FA;cursor:pointer}
+.tog-dot{width:38px;height:22px;border-radius:11px;background:#C8CEDB;position:relative;transition:background .2s;flex-shrink:0}
+.tog-dot.on{background:#1D7A4E}
+.tog-dot::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog-dot.on::after{transform:translateX(16px)}
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<div id="root"></div>
+<div id="tweaks-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <span style="font-weight:700;font-size:15px;color:#1A202C">Tweaks</span>
+    <button onclick="document.getElementById('tweaks-panel').classList.remove('open')" style="border:none;background:none;cursor:pointer;font-size:20px;color:#8892A4;line-height:1">&times;</button>
+  </div>
+  <div class="tw-lbl">Merchant Name</div>
+  <input id="tw-name" class="tw-input" value="Ama Asante" oninput="window.__tw&&window.__tw.name(this.value)"/>
+  <div class="tw-lbl">Business Type</div>
+  <select id="tw-biz" class="tw-sel" onchange="window.__tw&&window.__tw.biz(this.value)">
+    <option>Pharmacy</option><option>Provision Store</option><option>Electrical Shop</option><option>Agro-Input Store</option><option>Fashion Wholesale</option>
+  </select>
+  <div class="tw-lbl">Today's Sales (GHS)</div>
+  <input id="tw-sales" type="range" min="500" max="20000" step="50" value="4850" style="width:100%" oninput="window.__tw&&window.__tw.sales(this.value)"/>
+  <div class="tw-lbl">Twi Greetings</div>
+  <div class="tog-wrap" onclick="window.__tw&&window.__tw.twi()">
+    <span style="font-size:13px;color:#1A202C">Show Twi phrases</span>
+    <div id="tw-tog" class="tog-dot on"></div>
+  </div>
+</div>
+
+<script type="text/babel">
+const {useState,useEffect,useMemo} = React;
+
+// Brand tokens
+const B = {
+  navy:'#1A2744', navyM:'#243459', navyL:'#2D4070',
+  green:'#1D7A4E', greenM:'#2A9960', greenL:'#E8F5EE',
+  gold:'#C49A2A', goldL:'#FDF4DC',
+  red:'#D94040', redL:'#FEF0F0',
+  white:'#FFFFFF', bg:'#F6F7FA',
+  g50:'#F0F2F6', g100:'#E4E7EE', g200:'#C8CEDB',
+  g400:'#8892A4', g600:'#4A5568', g900:'#1A202C',
+};
+
+// Data factory
+const mkData = (name, biz, sales, twi) => ({
+  name, biz,
+  greet: twi ? 'Akwaaba!' : 'Welcome,',
+  sales: +sales,
+  salesYest: 3920,
+  unpaid: 1240, unpaidN: 4,
+  lowStock: 3, staff: 2,
+  tops: [
+    {name:'Paracetamol 500mg', sold:42, rev:210},
+    {name:'Nivea Body Lotion', sold:18, rev:432},
+    {name:'Milo 400g', sold:15, rev:300},
+    {name:'Omo Detergent 1kg', sold:11, rev:165},
+  ],
+  activity: [
+    {label:'Kofi Agyemang paid', amt:480, time:'2m ago', st:'paid'},
+    {label:'Akosua Boateng owes', amt:300, time:'18m ago', st:'debt'},
+    {label:'Cash sale recorded', amt:120, time:'45m ago', st:'paid'},
+    {label:'Low stock: Paracetamol', amt:null, time:'1h ago', st:'warn'},
+    {label:'Kwame Mensah paid via MoMo', amt:650, time:'2h ago', st:'paid'},
+  ],
+});
+
+// Tiny icon set (SVG paths only)
+const PATHS = {
+  chart:<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>,
+  wallet:<><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a1 1 0 00-1 1v3h10V4a1 1 0 00-1-1z"/><circle cx="16" cy="14" r="1.2" fill="currentColor" stroke="none"/></>,
+  package:<><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></>,
+  users:<><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></>,
+  bell:<><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></>,
+  receipt:<><path d="M4 2v20l4-3 4 3 4-3 4 3V2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></>,
+  send:<><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+  home:<><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
+  alert:<><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+  check:<polyline points="20 6 9 17 4 12"/>,
+  chevR:<polyline points="9 18 15 12 9 6"/>,
+  trending:<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>,
+};
+const Ic = ({n,s=20,c='currentColor',w=1.8}) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+    {PATHS[n]}
+  </svg>
+);
+
+// Currency formatter
+const ghs = (v) => '\u20B5' + Number(v).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ghsShort = (v) => '\u20B5' + Number(v).toLocaleString('en-GH',{maximumFractionDigits:0});
+
+// Bottom nav
+const BottomNav = ({dark=false}) => {
+  const items = [{i:'home',l:'Home'},{i:'receipt',l:'Sales'},{i:'package',l:'Stock'},{i:'users',l:'Customers'}];
+  return (
+    <div style={{background:dark?B.navyM:B.white,borderTop:dark?'none':`1px solid ${B.g100}`,display:'flex',padding:'8px 0 4px',flexShrink:0}}>
+      {items.map((it,i)=>(
+        <div key={i} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2,paddingTop:4,cursor:'pointer'}}>
+          <div style={{width:28,height:3,borderRadius:2,background:i===0?B.gold:'transparent',marginBottom:3}}/>
+          <Ic n={it.i} s={22} c={i===0?(dark?B.gold:B.navy):(dark?'rgba(255,255,255,.35)':B.g400)}/>
+          <span style={{fontSize:10,fontWeight:i===0?700:400,color:i===0?(dark?B.gold:B.navy):(dark?'rgba(255,255,255,.35)':B.g400),fontFamily:'Plus Jakarta Sans,sans-serif'}}>{it.l}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Mini sparkline
+const Spark = ({up}) => {
+  const pts = up?'0,28 8,22 16,14 24,8 32,4 40,1':'0,1 8,5 16,11 24,16 32,22 40,28';
+  return <svg width="40" height="30" viewBox="0 0 40 30"><polyline points={pts} fill="none" stroke={up?'#6EE7B7':'#FCA5A5'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+};
+
+// Ring chart
+const Ring = ({val,max}) => {
+  const r=28,c=36,sw=6,circ=2*Math.PI*r,pct=Math.min(val/max,1);
+  return (
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={sw}/>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={B.gold} strokeWidth={sw}
+        strokeDasharray={circ} strokeDashoffset={circ*(1-pct)}
+        strokeLinecap="round" transform={`rotate(-90 ${c} ${c})`}/>
+      <text x={c} y={c+4} textAnchor="middle" fill="white" fontSize="11" fontWeight="700" fontFamily="Plus Jakarta Sans,sans-serif">{Math.round(pct*100)}%</text>
+    </svg>
+  );
+};
+
+// ─────────────────────────────────────────────────────────
+// A · Command Center
+// ─────────────────────────────────────────────────────────
+function DashA({d}) {
+  const up = d.sales >= d.salesYest;
+  const pct = Math.abs((d.sales-d.salesYest)/d.salesYest*100).toFixed(1);
+  const initials = d.name.split(' ').map(w=>w[0]).join('');
+  return (
+    <div style={{background:B.bg,height:'100%',display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:'DM Sans,sans-serif'}}>
+      {/* Header */}
+      <div style={{background:B.navy,padding:'16px 20px 20px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.5)',fontWeight:500,marginBottom:2}}>{d.greet}</div>
+            <div style={{fontSize:18,fontWeight:700,fontFamily:'Plus Jakarta Sans,sans-serif',color:'#fff'}}>{d.name} 👋</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:1}}>{d.biz}</div>
+          </div>
+          <div style={{display:'flex',gap:12,alignItems:'center'}}>
+            <div style={{position:'relative',cursor:'pointer'}}>
+              <Ic n="bell" s={20} c="rgba(255,255,255,.6)"/>
+              <div style={{position:'absolute',top:-2,right:-2,width:8,height:8,borderRadius:4,background:B.gold,border:`1.5px solid ${B.navy}`}}/>
+            </div>
+            <div style={{width:36,height:36,borderRadius:18,background:B.gold,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:B.navy,fontFamily:'Plus Jakarta Sans,sans-serif'}}>{initials}</div>
+          </div>
+        </div>
+        {/* Hero card */}
+        <div style={{background:'rgba(255,255,255,.08)',borderRadius:16,padding:'16px 18px',border:'1px solid rgba(255,255,255,.1)'}}>
+          <div style={{fontSize:10,color:'rgba(255,255,255,.45)',fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:6}}>Sales Today</div>
+          <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between'}}>
+            <div>
+              <div style={{fontSize:32,fontWeight:800,fontFamily:'Plus Jakarta Sans,sans-serif',color:'#fff',lineHeight:1}}>{ghs(d.sales)}</div>
+              <div style={{marginTop:8}}>
+                <span style={{background:up?'rgba(45,180,100,.2)':'rgba(220,50,50,.2)',color:up?'#6EE7B7':'#FCA5A5',borderRadius:100,padding:'3px 10px',fontSize:11,fontWeight:700}}>
+                  {up?'▲':'▼'} {pct}% vs yesterday
+                </span>
+              </div>
+            </div>
+            <div style={{opacity:.5}}><Spark up={up}/></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{flex:1,overflow:'auto',padding:'0 16px 16px'}} className="sb-hide">
+        {/* Stat pills */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,margin:'16px 0'}}>
+          {[
+            {label:'Unpaid',value:ghsShort(d.unpaid),sub:`${d.unpaidN} customers`,color:B.gold,icon:'wallet'},
+            {label:'Low Stock',value:d.lowStock,sub:'items',color:B.red,icon:'alert'},
+            {label:'Staff On',value:d.staff,sub:'active now',color:B.green,icon:'users'},
+          ].map((s,i)=>(
+            <div key={i} style={{background:B.white,borderRadius:14,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+              <div style={{width:30,height:30,borderRadius:10,background:s.color+'18',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:8}}>
+                <Ic n={s.icon} s={15} c={s.color}/>
+              </div>
+              <div style={{fontSize:15,fontWeight:700,fontFamily:'Plus Jakarta Sans,sans-serif',color:B.g900,lineHeight:1}}>{s.value}</div>
+              <div style={{fontSize:10,color:B.g400,marginTop:3,lineHeight:1.4}}>{s.label}<br/><span style={{fontSize:9}}>{s.sub}</span></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick actions */}
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:B.g400,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:10}}>Quick Actions</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+            {[
+              {label:'New Sale',icon:'receipt',color:B.navy},
+              {label:'Invoice',icon:'send',color:B.green},
+              {label:'Stock',icon:'package',color:B.gold},
+              {label:'Remind',icon:'bell',color:B.red},
+            ].map((a,i)=>(
+              <div key={i} style={{background:B.white,borderRadius:14,padding:'12px 6px',display:'flex',flexDirection:'column',alignItems:'center',gap:7,cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+                <div style={{width:38,height:38,borderRadius:12,background:a.color+'12',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic n={a.icon} s={18} c={a.color}/>
+                </div>
+                <span style={{fontSize:10,fontWeight:600,color:B.g600,textAlign:'center',lineHeight:1.2}}>{a.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top products */}
+        <div style={{background:B.white,borderRadius:16,padding:16,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <span style={{fontSize:13,fontWeight:700,color:B.g900,fontFamily:'Plus Jakarta Sans,sans-serif'}}>Top Sellers Today</span>
+            <span style={{fontSize:11,color:B.green,fontWeight:600}}>See all</span>
+          </div>
+          {d.tops.slice(0,3).map((p,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:12,paddingBottom:i<2?12:0,marginBottom:i<2?12:0,borderBottom:i<2?`1px solid ${B.g50}`:'none'}}>
+              <div style={{width:28,height:28,borderRadius:8,background:[B.navy,B.green,B.gold][i]+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:[B.navy,B.green,B.gold][i],flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:B.g900,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
+                <div style={{fontSize:10,color:B.g400,marginTop:1}}>{p.sold} sold</div>
+              </div>
+              <div style={{fontSize:12,fontWeight:700,color:B.green}}>{ghsShort(p.rev)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Debt alert */}
+        <div style={{background:B.goldL,borderRadius:14,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,border:`1px solid ${B.gold}30`}}>
+          <div style={{width:36,height:36,borderRadius:12,background:B.gold+'25',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <Ic n="alert" s={18} c={B.gold}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700,color:B.g900}}>{d.unpaidN} customers owe you</div>
+            <div style={{fontSize:11,color:B.g600,marginTop:2}}>Total unpaid: {ghsShort(d.unpaid)}</div>
+          </div>
+          <span style={{fontSize:11,fontWeight:700,color:B.gold,cursor:'pointer',whiteSpace:'nowrap'}}>Remind →</span>
+        </div>
+      </div>
+
+      <BottomNav/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// B · Money First
+// ─────────────────────────────────────────────────────────
+function DashB({d}) {
+  const up = d.sales >= d.salesYest;
+  const pct = Math.abs((d.sales-d.salesYest)/d.salesYest*100).toFixed(1);
+  const initials = d.name.split(' ').map(w=>w[0]).join('');
+  return (
+    <div style={{height:'100%',display:'flex',flexDirection:'column',background:B.navy,overflow:'hidden',fontFamily:'DM Sans,sans-serif'}}>
+      {/* Hero */}
+      <div style={{flexShrink:0,padding:'16px 20px 24px',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:-50,right:-30,width:180,height:180,borderRadius:'50%',background:'rgba(255,255,255,.03)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',bottom:-40,left:-20,width:120,height:120,borderRadius:'50%',background:B.gold+'12',pointerEvents:'none'}}/>
+        {/* Top bar */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22,position:'relative'}}>
+          <img src="assets/logo.png" alt="SikaBoafo" style={{height:26,width:'auto',filter:'brightness(0) invert(1)'}}/>
+          <div style={{display:'flex',gap:14,alignItems:'center'}}>
+            <div style={{position:'relative'}}>
+              <Ic n="bell" s={20} c="rgba(255,255,255,.55)"/>
+              <div style={{position:'absolute',top:-2,right:-2,width:7,height:7,borderRadius:'50%',background:B.gold}}/>
+            </div>
+            <div style={{width:34,height:34,borderRadius:'50%',background:`linear-gradient(135deg,${B.gold},${B.gold}AA)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:B.navy,fontFamily:'Plus Jakarta Sans,sans-serif'}}>{initials}</div>
+          </div>
+        </div>
+        {/* Big amount */}
+        <div style={{textAlign:'center',position:'relative'}}>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.4)',fontWeight:500,letterSpacing:'.08em',textTransform:'uppercase',marginBottom:6}}>
+            {d.greet} {d.name.split(' ')[0]} &middot; {d.biz}
+          </div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.3)',marginBottom:10}}>Mon, 21 Apr 2026</div>
+          <div style={{fontSize:42,fontWeight:800,color:'#fff',fontFamily:'Plus Jakarta Sans,sans-serif',letterSpacing:'-0.02em',lineHeight:1}}>{ghs(d.sales)}</div>
+          <div style={{marginTop:10,display:'flex',justifyContent:'center'}}>
+            <span style={{background:up?'rgba(45,180,100,.2)':'rgba(220,50,50,.2)',color:up?'#6EE7B7':'#FCA5A5',borderRadius:100,padding:'4px 14px',fontSize:12,fontWeight:700,border:`1px solid ${up?'rgba(45,180,100,.3)':'rgba(220,50,50,.3)'}`}}>
+              {up?'▲':'▼'} {pct}% from yesterday
+            </span>
+          </div>
+        </div>
+        {/* Stat row */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:1,marginTop:22,background:'rgba(255,255,255,.06)',borderRadius:16,overflow:'hidden',border:'1px solid rgba(255,255,255,.08)'}}>
+          {[
+            {label:'Unpaid',value:ghsShort(d.unpaid),color:B.gold},
+            {label:'Low Stock',value:`${d.lowStock} items`,color:'#FF8080'},
+            {label:'Staff',value:`${d.staff} active`,color:'#6EE7B7'},
+          ].map((s,i)=>(
+            <div key={i} style={{padding:'12px 8px',textAlign:'center',borderRight:i<2?'1px solid rgba(255,255,255,.08)':'none'}}>
+              <div style={{fontSize:13,fontWeight:700,color:s.color,fontFamily:'Plus Jakarta Sans,sans-serif'}}>{s.value}</div>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.4)',marginTop:3}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* White panel */}
+      <div style={{flex:1,background:B.bg,borderRadius:'24px 24px 0 0',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+        {/* Quick actions horizontal scroll */}
+        <div style={{padding:'18px 16px 0',flexShrink:0}}>
+          <div style={{display:'flex',gap:10,overflowX:'auto',paddingBottom:4}} className="sb-hide">
+            {[
+              {label:'New Sale',icon:'receipt',bg:B.navy,fg:'#fff'},
+              {label:'Send Link',icon:'send',bg:B.green,fg:'#fff'},
+              {label:'Add Stock',icon:'package',bg:B.goldL,fg:B.gold},
+              {label:'Remind',icon:'bell',bg:B.redL,fg:B.red},
+              {label:'Customers',icon:'users',bg:B.g50,fg:B.g600},
+            ].map((a,i)=>(
+              <div key={i} style={{flexShrink:0,background:a.bg,borderRadius:14,padding:'10px 16px',display:'flex',alignItems:'center',gap:8,cursor:'pointer',boxShadow:i<2?'0 4px 14px rgba(0,0,0,.15)':'none'}}>
+                <Ic n={a.icon} s={16} c={a.fg}/>
+                <span style={{fontSize:12,fontWeight:700,color:a.fg,fontFamily:'Plus Jakarta Sans,sans-serif',whiteSpace:'nowrap'}}>{a.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Activity feed */}
+        <div style={{flex:1,overflow:'auto',padding:'14px 16px'}} className="sb-hide">
+          <div style={{fontSize:11,fontWeight:700,color:B.g400,letterSpacing:'.06em',textTransform:'uppercase',marginBottom:12}}>Recent Activity</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {d.activity.map((a,i)=>(
+              <div key={i} style={{background:B.white,borderRadius:14,padding:'12px 14px',display:'flex',alignItems:'center',gap:12,boxShadow:'0 1px 3px rgba(0,0,0,.05)'}}>
+                <div style={{width:36,height:36,borderRadius:12,background:a.st==='paid'?B.greenL:a.st==='warn'?B.goldL:B.redL,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <Ic n={a.st==='paid'?'check':a.st==='warn'?'alert':'wallet'} s={16} c={a.st==='paid'?B.green:a.st==='warn'?B.gold:B.red}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:600,color:B.g900,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{a.label}</div>
+                  <div style={{fontSize:10,color:B.g400,marginTop:2}}>{a.time}</div>
+                </div>
+                {a.amt&&<div style={{fontSize:13,fontWeight:700,color:a.st==='paid'?B.green:B.red}}>{ghsShort(a.amt)}</div>}
+                {!a.amt&&<span style={{background:B.gold+'18',color:B.gold,borderRadius:100,padding:'2px 8px',fontSize:10,fontWeight:600}}>Alert</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <BottomNav/>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// C · At a Glance
+// ─────────────────────────────────────────────────────────
+function DashC({d}) {
+  const [tab, setTab] = useState(0);
+  const up = d.sales >= d.salesYest;
+  const pct = Math.abs((d.sales-d.salesYest)/d.salesYest*100).toFixed(1);
+  const initials = d.name.split(' ').map(w=>w[0]).join('');
+  const colors = [B.navy, B.green, B.gold, B.red];
+
+  return (
+    <div style={{height:'100%',display:'flex',flexDirection:'column',background:B.white,overflow:'hidden',fontFamily:'DM Sans,sans-serif'}}>
+      {/* Header */}
+      <div style={{padding:'14px 20px 0',background:B.white,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+          <div>
+            <div style={{fontSize:20,fontWeight:800,fontFamily:'Plus Jakarta Sans,sans-serif',color:B.navy}}>{d.greet} {d.name.split(' ')[0]}</div>
+            <div style={{fontSize:11,color:B.g400,marginTop:1}}>{d.biz} &middot; Mon, 21 Apr</div>
+          </div>
+          <div style={{display:'flex',gap:10,alignItems:'center'}}>
+            <div style={{position:'relative',width:38,height:38,borderRadius:'50%',background:B.g50,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+              <Ic n="bell" s={18} c={B.g600}/>
+              <div style={{position:'absolute',top:6,right:6,width:7,height:7,borderRadius:'50%',background:B.gold}}/>
+            </div>
+            <div style={{width:38,height:38,borderRadius:'50%',background:`linear-gradient(135deg,${B.navy},${B.navyL})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'#fff',fontFamily:'Plus Jakarta Sans,sans-serif'}}>{initials}</div>
+          </div>
+        </div>
+
+        {/* Hero card */}
+        <div style={{background:`linear-gradient(135deg,${B.navy} 0%,${B.navyL} 100%)`,borderRadius:20,padding:'18px 20px',marginBottom:16,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',right:-10,top:-20,width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,.05)',pointerEvents:'none'}}/>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.45)',fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase',marginBottom:6}}>Today's Revenue</div>
+              <div style={{fontSize:28,fontWeight:800,fontFamily:'Plus Jakarta Sans,sans-serif',color:'#fff',letterSpacing:'-0.02em'}}>{ghs(d.sales)}</div>
+              <div style={{marginTop:8,display:'inline-flex',alignItems:'center',gap:5,background:up?'rgba(45,180,100,.2)':'rgba(220,50,50,.2)',borderRadius:100,padding:'3px 10px'}}>
+                <span style={{fontSize:11,color:up?'#6EE7B7':'#FCA5A5',fontWeight:700}}>{up?'▲':'▼'} {pct}%</span>
+                <span style={{fontSize:10,color:'rgba(255,255,255,.4)'}}>vs yesterday</span>
+              </div>
+            </div>
+            <Ring val={d.sales} max={8000}/>
+          </div>
+          <div style={{marginTop:14,paddingTop:12,borderTop:'1px solid rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:B.gold}}/>
+              <span style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>{d.unpaidN} unpaid &middot; {ghsShort(d.unpaid)}</span>
+            </div>
+            <span style={{fontSize:11,fontWeight:700,color:B.gold,cursor:'pointer'}}>Collect →</span>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{display:'flex',gap:6,marginBottom:2}}>
+          {['Activity','Top Items','Alerts'].map((t,i)=>(
+            <button key={i} onClick={()=>setTab(i)} style={{border:'none',cursor:'pointer',padding:'7px 14px',borderRadius:100,fontSize:12,fontWeight:700,background:tab===i?B.navy:B.g50,color:tab===i?'#fff':B.g400,fontFamily:'Plus Jakarta Sans,sans-serif',transition:'all .15s'}}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div style={{flex:1,overflow:'auto',padding:'14px 16px'}} className="sb-hide">
+        {tab===0&&(
+          <div style={{display:'flex',flexDirection:'column'}}>
+            {d.activity.map((a,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:i<d.activity.length-1?`1px solid ${B.g50}`:'none'}}>
+                <div style={{width:38,height:38,borderRadius:12,background:a.st==='paid'?B.greenL:a.st==='warn'?B.goldL:B.redL,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <Ic n={a.st==='paid'?'check':a.st==='warn'?'alert':'wallet'} s={16} c={a.st==='paid'?B.green:a.st==='warn'?B.gold:B.red}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:B.g900}}>{a.label}</div>
+                  <div style={{fontSize:11,color:B.g400,marginTop:2}}>{a.time}</div>
+                </div>
+                {a.amt&&<div style={{fontSize:13,fontWeight:700,color:a.st==='paid'?B.green:B.red}}>{ghsShort(a.amt)}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+        {tab===1&&(
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {d.tops.map((p,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:12}}>
+                <div style={{width:32,height:32,borderRadius:10,background:colors[i]+'15',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:colors[i],flexShrink:0}}>{i+1}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:B.g900}}>{p.name}</div>
+                  <div style={{marginTop:4,height:4,borderRadius:2,background:B.g100,overflow:'hidden'}}>
+                    <div style={{height:'100%',borderRadius:2,background:colors[i],width:`${(p.sold/d.tops[0].sold)*100}%`}}/>
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:13,fontWeight:700,color:B.g900}}>{ghsShort(p.rev)}</div>
+                  <div style={{fontSize:10,color:B.g400}}>{p.sold} sold</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {tab===2&&(
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[
+              {icon:'alert',color:B.red,title:`${d.lowStock} items running low`,sub:'Paracetamol 500mg · Omo 1kg + 1 more',action:'View Stock'},
+              {icon:'wallet',color:B.gold,title:`${ghsShort(d.unpaid)} uncollected`,sub:`${d.unpaidN} customers owe you · oldest: 5 days`,action:'Send Reminder'},
+              {icon:'send',color:B.green,title:'Payment link pending',sub:"Akosua Boateng hasn't paid yet",action:'Resend via WhatsApp'},
+            ].map((al,i)=>(
+              <div key={i} style={{background:al.color+'0D',borderRadius:16,padding:'14px 16px',border:`1px solid ${al.color}20`}}>
+                <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:12,background:al.color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <Ic n={al.icon} s={17} c={al.color}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:B.g900,marginBottom:3}}>{al.title}</div>
+                    <div style={{fontSize:11,color:B.g600,lineHeight:1.4}}>{al.sub}</div>
+                    <button style={{marginTop:10,border:'none',cursor:'pointer',background:i===2?'#25D366':al.color,color:'#fff',borderRadius:100,padding:'6px 14px',fontSize:11,fontWeight:700,fontFamily:'Plus Jakarta Sans,sans-serif'}}>
+                      {al.action}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <BottomNav/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Tweaks + App root
+// ─────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "merchantName": "Ama Asante",
+  "businessType": "Pharmacy",
+  "salesAmount": 4850,
+  "showTwi": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tw, setTw] = useState(()=>{
+    try{return{...TWEAK_DEFAULTS,...JSON.parse(localStorage.getItem('sb_tw')||'{}')};}
+    catch{return TWEAK_DEFAULTS;}
+  });
+
+  useEffect(()=>{
+    localStorage.setItem('sb_tw', JSON.stringify(tw));
+    document.getElementById('tw-name').value = tw.merchantName;
+    document.getElementById('tw-biz').value = tw.businessType;
+    document.getElementById('tw-sales').value = tw.salesAmount;
+    document.getElementById('tw-tog').className = 'tog-dot'+(tw.showTwi?' on':'');
+  },[tw]);
+
+  useEffect(()=>{
+    window.__tw = {
+      name: v => { setTw(t=>({...t,merchantName:v})); window.parent.postMessage({type:'__edit_mode_set_keys',edits:{merchantName:v}},'*'); },
+      biz:  v => { setTw(t=>({...t,businessType:v})); window.parent.postMessage({type:'__edit_mode_set_keys',edits:{businessType:v}},'*'); },
+      sales: v => setTw(t=>({...t,salesAmount:+v})),
+      twi: () => setTw(t=>({...t,showTwi:!t.showTwi})),
+    };
+    const handler = e => {
+      if(e.data?.type==='__activate_edit_mode') document.getElementById('tweaks-panel').classList.add('open');
+      if(e.data?.type==='__deactivate_edit_mode') document.getElementById('tweaks-panel').classList.remove('open');
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return ()=>window.removeEventListener('message',handler);
+  },[]);
+
+  const d = useMemo(()=>mkData(tw.merchantName, tw.businessType, tw.salesAmount, tw.showTwi),[tw]);
+
+  return (
+    <DesignCanvas>
+      <DCSection id="dash" title="Dashboard" subtitle="3 directions — click ⤢ to focus any screen">
+        <DCArtboard id="A" label="A · Command Center" width={390} height={820}>
+          <DashA d={d}/>
+        </DCArtboard>
+        <DCArtboard id="B" label="B · Money First" width={390} height={820}>
+          <DashB d={d}/>
+        </DCArtboard>
+        <DCArtboard id="C" label="C · At a Glance" width={390} height={820}>
+          <DashC d={d}/>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

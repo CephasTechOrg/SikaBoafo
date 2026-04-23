@@ -13,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user, get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
@@ -40,6 +41,7 @@ def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User,
         Sale.__table__,
         SaleItem.__table__,
         SyncOperation.__table__,
+        AuditLog.__table__,
     ):
         table.create(bind=engine)
 

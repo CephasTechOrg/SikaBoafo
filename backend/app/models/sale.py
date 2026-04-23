@@ -45,6 +45,9 @@ class Sale(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
         index=True,
     )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    subtotal_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    discount_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
     # cash | mobile_money | bank_transfer (MVP labels; architecture payment stage 1).
     payment_method_label: Mapped[str] = mapped_column(String(64), nullable=False)
     payment_status: Mapped[str] = mapped_column(
@@ -52,6 +55,12 @@ class Sale(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     )
     sale_status: Mapped[str] = mapped_column(
         String(32), default=SALE_STATUS_RECORDED, nullable=False
+    )
+    cashier_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     void_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -87,6 +96,7 @@ class SaleItem(UUIDPrimaryKeyMixin, Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    cost_price_snapshot: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
 
     sale: Mapped[Sale] = relationship("Sale", back_populates="lines")
     item: Mapped[Item] = relationship("Item", lazy="joined")

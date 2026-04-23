@@ -11,6 +11,7 @@ from app.api.v1 import (
     receivables,
     reports,
     sales,
+    staff,
     stores,
     sync,
 )
@@ -25,4 +26,5 @@ router.include_router(sales.router)
 router.include_router(expenses.router)
 router.include_router(receivables.router)
 router.include_router(reports.router)
+router.include_router(staff.router)
 router.include_router(sync.router)

@@ -12,6 +12,8 @@ class ItemCreateIn(BaseModel):
     item_id: UUID | None = None
     name: str = Field(min_length=2, max_length=255)
     default_price: Decimal = Field(gt=0, max_digits=18, decimal_places=2)
+    cost_price: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=2)
+    unit: str | None = Field(default=None, max_length=32)
     sku: str | None = Field(default=None, max_length=128)
     category: str | None = Field(default=None, max_length=128)
     low_stock_threshold: int | None = Field(default=None, ge=0)
@@ -20,6 +22,8 @@ class ItemCreateIn(BaseModel):
 class ItemUpdateIn(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=255)
     default_price: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=2)
+    cost_price: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=2)
+    unit: str | None = Field(default=None, max_length=32)
     sku: str | None = Field(default=None, max_length=128)
     category: str | None = Field(default=None, max_length=128)
     low_stock_threshold: int | None = Field(default=None, ge=0)
@@ -30,6 +34,8 @@ class ItemUpdateIn(BaseModel):
         if (
             self.name is None
             and self.default_price is None
+            and self.cost_price is None
+            and self.unit is None
             and self.sku is None
             and self.category is None
             and self.low_stock_threshold is None
@@ -74,6 +80,8 @@ class InventoryItemOut(BaseModel):
     item_id: UUID
     name: str
     default_price: Decimal
+    cost_price: Decimal | None
+    unit: str | None
     sku: str | None
     category: str | None
     low_stock_threshold: int | None

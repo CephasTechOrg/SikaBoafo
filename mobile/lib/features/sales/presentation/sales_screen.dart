@@ -13,23 +13,6 @@ import '../providers/sales_providers.dart';
 
 enum _SaleAction { edit, voidSale }
 
-// ── Design tokens ──────────────────────────────────────────────────────────
-const _kHeaderGradient = LinearGradient(
-  colors: [Color(0xFF08302A), Color(0xFF1A6655)],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
-
-// Cycling color palette for item card icons
-const List<({Color bg, Color fg})> _kIconPalette = [
-  (bg: Color(0xFFE8F1FB), fg: Color(0xFF2D6BC4)),
-  (bg: Color(0xFFFFF3E0), fg: Color(0xFFD97706)),
-  (bg: Color(0xFFE8F5E9), fg: Color(0xFF2E7D32)),
-  (bg: Color(0xFFF3E5F5), fg: Color(0xFF6A1B9A)),
-  (bg: Color(0xFFFFEBEE), fg: Color(0xFFC62828)),
-  (bg: Color(0xFFF9FBE7), fg: Color(0xFF558B2F)),
-];
-
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
 
@@ -90,7 +73,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         children: [
           // ── Green gradient header ──────────────────────────────────────
           Container(
-            decoration: const BoxDecoration(gradient: _kHeaderGradient),
+            decoration: const BoxDecoration(gradient: AppGradients.hero),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -168,12 +151,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF6F7F9),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                color: AppColors.canvas,
+                borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
               ),
               child: ClipRRect(
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(28)),
+                    const BorderRadius.vertical(top: AppRadii.heroRadius),
                 child: inventoryAsync.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -305,10 +288,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         'Selected (${selectedItems.length})'),
                                 const SizedBox(height: 8),
                                 ...selectedItems.map((item) {
-                                  final idx = allItems.indexOf(item);
                                   return _ItemCard(
                                     item: item,
-                                    paletteIndex: idx,
                                     qty: _qtyByItemId[item.id] ?? 0,
                                     priceOverride:
                                         _priceOverrideByItemId[item.id],
@@ -331,10 +312,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 if (selectedItems.isNotEmpty)
                                   const SizedBox(height: 8),
                                 ...unselectedItems.map((item) {
-                                  final idx = allItems.indexOf(item);
                                   return _ItemCard(
                                     item: item,
-                                    paletteIndex: idx,
                                     qty: 0,
                                     priceOverride: null,
                                     isSelected: false,
@@ -448,13 +427,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: ListTile(
         contentPadding:
@@ -924,13 +900,10 @@ class _PaymentCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3)),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1001,11 +974,12 @@ class _PaymentTile extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? AppColors.mint : const Color(0xFFF8F9FA),
-          borderRadius: BorderRadius.circular(16),
+          color: selected
+              ? AppColors.forest.withValues(alpha: 0.10)
+              : AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           border: Border.all(
-            color:
-                selected ? AppColors.forest : const Color(0xFFE5E7EB),
+            color: selected ? AppColors.forest : AppColors.border,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1040,7 +1014,6 @@ class _PaymentTile extends StatelessWidget {
 class _ItemCard extends StatelessWidget {
   const _ItemCard({
     required this.item,
-    required this.paletteIndex,
     required this.qty,
     required this.priceOverride,
     required this.isSelected,
@@ -1050,7 +1023,6 @@ class _ItemCard extends StatelessWidget {
   });
 
   final LocalInventoryItem item;
-  final int paletteIndex;
   final int qty;
   final String? priceOverride;
   final bool isSelected;
@@ -1060,23 +1032,19 @@ class _ItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = _kIconPalette[paletteIndex % _kIconPalette.length];
     final displayPrice = priceOverride ?? item.defaultPrice;
     final hasOverride = priceOverride != null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         border: Border.all(
-          color: isSelected ? AppColors.forest : const Color(0xFFEEEEEE),
+          color: isSelected ? AppColors.forest : AppColors.border,
           width: isSelected ? 1.5 : 1,
         ),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x07000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+        boxShadow: AppShadows.subtle,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -1085,10 +1053,8 @@ class _ItemCard extends StatelessWidget {
             ItemImage(
               imageAsset: item.imageAsset,
               size: 44,
-              bgColor: palette.bg,
-              iconColor: palette.fg,
               fallbackIcon: Icons.inventory_2_outlined,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
             const SizedBox(width: 12),
 
@@ -1264,7 +1230,7 @@ class _BottomBar extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: const BoxDecoration(
-                  color: AppColors.mint,
+                  color: AppColors.surfaceAlt,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

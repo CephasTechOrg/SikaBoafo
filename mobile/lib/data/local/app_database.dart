@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 9;
+const _schemaVersion = 11;
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -55,6 +55,12 @@ class AppDatabase {
         }
         if (oldVersion < 9) {
           await _upgradeInventorySchemaV9(db);
+        }
+        if (oldVersion < 10) {
+          await _upgradeCustomersSchemaV10(db);
+        }
+        if (oldVersion < 11) {
+          await _upgradeReceivablesSchemaV11(db);
         }
       },
     );
@@ -197,6 +203,37 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     }
   }
 
+  Future<void> _upgradeCustomersSchemaV10(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(customers_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('whatsapp_number')) {
+      await db.execute('ALTER TABLE customers_local ADD COLUMN whatsapp_number TEXT');
+    }
+    if (!names.contains('email')) {
+      await db.execute('ALTER TABLE customers_local ADD COLUMN email TEXT');
+    }
+    if (!names.contains('notes')) {
+      await db.execute('ALTER TABLE customers_local ADD COLUMN notes TEXT');
+    }
+  }
+
+  Future<void> _upgradeReceivablesSchemaV11(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(receivables_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('invoice_number')) {
+      await db.execute('ALTER TABLE receivables_local ADD COLUMN invoice_number TEXT');
+    }
+    if (!names.contains('payment_link')) {
+      await db.execute('ALTER TABLE receivables_local ADD COLUMN payment_link TEXT');
+    }
+    if (!names.contains('created_by_user_id')) {
+      await db.execute('ALTER TABLE receivables_local ADD COLUMN created_by_user_id TEXT');
+    }
+    if (!names.contains('sale_id')) {
+      await db.execute('ALTER TABLE receivables_local ADD COLUMN sale_id TEXT');
+    }
+  }
+
   Future<void> _upgradeSalesSchemaV6(Database db) async {
     final columns = await db.rawQuery('PRAGMA table_info(sales_local)');
     final names = columns
@@ -247,6 +284,9 @@ CREATE TABLE IF NOT EXISTS customers_local (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   phone_number TEXT,
+  whatsapp_number TEXT,
+  email TEXT,
+  notes TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -263,6 +303,10 @@ CREATE TABLE IF NOT EXISTS receivables_local (
   due_date TEXT,
   note TEXT,
   status TEXT NOT NULL,
+  invoice_number TEXT,
+  payment_link TEXT,
+  created_by_user_id TEXT,
+  sale_id TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,

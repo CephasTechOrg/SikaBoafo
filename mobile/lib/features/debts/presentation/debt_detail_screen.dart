@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/providers/sync_providers.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import 'receive_repayment_screen.dart';
@@ -91,12 +92,20 @@ class _DetailBody extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                if (detail.record.status == 'open')
+                if (detail.record.status == 'open' ||
+                    detail.record.status == 'partially_paid') ...[
                   FilledButton.icon(
                     onPressed: () => _openRepaymentScreen(context, ref),
                     icon: const Icon(Icons.payments_outlined),
                     label: const Text('Receive'),
                   ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Cancel debt',
+                    icon: const Icon(Icons.cancel_outlined, color: AppColors.danger),
+                    onPressed: () => _confirmCancel(context, ref),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -126,10 +135,18 @@ class _DetailBody extends ConsumerWidget {
                         ),
                       ),
                       _Pill(
-                        label: row.status == 'settled' ? 'Settled' : 'Open',
-                        color: row.status == 'settled'
-                            ? AppColors.success
-                            : AppColors.gold,
+                        label: switch (row.status) {
+                          'settled'        => 'Settled',
+                          'cancelled'      => 'Cancelled',
+                          'partially_paid' => 'Partial',
+                          _                => 'Open',
+                        },
+                        color: switch (row.status) {
+                          'settled'        => AppColors.success,
+                          'cancelled'      => AppColors.muted,
+                          'partially_paid' => AppColors.warning,
+                          _                => AppColors.gold,
+                        },
                       ),
                     ],
                   ),
@@ -153,6 +170,9 @@ class _DetailBody extends ConsumerWidget {
                         label: 'Due Date',
                         value: row.dueDateIso ?? 'Not set',
                       ),
+                      if (row.invoiceNumber != null &&
+                          row.invoiceNumber!.isNotEmpty)
+                        _HeroMetric(label: 'Invoice', value: row.invoiceNumber!),
                     ],
                   ),
                 ],
@@ -254,6 +274,48 @@ class _DetailBody extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Repayment saved.')),
     );
+  }
+
+  Future<void> _confirmCancel(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Debt?'),
+        content: const Text(
+          'This will mark the debt as cancelled and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cancel Debt'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(debtsApiProvider).cancelReceivable(receivableId);
+      if (!context.mounted) return;
+      ref.invalidate(receivableDetailProvider(receivableId));
+      await ref.read(debtsControllerProvider.notifier).refresh();
+      if (!context.mounted) return;
+      Navigator.of(context).maybePop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Debt cancelled.')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      final msg = error.toString().startsWith('Exception: ')
+          ? error.toString().substring(11)
+          : error.toString();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   String _labelizePaymentMethod(String value) {

@@ -98,21 +98,24 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final expenses = expensesAsync.valueOrNull ?? const <LocalExpenseRecord>[];
     final aging = _computeAging(receivables);
 
-    final (salesStr, expensesStr, profitStr) = switch (_periodIndex) {
+    final (salesStr, expensesStr, profitStr, grossProfitStr) = switch (_periodIndex) {
       1 when insights != null => (
           insights.week.salesTotal,
           insights.week.expensesTotal,
           insights.week.estimatedProfit,
+          insights.week.grossProfit,
         ),
       2 when insights != null => (
           insights.month.salesTotal,
           insights.month.expensesTotal,
           insights.month.estimatedProfit,
+          insights.month.grossProfit,
         ),
       _ => (
           summary?.todaySalesTotal ?? '0.00',
           summary?.todayExpensesTotal ?? '0.00',
           summary?.todayEstimatedProfit ?? '0.00',
+          summary?.todayGrossProfit ?? '0.00',
         ),
     };
 
@@ -204,6 +207,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       sales: salesStr,
                       expenses: expensesStr,
                       profit: profitStr,
+                      grossProfit: grossProfitStr,
                     ),
                     const SizedBox(height: 16),
                     _BarChartCard(
@@ -370,42 +374,63 @@ class _PeriodTabs extends StatelessWidget {
 // ── KPI row ───────────────────────────────────────────────────────────────────
 
 class _KpiRow extends StatelessWidget {
-  const _KpiRow(
-      {required this.sales,
-      required this.expenses,
-      required this.profit});
-  final String sales, expenses, profit;
+  const _KpiRow({
+    required this.sales,
+    required this.expenses,
+    required this.profit,
+    this.grossProfit = '0.00',
+  });
+  final String sales, expenses, profit, grossProfit;
+
+  bool get _hasGrossProfit {
+    final v = double.tryParse(grossProfit) ?? 0.0;
+    return v > 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: AppStatCard(
-            label: 'Sales',
-            value: 'GHS $sales',
-            icon: Icons.trending_up_rounded,
-            accent: AppColors.forest,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: AppStatCard(
+                label: 'Sales',
+                value: 'GHS $sales',
+                icon: Icons.trending_up_rounded,
+                accent: AppColors.forest,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppStatCard(
+                label: 'Expenses',
+                value: 'GHS $expenses',
+                icon: Icons.receipt_long_outlined,
+                accent: AppColors.danger,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppStatCard(
+                label: 'Est. Profit',
+                value: 'GHS $profit',
+                icon: Icons.attach_money_rounded,
+                accent: AppColors.warning,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: AppStatCard(
-            label: 'Expenses',
-            value: 'GHS $expenses',
-            icon: Icons.receipt_long_outlined,
-            accent: AppColors.danger,
+        if (_hasGrossProfit) ...[
+          const SizedBox(height: 10),
+          AppStatCard(
+            label: 'Gross Profit',
+            value: 'GHS $grossProfit',
+            caption: 'Revenue minus cost of goods sold',
+            icon: Icons.insights_rounded,
+            accent: AppColors.info,
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: AppStatCard(
-            label: 'Profit',
-            value: 'GHS $profit',
-            icon: Icons.attach_money_rounded,
-            accent: AppColors.warning,
-          ),
-        ),
+        ],
       ],
     );
   }

@@ -22,6 +22,7 @@ from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
     InvalidItemArchiveError,
     InventoryItemNotFoundError,
+    InventoryItemSnapshot,
     InventoryMutationSnapshot,
     InventoryService,
     MerchantContextMissingError,
@@ -40,19 +41,7 @@ def list_items(
         snapshots = service.list_items_for_user(user_id=current_user.id)
     except MerchantContextMissingError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return [
-        InventoryItemOut(
-            item_id=s.item_id,
-            name=s.name,
-            default_price=s.default_price,
-            sku=s.sku,
-            category=s.category,
-            low_stock_threshold=s.low_stock_threshold,
-            is_active=s.is_active,
-            quantity_on_hand=s.quantity_on_hand,
-        )
-        for s in snapshots
-    ]
+    return [_to_item_out(s) for s in snapshots]
 
 
 @router.post("", response_model=InventoryItemOut, status_code=status.HTTP_201_CREATED)
@@ -66,16 +55,7 @@ def create_item(
         item = service.create_item(user_id=current_user.id, payload=payload)
     except MerchantContextMissingError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return InventoryItemOut(
-        item_id=item.item_id,
-        name=item.name,
-        default_price=item.default_price,
-        sku=item.sku,
-        category=item.category,
-        low_stock_threshold=item.low_stock_threshold,
-        is_active=item.is_active,
-        quantity_on_hand=item.quantity_on_hand,
-    )
+    return _to_item_out(item)
 
 
 @router.patch("/{item_id}", response_model=InventoryItemOut)
@@ -97,16 +77,7 @@ def update_item(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-    return InventoryItemOut(
-        item_id=item.item_id,
-        name=item.name,
-        default_price=item.default_price,
-        sku=item.sku,
-        category=item.category,
-        low_stock_threshold=item.low_stock_threshold,
-        is_active=item.is_active,
-        quantity_on_hand=item.quantity_on_hand,
-    )
+    return _to_item_out(item)
 
 
 @router.post("/{item_id}/stock-in", response_model=InventoryMutationOut)
@@ -158,18 +129,24 @@ def adjust_stock(
     return _to_mutation_out(result)
 
 
+def _to_item_out(s: InventoryItemSnapshot) -> InventoryItemOut:
+    return InventoryItemOut(
+        item_id=s.item_id,
+        name=s.name,
+        default_price=s.default_price,
+        cost_price=s.cost_price,
+        unit=s.unit,
+        sku=s.sku,
+        category=s.category,
+        low_stock_threshold=s.low_stock_threshold,
+        is_active=s.is_active,
+        quantity_on_hand=s.quantity_on_hand,
+    )
+
+
 def _to_mutation_out(result: InventoryMutationSnapshot) -> InventoryMutationOut:
     return InventoryMutationOut(
-        item=InventoryItemOut(
-            item_id=result.item.item_id,
-            name=result.item.name,
-            default_price=result.item.default_price,
-            sku=result.item.sku,
-            category=result.item.category,
-            low_stock_threshold=result.item.low_stock_threshold,
-            is_active=result.item.is_active,
-            quantity_on_hand=result.item.quantity_on_hand,
-        ),
+        item=_to_item_out(result.item),
         movement_type=result.movement_type,
         movement_quantity=result.movement_quantity,
     )

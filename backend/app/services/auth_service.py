@@ -10,9 +10,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.constants import AUTH_TOKEN_TYPE_ACCESS, AUTH_TOKEN_TYPE_REFRESH
+from app.core.constants import (
+    AUTH_TOKEN_TYPE_ACCESS,
+    AUTH_TOKEN_TYPE_REFRESH,
+    STAFF_INVITE_STATUS_ACCEPTED,
+    STAFF_INVITE_STATUS_PENDING,
+    USER_ROLE_MERCHANT_OWNER,
+)
 from app.core.security import create_session_token
 from app.models.merchant import Merchant
+from app.models.staff_invite import StaffInvite
 from app.models.user import User
 from app.schemas.auth import UserSessionOut
 from app.services.otp_provider import (
@@ -51,10 +58,9 @@ class AuthService:
         is_new_user = False
         if user is None:
             try:
-                user = User(phone_number=normalized)
+                user = User(phone_number=normalized, role=USER_ROLE_MERCHANT_OWNER)
                 self.db.add(user)
-                self.db.commit()
-                self.db.refresh(user)
+                self.db.flush()
                 is_new_user = True
             except IntegrityError:
                 # Concurrent verify requests can race; fallback to existing row.
@@ -64,6 +70,11 @@ class AuthService:
                     raise
                 user = existing
 
+        # Accept any pending staff invite for this phone number.
+        self._accept_pending_invite(user=user, phone_number=normalized)
+
+        self.db.commit()
+        self.db.refresh(user)
         return self._issue_session(user=user, is_new_user=is_new_user)
 
     def login_with_pin(self, *, phone_number: str, pin: str) -> UserSessionOut:
@@ -98,12 +109,17 @@ class AuthService:
             token_type=AUTH_TOKEN_TYPE_REFRESH,
             expires_in_minutes=self.settings.auth_refresh_token_exp_minutes,
         )
-        onboarding_required = self._get_owner_merchant(user_id=user.id) is None
+        owner_merchant = self._get_owner_merchant(user_id=user.id)
+        active_merchant_id = owner_merchant.id if owner_merchant else user.merchant_id
+        # Staff users always have onboarding done (owner completed it for their business).
+        onboarding_required = active_merchant_id is None
         pin_set = user.pin_hash is not None
         return UserSessionOut(
             user_id=user.id,
             phone_number=user.phone_number,
             is_new_user=is_new_user,
+            role=user.role or USER_ROLE_MERCHANT_OWNER,
+            merchant_id=active_merchant_id,
             access_token=access_token,
             refresh_token=refresh_token,
             access_token_expires_in_minutes=self.settings.auth_access_token_exp_minutes,
@@ -118,6 +134,26 @@ class AuthService:
     def _get_owner_merchant(self, user_id: UUID) -> Merchant | None:
         stmt = select(Merchant).where(Merchant.owner_user_id == user_id)
         return self.db.scalar(stmt)
+
+    def _accept_pending_invite(self, *, user: User, phone_number: str) -> None:
+        """If a pending invite exists for this phone, link user to that merchant."""
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        now = datetime.now(UTC)
+        invite = self.db.scalar(
+            select(StaffInvite).where(
+                StaffInvite.phone_number == phone_number,
+                StaffInvite.status == STAFF_INVITE_STATUS_PENDING,
+                StaffInvite.expires_at > now,
+            )
+        )
+        if invite is None:
+            return
+        user.merchant_id = invite.merchant_id
+        user.role = invite.role
+        invite.status = STAFF_INVITE_STATUS_ACCEPTED
+        self.db.add(user)
+        self.db.add(invite)
 
 
 __all__ = [

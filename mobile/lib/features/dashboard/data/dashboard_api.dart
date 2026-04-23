@@ -120,6 +120,7 @@ class DashboardSummary {
     required this.todaySalesTotal,
     required this.todayExpensesTotal,
     required this.todayEstimatedProfit,
+    required this.todayGrossProfit,
     required this.debtOutstandingTotal,
     required this.lowStockCount,
     required this.timezone,
@@ -128,6 +129,7 @@ class DashboardSummary {
   final String todaySalesTotal;
   final String todayExpensesTotal;
   final String todayEstimatedProfit;
+  final String todayGrossProfit;
   final String debtOutstandingTotal;
   final int lowStockCount;
   final String timezone;
@@ -137,6 +139,7 @@ class DashboardSummary {
       todaySalesTotal: '${json['today_sales_total'] ?? '0.00'}',
       todayExpensesTotal: '${json['today_expenses_total'] ?? '0.00'}',
       todayEstimatedProfit: '${json['today_estimated_profit'] ?? '0.00'}',
+      todayGrossProfit: '${json['today_gross_profit'] ?? '0.00'}',
       debtOutstandingTotal: '${json['debt_outstanding_total'] ?? '0.00'}',
       lowStockCount: (json['low_stock_count'] ?? 0) as int,
       timezone: (json['timezone'] ?? 'Africa/Accra') as String,
@@ -151,6 +154,8 @@ class DashboardActivity {
     required this.detail,
     required this.amount,
     required this.createdAt,
+    this.itemId,
+    this.itemName,
   });
 
   final String activityType;
@@ -158,6 +163,8 @@ class DashboardActivity {
   final String detail;
   final String amount;
   final DateTime createdAt;
+  final String? itemId;
+  final String? itemName;
 
   factory DashboardActivity.fromJson(Map<String, dynamic> json) {
     return DashboardActivity(
@@ -167,6 +174,8 @@ class DashboardActivity {
       amount: '${json['amount'] ?? '0.00'}',
       createdAt: DateTime.tryParse('${json['created_at'] ?? ''}')?.toLocal() ??
           DateTime.fromMillisecondsSinceEpoch(0),
+      itemId: json['item_id'] as String?,
+      itemName: json['item_name'] as String?,
     );
   }
 }
@@ -178,6 +187,7 @@ class DashboardPeriodSummary {
     required this.salesTotal,
     required this.expensesTotal,
     required this.estimatedProfit,
+    this.grossProfit = '0.00',
   });
 
   final DateTime periodStartUtc;
@@ -185,6 +195,7 @@ class DashboardPeriodSummary {
   final String salesTotal;
   final String expensesTotal;
   final String estimatedProfit;
+  final String grossProfit;
 
   factory DashboardPeriodSummary.fromJson(Map<String, dynamic> json) {
     return DashboardPeriodSummary(
@@ -195,6 +206,7 @@ class DashboardPeriodSummary {
       salesTotal: '${json['sales_total'] ?? '0.00'}',
       expensesTotal: '${json['expenses_total'] ?? '0.00'}',
       estimatedProfit: '${json['estimated_profit'] ?? '0.00'}',
+      grossProfit: '${json['gross_profit'] ?? '0.00'}',
     );
   }
 }

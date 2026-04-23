@@ -103,14 +103,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A3D33), Color(0xFF1A6B5B), AppColors.canvas],
-            stops: [0.0, 0.28, 0.28],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: SafeArea(
           child: Column(
             children: [
@@ -508,6 +501,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final lowColor = lowStockCount > 0 ? AppColors.danger : AppColors.muted;
     return Row(
       children: [
         Expanded(
@@ -515,6 +509,7 @@ class _StatsRow extends StatelessWidget {
             label: 'Total Items',
             value: '$itemCount',
             icon: Icons.inventory_2_rounded,
+            iconColor: AppColors.forest,
           ),
         ),
         const SizedBox(width: 10),
@@ -523,7 +518,8 @@ class _StatsRow extends StatelessWidget {
             label: 'Low Stock',
             value: '$lowStockCount',
             icon: Icons.warning_amber_rounded,
-            valueColor: lowStockCount > 0 ? const Color(0xFFDC2626) : null,
+            iconColor: lowColor,
+            valueColor: lowColor,
           ),
         ),
         const SizedBox(width: 10),
@@ -532,6 +528,7 @@ class _StatsRow extends StatelessWidget {
             label: 'Est. Value',
             value: _fmtMoney(totalValueMinor),
             icon: Icons.payments_rounded,
+            iconColor: AppColors.info,
           ),
         ),
       ],
@@ -544,51 +541,50 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
+    required this.iconColor,
     this.valueColor,
   });
   final String label, value;
   final IconData icon;
+  final Color iconColor;
   final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: AppColors.mint,
-              borderRadius: BorderRadius.circular(10),
+              color: iconColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: AppColors.forest, size: 17),
+            child: Icon(icon, color: iconColor, size: 18),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontSize: 16,
               color: valueColor ?? AppColors.ink,
+              letterSpacing: -0.3,
+              height: 1.1,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
           Text(
             label,
             style: const TextStyle(color: AppColors.muted, fontSize: 11),
@@ -629,15 +625,10 @@ class _AddItemAccordion extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,8 +636,8 @@ class _AddItemAccordion extends StatelessWidget {
           InkWell(
             onTap: onToggle,
             borderRadius: expanded
-                ? const BorderRadius.vertical(top: Radius.circular(20))
-                : BorderRadius.circular(20),
+                ? const BorderRadius.vertical(top: Radius.circular(AppRadii.sm))
+                : BorderRadius.circular(AppRadii.sm),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(
@@ -1008,16 +999,10 @@ class _ItemCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1194,7 +1179,7 @@ class _ItemCard extends StatelessWidget {
             ),
 
           // ── divider + actions ──
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          const Divider(height: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
             child: Wrap(

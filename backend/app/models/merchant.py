@@ -28,7 +28,22 @@ class Merchant(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
 
-    owner: Mapped[User] = relationship("User", back_populates="merchants", lazy="joined")
+    # Contact & location (M1 additions)
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    country: Mapped[str] = mapped_column(String(8), nullable=False, default="GH")
+    currency_code: Mapped[str] = mapped_column(String(8), nullable=False, default="GHS")
+
+    owner: Mapped[User] = relationship(
+        "User",
+        back_populates="merchants",
+        foreign_keys="[Merchant.owner_user_id]",
+        lazy="joined",
+    )
     stores: Mapped[list[Store]] = relationship(
         "Store",
         back_populates="merchant",

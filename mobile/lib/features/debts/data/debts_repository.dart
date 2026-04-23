@@ -10,17 +10,29 @@ class LocalDebtCustomer {
     required this.customerId,
     required this.name,
     this.phoneNumber,
+    this.whatsappNumber,
+    this.email,
+    this.notes,
+    this.totalOutstanding = '0.00',
   });
 
   final String customerId;
   final String name;
   final String? phoneNumber;
+  final String? whatsappNumber;
+  final String? email;
+  final String? notes;
+  final String totalOutstanding;
 
   factory LocalDebtCustomer.fromRow(Map<String, Object?> row) {
     return LocalDebtCustomer(
       customerId: (row['id'] ?? '') as String,
       name: (row['name'] ?? '') as String,
       phoneNumber: row['phone_number'] as String?,
+      whatsappNumber: row['whatsapp_number'] as String?,
+      email: row['email'] as String?,
+      notes: row['notes'] as String?,
+      totalOutstanding: (row['total_outstanding'] ?? '0.00') as String,
     );
   }
 }
@@ -37,6 +49,7 @@ class LocalReceivableRecord {
     required this.createdAtMillis,
     this.dueDateIso,
     this.note,
+    this.invoiceNumber,
   });
 
   final String receivableId;
@@ -49,6 +62,7 @@ class LocalReceivableRecord {
   final int createdAtMillis;
   final String? dueDateIso;
   final String? note;
+  final String? invoiceNumber;
 
   factory LocalReceivableRecord.fromRow(Map<String, Object?> row) {
     return LocalReceivableRecord(
@@ -62,6 +76,7 @@ class LocalReceivableRecord {
       createdAtMillis: (row['created_at'] as int? ?? 0),
       dueDateIso: row['due_date'] as String?,
       note: row['note'] as String?,
+      invoiceNumber: row['invoice_number'] as String?,
     );
   }
 }
@@ -132,13 +147,104 @@ class DebtsRepository {
     return rows.map(LocalDebtCustomer.fromRow).toList(growable: false);
   }
 
+  Future<List<LocalDebtCustomer>> listCustomersWithBalance() async {
+    final db = await _appDb.database;
+    final rows = await db.rawQuery('''
+SELECT c.id, c.name, c.phone_number, c.whatsapp_number, c.email, c.notes,
+       COALESCE(
+         (SELECT SUM(CAST(r.outstanding_amount AS REAL))
+          FROM receivables_local r
+          WHERE r.customer_id = c.id),
+         0.0
+       ) AS total_outstanding_real
+FROM customers_local c
+ORDER BY c.name COLLATE NOCASE ASC
+''');
+    return rows.map((row) {
+      final raw = (row['total_outstanding_real'] as num? ?? 0.0).toDouble();
+      final major = raw.truncate();
+      final minor = ((raw - major) * 100).round().toString().padLeft(2, '0');
+      return LocalDebtCustomer(
+        customerId: (row['id'] ?? '') as String,
+        name: (row['name'] ?? '') as String,
+        phoneNumber: row['phone_number'] as String?,
+        whatsappNumber: row['whatsapp_number'] as String?,
+        email: row['email'] as String?,
+        notes: row['notes'] as String?,
+        totalOutstanding: '$major.$minor',
+      );
+    }).toList(growable: false);
+  }
+
+  Future<LocalDebtCustomer?> getCustomerById(String id) async {
+    final db = await _appDb.database;
+    final rows = await db.rawQuery('''
+SELECT c.id, c.name, c.phone_number, c.whatsapp_number, c.email, c.notes,
+       COALESCE(
+         (SELECT SUM(CAST(r.outstanding_amount AS REAL))
+          FROM receivables_local r
+          WHERE r.customer_id = c.id),
+         0.0
+       ) AS total_outstanding_real
+FROM customers_local c
+WHERE c.id = ?
+LIMIT 1
+''', [id]);
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final raw = (row['total_outstanding_real'] as num? ?? 0.0).toDouble();
+    final major = raw.truncate();
+    final minor = ((raw - major) * 100).round().toString().padLeft(2, '0');
+    return LocalDebtCustomer(
+      customerId: (row['id'] ?? '') as String,
+      name: (row['name'] ?? '') as String,
+      phoneNumber: row['phone_number'] as String?,
+      whatsappNumber: row['whatsapp_number'] as String?,
+      email: row['email'] as String?,
+      notes: row['notes'] as String?,
+      totalOutstanding: '$major.$minor',
+    );
+  }
+
+  Future<List<LocalReceivableRecord>> listReceivablesForCustomer(
+    String customerId, {
+    int limit = 100,
+  }) async {
+    final db = await _appDb.database;
+    final rows = await db.rawQuery(
+      '''
+SELECT r.id, r.customer_id, c.name AS customer_name,
+       r.original_amount, r.outstanding_amount, r.due_date,
+       r.status, r.invoice_number, r.created_at,
+       CASE
+         WHEN EXISTS (
+           SELECT 1 FROM sync_queue q
+           WHERE q.entity_id = r.id AND q.status = 'failed'
+         ) THEN 'failed'
+         WHEN EXISTS (
+           SELECT 1 FROM sync_queue q
+           WHERE q.entity_id = r.id AND q.status IN ('pending', 'sending')
+         ) THEN 'pending'
+         ELSE 'applied'
+       END AS sync_status
+FROM receivables_local r
+JOIN customers_local c ON c.id = r.customer_id
+WHERE r.customer_id = ?
+ORDER BY r.created_at DESC
+LIMIT ?
+''',
+      [customerId, limit],
+    );
+    return rows.map(LocalReceivableRecord.fromRow).toList(growable: false);
+  }
+
   Future<List<LocalReceivableRecord>> listReceivables({int limit = 100}) async {
     final db = await _appDb.database;
     final rows = await db.rawQuery(
       '''
 SELECT r.id, r.customer_id, c.name AS customer_name,
        r.original_amount, r.outstanding_amount, r.due_date,
-       r.status, r.created_at,
+       r.status, r.invoice_number, r.created_at,
        CASE
          WHEN EXISTS (
            SELECT 1 FROM sync_queue q
@@ -166,7 +272,7 @@ LIMIT ?
       '''
 SELECT r.id, r.customer_id, c.name AS customer_name, c.phone_number,
        r.original_amount, r.outstanding_amount, r.due_date,
-       r.status, r.created_at,
+       r.status, r.invoice_number, r.created_at,
        CASE
          WHEN EXISTS (
            SELECT 1 FROM sync_queue q

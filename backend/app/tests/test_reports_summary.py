@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user, get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
@@ -43,6 +44,7 @@ def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User]
         Expense.__table__,
         Receivable.__table__,
         ReceivablePayment.__table__,
+        AuditLog.__table__,
     ):
         table.create(bind=engine)
 

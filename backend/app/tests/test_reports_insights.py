@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user, get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
 from app.models.item import Item
@@ -41,6 +42,7 @@ def _make_stack(
         Sale.__table__,
         SaleItem.__table__,
         Expense.__table__,
+        AuditLog.__table__,
     ):
         table.create(bind=engine)
 

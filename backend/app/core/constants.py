@@ -26,13 +26,23 @@ PROVIDER_PAYMENT_FAILED: Final[str] = "failed"
 
 # Receivable.status
 RECEIVABLE_STATUS_OPEN: Final[str] = "open"
+RECEIVABLE_STATUS_PARTIALLY_PAID: Final[str] = "partially_paid"
 RECEIVABLE_STATUS_SETTLED: Final[str] = "settled"
+RECEIVABLE_STATUS_CANCELLED: Final[str] = "cancelled"
 
 # Digital rail identifier stored on payments.provider
 PAYMENT_PROVIDER_PAYSTACK: Final[str] = "paystack"
 
-# users.role (expand when staff/cashier exist)
+# users.role
 USER_ROLE_MERCHANT_OWNER: Final[str] = "merchant_owner"
+USER_ROLE_MANAGER: Final[str] = "manager"
+USER_ROLE_CASHIER: Final[str] = "cashier"
+USER_ROLE_STOCK_KEEPER: Final[str] = "stock_keeper"
+
+# staff_invites.status
+STAFF_INVITE_STATUS_PENDING: Final[str] = "pending"
+STAFF_INVITE_STATUS_ACCEPTED: Final[str] = "accepted"
+STAFF_INVITE_STATUS_EXPIRED: Final[str] = "expired"
 
 # inventory movement_type
 INVENTORY_MOVEMENT_STOCK_IN: Final[str] = "stock_in"

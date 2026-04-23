@@ -19,10 +19,11 @@ from app.core.constants import (
 )
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
-from app.models.merchant import Merchant
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
 from app.schemas.sale import SaleCreateIn, SaleUpdateIn, SaleVoidIn
+from app.services.audit_service import log_audit
+from app.services.store_context import StoreContextError, get_merchant_and_store
 
 _MONEY_SCALE = Decimal("0.01")
 
@@ -58,6 +59,7 @@ class SaleLineSnapshot:
     quantity: int
     unit_price: Decimal
     line_total: Decimal
+    cost_price_snapshot: Decimal | None = None
 
 
 @dataclass(slots=True)
@@ -107,7 +109,7 @@ class SalesService:
     ) -> SaleSnapshot:
         store = self._get_default_store_for_user(user_id=user_id)
         requested_quantities = self._aggregate_quantities(payload=payload)
-        self._load_items_for_sale(store_id=store.id, item_ids=list(requested_quantities))
+        items = self._load_items_for_sale(store_id=store.id, item_ids=list(requested_quantities))
         balances = self._load_balances(item_ids=list(requested_quantities))
 
         for item_id, requested_qty in requested_quantities.items():
@@ -121,6 +123,7 @@ class SalesService:
 
         sale = Sale(
             store_id=store.id,
+            cashier_id=user_id,
             total_amount=Decimal("0.00"),
             payment_method_label=payload.payment_method_label,
             payment_status=PAYMENT_STATUS_RECORDED,
@@ -141,12 +144,14 @@ class SalesService:
             line_total = self._money(unit_price * line.quantity)
             total_amount += line_total
 
+            cost_snapshot = items[line.item_id].cost_price
             sale_line = SaleItem(
                 sale_id=sale.id,
                 item_id=line.item_id,
                 quantity=line.quantity,
                 unit_price=unit_price,
                 line_total=line_total,
+                cost_price_snapshot=self._money(cost_snapshot) if cost_snapshot is not None else None,
             )
             self.db.add(sale_line)
             self.db.flush()
@@ -157,6 +162,7 @@ class SalesService:
                     quantity=sale_line.quantity,
                     unit_price=sale_line.unit_price,
                     line_total=sale_line.line_total,
+                    cost_price_snapshot=sale_line.cost_price_snapshot,
                 )
             )
 
@@ -180,6 +186,18 @@ class SalesService:
             )
 
         sale.total_amount = self._money(total_amount)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="sale.created",
+            entity_type="sale",
+            entity_id=sale.id,
+            meta={
+                "total_amount": str(sale.total_amount),
+                "payment_method": sale.payment_method_label,
+            },
+        )
         if commit:
             self.db.commit()
             self.db.refresh(sale)
@@ -281,6 +299,14 @@ class SalesService:
             sale.local_operation_id = local_operation_id
 
         self.db.add(sale)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="sale.updated",
+            entity_type="sale",
+            entity_id=sale.id,
+        )
         if commit:
             self.db.commit()
             self.db.refresh(sale)
@@ -335,6 +361,15 @@ class SalesService:
             sale.local_operation_id = local_operation_id
 
         self.db.add(sale)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="sale.voided",
+            entity_type="sale",
+            entity_id=sale.id,
+            meta={"reason": payload.reason},
+        )
         if commit:
             self.db.commit()
             self.db.refresh(sale)
@@ -344,19 +379,10 @@ class SalesService:
         return self._to_sale_snapshot(sale=sale)
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
-        merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
-        if merchant is None:
-            msg = "Merchant profile not found."
-            raise SaleContextMissingError(msg)
-        store = self.db.scalar(
-            select(Store).where(
-                Store.merchant_id == merchant.id,
-                Store.is_default.is_(True),
-            )
-        )
-        if store is None:
-            msg = "Default store not found."
-            raise SaleContextMissingError(msg)
+        try:
+            _, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise SaleContextMissingError(str(exc)) from exc
         return store
 
     def _load_items_for_sale(self, *, store_id: UUID, item_ids: list[UUID]) -> dict[UUID, Item]:
@@ -434,6 +460,7 @@ class SalesService:
                     quantity=line.quantity,
                     unit_price=line.unit_price,
                     line_total=line.line_total,
+                    cost_price_snapshot=line.cost_price_snapshot,
                 )
                 for line in sale.lines
             ],

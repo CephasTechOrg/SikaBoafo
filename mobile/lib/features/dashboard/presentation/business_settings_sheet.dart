@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
@@ -128,6 +130,22 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _SectionCard(
+                  title: 'Staff Management',
+                  subtitle: 'Invite and manage your team members.',
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).maybePop();
+                        context.push(AppRoute.staff.path);
+                      },
+                      icon: const Icon(Icons.people_rounded),
+                      label: const Text('Manage Staff'),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),

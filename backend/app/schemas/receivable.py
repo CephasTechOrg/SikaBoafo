@@ -25,6 +25,9 @@ class CustomerCreateIn(BaseModel):
     customer_id: UUID | None = None
     name: str = Field(min_length=2, max_length=255)
     phone_number: str | None = Field(default=None, min_length=8, max_length=32)
+    whatsapp_number: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class SyncCustomerCreateIn(CustomerCreateIn):
@@ -81,6 +84,10 @@ class CustomerOut(BaseModel):
     customer_id: UUID
     name: str
     phone_number: str | None
+    whatsapp_number: str | None = None
+    email: str | None = None
+    notes: str | None = None
+    total_outstanding: Decimal = Decimal("0.00")
     created_at: datetime
 
 
@@ -100,4 +107,14 @@ class ReceivableOut(BaseModel):
     outstanding_amount: Decimal
     due_date: date | None
     status: str
+    invoice_number: str | None = None
+    sale_id: UUID | None = None
+    created_by_user_id: UUID | None = None
+    payment_link: str | None = None
+    payment_provider_reference: str | None = None
     created_at: datetime
+
+
+class CustomerDetailOut(BaseModel):
+    customer: CustomerOut
+    receivables: list[ReceivableOut]
