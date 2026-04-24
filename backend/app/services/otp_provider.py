@@ -32,11 +32,13 @@ class ArkeselOtpProvider:
 
     def generate(self, *, phone_number: str) -> GenerateOtpResult:
         if self.settings.auth_mock_otp_code:
+            logger.info("OTP generate: mode=mock phone=%s", phone_number)
             return GenerateOtpResult(
                 provider_reference="mock-otp",
                 expires_in_minutes=self.settings.arkesel_otp_expiry_minutes,
             )
 
+        logger.info("OTP generate: mode=arkesel phone=%s", phone_number)
         payload = {
             "number": phone_number,
             "expiry": self.settings.arkesel_otp_expiry_minutes,
@@ -50,6 +52,7 @@ class ArkeselOtpProvider:
         reference = None
         if isinstance(response.get("data"), dict):
             reference = response["data"].get("id") or response["data"].get("reference")
+        logger.info("OTP generate success: phone=%s provider_reference=%s", phone_number, reference)
         return GenerateOtpResult(
             provider_reference=reference,
             expires_in_minutes=self.settings.arkesel_otp_expiry_minutes,
@@ -57,10 +60,12 @@ class ArkeselOtpProvider:
 
     def verify(self, *, phone_number: str, code: str) -> None:
         if self.settings.auth_mock_otp_code:
+            logger.info("OTP verify: mode=mock phone=%s", phone_number)
             if code != self.settings.auth_mock_otp_code:
                 raise OtpVerificationFailedError("Invalid verification code.")
             return
 
+        logger.info("OTP verify: mode=arkesel phone=%s", phone_number)
         payload = {"number": phone_number, "code": code}
         try:
             self._post_json("/api/otp/verify", payload)
