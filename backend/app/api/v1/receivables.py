@@ -142,6 +142,25 @@ def list_receivables(
     return [_receivable_out(r) for r in receivables]
 
 
+@router.get("/{receivable_id}", response_model=ReceivableOut)
+def get_receivable(
+    receivable_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ReceivableOut:
+    service = ReceivablesService(db=db)
+    try:
+        receivable = service.get_receivable_for_user(
+            user_id=current_user.id,
+            receivable_id=receivable_id,
+        )
+    except ReceivableContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ReceivableNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _receivable_out(receivable)
+
+
 @router.post("", response_model=ReceivableOut, status_code=status.HTTP_201_CREATED)
 def create_receivable(
     payload: ReceivableCreateIn,

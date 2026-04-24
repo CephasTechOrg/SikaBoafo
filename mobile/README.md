@@ -36,6 +36,8 @@ flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000
 
 Default API base is `http://127.0.0.1:8000` (works for desktop/web; use `10.0.2.2` on Android emulator).
 
+Production/release builds default to `https://biztrackgh-api.onrender.com`.
+
 ### Physical Android over USB reverse (recommended on restricted Wi-Fi)
 
 Use this when campus/school Wi-Fi blocks device-to-device traffic.

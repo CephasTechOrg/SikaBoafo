@@ -457,19 +457,45 @@ class PaymentService:
         )
 
         previous_status = payment.status
+        verified_amount = self._kobo_to_money(verified.amount_kobo)
+        if verified_amount is not None:
+            payment.amount = verified_amount
+        failure_reason: str | None = None
+        expected_amount: Decimal | None = None
         if verified.status == "success":
-            payment.status = PROVIDER_PAYMENT_SUCCEEDED
-            payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
-                tz=UTC
-            )
             if sale is not None:
-                sale.payment_status = PAYMENT_STATUS_SUCCEEDED
+                expected_amount = self._money(sale.total_amount)
+                if verified_amount is not None and verified_amount >= expected_amount:
+                    payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                    payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                        tz=UTC
+                    )
+                    sale.payment_status = PAYMENT_STATUS_SUCCEEDED
+                    action = "payment.succeeded"
+                else:
+                    payment.status = PROVIDER_PAYMENT_FAILED
+                    sale.payment_status = PAYMENT_STATUS_FAILED
+                    failure_reason = (
+                        "underpaid_sale"
+                        if verified_amount is not None and verified_amount > Decimal("0.00")
+                        else "invalid_verified_amount"
+                    )
+                    action = "payment.failed"
             else:
-                self._apply_receivable_settlement(
-                    payment=payment,
-                    receivable=receivable,
-                )
-            action = "payment.succeeded"
+                if verified_amount is not None and verified_amount > Decimal("0.00"):
+                    payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                    payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                        tz=UTC
+                    )
+                    self._apply_receivable_settlement(
+                        payment=payment,
+                        receivable=receivable,
+                    )
+                    action = "payment.succeeded"
+                else:
+                    payment.status = PROVIDER_PAYMENT_FAILED
+                    failure_reason = "invalid_verified_amount"
+                    action = "payment.failed"
         else:
             payment.status = PROVIDER_PAYMENT_FAILED
             if sale is not None:
@@ -510,6 +536,9 @@ class PaymentService:
                 "current_status": payment.status,
                 "sale_id": str(sale.id) if sale is not None else None,
                 "receivable_id": str(receivable.id) if receivable is not None else None,
+                "verified_amount": str(verified_amount) if verified_amount is not None else None,
+                "expected_amount": str(expected_amount) if expected_amount is not None else None,
+                "failure_reason": failure_reason,
             },
         )
         self.db.commit()
@@ -596,6 +625,11 @@ class PaymentService:
     @staticmethod
     def _money(value: Decimal) -> Decimal:
         return value.quantize(_MONEY_SCALE, rounding=ROUND_HALF_UP)
+
+    def _kobo_to_money(self, amount_kobo: int | None) -> Decimal | None:
+        if amount_kobo is None:
+            return None
+        return self._money(Decimal(amount_kobo) / Decimal("100"))
 
     @staticmethod
     def _build_webhook_event_key(

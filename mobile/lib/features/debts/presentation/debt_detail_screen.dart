@@ -118,6 +118,7 @@ class _DetailBody extends ConsumerStatefulWidget {
 
 class _DetailBodyState extends ConsumerState<_DetailBody> {
   bool _isGeneratingPaymentLink = false;
+  bool _isCheckingPaymentStatus = false;
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +131,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           .toStringAsFixed(2),
     );
     final canCollect = row.status == 'open' || row.status == 'partially_paid';
-    final hasPaymentLink = row.paymentLink != null && row.paymentLink!.isNotEmpty;
+    final hasPaymentLink =
+        row.paymentLink != null && row.paymentLink!.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -178,7 +180,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           )
                         : const Icon(Icons.link_rounded),
                     label: Text(
-                      _isGeneratingPaymentLink ? 'Generating...' : 'Generate Link',
+                      _isGeneratingPaymentLink
+                          ? 'Generating...'
+                          : 'Generate Link',
                     ),
                   ),
                 ),
@@ -203,6 +207,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             const SizedBox(height: 12),
             _PaymentLinkPanel(
               paymentLink: row.paymentLink!,
+              isCheckingStatus: _isCheckingPaymentStatus,
+              onCheckStatusPressed:
+                  canCollect ? () => _checkPaymentStatus(context) : null,
               onCopyPressed: () => _copyPaymentLink(context, row.paymentLink!),
             ),
           ],
@@ -260,7 +267,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 else
                   Column(
                     children: [
-                      for (var i = 0; i < widget.detail.payments.length; i++) ...[
+                      for (var i = 0;
+                          i < widget.detail.payments.length;
+                          i++) ...[
                         _PaymentCard(payment: widget.detail.payments[i]),
                         if (i != widget.detail.payments.length - 1)
                           const SizedBox(height: 10),
@@ -278,7 +287,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ReceiveRepaymentScreen(receivableId: widget.receivableId),
+        builder: (_) =>
+            ReceiveRepaymentScreen(receivableId: widget.receivableId),
       ),
     );
     if (saved != true || !context.mounted) return;
@@ -354,12 +364,64 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     }
   }
 
-  Future<void> _copyPaymentLink(BuildContext context, String paymentLink) async {
+  Future<void> _copyPaymentLink(
+      BuildContext context, String paymentLink) async {
     await Clipboard.setData(ClipboardData(text: paymentLink));
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Payment link copied.')),
     );
+  }
+
+  Future<ReceivableDto?> _pollReceivableStatus({
+    int attempts = 6,
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    ReceivableDto? latest;
+    for (var index = 0; index < attempts; index++) {
+      latest = await ref
+          .read(debtsApiProvider)
+          .fetchReceivableById(widget.receivableId);
+      if (latest.status == 'settled' ||
+          latest.status == 'cancelled' ||
+          latest.status == 'partially_paid') {
+        return latest;
+      }
+      if (index < attempts - 1) {
+        await Future<void>.delayed(interval);
+      }
+    }
+    return latest;
+  }
+
+  Future<void> _checkPaymentStatus(BuildContext context) async {
+    if (_isCheckingPaymentStatus) return;
+    setState(() => _isCheckingPaymentStatus = true);
+    try {
+      final latest = await _pollReceivableStatus();
+      await ref.read(debtsControllerProvider.notifier).refresh();
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
+      await ref.read(receivableDetailProvider(widget.receivableId).future);
+      if (!context.mounted) return;
+      final status = _statusLabel(latest?.status ?? 'open');
+      final outstanding =
+          latest?.outstandingAmount ?? widget.detail.record.outstandingAmount;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Current debt status: $status • Outstanding: ₵$outstanding'),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanizeDebtsApiError(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingPaymentStatus = false);
+      }
+    }
   }
 }
 
@@ -691,10 +753,14 @@ class _InlineEmptyState extends StatelessWidget {
 class _PaymentLinkPanel extends StatelessWidget {
   const _PaymentLinkPanel({
     required this.paymentLink,
+    required this.isCheckingStatus,
+    required this.onCheckStatusPressed,
     required this.onCopyPressed,
   });
 
   final String paymentLink;
+  final bool isCheckingStatus;
+  final VoidCallback? onCheckStatusPressed;
   final VoidCallback onCopyPressed;
 
   @override
@@ -715,14 +781,36 @@ class _PaymentLinkPanel extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: onCopyPressed,
-              icon: const Icon(Icons.copy_rounded),
-              label: const Text('Copy Link'),
-            ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onCheckStatusPressed,
+                icon: isCheckingStatus
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+                label: Text(isCheckingStatus ? 'Checking...' : 'Check Status'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onCopyPressed,
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Copy Link'),
+              ),
+            ],
           ),
+          if (onCheckStatusPressed != null)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'After customer pays, use Check Status to refresh this debt.',
+                style: TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+            ),
         ],
       ),
     );

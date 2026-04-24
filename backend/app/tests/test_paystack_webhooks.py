@@ -442,6 +442,69 @@ def test_paystack_webhook_verify_failed_marks_payment_failed() -> None:
         app.dependency_overrides.clear()
 
 
+def test_paystack_webhook_partial_success_marks_receivable_partially_paid() -> None:
+    client, session_local, reference = _build_sqlite_test_stack()
+    original_secret = os.environ.get("PAYSTACK_SECRET_KEY_TEST")
+    os.environ["PAYSTACK_SECRET_KEY_TEST"] = "sk_test_webhook_123"
+    get_settings.cache_clear()
+    body, signature = _body_and_signature(
+        reference=reference,
+        secret="sk_test_webhook_123",
+    )
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=reference,
+                status="success",
+                amount_kobo=5000,
+                paid_at="2026-04-24T12:50:00Z",
+                raw_payload={"status": True, "data": {"status": "success", "amount": 5000}},
+            ),
+        ):
+            response = client.post(
+                "/api/v1/webhooks/paystack",
+                content=body,
+                headers={
+                    "x-paystack-signature": signature,
+                    "content-type": "application/json",
+                },
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "processed"
+
+        with session_local() as db:
+            payment = db.scalar(
+                select(Payment).where(Payment.provider_reference == reference)
+            )
+            assert payment is not None
+            assert payment.status == "succeeded"
+            assert payment.amount == Decimal("50.00")
+            assert payment.receivable_payment_id is not None
+
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.payment_provider_reference == reference)
+            )
+            assert receivable is not None
+            assert receivable.status == "partially_paid"
+            assert receivable.outstanding_amount == Decimal("70.00")
+
+            repayment = db.scalar(
+                select(ReceivablePayment).where(
+                    ReceivablePayment.id == payment.receivable_payment_id
+                )
+            )
+            assert repayment is not None
+            assert repayment.amount == Decimal("50.00")
+    finally:
+        if original_secret is None:
+            os.environ.pop("PAYSTACK_SECRET_KEY_TEST", None)
+        else:
+            os.environ["PAYSTACK_SECRET_KEY_TEST"] = original_secret
+        get_settings.cache_clear()
+        app.dependency_overrides.clear()
+
+
 def test_paystack_webhook_success_marks_sale_payment_succeeded() -> None:
     client, session_local, reference = _build_sqlite_sale_payment_stack()
     original_secret = os.environ.get("PAYSTACK_SECRET_KEY_TEST")
@@ -487,6 +550,57 @@ def test_paystack_webhook_success_marks_sale_payment_succeeded() -> None:
 
             webhook_event_count = db.scalar(select(func.count()).select_from(PaymentWebhookEvent))
             assert webhook_event_count == 1
+    finally:
+        if original_secret is None:
+            os.environ.pop("PAYSTACK_SECRET_KEY_TEST", None)
+        else:
+            os.environ["PAYSTACK_SECRET_KEY_TEST"] = original_secret
+        get_settings.cache_clear()
+        app.dependency_overrides.clear()
+
+
+def test_paystack_webhook_success_underpaid_sale_marks_failed() -> None:
+    client, session_local, reference = _build_sqlite_sale_payment_stack()
+    original_secret = os.environ.get("PAYSTACK_SECRET_KEY_TEST")
+    os.environ["PAYSTACK_SECRET_KEY_TEST"] = "sk_test_webhook_123"
+    get_settings.cache_clear()
+    body, signature = _body_and_signature(
+        reference=reference,
+        secret="sk_test_webhook_123",
+    )
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=reference,
+                status="success",
+                amount_kobo=4000,
+                paid_at="2026-04-24T13:15:00Z",
+                raw_payload={"status": True, "data": {"status": "success", "amount": 4000}},
+            ),
+        ):
+            response = client.post(
+                "/api/v1/webhooks/paystack",
+                content=body,
+                headers={
+                    "x-paystack-signature": signature,
+                    "content-type": "application/json",
+                },
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "processed"
+
+        with session_local() as db:
+            payment = db.scalar(
+                select(Payment).where(Payment.provider_reference == reference)
+            )
+            assert payment is not None
+            assert payment.status == "failed"
+            assert payment.amount == Decimal("40.00")
+
+            sale = db.scalar(select(Sale).where(Sale.id == payment.sale_id))
+            assert sale is not None
+            assert sale.payment_status == "failed"
     finally:
         if original_secret is None:
             os.environ.pop("PAYSTACK_SECRET_KEY_TEST", None)

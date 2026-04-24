@@ -96,6 +96,19 @@ class ReceivablePaymentSnapshot:
 class ReceivablesService:
     db: Session
 
+    def get_receivable_for_user(
+        self,
+        *,
+        user_id: UUID,
+        receivable_id: UUID,
+    ) -> ReceivableSnapshot:
+        store = self._get_default_store_for_user(user_id=user_id)
+        receivable = self._get_receivable_for_store(
+            store_id=store.id,
+            receivable_id=receivable_id,
+        )
+        return self._to_receivable_snapshot(receivable=receivable)
+
     def list_customers_for_user(self, *, user_id: UUID, limit: int = 200) -> list[CustomerSnapshot]:
         store = self._get_default_store_for_user(user_id=user_id)
         rows = self.db.execute(

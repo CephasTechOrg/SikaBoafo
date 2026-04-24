@@ -120,6 +120,47 @@ def test_create_customer_create_debt_and_list() -> None:
         app.dependency_overrides.clear()
 
 
+def test_get_receivable_by_id_returns_receivable() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    try:
+        customer_resp = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Kofi Mensah", "phone_number": "0244123456"},
+        )
+        assert customer_resp.status_code == 201
+        customer_id = customer_resp.json()["customer_id"]
+
+        debt_resp = client.post(
+            "/api/v1/receivables",
+            json={
+                "customer_id": customer_id,
+                "original_amount": "120.00",
+                "due_date": "2026-05-30",
+            },
+        )
+        assert debt_resp.status_code == 201
+        created = debt_resp.json()
+
+        fetched = client.get(f"/api/v1/receivables/{created['receivable_id']}")
+        assert fetched.status_code == 200
+        body = fetched.json()
+        assert body["receivable_id"] == created["receivable_id"]
+        assert body["status"] == "open"
+        assert Decimal(body["outstanding_amount"]) == Decimal("120.00")
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_receivable_by_id_returns_404_when_missing() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    try:
+        fetched = client.get(f"/api/v1/receivables/{uuid4()}")
+        assert fetched.status_code == 404
+        assert "not found" in fetched.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_record_partial_and_full_repayment() -> None:
     client, session_local, _ = _build_sqlite_test_stack()
     try:

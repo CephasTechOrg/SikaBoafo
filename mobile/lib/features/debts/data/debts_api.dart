@@ -181,6 +181,17 @@ class DebtsApi {
         .toList(growable: false);
   }
 
+  Future<ReceivableDto> fetchReceivableById(String receivableId) async {
+    final response = await _apiClient.dio.get<dynamic>(
+      '/receivables/$receivableId',
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected receivable detail payload.');
+    }
+    return ReceivableDto.fromJson(data);
+  }
+
   Future<ReceivableDto> cancelReceivable(String receivableId) async {
     final response = await _apiClient.dio.post<dynamic>(
       '/receivables/$receivableId/cancel',

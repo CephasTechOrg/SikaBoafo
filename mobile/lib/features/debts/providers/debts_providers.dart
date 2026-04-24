@@ -23,11 +23,13 @@ final debtsRepositoryProvider = Provider<DebtsRepository>((ref) {
   );
 });
 
-final debtsControllerProvider = AsyncNotifierProvider<DebtsController, DebtsViewData>(
+final debtsControllerProvider =
+    AsyncNotifierProvider<DebtsController, DebtsViewData>(
   DebtsController.new,
 );
 
-final receivableDetailProvider = FutureProvider.family<LocalReceivableDetail?, String>((
+final receivableDetailProvider =
+    FutureProvider.family<LocalReceivableDetail?, String>((
   ref,
   receivableId,
 ) {
@@ -49,7 +51,16 @@ class DebtsController extends AsyncNotifier<DebtsViewData> {
   }
 
   Future<void> refresh() async {
-    await _repo.syncPendingQueue();
+    try {
+      await _repo.syncPendingQueue();
+    } catch (_) {
+      // Keep local-first UX even if immediate sync attempt fails.
+    }
+    try {
+      await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
+    } catch (_) {
+      // Keep local data visible when network refresh fails.
+    }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
     state = AsyncValue.data(await _loadViewData());
   }
