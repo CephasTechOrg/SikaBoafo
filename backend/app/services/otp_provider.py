@@ -40,7 +40,7 @@ class ArkeselOtpProvider:
 
         logger.info("OTP generate: mode=arkesel phone=%s", phone_number)
         payload = {
-            "number": phone_number,
+            "phone_number": phone_number,
             "expiry": self.settings.arkesel_otp_expiry_minutes,
             "length": self.settings.arkesel_otp_length,
             "type": self.settings.arkesel_otp_type,
@@ -49,9 +49,16 @@ class ArkeselOtpProvider:
             "message": "Your BizTrack code is %otp_code%. Expires in %expiry% minutes.",
         }
         response = self._post_json("/api/otp/generate", payload)
+        self._assert_provider_success(
+            response=response,
+            expected_code="1000",
+            action="generate",
+        )
         reference = None
         if isinstance(response.get("data"), dict):
             reference = response["data"].get("id") or response["data"].get("reference")
+        if reference is None:
+            reference = response.get("reference")
         logger.info("OTP generate success: phone=%s provider_reference=%s", phone_number, reference)
         return GenerateOtpResult(
             provider_reference=reference,
@@ -66,9 +73,14 @@ class ArkeselOtpProvider:
             return
 
         logger.info("OTP verify: mode=arkesel phone=%s", phone_number)
-        payload = {"number": phone_number, "code": code}
+        payload = {"phone_number": phone_number, "code": code}
         try:
-            self._post_json("/api/otp/verify", payload)
+            response = self._post_json("/api/otp/verify", payload)
+            self._assert_provider_success(
+                response=response,
+                expected_code="1100",
+                action="verify",
+            )
         except OtpProviderError as exc:
             # Arkesel commonly uses 4xx/422 for invalid code; collapse to auth failure.
             if "422" in str(exc) or "401" in str(exc):
@@ -110,3 +122,25 @@ class ArkeselOtpProvider:
         except json.JSONDecodeError:
             logger.warning("Arkesel returned non-JSON response body.")
             return {}
+
+    def _assert_provider_success(
+        self,
+        *,
+        response: dict[str, object],
+        expected_code: str,
+        action: str,
+    ) -> None:
+        provider_code = response.get("code")
+        if provider_code is None:
+            # Some Arkesel responses may omit `code` but include nested data; keep backward compatibility.
+            if isinstance(response.get("data"), dict):
+                return
+            msg = f"OTP {action} returned unexpected response payload."
+            raise OtpProviderError(msg)
+
+        normalized_code = str(provider_code).strip()
+        if normalized_code == expected_code:
+            return
+
+        provider_message = str(response.get("message") or f"OTP {action} failed.").strip()
+        raise OtpProviderError(f"{provider_message} [provider_code={normalized_code}]")
