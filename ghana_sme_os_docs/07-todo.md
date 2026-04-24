@@ -285,7 +285,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 3.9 | inventory_movements | `[x] ✅` | `models/inventory.py` | M2: `user_id` added |
 | 3.10 | Sales + sale_items | `[x] ✅` | `models/sale.py` | M1+M2: `subtotal`, `discount`, `tax`, `cashier_id` all added |
 | 3.11 | Invoices | `[ ] ❌` | — | See §C.2 decision |
-| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-5: receivable initiation + receivable webhook settlement + sale initiation + sale webhook settlement built. Remaining: notifications + mobile payment-status polling. |
+| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-5: receivable initiation + receivable webhook settlement + sale initiation + sale webhook settlement + mobile sale payment-status polling built. Remaining: notifications + debt webhook status transitions + partial payments. |
 | 3.13 | payment_provider_connections | `[~] 🚧` | `models/payment_provider_connection.py` + migration 009 | M4 Step 1 done; encrypted secret + verification still pending |
 | 3.14 | Notifications | `[ ] ❌` | — | Phase 5 |
 | 3.15 | Audit logs | `[x] ✅` | `models/audit_log.py`, `services/audit_service.py` | M1: writes on every mutation |
@@ -312,11 +312,11 @@ Current stubs:
 | 4.9 | Webhook double-verification via `/transaction/verify` | `[x] ✅` | implemented in `payment_service.handle_paystack_webhook()` |
 | 4.10 | Idempotency (unique `provider_reference`, store event IDs) | `[x] ✅` | migration 010 adds unique `payments.provider_reference`; `payment_webhook_events` table enforces unique `(provider, event_key)` for replay protection. |
 | 4.11 | Downstream updates (sale/receivable, audit log, notification) | `[~] 🚧` | receivable settlement + sale settlement + audit logs are wired. notifications still pending. |
-| 4.12 | Pay-now flow (immediate sale) | `[~] 🚧` | Sales checkout supports Paystack link generation via `POST /payments/initiate-sale`; webhook-based sale settlement is now wired. mobile polling/refresh still pending. |
+| 4.12 | Pay-now flow (immediate sale) | `[~] 🚧` | Sales checkout supports Paystack link generation via `POST /payments/initiate-sale`; webhook-based sale settlement is now wired; mobile status refresh action is wired via `GET /sales/{sale_id}` polling. |
 | 4.13 | Pay-later flow (debt → shareable link) | `[~] 🚧` | Debt Detail now has "Generate Link" action and renders/copies `payment_link`; still pending webhook-driven status transitions. |
 | 4.14 | Partial payment handling | `[ ] ❌` | `receivables_service.py` |
 | 4.15 | Test-mode toggle (test/live keys) | `[x] ✅` | Mode selector implemented in connection settings (`test` / `live`) |
-| 4.16 | Payment status polling on mobile (after opening link) | `[ ] ❌` | mobile payments feature |
+| 4.16 | Payment status polling on mobile (after opening link) | `[~] 🚧` | Sales flow now supports status polling/refresh from checkout link dialog. Remaining: extend same pattern to debt payment links. |
 
 ### Phase 5 — Messaging Integration (WhatsApp + SMS)
 
@@ -477,6 +477,10 @@ The big one. §4.1 through §4.16.
   - sale initiation sets `sales.payment_status = pending_provider` and writes audit log entries
   - mobile Sales checkout adds **Generate Paystack Link** action for MoMo and link copy flow
   - stabilization sweep: `python -m pytest -q backend/app/tests/test_payments_initiate.py backend/app/tests/test_paystack_webhooks.py` (9 pass), `flutter analyze` (clean), `flutter test test/features/frontend_lifecycle_regression_test.dart` (2 pass)
+- M4 Step 5 (2026-04-24) `[~] 🚧`: mobile sale payment-status polling/refresh slice:
+  - backend `GET /sales/{sale_id}` endpoint added to support single-sale status checks
+  - mobile Sales link dialog now supports **Check Status** polling (`pending_provider` / `succeeded` / `failed`) via `GET /sales/{sale_id}`
+  - stabilization sweep: `python -m pytest -q backend/app/tests/test_sales_sync.py backend/app/tests/test_payments_initiate.py backend/app/tests/test_paystack_webhooks.py` (20 pass), `flutter analyze` (clean), `flutter test test/features/frontend_lifecycle_regression_test.dart test/features/inventory_archive_ui_test.dart` (5 pass)
 - Provider abstraction + encrypted key storage
 - "Connect Paystack" settings screen
 - Create payment request
@@ -576,5 +580,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, and sale pay-now flow with webhook settlement now implemented; the next critical slice is mobile payment-status polling/refresh, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, sale pay-now flow with webhook settlement, and mobile sale payment-status polling now implemented; the next critical slice is notifications + debt webhook status transitions/partial payments, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
 
