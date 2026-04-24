@@ -1,7 +1,7 @@
 services:
   - type: web
     name: biztrackgh-api
-    runtime: python
+    env: python
     region: oregon
     plan: free
     branch: main
@@ -9,7 +9,7 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    preDeployCommand: alembic upgrade head
+      alembic upgrade head
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
