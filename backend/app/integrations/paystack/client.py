@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, request
+
+logger = logging.getLogger(__name__)
 
 
 class PaystackClientError(Exception):
@@ -169,6 +172,12 @@ class PaystackClient:
             raw = exc.read().decode("utf-8", errors="replace")
             parsed = _parse_json(raw)
             msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
+            logger.warning(
+                "Paystack initialize request failed: status=%s message=%s payload=%s",
+                exc.code,
+                msg,
+                parsed,
+            )
             raise PaystackClientError(
                 msg,
                 status_code=exc.code,
@@ -176,11 +185,13 @@ class PaystackClient:
             ) from exc
         except error.URLError as exc:
             msg = f"Could not reach Paystack: {exc.reason!s}"
+            logger.warning("Paystack initialize request unreachable: reason=%s", exc.reason)
             raise PaystackClientError(msg) from exc
 
         parsed = _parse_json(body)
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
+            logger.warning("Paystack initialize returned non-JSON payload.")
             raise PaystackClientError(msg)
         return parsed
 
@@ -202,6 +213,12 @@ class PaystackClient:
             raw = exc.read().decode("utf-8", errors="replace")
             parsed = _parse_json(raw)
             msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
+            logger.warning(
+                "Paystack verify request failed: status=%s message=%s payload=%s",
+                exc.code,
+                msg,
+                parsed,
+            )
             raise PaystackClientError(
                 msg,
                 status_code=exc.code,
@@ -209,11 +226,13 @@ class PaystackClient:
             ) from exc
         except error.URLError as exc:
             msg = f"Could not reach Paystack: {exc.reason!s}"
+            logger.warning("Paystack verify request unreachable: reason=%s", exc.reason)
             raise PaystackClientError(msg) from exc
 
         parsed = _parse_json(body)
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
+            logger.warning("Paystack verify returned non-JSON payload.")
             raise PaystackClientError(msg)
         return parsed
 
