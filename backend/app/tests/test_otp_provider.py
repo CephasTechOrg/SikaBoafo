@@ -15,7 +15,7 @@ def _settings() -> Settings:
     )
 
 
-def test_generate_uses_phone_number_field_and_accepts_success_code() -> None:
+def test_generate_uses_both_number_aliases_and_accepts_success_code() -> None:
     provider = ArkeselOtpProvider(settings=_settings())
     captured: dict[str, object] = {}
 
@@ -32,8 +32,8 @@ def test_generate_uses_phone_number_field_and_accepts_success_code() -> None:
 
     assert captured["path"] == "/api/otp/generate"
     assert isinstance(captured["payload"], dict)
+    assert captured["payload"]["number"] == "233244123456"
     assert captured["payload"]["phone_number"] == "233244123456"
-    assert "number" not in captured["payload"]
     assert result.provider_reference is None
 
 
@@ -57,7 +57,7 @@ def test_generate_raises_when_provider_returns_error_code_in_http_200() -> None:
         raise AssertionError("Expected OtpProviderError for Arkesel error response.")
 
 
-def test_verify_uses_phone_number_field_and_accepts_success_code() -> None:
+def test_verify_uses_both_number_aliases_and_accepts_success_code() -> None:
     provider = ArkeselOtpProvider(settings=_settings())
     captured: dict[str, object] = {}
 
@@ -74,6 +74,6 @@ def test_verify_uses_phone_number_field_and_accepts_success_code() -> None:
 
     assert captured["path"] == "/api/otp/verify"
     assert isinstance(captured["payload"], dict)
+    assert captured["payload"]["number"] == "233244123456"
     assert captured["payload"]["phone_number"] == "233244123456"
     assert captured["payload"]["code"] == "123456"
-    assert "number" not in captured["payload"]

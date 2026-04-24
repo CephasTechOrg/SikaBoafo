@@ -40,6 +40,9 @@ class ArkeselOtpProvider:
 
         logger.info("OTP generate: mode=arkesel phone=%s", phone_number)
         payload = {
+            # Arkesel integrations have shown inconsistent field naming across endpoints/docs.
+            # Send both aliases to remain compatible with deployed validation rules.
+            "number": phone_number,
             "phone_number": phone_number,
             "expiry": self.settings.arkesel_otp_expiry_minutes,
             "length": self.settings.arkesel_otp_length,
@@ -73,7 +76,11 @@ class ArkeselOtpProvider:
             return
 
         logger.info("OTP verify: mode=arkesel phone=%s", phone_number)
-        payload = {"phone_number": phone_number, "code": code}
+        payload = {
+            "number": phone_number,
+            "phone_number": phone_number,
+            "code": code,
+        }
         try:
             response = self._post_json("/api/otp/verify", payload)
             self._assert_provider_success(
