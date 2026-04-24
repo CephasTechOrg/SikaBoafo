@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -23,6 +24,8 @@ from app.core.constants import (
 )
 from app.db.base import Base
 from app.models.mixins import UUIDPrimaryKeyMixin
+
+_JSONB_OR_JSON = JSONB().with_variant(sa.JSON(), "sqlite")
 
 
 class Payment(UUIDPrimaryKeyMixin, Base):
@@ -43,7 +46,9 @@ class Payment(UUIDPrimaryKeyMixin, Base):
     provider: Mapped[str] = mapped_column(
         String(32), default=PAYMENT_PROVIDER_PAYSTACK, nullable=False
     )
-    provider_reference: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    provider_reference: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), default=DEFAULT_CURRENCY, nullable=False)
     status: Mapped[str] = mapped_column(
@@ -56,4 +61,6 @@ class Payment(UUIDPrimaryKeyMixin, Base):
         nullable=False,
     )
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    raw_provider_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    raw_provider_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        _JSONB_OR_JSON, nullable=True
+    )

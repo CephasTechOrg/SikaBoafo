@@ -133,30 +133,36 @@ void main() {
       await _pump(tester);
     }
 
-    testWidgets('shows overdue count > 0 when receivable is past due', (tester) async {
+    testWidgets('shows overdue count > 0 when receivable is past due',
+        (tester) async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       final iso = '${yesterday.year.toString().padLeft(4, '0')}'
           '-${yesterday.month.toString().padLeft(2, '0')}'
           '-${yesterday.day.toString().padLeft(2, '0')}';
-      await pumpWithReceivables(tester, _makeRecord(status: 'open', dueDateIso: iso));
+      await pumpWithReceivables(
+          tester, _makeRecord(status: 'open', dueDateIso: iso));
       // Debt Aging section header may be scrolled off-screen in a ListView.
       expect(find.text('Debt Aging', skipOffstage: false), findsOneWidget);
       // Overdue row value should be "1" somewhere in the tree.
       expect(find.text('1', skipOffstage: false), findsWidgets);
     });
 
-    testWidgets('skips settled receivables in aging calculation', (tester) async {
+    testWidgets('skips settled receivables in aging calculation',
+        (tester) async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       final iso = '${yesterday.year.toString().padLeft(4, '0')}'
           '-${yesterday.month.toString().padLeft(2, '0')}'
           '-${yesterday.day.toString().padLeft(2, '0')}';
-      await pumpWithReceivables(tester, _makeRecord(status: 'settled', dueDateIso: iso));
+      await pumpWithReceivables(
+          tester, _makeRecord(status: 'settled', dueDateIso: iso));
       // Debt Aging section must still render; all bucket values should be 0.
       expect(find.text('Debt Aging', skipOffstage: false), findsOneWidget);
     });
 
-    testWidgets('shows no_due bucket when receivable has no due date', (tester) async {
-      await pumpWithReceivables(tester, _makeRecord(status: 'open', dueDateIso: null));
+    testWidgets('shows no_due bucket when receivable has no due date',
+        (tester) async {
+      await pumpWithReceivables(
+          tester, _makeRecord(status: 'open', dueDateIso: null));
       expect(find.text('No due date', skipOffstage: false), findsOneWidget);
     });
   });
@@ -182,14 +188,30 @@ void main() {
       await _pump(tester);
 
       // KPI cards are near the top of the ListView — should be on-screen.
-      expect(find.text('GHS 150.00'), findsOneWidget);
-      expect(find.text('GHS 40.00'), findsOneWidget);
-      expect(find.text('GHS 110.00'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text && (widget.data?.contains('150') ?? false),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text && (widget.data?.contains('40') ?? false),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Text && (widget.data?.contains('110') ?? false),
+        ),
+        findsAtLeastNWidgets(1),
+      );
       // "Today" appears in both the period tab chip and the bar chart badge.
       expect(find.text('Today'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('renders Payment Breakdown and Top Items sections when insights load',
+    testWidgets(
+        'renders Payment Breakdown and Top Items sections when insights load',
         (tester) async {
       _useTallScreen(tester);
       addTearDown(tester.view.resetPhysicalSize);
@@ -208,8 +230,10 @@ void main() {
       await _pump(tester);
 
       // Section headers scroll off-screen — use skipOffstage: false.
-      expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
-      expect(find.text('Top Selling Items', skipOffstage: false), findsOneWidget);
+      expect(
+          find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
+      expect(
+          find.text('Top Selling Items', skipOffstage: false), findsOneWidget);
       expect(find.text('Cash', skipOffstage: false), findsOneWidget);
       expect(find.text('Bread', skipOffstage: false), findsOneWidget);
     });

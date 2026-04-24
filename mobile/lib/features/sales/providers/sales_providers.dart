@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 
 final salesRepositoryProvider = Provider<SalesRepository>((ref) {
@@ -15,6 +16,10 @@ final salesControllerProvider =
     AsyncNotifierProvider<SalesController, List<LocalSaleRecord>>(
   SalesController.new,
 );
+
+final salesPaymentsApiProvider = Provider<SalesPaymentsApi>((ref) {
+  return SalesPaymentsApi(ref.watch(apiClientProvider));
+});
 
 class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
   SalesRepository get _repo => ref.read(salesRepositoryProvider);
@@ -49,9 +54,21 @@ class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
     required List<SaleDraftLine> lines,
     String? note,
   }) async {
+    await recordSaleReturningId(
+      paymentMethodLabel: paymentMethodLabel,
+      lines: lines,
+      note: note,
+    );
+  }
+
+  Future<String> recordSaleReturningId({
+    required String paymentMethodLabel,
+    required List<SaleDraftLine> lines,
+    String? note,
+  }) async {
     state = const AsyncLoading();
     try {
-      await _repo.createSaleLocal(
+      final saleId = await _repo.createSaleLocal(
         paymentMethodLabel: paymentMethodLabel,
         lines: lines,
         note: note,
@@ -59,6 +76,7 @@ class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
       await _repo.syncPendingQueue();
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.data(await _loadSales());
+      return saleId;
     } catch (error, stackTrace) {
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.error(error, stackTrace);

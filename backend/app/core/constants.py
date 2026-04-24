@@ -32,6 +32,8 @@ RECEIVABLE_STATUS_CANCELLED: Final[str] = "cancelled"
 
 # Digital rail identifier stored on payments.provider
 PAYMENT_PROVIDER_PAYSTACK: Final[str] = "paystack"
+PAYSTACK_MODE_TEST: Final[str] = "test"
+PAYSTACK_MODE_LIVE: Final[str] = "live"
 
 # users.role
 USER_ROLE_MERCHANT_OWNER: Final[str] = "merchant_owner"

@@ -17,7 +17,8 @@ class BusinessSettingsSheet extends ConsumerStatefulWidget {
   final MerchantContext initialContext;
 
   @override
-  ConsumerState<BusinessSettingsSheet> createState() => _BusinessSettingsSheetState();
+  ConsumerState<BusinessSettingsSheet> createState() =>
+      _BusinessSettingsSheetState();
 }
 
 class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
@@ -41,10 +42,14 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
   @override
   void initState() {
     super.initState();
-    _businessNameCtrl = TextEditingController(text: widget.initialContext.businessName);
-    _businessTypeCtrl = TextEditingController(text: widget.initialContext.businessType ?? '');
-    _storeNameCtrl = TextEditingController(text: widget.initialContext.storeName);
-    _storeLocationCtrl = TextEditingController(text: widget.initialContext.storeLocation ?? '');
+    _businessNameCtrl =
+        TextEditingController(text: widget.initialContext.businessName);
+    _businessTypeCtrl =
+        TextEditingController(text: widget.initialContext.businessType ?? '');
+    _storeNameCtrl =
+        TextEditingController(text: widget.initialContext.storeName);
+    _storeLocationCtrl =
+        TextEditingController(text: widget.initialContext.storeLocation ?? '');
     _timezoneOptions = [
       ..._defaultTimezones,
       if (!_defaultTimezones.contains(widget.initialContext.timezone))
@@ -136,6 +141,24 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
                 },
                 icon: const Icon(Icons.people_rounded),
                 label: const Text('Manage Staff'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _SectionCard(
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: AppColors.navy,
+            title: 'Payment Settings',
+            subtitle: 'Connect Paystack and manage collection mode.',
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).maybePop();
+                  context.push(AppRoute.paystack.path);
+                },
+                icon: const Icon(Icons.link_rounded),
+                label: const Text('Connect Paystack'),
               ),
             ),
           ),
@@ -261,7 +284,8 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

@@ -702,6 +702,7 @@ class _InviteSheetState extends State<_InviteSheet> {
       widget.onInvited();
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Failed to send invitation. Please try again.');
     } finally {
       if (mounted) setState(() => _loading = false);

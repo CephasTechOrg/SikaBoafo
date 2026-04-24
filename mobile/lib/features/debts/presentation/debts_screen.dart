@@ -639,9 +639,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             amount: _repaymentAmountCtrl.text,
             paymentMethodLabel: _repaymentMethod,
           );
+      if (!mounted) return;
       _repaymentAmountCtrl.clear();
       setState(() => _showRecordPayment = false);
-      if (!mounted) return;
       _showMessage('Payment recorded.');
     } catch (error) {
       if (!mounted) return;
@@ -677,10 +677,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             name: _nameCtrl.text,
             phoneNumber: _phoneCtrl.text,
           );
+      if (!mounted) return;
       _nameCtrl.clear();
       _phoneCtrl.clear();
       setState(() => _showAddCustomer = false);
-      if (!mounted) return;
       _showMessage('Customer saved.');
     } catch (error) {
       if (!mounted) return;
@@ -700,11 +700,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             dueDateIso: _dueDateCtrl.text,
             note: _noteCtrl.text,
           );
+      if (!mounted) return;
       _amountCtrl.clear();
       _dueDateCtrl.clear();
       _noteCtrl.clear();
       setState(() => _showCreateDebt = false);
-      if (!mounted) return;
       _showMessage('Debt created.');
     } catch (error) {
       if (!mounted) return;

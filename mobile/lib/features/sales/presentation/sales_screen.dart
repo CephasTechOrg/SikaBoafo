@@ -11,6 +11,7 @@ import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
+import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 
@@ -76,14 +77,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final hasItems = _parseTotal(totalAmount) > 0;
     final visibleSales = recentSales.where((sale) => !sale.isVoided).toList();
     final historySales = _showVoided ? recentSales : visibleSales;
-    final todayRevenueMinor = visibleSales.fold<int>(
+    final todaySales = visibleSales.where((sale) {
+      final createdAt =
+          DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
+      return _isSameLocalDay(createdAt, DateTime.now());
+    }).toList(growable: false);
+    final todayRevenueMinor = todaySales.fold<int>(
       0,
       (sum, sale) => sum + _parseTotal(sale.totalAmount),
     );
-    final momoTotal = visibleSales
+    final momoTotal = todaySales
         .where((sale) => sale.paymentMethodLabel == 'mobile_money')
         .fold<int>(0, (sum, sale) => sum + _parseTotal(sale.totalAmount));
-    final cashTotal = visibleSales
+    final cashTotal = todaySales
         .where((sale) => sale.paymentMethodLabel == 'cash')
         .fold<int>(0, (sum, sale) => sum + _parseTotal(sale.totalAmount));
 
@@ -93,112 +99,112 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: Column(
           children: [
-          // ── Green gradient header ──────────────────────────────────────
-          Container(
-            decoration: const BoxDecoration(gradient: AppGradients.hero),
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sales',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.2,
+            // ── Green gradient header ──────────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(gradient: AppGradients.hero),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Sales',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Record new sales and follow today'
-                                's cashflow',
-                                style: TextStyle(
-                                  color: Color(0xFFC7D0E5),
-                                  fontSize: 12.5,
+                                SizedBox(height: 4),
+                                Text(
+                                  'Record new sales and follow today'
+                                  's cashflow',
+                                  style: TextStyle(
+                                    color: Color(0xFFC7D0E5),
+                                    fontSize: 12.5,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18),
+                              ],
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Today\'s Revenue',
-                                style: TextStyle(
-                                  color: Color(0xFFC7D0E5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          const SizedBox(width: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.18),
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                _formatMinor(todayRevenueMinor, symbol: '₵'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  fontFamily: 'Constantia',
-                                  letterSpacing: -0.6,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Today\'s Revenue',
+                                  style: TextStyle(
+                                    color: Color(0xFFC7D0E5),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 3),
+                                Text(
+                                  _formatMinor(todayRevenueMinor, symbol: '₵'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'Constantia',
+                                    letterSpacing: -0.6,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        _SalesHeroChip(
-                          label: '${visibleSales.length} txns',
-                          value: 'Today',
-                          tone: const Color(0xFF9AE7BF),
-                        ),
-                        const SizedBox(width: 8),
-                        _SalesHeroChip(
-                          label: _formatMinor(momoTotal, symbol: '₵'),
-                          value: 'MoMo',
-                          tone: AppColors.gold,
-                        ),
-                        const SizedBox(width: 8),
-                        _SalesHeroChip(
-                          label: _formatMinor(cashTotal, symbol: '₵'),
-                          value: 'Cash',
-                          tone: const Color(0xFF9AE7BF),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          _SalesHeroChip(
+                            label: '${todaySales.length} txns',
+                            value: 'Today',
+                            tone: const Color(0xFF9AE7BF),
+                          ),
+                          const SizedBox(width: 8),
+                          _SalesHeroChip(
+                            label: _formatMinor(momoTotal, symbol: '₵'),
+                            value: 'MoMo',
+                            tone: AppColors.gold,
+                          ),
+                          const SizedBox(width: 8),
+                          _SalesHeroChip(
+                            label: _formatMinor(cashTotal, symbol: '₵'),
+                            value: 'Cash',
+                            tone: const Color(0xFF9AE7BF),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // ── Content area ──────────────────────────────────────────────
+            // ── Content area ──────────────────────────────────────────────
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
@@ -208,240 +214,250 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 child: ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(28)),
-                child: inventoryAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        humanizeInventoryError(error),
-                        textAlign: TextAlign.center,
+                  child: inventoryAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, _) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          humanizeInventoryError(error),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
-                  ),
-                  data: (_) => Stack(
-                    children: [
-                      RefreshIndicator(
-                        onRefresh: () async {
-                          await Future.wait([
-                            ref
-                                .read(inventoryControllerProvider.notifier)
-                                .refresh(),
-                            ref
-                                .read(salesControllerProvider.notifier)
-                                .refresh(includeVoided: _showVoided),
-                          ]);
-                        },
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: EdgeInsets.fromLTRB(
-                            16,
-                            18,
-                            16,
-                            _activeTab == _SalesViewTab.newSale ? 108 : 24,
-                          ),
-                          children: [
-                            _SalesTabBar(
-                              activeTab: _activeTab,
-                              onChanged: (tab) =>
-                                  setState(() => _activeTab = tab),
+                    data: (_) => Stack(
+                      children: [
+                        RefreshIndicator(
+                          onRefresh: () async {
+                            await Future.wait([
+                              ref
+                                  .read(inventoryControllerProvider.notifier)
+                                  .refresh(),
+                              ref
+                                  .read(salesControllerProvider.notifier)
+                                  .refresh(includeVoided: _showVoided),
+                            ]);
+                          },
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              18,
+                              16,
+                              _activeTab == _SalesViewTab.newSale ? 108 : 24,
                             ),
-                            const SizedBox(height: 18),
-                            if (_activeTab == _SalesViewTab.newSale) ...[
-                              _SaleDraftPanel(
-                                itemCount: itemCount,
-                                totalAmount: _formatMajor(
-                                  totalAmount,
-                                  symbol: 'GHS ',
-                                ),
-                                noteValue: _noteCtrl.text.trim(),
-                                showNote: _showNote,
-                                onToggleNote: () =>
-                                    setState(() => _showNote = !_showNote),
+                            children: [
+                              _SalesTabBar(
+                                activeTab: _activeTab,
+                                onChanged: (tab) =>
+                                    setState(() => _activeTab = tab),
                               ),
-                              if (_showNote) ...[
-                                const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: AppColors.border),
+                              const SizedBox(height: 18),
+                              if (_activeTab == _SalesViewTab.newSale) ...[
+                                _SaleDraftPanel(
+                                  itemCount: itemCount,
+                                  totalAmount: _formatMajor(
+                                    totalAmount,
+                                    symbol: 'GHS ',
                                   ),
-                                  child: TextField(
-                                    controller: _noteCtrl,
-                                    maxLines: 2,
-                                    maxLength: 500,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Note for this sale…',
-                                      contentPadding: EdgeInsets.all(14),
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      counterStyle: TextStyle(fontSize: 10),
+                                  noteValue: _noteCtrl.text.trim(),
+                                  showNote: _showNote,
+                                  onToggleNote: () =>
+                                      setState(() => _showNote = !_showNote),
+                                ),
+                                if (_showNote) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border:
+                                          Border.all(color: AppColors.border),
+                                    ),
+                                    child: TextField(
+                                      controller: _noteCtrl,
+                                      maxLines: 2,
+                                      maxLength: 500,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Note for this sale…',
+                                        contentPadding: EdgeInsets.all(14),
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        counterStyle: TextStyle(fontSize: 10),
+                                      ),
                                     ),
                                   ),
+                                ],
+                                const SizedBox(height: 20),
+
+                                _SalesSearchBar(
+                                  controller: _searchCtrl,
+                                  hasQuery: _searchQuery.isNotEmpty,
+                                  onChanged: (v) =>
+                                      setState(() => _searchQuery = v.trim()),
+                                  onClear: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
                                 ),
+                                const SizedBox(height: 14),
+                                _ProductsHeader(
+                                  selectedCount: selectedItems.length,
+                                  totalCount: allItems.length,
+                                ),
+                                const SizedBox(height: 14),
+
+                                // Item list
+                                if (allItems.isEmpty)
+                                  const _EmptyCard(
+                                    icon: Icons.inventory_2_outlined,
+                                    message:
+                                        'No inventory items. Add stock in Inventory first.',
+                                  )
+                                else ...[
+                                  if (selectedItems.isNotEmpty) ...[
+                                    _SectionLabel(
+                                      label:
+                                          'In cart (${selectedItems.length})',
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _ItemGrid(
+                                      children: selectedItems
+                                          .map(
+                                            (item) => _ItemCard(
+                                              item: item,
+                                              qty: _qtyByItemId[item.id] ?? 0,
+                                              priceOverride:
+                                                  _priceOverrideByItemId[
+                                                      item.id],
+                                              isSelected: true,
+                                              onMinus: () => setState(
+                                                () => _decrementQty(item.id),
+                                              ),
+                                              onPlus: () => setState(
+                                                () => _incrementQty(item),
+                                              ),
+                                              onPriceTap: () =>
+                                                  _showPriceOverrideDialog(
+                                                      item),
+                                            ),
+                                          )
+                                          .toList(growable: false),
+                                    ),
+                                    const SizedBox(height: 18),
+                                  ],
+                                  if (unselectedItems.isNotEmpty) ...[
+                                    _SectionLabel(
+                                      label: selectedItems.isNotEmpty
+                                          ? 'Add more products'
+                                          : 'Available products',
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _ItemGrid(
+                                      children: unselectedItems
+                                          .map(
+                                            (item) => _ItemCard(
+                                              item: item,
+                                              qty: 0,
+                                              priceOverride: null,
+                                              isSelected: false,
+                                              onMinus: () {},
+                                              onPlus: () => setState(
+                                                () => _incrementQty(item),
+                                              ),
+                                              onPriceTap: () =>
+                                                  _showPriceOverrideDialog(
+                                                      item),
+                                            ),
+                                          )
+                                          .toList(growable: false),
+                                    ),
+                                  ],
+                                  if (filtered.isEmpty &&
+                                      _searchQuery.isNotEmpty)
+                                    _EmptyCard(
+                                      icon: Icons.search_off_rounded,
+                                      message:
+                                          'No items match "$_searchQuery".',
+                                    ),
+                                ],
+                                const SizedBox(height: 24),
                               ],
-                              const SizedBox(height: 20),
-
-                              _SalesSearchBar(
-                                controller: _searchCtrl,
-                                hasQuery: _searchQuery.isNotEmpty,
-                                onChanged: (v) =>
-                                    setState(() => _searchQuery = v.trim()),
-                                onClear: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              ),
-                              const SizedBox(height: 14),
-                              _ProductsHeader(
-                                selectedCount: selectedItems.length,
-                                totalCount: allItems.length,
-                              ),
-                              const SizedBox(height: 14),
-
-                              // Item list
-                              if (allItems.isEmpty)
-                                const _EmptyCard(
-                                  icon: Icons.inventory_2_outlined,
-                                  message:
-                                      'No inventory items. Add stock in Inventory first.',
-                                )
-                              else ...[
-                                if (selectedItems.isNotEmpty) ...[
-                                  _SectionLabel(
-                                    label: 'In cart (${selectedItems.length})',
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _ItemGrid(
-                                    children: selectedItems
-                                        .map(
-                                          (item) => _ItemCard(
-                                            item: item,
-                                            qty: _qtyByItemId[item.id] ?? 0,
-                                            priceOverride:
-                                                _priceOverrideByItemId[item.id],
-                                            isSelected: true,
-                                            onMinus: () => setState(
-                                              () => _decrementQty(item.id),
-                                            ),
-                                            onPlus: () => setState(
-                                              () => _incrementQty(item),
-                                            ),
-                                            onPriceTap: () =>
-                                                _showPriceOverrideDialog(item),
-                                          ),
-                                        )
-                                        .toList(growable: false),
-                                  ),
-                                  const SizedBox(height: 18),
-                                ],
-                                if (unselectedItems.isNotEmpty) ...[
-                                  _SectionLabel(
-                                    label: selectedItems.isNotEmpty
-                                        ? 'Add more products'
-                                        : 'Available products',
-                                  ),
-                                  const SizedBox(height: 10),
-                                  _ItemGrid(
-                                    children: unselectedItems
-                                        .map(
-                                          (item) => _ItemCard(
-                                            item: item,
-                                            qty: 0,
-                                            priceOverride: null,
-                                            isSelected: false,
-                                            onMinus: () {},
-                                            onPlus: () => setState(
-                                              () => _incrementQty(item),
-                                            ),
-                                            onPriceTap: () =>
-                                                _showPriceOverrideDialog(item),
-                                          ),
-                                        )
-                                        .toList(growable: false),
-                                  ),
-                                ],
-                                if (filtered.isEmpty && _searchQuery.isNotEmpty)
+                              if (_activeTab == _SalesViewTab.history) ...[
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Recent Transactions',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
+                                    ),
+                                    const Spacer(),
+                                    FilterChip(
+                                      label: const Text('Show voided'),
+                                      selected: _showVoided,
+                                      onSelected: isBusy
+                                          ? null
+                                          : (value) async {
+                                              setState(
+                                                  () => _showVoided = value);
+                                              await ref
+                                                  .read(salesControllerProvider
+                                                      .notifier)
+                                                  .refresh(
+                                                      includeVoided: value);
+                                            },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                if (salesAsync.isLoading && recentSales.isEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  )
+                                else if (historySales.isEmpty)
                                   _EmptyCard(
-                                    icon: Icons.search_off_rounded,
-                                    message: 'No items match "$_searchQuery".',
-                                  ),
+                                    icon: Icons.receipt_long_outlined,
+                                    message: _showVoided
+                                        ? 'No sales found yet.'
+                                        : 'No sales yet. Record your first sale above.',
+                                  )
+                                else
+                                  ...historySales
+                                      .take(12)
+                                      .map(_buildRecentSaleTile),
                               ],
-                              const SizedBox(height: 24),
                             ],
-                            if (_activeTab == _SalesViewTab.history) ...[
-                              Row(
-                                children: [
-                                  Text(
-                                    'Today\'s Transactions',
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const Spacer(),
-                                  FilterChip(
-                                    label: const Text('Show voided'),
-                                    selected: _showVoided,
-                                    onSelected: isBusy
-                                        ? null
-                                        : (value) async {
-                                            setState(() => _showVoided = value);
-                                            await ref
-                                                .read(salesControllerProvider
-                                                    .notifier)
-                                                .refresh(includeVoided: value);
-                                          },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              if (salesAsync.isLoading && recentSales.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(
-                                      child: CircularProgressIndicator()),
-                                )
-                              else if (historySales.isEmpty)
-                                _EmptyCard(
-                                  icon: Icons.receipt_long_outlined,
-                                  message: _showVoided
-                                      ? 'No sales found yet.'
-                                      : 'No sales yet. Record your first sale above.',
-                                )
-                              else
-                                ...historySales
-                                    .take(12)
-                                    .map(_buildRecentSaleTile),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                      // ── Persistent bottom action bar ────────────────
-                      if (_activeTab == _SalesViewTab.newSale)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: _BottomBar(
-                            itemCount: itemCount,
-                            totalAmount: totalAmount,
-                            paymentMethod: _paymentLabel(_paymentMethod),
-                            hasItems: hasItems,
-                            isBusy: isBusy,
-                            onConfirm: () => _showCheckoutSheet(
-                              items: allItems,
-                              itemCount: itemCount,
-                              totalAmount: totalAmount,
-                              isBusy: isBusy,
-                            ),
                           ),
                         ),
-                    ],
+
+                        // ── Persistent bottom action bar ────────────────
+                        if (_activeTab == _SalesViewTab.newSale)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: _BottomBar(
+                              itemCount: itemCount,
+                              totalAmount: totalAmount,
+                              paymentMethod: _paymentLabel(_paymentMethod),
+                              hasItems: hasItems,
+                              isBusy: isBusy,
+                              onConfirm: () => _showCheckoutSheet(
+                                items: allItems,
+                                itemCount: itemCount,
+                                totalAmount: totalAmount,
+                                isBusy: isBusy,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
                 ),
               ),
             ),
@@ -608,6 +624,34 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           ),
                         ),
                       ),
+                      if (selectedMethod == 'mobile_money') ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              Navigator.of(sheetContext).pop();
+                              if (!mounted) return;
+                              setState(() => _paymentMethod = selectedMethod);
+                              await _recordSaleWithPaystackLink(items: items);
+                            },
+                            icon: const Icon(Icons.link_rounded, size: 18),
+                            label: const Text('Generate Paystack Link'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.navy,
+                              minimumSize: const Size.fromHeight(50),
+                              side: const BorderSide(color: AppColors.navy),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
@@ -792,21 +836,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     return (major * 100) + int.parse(decimals);
   }
 
+  bool _isSameLocalDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   Future<void> _recordSale({
     required List<LocalInventoryItem> items,
     String? paymentMethodLabel,
   }) async {
-    final itemById = {for (final item in items) item.id: item};
-    final lines = <SaleDraftLine>[];
-    for (final entry in _qtyByItemId.entries) {
-      final qty = entry.value;
-      if (qty <= 0) continue;
-      final item = itemById[entry.key];
-      if (item == null) continue;
-      final price = _priceOverrideByItemId[entry.key] ?? item.defaultPrice;
-      lines
-          .add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
-    }
+    final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select at least one item quantity.')),
@@ -820,16 +858,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             lines: lines,
             note: note,
           );
-      ref.invalidate(inventoryControllerProvider);
-      setState(() {
-        _qtyByItemId.clear();
-        _priceOverrideByItemId.clear();
-        _searchQuery = '';
-        _showNote = false;
-      });
-      _noteCtrl.clear();
-      _searchCtrl.clear();
       if (!mounted) return;
+      ref.invalidate(inventoryControllerProvider);
+      _resetDraftAfterSale();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sale recorded.')),
       );
@@ -839,6 +870,110 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         SnackBar(content: Text(humanizeInventoryError(error))),
       );
     }
+  }
+
+  Future<void> _recordSaleWithPaystackLink({
+    required List<LocalInventoryItem> items,
+  }) async {
+    final lines = _buildSaleDraftLines(items);
+    if (lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one item quantity.')),
+      );
+      return;
+    }
+
+    final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+    var saleSaved = false;
+    try {
+      final saleId = await ref.read(salesControllerProvider.notifier).recordSaleReturningId(
+            paymentMethodLabel: 'mobile_money',
+            lines: lines,
+            note: note,
+          );
+      saleSaved = true;
+      if (!mounted) return;
+
+      final initiated =
+          await ref.read(salesPaymentsApiProvider).initiateSalePayment(saleId);
+      if (!mounted) return;
+
+      ref.invalidate(inventoryControllerProvider);
+      _resetDraftAfterSale();
+      await _showPaystackLinkDialog(checkoutUrl: initiated.checkoutUrl);
+    } catch (error) {
+      if (!mounted) return;
+      if (saleSaved) {
+        ref.invalidate(inventoryControllerProvider);
+        _resetDraftAfterSale();
+      }
+      final message = saleSaved
+          ? 'Sale recorded, but payment link failed: ${humanizeSalesPaymentsError(error)}'
+          : humanizeInventoryError(error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  List<SaleDraftLine> _buildSaleDraftLines(List<LocalInventoryItem> items) {
+    final itemById = {for (final item in items) item.id: item};
+    final lines = <SaleDraftLine>[];
+    for (final entry in _qtyByItemId.entries) {
+      final qty = entry.value;
+      if (qty <= 0) continue;
+      final item = itemById[entry.key];
+      if (item == null) continue;
+      final price = _priceOverrideByItemId[entry.key] ?? item.defaultPrice;
+      lines.add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
+    }
+    return lines;
+  }
+
+  void _resetDraftAfterSale() {
+    setState(() {
+      _qtyByItemId.clear();
+      _priceOverrideByItemId.clear();
+      _searchQuery = '';
+      _showNote = false;
+    });
+    _noteCtrl.clear();
+    _searchCtrl.clear();
+  }
+
+  Future<void> _showPaystackLinkDialog({required String checkoutUrl}) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Paystack Link Ready'),
+          content: SelectableText(
+            checkoutUrl,
+            style: const TextStyle(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await Clipboard.setData(ClipboardData(text: checkoutUrl));
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Payment link copied.')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy Link'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
@@ -1432,7 +1567,8 @@ class _ProductsHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: selectedCount > 0 ? AppColors.infoSoft : AppColors.surfaceAlt,
+            color:
+                selectedCount > 0 ? AppColors.infoSoft : AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
           ),
@@ -2070,7 +2206,6 @@ class _BottomBar extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-
               SizedBox(
                 height: 46,
                 child: FilledButton.icon(

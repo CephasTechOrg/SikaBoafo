@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import 'receive_repayment_screen.dart';
@@ -101,7 +103,7 @@ class DebtDetailScreen extends ConsumerWidget {
   }
 }
 
-class _DetailBody extends ConsumerWidget {
+class _DetailBody extends ConsumerStatefulWidget {
   const _DetailBody({
     required this.detail,
     required this.receivableId,
@@ -111,8 +113,15 @@ class _DetailBody extends ConsumerWidget {
   final String receivableId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final row = detail.record;
+  ConsumerState<_DetailBody> createState() => _DetailBodyState();
+}
+
+class _DetailBodyState extends ConsumerState<_DetailBody> {
+  bool _isGeneratingPaymentLink = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = widget.detail.record;
     final outstanding = '\u20B5${row.outstandingAmount}';
     final original = '\u20B5${row.originalAmount}';
     final paymentTotal = _formatMoney(
@@ -121,12 +130,13 @@ class _DetailBody extends ConsumerWidget {
           .toStringAsFixed(2),
     );
     final canCollect = row.status == 'open' || row.status == 'partially_paid';
+    final hasPaymentLink = row.paymentLink != null && row.paymentLink!.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: () async {
         await ref.read(debtsControllerProvider.notifier).refresh();
-        ref.invalidate(receivableDetailProvider(receivableId));
-        await ref.read(receivableDetailProvider(receivableId).future);
+        ref.invalidate(receivableDetailProvider(widget.receivableId));
+        await ref.read(receivableDetailProvider(widget.receivableId).future);
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -155,6 +165,24 @@ class _DetailBody extends ConsumerWidget {
                   ),
                 ),
                 SizedBox(
+                  width: 190,
+                  child: OutlinedButton.icon(
+                    onPressed: _isGeneratingPaymentLink
+                        ? null
+                        : () => _generatePaymentLink(context),
+                    icon: _isGeneratingPaymentLink
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.link_rounded),
+                    label: Text(
+                      _isGeneratingPaymentLink ? 'Generating...' : 'Generate Link',
+                    ),
+                  ),
+                ),
+                SizedBox(
                   width: 150,
                   child: OutlinedButton.icon(
                     onPressed: () => _confirmCancel(context, ref),
@@ -169,6 +197,13 @@ class _DetailBody extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+          if (hasPaymentLink) ...[
+            const SizedBox(height: 12),
+            _PaymentLinkPanel(
+              paymentLink: row.paymentLink!,
+              onCopyPressed: () => _copyPaymentLink(context, row.paymentLink!),
             ),
           ],
           const SizedBox(height: 16),
@@ -186,7 +221,7 @@ class _DetailBody extends ConsumerWidget {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Phone',
-                  value: detail.customerPhoneNumber ?? 'Not provided',
+                  value: widget.detail.customerPhoneNumber ?? 'Not provided',
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
@@ -212,10 +247,10 @@ class _DetailBody extends ConsumerWidget {
                 PremiumSectionHeading(
                   title: 'Repayment History',
                   caption:
-                      '${detail.paymentCount} payment${detail.paymentCount == 1 ? '' : 's'} recorded for this debt.',
+                      '${widget.detail.paymentCount} payment${widget.detail.paymentCount == 1 ? '' : 's'} recorded for this debt.',
                 ),
                 const SizedBox(height: 14),
-                if (detail.payments.isEmpty)
+                if (widget.detail.payments.isEmpty)
                   const _InlineEmptyState(
                     icon: Icons.receipt_long_rounded,
                     title: 'No repayments recorded yet',
@@ -225,9 +260,9 @@ class _DetailBody extends ConsumerWidget {
                 else
                   Column(
                     children: [
-                      for (var i = 0; i < detail.payments.length; i++) ...[
-                        _PaymentCard(payment: detail.payments[i]),
-                        if (i != detail.payments.length - 1)
+                      for (var i = 0; i < widget.detail.payments.length; i++) ...[
+                        _PaymentCard(payment: widget.detail.payments[i]),
+                        if (i != widget.detail.payments.length - 1)
                           const SizedBox(height: 10),
                       ],
                     ],
@@ -243,11 +278,11 @@ class _DetailBody extends ConsumerWidget {
   Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ReceiveRepaymentScreen(receivableId: receivableId),
+        builder: (_) => ReceiveRepaymentScreen(receivableId: widget.receivableId),
       ),
     );
     if (saved != true || !context.mounted) return;
-    ref.invalidate(receivableDetailProvider(receivableId));
+    ref.invalidate(receivableDetailProvider(widget.receivableId));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Repayment saved.')),
     );
@@ -276,9 +311,9 @@ class _DetailBody extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
-      await ref.read(debtsApiProvider).cancelReceivable(receivableId);
+      await ref.read(debtsApiProvider).cancelReceivable(widget.receivableId);
       if (!context.mounted) return;
-      ref.invalidate(receivableDetailProvider(receivableId));
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
       await ref.read(debtsControllerProvider.notifier).refresh();
       if (!context.mounted) return;
       Navigator.of(context).maybePop();
@@ -292,6 +327,39 @@ class _DetailBody extends ConsumerWidget {
         SnackBar(content: Text(msg)),
       );
     }
+  }
+
+  Future<void> _generatePaymentLink(BuildContext context) async {
+    setState(() => _isGeneratingPaymentLink = true);
+    try {
+      await ref
+          .read(debtsApiProvider)
+          .initiateReceivablePaymentLink(widget.receivableId);
+      await ref.read(debtsControllerProvider.notifier).refresh();
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
+      await ref.read(receivableDetailProvider(widget.receivableId).future);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment link generated.')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanizeDebtsApiError(error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingPaymentLink = false);
+      }
+    }
+  }
+
+  Future<void> _copyPaymentLink(BuildContext context, String paymentLink) async {
+    await Clipboard.setData(ClipboardData(text: paymentLink));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment link copied.')),
+    );
   }
 }
 
@@ -613,6 +681,47 @@ class _InlineEmptyState extends StatelessWidget {
             message,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentLinkPanel extends StatelessWidget {
+  const _PaymentLinkPanel({
+    required this.paymentLink,
+    required this.onCopyPressed,
+  });
+
+  final String paymentLink;
+  final VoidCallback onCopyPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const PremiumSectionHeading(
+            title: 'Payment link ready',
+            caption: 'Share this link with the customer to collect digitally.',
+          ),
+          const SizedBox(height: 10),
+          SelectableText(
+            paymentLink,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.muted,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: onCopyPressed,
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy Link'),
+            ),
           ),
         ],
       ),

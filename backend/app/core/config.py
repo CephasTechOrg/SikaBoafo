@@ -24,6 +24,11 @@ class Settings(BaseSettings):
 
     redis_url: str | None = Field(default=None, description="Redis URL for cache / future workers")
 
+    paystack_api_base_url: str = Field(default="https://api.paystack.co")
+    paystack_secret_key_test: str | None = Field(default=None)
+    paystack_secret_key_live: str | None = Field(default=None)
+    paystack_http_timeout_seconds: float = Field(default=15.0, ge=3.0, le=60.0)
+
     secret_key: str = Field(default="change-me-in-production", min_length=16)
     auth_token_issuer: str = Field(default="biztrack-gh")
     auth_access_token_exp_minutes: int = Field(default=60, ge=5, le=1440)
@@ -58,4 +63,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return cached settings. Call ``get_settings.cache_clear()`` in tests when env changes."""
     return Settings()
-

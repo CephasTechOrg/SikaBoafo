@@ -372,4 +372,4 @@ Keep **routers thin**, **services explicit**, and **types/schemas** at system ed
 
 ## Status
 
-Active development: backend foundation in place; mobile shell next (`todo.md` §5).
+Active development (2026-04-24): M1-M3 delivered and stabilized; M4 Paystack integration is in progress (Step 1 connection settings, Step 2 receivable payment-link initiation, and Step 3 webhook verification/settlement with idempotency hardening completed).

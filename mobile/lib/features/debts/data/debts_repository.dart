@@ -50,6 +50,7 @@ class LocalReceivableRecord {
     this.dueDateIso,
     this.note,
     this.invoiceNumber,
+    this.paymentLink,
   });
 
   final String receivableId;
@@ -63,6 +64,7 @@ class LocalReceivableRecord {
   final String? dueDateIso;
   final String? note;
   final String? invoiceNumber;
+  final String? paymentLink;
 
   factory LocalReceivableRecord.fromRow(Map<String, Object?> row) {
     return LocalReceivableRecord(
@@ -77,6 +79,7 @@ class LocalReceivableRecord {
       dueDateIso: row['due_date'] as String?,
       note: row['note'] as String?,
       invoiceNumber: row['invoice_number'] as String?,
+      paymentLink: row['payment_link'] as String?,
     );
   }
 }
@@ -215,7 +218,7 @@ LIMIT 1
       '''
 SELECT r.id, r.customer_id, c.name AS customer_name,
        r.original_amount, r.outstanding_amount, r.due_date,
-       r.status, r.invoice_number, r.created_at,
+       r.status, r.invoice_number, r.payment_link, r.created_at,
        CASE
          WHEN EXISTS (
            SELECT 1 FROM sync_queue q
@@ -244,7 +247,7 @@ LIMIT ?
       '''
 SELECT r.id, r.customer_id, c.name AS customer_name,
        r.original_amount, r.outstanding_amount, r.due_date,
-       r.status, r.invoice_number, r.created_at,
+       r.status, r.invoice_number, r.payment_link, r.created_at,
        CASE
          WHEN EXISTS (
            SELECT 1 FROM sync_queue q
@@ -272,7 +275,7 @@ LIMIT ?
       '''
 SELECT r.id, r.customer_id, c.name AS customer_name, c.phone_number,
        r.original_amount, r.outstanding_amount, r.due_date,
-       r.status, r.invoice_number, r.created_at,
+       r.status, r.invoice_number, r.payment_link, r.created_at,
        CASE
          WHEN EXISTS (
            SELECT 1 FROM sync_queue q

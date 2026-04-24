@@ -144,7 +144,7 @@ Status: `[ ] ❌` **Entire table missing.**
 We have `receivables` as a simpler flatter model. See §C.2 below (Invoice decision) — recommendation is to extend `receivables` rather than add a second table.
 
 ### A.11 `payments` (Paystack)
-File: `backend/app/models/payment.py` · Status: `[~] 🚧` (model exists, never written by any service)
+File: `backend/app/models/payment.py` · Status: `[~] 🚧` (service writes now active for receivable and sale initiation)
 
 | Doc field | Our column | Status |
 |---|---|---|
@@ -164,12 +164,12 @@ File: `backend/app/models/payment.py` · Status: `[~] 🚧` (model exists, never
 | `paid_at` | `confirmed_at` | ✅ (renamed) |
 | `raw_response_json` | `raw_provider_payload` | ✅ (renamed) |
 
-**Action**: Add `business_id`, `customer_id`, `internal_reference`, `payment_channel`. Build the service that writes to it (Phase 4).
+**Action**: Add `business_id`, `customer_id`, `internal_reference`, `payment_channel`; complete webhook settlement + post-payment notification flow.
 
 ### A.12 `payment_provider_connections`
-Status: `[ ] ❌` **Entire table missing.**
+Status: `[~] 🚧` *(M4 Step 1 complete — connection settings slice built)*
 
-Required before Paystack can be wired up — this stores each merchant's encrypted Paystack secret, public key, account label, connection status.
+`payment_provider_connections` now exists with merchant-level Paystack connection state (`provider`, `mode`, `account_label`, `public_key`, `is_connected`) and owner-only APIs/UI. Remaining for full parity: encrypted secret storage and verification flow.
 
 ### A.13 `notifications`
 Status: `[ ] ❌` **Entire table missing.**
@@ -233,7 +233,7 @@ Status: `[~] 🚧`
 |---|---|---|---|
 | 0.1 | Finalize product name | `[~] 🚧` | Codebase is **BizTrack / SikaBoafo**. Doc suggests MoMoLedger, MikaOS, ShopFlow Ghana, Dwen Ledger. Pick one. |
 | 0.2 | Choose first merchant niche | `[ ] ❌` | Recommended: pharmacy (highest debt-pain). |
-| 0.3 | Lock version 1 scope | `[~] 🚧` | Current scope good for sales/inventory/debts. Missing MVP: Paystack, WhatsApp/SMS, staff roles. |
+| 0.3 | Lock version 1 scope | `[~] 🚧` | Current scope good for sales/inventory/debts. Missing MVP: Paystack live collection/webhooks and WhatsApp/SMS messaging. |
 | 0.4 | Define pricing hypothesis | `[ ] ❌` | No pricing yet. |
 | 0.5 | Merchant interview questions | `[ ] ❌` | Questions at bottom of doc — formalize sheet. |
 
@@ -250,7 +250,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 1.5 | Inventory Screen (list, current stock, reorder warnings, movement history, add/adjust stock) | `[~] 🚧` | `features/inventory/` — has list/stock/reorder/add/adjust; **missing stock movement history UI** |
 | 1.6 | Customers Screen (list, phone, total owed, recent payments, preferred channel, reminder) | `[x] ✅` | Built M3 — `features/customers/` with `CustomersScreen` (list + outstanding badge) and `CustomerDetailScreen` (profile + debt history). Accessible via people icon in Debts header. **Remaining**: send reminder (M5), payment link (M4). |
 | 1.7 | Staff Screen (roles, activity, permissions) | `[x] ✅` | Built M2 — `features/settings/presentation/staff_screen.dart`. Invite, list, change role, deactivate. Accessible from Business Settings sheet. |
-| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[ ] ❌` | `features/settings/` has staff; Paystack screen still missing. |
+| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[~] 🚧` | M4 Step 1 done: connect/status/mode in `features/settings/presentation/connect_paystack_screen.dart`. Remaining: verification/test flow. |
 | 1.9 | Clickable prototype | `[~] 🚧` | Live app = prototype. Mockups in `mobile/UI UPDATES/`. |
 | 1.10 | Dashboard quick actions: New Sale, **New Invoice**, Record Stock, **Send Reminder**, Add Customer | `[~] 🚧` | Has New Sale and Add Customer. **Missing New Invoice, Record Stock shortcut, Send Reminder shortcut.** |
 | 1.11 | Enterprise UI polish (per `06-ui-design.md` visual tone) | `[~] 🚧` | Dashboard/Inventory/Sales/Debts migrated. **Remaining: Expenses, Auth, Settings, Onboarding.** |
@@ -285,8 +285,8 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 3.9 | inventory_movements | `[x] ✅` | `models/inventory.py` | M2: `user_id` added |
 | 3.10 | Sales + sale_items | `[x] ✅` | `models/sale.py` | M1+M2: `subtotal`, `discount`, `tax`, `cashier_id` all added |
 | 3.11 | Invoices | `[ ] ❌` | — | See §C.2 decision |
-| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py` (never written) | Service missing — Phase 4 |
-| 3.13 | payment_provider_connections | `[ ] ❌` | — | Blocker for Paystack |
+| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-5: receivable initiation + receivable webhook settlement + sale initiation + sale webhook settlement built. Remaining: notifications + mobile payment-status polling. |
+| 3.13 | payment_provider_connections | `[~] 🚧` | `models/payment_provider_connection.py` + migration 009 | M4 Step 1 done; encrypted secret + verification still pending |
 | 3.14 | Notifications | `[ ] ❌` | — | Phase 5 |
 | 3.15 | Audit logs | `[x] ✅` | `models/audit_log.py`, `services/audit_service.py` | M1: writes on every mutation |
 | 3.16 | Expenses | `[x] ✅` | `models/expense.py` | Ahead of docs |
@@ -294,31 +294,28 @@ Per `06-ui-design.md` "Main Screens Needed":
 
 ### Phase 4 — Payment Integration (Paystack)
 
-**Overall status: `[ ] ❌` — none built.**
+**Overall status: `[~] 🚧` — Step 1 connection settings slice is complete and stabilized.**
 
 Current stubs:
-- `backend/app/api/v1/payments.py` — 5 lines, empty router
-- `backend/app/api/v1/webhooks.py` — 5 lines, empty router
-- `backend/app/integrations/paystack/` — empty folder
 - `mobile/lib/features/payments/` — empty folder
 
 | # | Task | Status | Where |
 |---|---|---|---|
 | 4.1 | Provider abstraction interface | `[ ] ❌` | `backend/app/integrations/payments/base.py` (new) |
-| 4.2 | `payment_provider_connections` table + model | `[ ] ❌` | `models/payment_provider_connection.py` (new) + migration |
+| 4.2 | `payment_provider_connections` table + model | `[x] ✅` | `models/payment_provider_connection.py` + migration 009 |
 | 4.3 | Encrypt merchant secret at rest (Fernet/libsodium) | `[ ] ❌` | `core/crypto.py` (new) |
 | 4.4 | Paystack HTTP client | `[ ] ❌` | `integrations/paystack/client.py` |
-| 4.5 | "Connect Paystack" settings UI | `[ ] ❌` | `mobile/lib/features/settings/presentation/connect_paystack_screen.dart` |
-| 4.6 | Backend connect/disconnect API | `[ ] ❌` | new `payment_settings.py` routes |
-| 4.7 | Payment request creation service | `[ ] ❌` | `services/payment_service.py` + `POST /payments/initiate` |
-| 4.8 | Webhook endpoint with HMAC-SHA512 validation | `[ ] ❌` | `api/v1/webhooks.py` |
-| 4.9 | Webhook double-verification via `/transaction/verify` | `[ ] ❌` | inside webhook handler |
-| 4.10 | Idempotency (unique `provider_reference`, store event IDs) | `[ ] ❌` | in handler + DB constraint |
-| 4.11 | Downstream updates (sale/receivable, audit log, notification) | `[ ] ❌` | `payment_service.py` |
-| 4.12 | Pay-now flow (immediate sale) | `[ ] ❌` | sales screen |
-| 4.13 | Pay-later flow (debt → shareable link) | `[ ] ❌` | debts screen |
+| 4.5 | "Connect Paystack" settings UI | `[x] ✅` | `mobile/lib/features/settings/presentation/connect_paystack_screen.dart` |
+| 4.6 | Backend connect/disconnect API | `[x] ✅` | `/payments/paystack/connection` (`GET/PUT/DELETE`) |
+| 4.7 | Payment request creation service | `[~] 🚧` | `services/payment_service.py` + `POST /payments/initiate` + `POST /payments/initiate-sale` |
+| 4.8 | Webhook endpoint with HMAC-SHA512 validation | `[x] ✅` | `POST /webhooks/paystack` with signature validation |
+| 4.9 | Webhook double-verification via `/transaction/verify` | `[x] ✅` | implemented in `payment_service.handle_paystack_webhook()` |
+| 4.10 | Idempotency (unique `provider_reference`, store event IDs) | `[x] ✅` | migration 010 adds unique `payments.provider_reference`; `payment_webhook_events` table enforces unique `(provider, event_key)` for replay protection. |
+| 4.11 | Downstream updates (sale/receivable, audit log, notification) | `[~] 🚧` | receivable settlement + sale settlement + audit logs are wired. notifications still pending. |
+| 4.12 | Pay-now flow (immediate sale) | `[~] 🚧` | Sales checkout supports Paystack link generation via `POST /payments/initiate-sale`; webhook-based sale settlement is now wired. mobile polling/refresh still pending. |
+| 4.13 | Pay-later flow (debt → shareable link) | `[~] 🚧` | Debt Detail now has "Generate Link" action and renders/copies `payment_link`; still pending webhook-driven status transitions. |
 | 4.14 | Partial payment handling | `[ ] ❌` | `receivables_service.py` |
-| 4.15 | Test-mode toggle (test/live keys) | `[ ] ❌` | settings |
+| 4.15 | Test-mode toggle (test/live keys) | `[x] ✅` | Mode selector implemented in connection settings (`test` / `live`) |
 | 4.16 | Payment status polling on mobile (after opening link) | `[ ] ❌` | mobile payments feature |
 
 ### Phase 5 — Messaging Integration (WhatsApp + SMS)
@@ -454,9 +451,32 @@ Each milestone is shippable on its own and unlocks the next.
   - Mobile: schema v10 migration; `CustomersScreen` + `CustomerDetailScreen`; people icon in Debts header
 - §C.2 extend Receivable with `invoice_number`, `payment_link`, `payment_provider_reference`, `created_by_user_id`, `sale_id`, wider status enum `[x] ✅` *(done)*
 - §6.7 compute real profit using `cost_price` snapshot on sale_items `[x] ✅` *(done)*
+- M3 stabilization pass (2026-04-23): fixed Sales "Today" KPI scoping to local-day records, projected `sales_local.note` in recent-sales query, and aligned reports KPI widget test with compact-currency UI output. `[x] ✅`
 
 ### M4 — Paystack Integration (~2–3 weeks)
 The big one. §4.1 through §4.16.
+- M4 Step 1 (2026-04-23) `[~] 🚧`: built Paystack connection settings slice:
+  - backend `payment_provider_connections` table + owner-only APIs (`GET/PUT/DELETE /payments/paystack/connection`)
+  - mobile `ConnectPaystackScreen` + Business Settings navigation entry
+  - backend + mobile tests added and passing
+  - stabilization sweep complete: `python -m pytest -q` (56 pass), `flutter analyze` (clean), `flutter test` (42 pass)
+- M4 Step 2 (2026-04-24) `[~] 🚧`: built initiation slice for receivable links:
+  - backend Paystack client + `POST /payments/initiate` (`services/payment_service.py`)
+  - pending `payments` row now created on initiation; receivable `payment_link` + `payment_provider_reference` updated
+  - mobile Debt Detail page adds **Generate Link** action + link panel/copy button
+  - stabilization sweep complete: `python -m pytest -q` (59 pass), `flutter analyze` (clean), `flutter test` (43 pass)
+- M4 Step 3 (2026-04-24) `[~] 🚧`: webhook verification and settlement slice:
+  - backend `POST /webhooks/paystack` with HMAC-SHA512 signature validation
+  - webhook now double-verifies with Paystack `/transaction/verify/{reference}`
+  - on verified success: payment marked `succeeded`, receivable settled, receivable repayment row created, audit log written
+  - idempotent duplicate handling added at service layer
+  - hardening completed: migration 010 adds unique payment reference constraint + webhook event idempotency table
+  - stabilization sweep complete: `python -m pytest -q` (63 pass)
+- M4 Step 4 (2026-04-24) `[~] 🚧`: pay-now initiation slice for sales (webhook later):
+  - backend `POST /payments/initiate-sale` now creates pending `payments` rows linked to `sale_id`
+  - sale initiation sets `sales.payment_status = pending_provider` and writes audit log entries
+  - mobile Sales checkout adds **Generate Paystack Link** action for MoMo and link copy flow
+  - stabilization sweep: `python -m pytest -q backend/app/tests/test_payments_initiate.py backend/app/tests/test_paystack_webhooks.py` (9 pass), `flutter analyze` (clean), `flutter test test/features/frontend_lifecycle_regression_test.dart` (2 pass)
 - Provider abstraction + encrypted key storage
 - "Connect Paystack" settings screen
 - Create payment request
@@ -498,7 +518,7 @@ The big one. §4.1 through §4.16.
 | `backend/app/tasks/` | Build in M5 (Celery task modules) |
 | `backend/app/workers/` | Build in M5 (worker entrypoints) |
 | `mobile/lib/features/payments/` | Build in M4 |
-| `mobile/lib/features/settings/` | Staff screen built M2 ✅. Paystack screen still M4. |
+| `mobile/lib/features/settings/` | Staff screen (M2) and Paystack connection settings screen (M4 Step 1) are both built. |
 | `mobile/lib/features/sync/` | Empty — sync logic lives in `core/`. Delete this folder. |
 
 ---
@@ -556,4 +576,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports — plus an offline-sync layer the docs don't describe. The remaining work splits into four layers: **schema parity** (add missing columns on merchants/users/customers/items/sales — M1), **trust & accountability** (audit writes + staff RBAC — M1+M2), **monetization** (Paystack payment links — M4), and **customer touch** (WhatsApp/SMS receipts and reminders — M5). In order: M1 → M2 → M3 → M4 → M5 → M6, roughly 10–12 weeks to first real merchant validation.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, and sale pay-now flow with webhook settlement now implemented; the next critical slice is mobile payment-status polling/refresh, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+

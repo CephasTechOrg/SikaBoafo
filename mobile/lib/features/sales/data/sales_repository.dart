@@ -122,7 +122,7 @@ class SalesRepository {
     final rows = await db.rawQuery(
       '''
 SELECT s.id, s.total_amount, s.payment_method_label, s.sale_status,
-       s.voided_at, s.void_reason, s.created_at,
+       s.voided_at, s.void_reason, s.created_at, s.note,
        COALESCE(q.status, s.status) AS sync_status
 FROM sales_local s
 LEFT JOIN sync_queue q
@@ -137,7 +137,7 @@ LIMIT ?
     return rows.map(LocalSaleRecord.fromRow).toList(growable: false);
   }
 
-  Future<void> createSaleLocal({
+  Future<String> createSaleLocal({
     required String paymentMethodLabel,
     required List<SaleDraftLine> lines,
     String? note,
@@ -267,6 +267,7 @@ LIMIT ?
         executor: tx,
       );
     });
+    return saleId;
   }
 
   Future<LocalSaleEditable?> loadSaleEditable({required String saleId}) async {

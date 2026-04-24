@@ -54,6 +54,32 @@ class StaffInvite {
       );
 }
 
+class PaystackConnectionSettings {
+  const PaystackConnectionSettings({
+    required this.provider,
+    required this.isConnected,
+    required this.mode,
+    this.accountLabel,
+    this.publicKeyMasked,
+  });
+
+  final String provider;
+  final bool isConnected;
+  final String mode;
+  final String? accountLabel;
+  final String? publicKeyMasked;
+
+  factory PaystackConnectionSettings.fromJson(Map<String, dynamic> json) {
+    return PaystackConnectionSettings(
+      provider: (json['provider'] as String?) ?? 'paystack',
+      isConnected: (json['is_connected'] as bool?) ?? false,
+      mode: (json['mode'] as String?) ?? 'test',
+      accountLabel: json['account_label'] as String?,
+      publicKeyMasked: json['public_key_masked'] as String?,
+    );
+  }
+}
+
 class SettingsApi {
   SettingsApi(this._apiClient);
 
@@ -62,7 +88,9 @@ class SettingsApi {
   Future<List<StaffMember>> listStaff() async {
     final response = await _apiClient.dio.get<dynamic>('/staff');
     final body = response.data;
-    if (body is! List) throw const FormatException('Unexpected staff list payload.');
+    if (body is! List) {
+      throw const FormatException('Unexpected staff list payload.');
+    }
     return body
         .cast<Map<String, dynamic>>()
         .map(StaffMember.fromJson)
@@ -72,7 +100,9 @@ class SettingsApi {
   Future<List<StaffInvite>> listPendingInvites() async {
     final response = await _apiClient.dio.get<dynamic>('/staff/invites');
     final body = response.data;
-    if (body is! List) throw const FormatException('Unexpected invites payload.');
+    if (body is! List) {
+      throw const FormatException('Unexpected invites payload.');
+    }
     return body
         .cast<Map<String, dynamic>>()
         .map(StaffInvite.fromJson)
@@ -88,7 +118,9 @@ class SettingsApi {
       data: {'phone_number': phoneNumber, 'role': role},
     );
     final body = response.data;
-    if (body is! Map<String, dynamic>) throw const FormatException('Unexpected invite payload.');
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected invite payload.');
+    }
     return StaffInvite.fromJson(body);
   }
 
@@ -101,14 +133,60 @@ class SettingsApi {
       data: {'role': role},
     );
     final body = response.data;
-    if (body is! Map<String, dynamic>) throw const FormatException('Unexpected member payload.');
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected member payload.');
+    }
     return StaffMember.fromJson(body);
   }
 
   Future<StaffMember> deactivateStaff(String staffUserId) async {
-    final response = await _apiClient.dio.patch<dynamic>('/staff/$staffUserId/deactivate');
+    final response =
+        await _apiClient.dio.patch<dynamic>('/staff/$staffUserId/deactivate');
     final body = response.data;
-    if (body is! Map<String, dynamic>) throw const FormatException('Unexpected member payload.');
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected member payload.');
+    }
     return StaffMember.fromJson(body);
+  }
+
+  Future<PaystackConnectionSettings> fetchPaystackConnection() async {
+    final response =
+        await _apiClient.dio.get<dynamic>('/payments/paystack/connection');
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected paystack connection payload.');
+    }
+    return PaystackConnectionSettings.fromJson(body);
+  }
+
+  Future<PaystackConnectionSettings> savePaystackConnection({
+    required String publicKey,
+    required String mode,
+    String? accountLabel,
+  }) async {
+    final response = await _apiClient.dio.put<dynamic>(
+      '/payments/paystack/connection',
+      data: {
+        'public_key': publicKey,
+        'mode': mode,
+        'account_label':
+            accountLabel?.trim().isEmpty == true ? null : accountLabel?.trim(),
+      },
+    );
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected paystack connection payload.');
+    }
+    return PaystackConnectionSettings.fromJson(body);
+  }
+
+  Future<PaystackConnectionSettings> disconnectPaystackConnection() async {
+    final response =
+        await _apiClient.dio.delete<dynamic>('/payments/paystack/connection');
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected paystack connection payload.');
+    }
+    return PaystackConnectionSettings.fromJson(body);
   }
 }

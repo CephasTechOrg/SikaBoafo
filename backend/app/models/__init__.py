@@ -10,6 +10,8 @@ from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
 from app.models.merchant import Merchant
 from app.models.payment import Payment
+from app.models.payment_provider_connection import PaymentProviderConnection
+from app.models.payment_webhook_event import PaymentWebhookEvent
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
 from app.models.staff_invite import StaffInvite
@@ -26,6 +28,8 @@ __all__ = [
     "Item",
     "Merchant",
     "Payment",
+    "PaymentProviderConnection",
+    "PaymentWebhookEvent",
     "Receivable",
     "ReceivablePayment",
     "Sale",

@@ -123,6 +123,7 @@ CREATE TABLE sales_local (
   sale_status TEXT NOT NULL DEFAULT 'recorded',
   voided_at INTEGER,
   void_reason TEXT,
+  note TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -290,7 +291,8 @@ void main() {
     await appDb.close();
   });
 
-  test('inventory restore flips is_active back to true and enqueues item update',
+  test(
+      'inventory restore flips is_active back to true and enqueues item update',
       () async {
     final db = await _openInMemoryDatabase();
     final appDb = _InMemoryAppDatabase(db);
@@ -472,6 +474,42 @@ void main() {
     final lines = (payload['lines'] as List<dynamic>);
     expect(lines, hasLength(1));
     expect((lines.first as Map<String, dynamic>)['item_id'], 'item-1');
+
+    await appDb.close();
+  });
+
+  test('sales recent list includes persisted note text', () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = SalesRepository(
+      appDb: appDb,
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Bread',
+      'default_price': '3.00',
+      'sku': null,
+      'category': 'food',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 10,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.createSaleLocal(
+      paymentMethodLabel: 'cash',
+      lines: const [
+        SaleDraftLine(itemId: 'item-1', quantity: 1, unitPrice: '3.00'),
+      ],
+      note: 'Morning customer',
+    );
+
+    final recent = await repo.listRecentSales(limit: 10);
+    expect(recent, hasLength(1));
+    expect(recent.first.note, 'Morning customer');
 
     await appDb.close();
   });
