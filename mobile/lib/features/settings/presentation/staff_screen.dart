@@ -32,26 +32,84 @@ class StaffScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.hero),
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: Column(
           children: [
-            PremiumPageHeader(
-              title: 'Staff',
-              subtitle:
-                  'Invite teammates, update roles, and manage store access in one place.',
-              leading: IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-              badge: PremiumBadge(
-                label: '$activeCount active',
-                icon: Icons.group_rounded,
-                background: Colors.white.withValues(alpha: 0.12),
-              ),
-              trailing: IconButton(
-                tooltip: 'Invite staff',
-                onPressed: () => _showInviteSheet(context, ref),
-                icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+            Container(
+              decoration: const BoxDecoration(gradient: AppGradients.hero),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _HeaderActionButton(
+                            icon: Icons.arrow_back_rounded,
+                            onTap: () => Navigator.of(context).maybePop(),
+                            tooltip: 'Back',
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Staff',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Invite teammates and manage store access',
+                                  style: TextStyle(
+                                    color: Color(0xFFC7D0E5),
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _HeaderActionButton(
+                            icon: Icons.person_add_rounded,
+                            onTap: () => _showInviteSheet(context, ref),
+                            tooltip: 'Invite staff',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _StaffHeroChip(
+                            label: '${members.length}',
+                            value: 'Members',
+                            tone: AppColors.gold,
+                          ),
+                          const SizedBox(width: 8),
+                          _StaffHeroChip(
+                            label: '$activeCount',
+                            value: 'Active',
+                            tone: const Color(0xFF8BE0B2),
+                          ),
+                          const SizedBox(width: 8),
+                          _StaffHeroChip(
+                            label: '${invites.length}',
+                            value: 'Pending',
+                            tone: AppColors.gold,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             Expanded(
@@ -65,12 +123,6 @@ class StaffScreen extends ConsumerWidget {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
                     children: [
-                      _OverviewPanel(
-                        totalMembers: members.length,
-                        activeMembers: activeCount,
-                        pendingInvites: invites.length,
-                      ),
-                      const SizedBox(height: 16),
                       _PendingInvitesSection(ref: ref),
                       const SizedBox(height: 16),
                       _ActiveStaffSection(ref: ref),
@@ -100,115 +152,88 @@ class StaffScreen extends ConsumerWidget {
   }
 }
 
-class _OverviewPanel extends StatelessWidget {
-  const _OverviewPanel({
-    required this.totalMembers,
-    required this.activeMembers,
-    required this.pendingInvites,
-  });
-
-  final int totalMembers;
-  final int activeMembers;
-  final int pendingInvites;
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumPanel(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = constraints.maxWidth >= 720
-              ? (constraints.maxWidth - 24) / 3
-              : (constraints.maxWidth - 12) / 2;
-          return Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              SizedBox(
-                width: itemWidth,
-                child: _MetricCard(
-                  icon: Icons.group_rounded,
-                  iconColor: AppColors.navy,
-                  label: 'Team members',
-                  value: '$totalMembers',
-                  note: 'Assigned to this store',
-                ),
-              ),
-              SizedBox(
-                width: itemWidth,
-                child: _MetricCard(
-                  icon: Icons.verified_user_rounded,
-                  iconColor: AppColors.success,
-                  label: 'Active access',
-                  value: '$activeMembers',
-                  note: 'Currently able to sign in',
-                ),
-              ),
-              SizedBox(
-                width: itemWidth,
-                child: _MetricCard(
-                  icon: Icons.mark_email_unread_rounded,
-                  iconColor: AppColors.warning,
-                  label: 'Pending invites',
-                  value: '$pendingInvites',
-                  note: 'Waiting for first login',
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
+class _HeaderActionButton extends StatelessWidget {
+  const _HeaderActionButton({
     required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.note,
+    required this.onTap,
+    this.tooltip,
   });
 
   final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final String note;
+  final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+    final child = Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
+    );
+    return tooltip == null ? child : Tooltip(message: tooltip!, child: child);
+  }
+}
+
+class _StaffHeroChip extends StatelessWidget {
+  const _StaffHeroChip({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: tone,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 4),
-          Text(note, style: Theme.of(context).textTheme.bodySmall),
-        ],
+            const SizedBox(height: 3),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.56),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -228,7 +253,8 @@ class _PendingInvitesSection extends StatelessWidget {
         children: [
           const PremiumSectionHeading(
             title: 'Pending Invitations',
-            caption: 'People who still need to sign in and accept store access.',
+            caption:
+                'People who still need to sign in and accept store access.',
           ),
           const SizedBox(height: 14),
           invitesAsync.when(
@@ -299,11 +325,15 @@ class _InviteTile extends StatelessWidget {
                 Text(
                   invite.phoneNumber,
                   style: Theme.of(context).textTheme.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   invite.roleDisplay,
                   style: Theme.of(context).textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -333,7 +363,8 @@ class _ActiveStaffSection extends StatelessWidget {
         children: [
           const PremiumSectionHeading(
             title: 'Team Members',
-            caption: 'Review access, change roles, and deactivate staff when needed.',
+            caption:
+                'Review access, change roles, and deactivate staff when needed.',
           ),
           const SizedBox(height: 14),
           staffAsync.when(
@@ -347,7 +378,8 @@ class _ActiveStaffSection extends StatelessWidget {
                 return const _InlineEmptyState(
                   icon: Icons.people_outline_rounded,
                   title: 'No staff members yet',
-                  message: 'Use the invite button above to bring your first teammate into the store.',
+                  message:
+                      'Use the invite button above to bring your first teammate into the store.',
                 );
               }
               return Column(
@@ -356,9 +388,7 @@ class _ActiveStaffSection extends StatelessWidget {
                     _StaffTile(
                       member: members[i],
                       onRoleChanged: (newRole) async {
-                        await ref
-                            .read(_settingsApiProvider)
-                            .updateRole(
+                        await ref.read(_settingsApiProvider).updateRole(
                               staffUserId: members[i].userId,
                               role: newRole,
                             );
@@ -432,6 +462,8 @@ class _StaffTile extends StatelessWidget {
                     Text(
                       member.fullName ?? member.phoneNumber,
                       style: Theme.of(context).textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -439,6 +471,8 @@ class _StaffTile extends StatelessWidget {
                           ? member.phoneNumber
                           : member.roleDisplay,
                       style: Theme.of(context).textTheme.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -482,20 +516,22 @@ class _StaffTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _StatusPill(
                 label: member.roleDisplay,
                 foreground: AppColors.forest,
                 background: AppColors.mint,
               ),
-              const SizedBox(width: 8),
               _StatusPill(
                 label: member.isActive ? 'Active' : 'Inactive',
                 foreground:
                     member.isActive ? AppColors.success : AppColors.muted,
-                background:
-                    member.isActive ? AppColors.successSoft : AppColors.surfaceAlt,
+                background: member.isActive
+                    ? AppColors.successSoft
+                    : AppColors.surfaceAlt,
               ),
             ],
           ),
@@ -582,7 +618,8 @@ class _InviteSheetState extends State<_InviteSheet> {
           const PremiumPanel(
             child: PremiumSectionHeading(
               title: 'Invitation details',
-              caption: 'Choose the phone number and the role the teammate should start with.',
+              caption:
+                  'Choose the phone number and the role the teammate should start with.',
             ),
           ),
           const SizedBox(height: 14),
@@ -693,6 +730,8 @@ class _StatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: foreground,
             ),
