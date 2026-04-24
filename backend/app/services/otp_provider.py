@@ -52,6 +52,7 @@ class ArkeselOtpProvider:
             "message": "Your BizTrack code is %otp_code%. Expires in %expiry% minutes.",
         }
         response = self._post_json("/api/otp/generate", payload)
+        logger.info("OTP generate response: phone=%s payload=%s", phone_number, response)
         self._assert_provider_success(
             response=response,
             expected_code="1000",
@@ -83,6 +84,7 @@ class ArkeselOtpProvider:
         }
         try:
             response = self._post_json("/api/otp/verify", payload)
+            logger.info("OTP verify response: phone=%s payload=%s", phone_number, response)
             self._assert_provider_success(
                 response=response,
                 expected_code="1100",
@@ -143,6 +145,7 @@ class ArkeselOtpProvider:
             if isinstance(response.get("data"), dict):
                 return
             msg = f"OTP {action} returned unexpected response payload."
+            logger.warning("OTP %s unexpected provider response: %s", action, response)
             raise OtpProviderError(msg)
 
         normalized_code = str(provider_code).strip()
@@ -150,4 +153,10 @@ class ArkeselOtpProvider:
             return
 
         provider_message = str(response.get("message") or f"OTP {action} failed.").strip()
+        logger.warning(
+            "OTP %s provider returned failure: code=%s response=%s",
+            action,
+            normalized_code,
+            response,
+        )
         raise OtpProviderError(f"{provider_message} [provider_code={normalized_code}]")
