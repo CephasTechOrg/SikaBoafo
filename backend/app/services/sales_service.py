@@ -80,6 +80,16 @@ class SaleSnapshot:
 class SalesService:
     db: Session
 
+    def get_sale_for_user(
+        self,
+        *,
+        user_id: UUID,
+        sale_id: UUID,
+    ) -> SaleSnapshot:
+        store = self._get_default_store_for_user(user_id=user_id)
+        sale = self._load_sale_for_store(store_id=store.id, sale_id=sale_id)
+        return self._to_sale_snapshot(sale=sale)
+
     def list_sales_for_user(
         self,
         *,

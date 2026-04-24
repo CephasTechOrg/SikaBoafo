@@ -40,6 +40,29 @@ class SalePaymentInitiationDto {
   }
 }
 
+class SalePaymentStatusDto {
+  const SalePaymentStatusDto({
+    required this.saleId,
+    required this.paymentStatus,
+    required this.saleStatus,
+  });
+
+  final String saleId;
+  final String paymentStatus;
+  final String saleStatus;
+
+  bool get isTerminal =>
+      paymentStatus == 'succeeded' || paymentStatus == 'failed';
+
+  factory SalePaymentStatusDto.fromJson(Map<String, dynamic> json) {
+    return SalePaymentStatusDto(
+      saleId: (json['sale_id'] ?? '') as String,
+      paymentStatus: (json['payment_status'] ?? 'recorded') as String,
+      saleStatus: (json['sale_status'] ?? 'recorded') as String,
+    );
+  }
+}
+
 class SalesPaymentsApi {
   SalesPaymentsApi(this._apiClient);
 
@@ -52,9 +75,19 @@ class SalesPaymentsApi {
     );
     final data = response.data;
     if (data is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected sale payment initiation payload.');
+      throw const FormatException(
+          'Unexpected sale payment initiation payload.');
     }
     return SalePaymentInitiationDto.fromJson(data);
+  }
+
+  Future<SalePaymentStatusDto> fetchSalePaymentStatus(String saleId) async {
+    final response = await _apiClient.dio.get<dynamic>('/sales/$saleId');
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected sale payment status payload.');
+    }
+    return SalePaymentStatusDto.fromJson(data);
   }
 }
 

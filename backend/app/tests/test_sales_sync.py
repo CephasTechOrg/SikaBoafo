@@ -151,6 +151,49 @@ def test_create_sale_success_and_listing() -> None:
         app.dependency_overrides.clear()
 
 
+def test_get_sale_by_id_returns_sale_snapshot() -> None:
+    client, session_local, _, store_id = _build_sqlite_test_stack()
+    item_id = _seed_item(session_local, store_id=UUID(store_id))
+    try:
+        created = client.post(
+            "/api/v1/sales",
+            json={
+                "payment_method_label": "cash",
+                "lines": [
+                    {
+                        "item_id": item_id,
+                        "quantity": 1,
+                        "unit_price": "35.00",
+                    }
+                ],
+            },
+        )
+        assert created.status_code == 201
+        sale_id = created.json()["sale_id"]
+
+        fetched = client.get(f"/api/v1/sales/{sale_id}")
+        assert fetched.status_code == 200
+        body = fetched.json()
+        assert body["sale_id"] == sale_id
+        assert body["payment_status"] == "recorded"
+        assert body["sale_status"] == "recorded"
+        assert len(body["lines"]) == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_sale_by_id_returns_404_when_missing() -> None:
+    client, session_local, _, store_id = _build_sqlite_test_stack()
+    _seed_item(session_local, store_id=UUID(store_id))
+    try:
+        missing_id = str(uuid4())
+        fetched = client.get(f"/api/v1/sales/{missing_id}")
+        assert fetched.status_code == 404
+        assert "not found" in fetched.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_update_sale_adjusts_inventory_and_total() -> None:
     client, session_local, _, store_id = _build_sqlite_test_stack()
     item_id = _seed_item(session_local, store_id=UUID(store_id))

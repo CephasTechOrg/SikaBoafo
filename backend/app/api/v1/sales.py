@@ -49,6 +49,22 @@ def _to_sale_out(sale: SaleSnapshot) -> SaleOut:
     )
 
 
+@router.get("/{sale_id}", response_model=SaleOut)
+def get_sale(
+    sale_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> SaleOut:
+    service = SalesService(db=db)
+    try:
+        sale = service.get_sale_for_user(user_id=current_user.id, sale_id=sale_id)
+    except SaleContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except SaleNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return _to_sale_out(sale)
+
+
 @router.get("", response_model=list[SaleOut])
 def list_sales(
     db: Annotated[Session, Depends(get_db)],

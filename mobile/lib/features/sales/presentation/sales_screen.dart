@@ -1,5 +1,7 @@
 // ignore_for_file: unused_element, prefer_const_constructors
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -886,7 +888,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     var saleSaved = false;
     try {
-      final saleId = await ref.read(salesControllerProvider.notifier).recordSaleReturningId(
+      final saleId = await ref
+          .read(salesControllerProvider.notifier)
+          .recordSaleReturningId(
             paymentMethodLabel: 'mobile_money',
             lines: lines,
             note: note,
@@ -900,7 +904,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
       ref.invalidate(inventoryControllerProvider);
       _resetDraftAfterSale();
-      await _showPaystackLinkDialog(checkoutUrl: initiated.checkoutUrl);
+      await _showPaystackLinkDialog(
+        checkoutUrl: initiated.checkoutUrl,
+        saleId: initiated.saleId,
+      );
     } catch (error) {
       if (!mounted) return;
       if (saleSaved) {
@@ -925,7 +932,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       final item = itemById[entry.key];
       if (item == null) continue;
       final price = _priceOverrideByItemId[entry.key] ?? item.defaultPrice;
-      lines.add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
+      lines
+          .add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
     }
     return lines;
   }
@@ -941,21 +949,97 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     _searchCtrl.clear();
   }
 
-  Future<void> _showPaystackLinkDialog({required String checkoutUrl}) async {
+  Future<SalePaymentStatusDto?> _pollSalePaymentStatus({
+    required String saleId,
+    int attempts = 6,
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    SalePaymentStatusDto? latest;
+    for (var index = 0; index < attempts; index++) {
+      latest = await ref
+          .read(salesPaymentsApiProvider)
+          .fetchSalePaymentStatus(saleId);
+      if (latest.isTerminal) {
+        return latest;
+      }
+      if (index < attempts - 1) {
+        await Future<void>.delayed(interval);
+      }
+    }
+    return latest;
+  }
+
+  String _formatPaymentStatusLabel(String rawStatus) {
+    return switch (rawStatus) {
+      'succeeded' => 'Succeeded',
+      'failed' => 'Failed',
+      'pending_provider' => 'Pending provider confirmation',
+      'recorded' => 'Recorded (not yet initiated)',
+      _ => rawStatus.replaceAll('_', ' '),
+    };
+  }
+
+  Future<void> _showPaystackLinkDialog({
+    required String checkoutUrl,
+    required String saleId,
+  }) async {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Paystack Link Ready'),
-          content: SelectableText(
-            checkoutUrl,
-            style: const TextStyle(fontSize: 13),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Share or open this link, then tap Check Status to refresh payment state.',
+                style: TextStyle(fontSize: 12.5),
+              ),
+              const SizedBox(height: 10),
+              SelectableText(
+                checkoutUrl,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Close'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final latest = await _pollSalePaymentStatus(saleId: saleId);
+                  if (!mounted) return;
+                  await ref
+                      .read(salesControllerProvider.notifier)
+                      .refresh(includeVoided: _showVoided);
+                  final statusLabel = _formatPaymentStatusLabel(
+                    latest?.paymentStatus ?? 'pending_provider',
+                  );
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Current payment status: $statusLabel'),
+                    ),
+                  );
+                } catch (error) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Could not refresh payment status: '
+                        '${humanizeSalesPaymentsError(error)}',
+                      ),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Check Status'),
             ),
             FilledButton.icon(
               onPressed: () async {
