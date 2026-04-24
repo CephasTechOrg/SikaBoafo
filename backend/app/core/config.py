@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,16 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@localhost:5432/biztrack",
         description="SQLAlchemy URL, e.g. postgresql+psycopg://user:pass@localhost:5432/biztrack",
     )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalise_db_url(cls, v: str) -> str:
+        # Render supplies postgres:// or postgresql:// — rewrite to psycopg v3 scheme
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+psycopg://", 1)
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+psycopg://", 1)
+        return v
 
     redis_url: str | None = Field(default=None, description="Redis URL for cache / future workers")
 
