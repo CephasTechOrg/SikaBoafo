@@ -1,15 +1,26 @@
-"""Arkesel OTP integration plus local-dev fallback mode."""
+"""Locally managed OTP generation/verification with Arkesel SMS delivery."""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
+import secrets
+import string
 from dataclasses import dataclass
-from urllib import error, request
+from datetime import UTC, datetime, timedelta
+from urllib import error, parse, request
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.models.otp_code import OtpCode
 
 logger = logging.getLogger(__name__)
+
+_MAX_VERIFY_ATTEMPTS = 5
 
 
 class OtpProviderError(RuntimeError):
@@ -27,7 +38,8 @@ class GenerateOtpResult:
 
 
 class ArkeselOtpProvider:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, *, db: Session, settings: Settings) -> None:
+        self.db = db
         self.settings = settings
 
     def generate(self, *, phone_number: str) -> GenerateOtpResult:
@@ -38,32 +50,34 @@ class ArkeselOtpProvider:
                 expires_in_minutes=self.settings.arkesel_otp_expiry_minutes,
             )
 
-        logger.info("OTP generate: mode=arkesel phone=%s", phone_number)
-        payload = {
-            # Arkesel integrations have shown inconsistent field naming across endpoints/docs.
-            # Send both aliases to remain compatible with deployed validation rules.
-            "number": phone_number,
-            "phone_number": phone_number,
-            "expiry": self.settings.arkesel_otp_expiry_minutes,
-            "length": self.settings.arkesel_otp_length,
-            "type": self.settings.arkesel_otp_type,
-            "medium": self.settings.arkesel_otp_medium,
-            "sender_id": self.settings.arkesel_sender_id,
-            "message": "Your BizTrack code is %otp_code%. Expires in %expiry% minutes.",
-        }
-        response = self._post_json("/api/otp/generate", payload)
-        logger.info("OTP generate response: phone=%s payload=%s", phone_number, response)
-        self._assert_provider_success(
-            response=response,
-            expected_code="1000",
-            action="generate",
+        logger.info("OTP generate: mode=local+arkesel-sms phone=%s", phone_number)
+        now = datetime.now(tz=UTC)
+        self._invalidate_active_codes(phone_number=phone_number, now=now)
+
+        code = self._generate_code()
+        otp = OtpCode(
+            phone_number=phone_number,
+            code_hash=self._hash_code(phone_number=phone_number, code=code),
+            expires_at=now + timedelta(minutes=self.settings.arkesel_otp_expiry_minutes),
+            delivery_provider="arkesel",
         )
-        reference = None
-        if isinstance(response.get("data"), dict):
-            reference = response["data"].get("id") or response["data"].get("reference")
-        if reference is None:
-            reference = response.get("reference")
-        logger.info("OTP generate success: phone=%s provider_reference=%s", phone_number, reference)
+        self.db.add(otp)
+        self.db.flush()
+
+        message = (
+            "Your BizTrack code is %otp_code%. Expires in %expiry% minutes."
+            .replace("%otp_code%", code)
+            .replace("%expiry%", str(self.settings.arkesel_otp_expiry_minutes))
+        )
+        reference = self._send_sms(phone_number=phone_number, message=message)
+        otp.delivery_reference = reference
+        self.db.add(otp)
+        logger.info(
+            "OTP generate success: phone=%s provider_reference=%s otp_id=%s",
+            phone_number,
+            reference,
+            otp.id,
+        )
         return GenerateOtpResult(
             provider_reference=reference,
             expires_in_minutes=self.settings.arkesel_otp_expiry_minutes,
@@ -76,39 +90,84 @@ class ArkeselOtpProvider:
                 raise OtpVerificationFailedError("Invalid verification code.")
             return
 
-        logger.info("OTP verify: mode=arkesel phone=%s", phone_number)
-        payload = {
-            "number": phone_number,
-            "phone_number": phone_number,
-            "code": code,
-        }
-        try:
-            response = self._post_json("/api/otp/verify", payload)
-            logger.info("OTP verify response: phone=%s payload=%s", phone_number, response)
-            self._assert_provider_success(
-                response=response,
-                expected_code="1100",
-                action="verify",
+        logger.info("OTP verify: mode=local-db phone=%s", phone_number)
+        now = datetime.now(tz=UTC)
+        otp = self.db.scalar(
+            select(OtpCode)
+            .where(
+                OtpCode.phone_number == phone_number,
+                OtpCode.used_at.is_(None),
             )
-        except OtpProviderError as exc:
-            # Arkesel commonly uses 4xx/422 for invalid code; collapse to auth failure.
-            if "422" in str(exc) or "401" in str(exc):
-                raise OtpVerificationFailedError("Invalid verification code.") from exc
-            raise
+            .order_by(OtpCode.created_at.desc())
+            .limit(1)
+        )
+        if otp is None:
+            raise OtpVerificationFailedError("No active verification code found.")
+        expires_at = self._as_utc(otp.expires_at)
+        if expires_at <= now:
+            otp.used_at = now
+            self.db.add(otp)
+            self.db.commit()
+            raise OtpVerificationFailedError("Verification code has expired.")
+        if otp.attempt_count >= _MAX_VERIFY_ATTEMPTS:
+            otp.used_at = now
+            self.db.add(otp)
+            self.db.commit()
+            raise OtpVerificationFailedError("Too many verification attempts.")
 
-    def _post_json(self, path: str, payload: dict[str, object]) -> dict[str, object]:
+        otp.attempt_count += 1
+        if not secrets.compare_digest(
+            otp.code_hash,
+            self._hash_code(phone_number=phone_number, code=code),
+        ):
+            self.db.add(otp)
+            self.db.commit()
+            raise OtpVerificationFailedError("Invalid verification code.")
+
+        otp.used_at = now
+        self.db.add(otp)
+
+    def _send_sms(self, *, phone_number: str, message: str) -> str | None:
         if not self.settings.arkesel_api_key:
             msg = "ARKESEL_API_KEY is missing."
             raise OtpProviderError(msg)
 
         base = self.settings.arkesel_base_url.rstrip("/")
-        endpoint = f"{base}{path}"
+        query = parse.urlencode(
+            {
+                "action": "send-sms",
+                "api_key": self.settings.arkesel_api_key,
+            }
+        )
+        endpoint = f"{base}/sms/api?{query}"
+        payload = {
+            "action": "send-sms",
+            "api_key": self.settings.arkesel_api_key,
+            "to": phone_number,
+            "from": self.settings.arkesel_sender_id,
+            "sms": message,
+        }
+        response = self._post_json(endpoint=endpoint, payload=payload)
+        logger.info("OTP SMS response: phone=%s payload=%s", phone_number, response)
+        provider_code = str(response.get("code") or "").strip().lower()
+        if provider_code != "ok":
+            provider_message = str(response.get("message") or "SMS delivery failed.").strip()
+            logger.warning(
+                "OTP SMS provider returned failure: code=%s response=%s",
+                provider_code or "<missing>",
+                response,
+            )
+            raise OtpProviderError(
+                f"{provider_message} [provider_code={provider_code or 'unknown'}]"
+            )
+        return self._extract_reference(response)
+
+    def _post_json(self, *, endpoint: str, payload: dict[str, object]) -> dict[str, object]:
         raw_body = json.dumps(payload).encode("utf-8")
         req = request.Request(
             endpoint,
             data=raw_body,
             headers={
-                "api-key": self.settings.arkesel_api_key,
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             },
@@ -122,7 +181,7 @@ class ArkeselOtpProvider:
             logger.warning("Arkesel request failed: status=%s body=%s", exc.code, body)
             raise OtpProviderError(f"Provider request failed ({exc.code}).") from exc
         except error.URLError as exc:
-            raise OtpProviderError("Unable to reach OTP provider.") from exc
+            raise OtpProviderError("Unable to reach SMS provider.") from exc
 
         if not body:
             return {}
@@ -132,31 +191,39 @@ class ArkeselOtpProvider:
             logger.warning("Arkesel returned non-JSON response body.")
             return {}
 
-    def _assert_provider_success(
-        self,
-        *,
-        response: dict[str, object],
-        expected_code: str,
-        action: str,
-    ) -> None:
-        provider_code = response.get("code")
-        if provider_code is None:
-            # Some Arkesel responses may omit `code` but include nested data; keep backward compatibility.
-            if isinstance(response.get("data"), dict):
-                return
-            msg = f"OTP {action} returned unexpected response payload."
-            logger.warning("OTP %s unexpected provider response: %s", action, response)
-            raise OtpProviderError(msg)
+    def _invalidate_active_codes(self, *, phone_number: str, now: datetime) -> None:
+        rows = self.db.scalars(
+            select(OtpCode).where(
+                OtpCode.phone_number == phone_number,
+                OtpCode.used_at.is_(None),
+            )
+        ).all()
+        for row in rows:
+            row.used_at = now
+            self.db.add(row)
 
-        normalized_code = str(provider_code).strip()
-        if normalized_code == expected_code:
-            return
+    def _generate_code(self) -> str:
+        length = self.settings.arkesel_otp_length
+        otp_type = self.settings.arkesel_otp_type.strip().lower()
+        alphabet = string.digits if otp_type == "numeric" else string.ascii_uppercase + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(length))
 
-        provider_message = str(response.get("message") or f"OTP {action} failed.").strip()
-        logger.warning(
-            "OTP %s provider returned failure: code=%s response=%s",
-            action,
-            normalized_code,
-            response,
-        )
-        raise OtpProviderError(f"{provider_message} [provider_code={normalized_code}]")
+    def _hash_code(self, *, phone_number: str, code: str) -> str:
+        digest = hmac.new(
+            self.settings.secret_key.encode("utf-8"),
+            f"{phone_number}:{code}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return digest
+
+    @staticmethod
+    def _extract_reference(response: dict[str, object]) -> str | None:
+        if isinstance(response.get("data"), dict):
+            nested = response["data"]
+            return nested.get("id") or nested.get("reference")
+        reference = response.get("reference")
+        return str(reference) if reference is not None else None
+
+    @staticmethod
+    def _as_utc(value: datetime) -> datetime:
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)

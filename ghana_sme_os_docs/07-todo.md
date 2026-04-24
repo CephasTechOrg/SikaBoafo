@@ -265,7 +265,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 2.3 | PostgreSQL | `[x] ✅` | `backend/alembic/versions/` — 6 migrations |
 | 2.4 | Redis | `[ ] ❌` | Not configured. Blocker for §6 background jobs. |
 | 2.5 | FastAPI structure | `[x] ✅` | Clean layout |
-| 2.6 | Authentication | `[x] ✅` | Phone OTP + PIN (better for Ghana than password) |
+| 2.6 | Authentication | `[x] ✅` | Phone OTP + PIN (better for Ghana than password). 2026-04-24 hardening: OTP is now locally generated/verified by BizTrack with Arkesel used only as SMS transport. |
 | 2.7 | RBAC / permissions | `[x] ✅` | M2: 4 roles, `require_role()` dep in `api/deps.py`, staff routes owner-gated. |
 | 2.8 | Tenant middleware | `[~] 🚧` | Per-query `merchant_id` filtering; no central enforcement. Risk: a future endpoint forgets. |
 | 2.9 | Offline-first sync | `[x] ✅` | **Ahead of docs** — `services/sync_service.py` + `features/sync/` |
@@ -590,5 +590,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, and partial-payment hardening; the next critical slice is notifications + provider-abstraction/secret-hardening tasks, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, and partial-payment hardening; auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications + provider-abstraction/secret-hardening tasks, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
 

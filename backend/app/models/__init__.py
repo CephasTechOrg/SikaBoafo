@@ -9,6 +9,7 @@ from app.models.expense import Expense
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
 from app.models.merchant import Merchant
+from app.models.otp_code import OtpCode
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.payment_webhook_event import PaymentWebhookEvent
@@ -27,6 +28,7 @@ __all__ = [
     "InventoryMovement",
     "Item",
     "Merchant",
+    "OtpCode",
     "Payment",
     "PaymentProviderConnection",
     "PaymentWebhookEvent",

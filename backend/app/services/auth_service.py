@@ -48,7 +48,9 @@ class AuthService:
 
     def request_otp(self, *, phone_number: str) -> GenerateOtpResult:
         normalized = normalize_phone_number(phone_number)
-        return self.otp_provider.generate(phone_number=normalized)
+        result = self.otp_provider.generate(phone_number=normalized)
+        self.db.commit()
+        return result
 
     def verify_otp(self, *, phone_number: str, code: str) -> UserSessionOut:
         normalized = normalize_phone_number(phone_number)

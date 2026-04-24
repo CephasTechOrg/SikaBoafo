@@ -38,7 +38,7 @@ def _build_auth_service(db: Session, settings: Settings) -> AuthService:
     return AuthService(
         db=db,
         settings=settings,
-        otp_provider=ArkeselOtpProvider(settings=settings),
+        otp_provider=ArkeselOtpProvider(db=db, settings=settings),
     )
 
 

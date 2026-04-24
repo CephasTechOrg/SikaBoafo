@@ -1,9 +1,16 @@
-"""OTP provider tests."""
+"""OTP provider tests for locally managed OTP storage."""
 
 from __future__ import annotations
 
+from collections.abc import Generator
+
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from app.core.config import Settings
-from app.services.otp_provider import ArkeselOtpProvider, OtpProviderError
+from app.models.otp_code import OtpCode
+from app.services.otp_provider import ArkeselOtpProvider, OtpVerificationFailedError
 
 
 def _settings() -> Settings:
@@ -12,68 +19,102 @@ def _settings() -> Settings:
         database_url="sqlite:///unused.db",
         secret_key="test-secret-key-1234",
         arkesel_api_key="test-arkesel-key",
+        arkesel_otp_length=6,
+        arkesel_otp_type="numeric",
+        arkesel_otp_expiry_minutes=5,
     )
 
 
-def test_generate_uses_both_number_aliases_and_accepts_success_code() -> None:
-    provider = ArkeselOtpProvider(settings=_settings())
-    captured: dict[str, object] = {}
-
-    def _fake_post_json(path: str, payload: dict[str, object]) -> dict[str, object]:
-        captured["path"] = path
-        captured["payload"] = payload
-        return {
-            "code": "1000",
-            "message": "Successful, Message delivered",
-        }
-
-    provider._post_json = _fake_post_json  # type: ignore[method-assign]
-    result = provider.generate(phone_number="233244123456")
-
-    assert captured["path"] == "/api/otp/generate"
-    assert isinstance(captured["payload"], dict)
-    assert captured["payload"]["number"] == "233244123456"
-    assert captured["payload"]["phone_number"] == "233244123456"
-    assert result.provider_reference is None
+def _session_local() -> sessionmaker[Session]:
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    OtpCode.__table__.create(bind=engine)
+    return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def test_generate_raises_when_provider_returns_error_code_in_http_200() -> None:
-    provider = ArkeselOtpProvider(settings=_settings())
+def test_generate_stores_hashed_code_and_delivery_reference() -> None:
+    session_local = _session_local()
+    with session_local() as db:
+        provider = ArkeselOtpProvider(db=db, settings=_settings())
+        provider._generate_code = lambda: "123456"  # type: ignore[method-assign]
+        provider._send_sms = lambda **kwargs: "sms-ref-123"  # type: ignore[method-assign]
 
-    def _fake_post_json(path: str, payload: dict[str, object]) -> dict[str, object]:
-        return {
-            "code": "1007",
-            "message": "Insufficient balance",
-        }
+        result = provider.generate(phone_number="233244123456")
+        db.commit()
 
-    provider._post_json = _fake_post_json  # type: ignore[method-assign]
+        row = db.scalar(select(OtpCode).where(OtpCode.phone_number == "233244123456"))
+        assert row is not None
+        assert row.code_hash != "123456"
+        assert row.delivery_reference == "sms-ref-123"
+        assert row.delivery_provider == "arkesel"
+        assert row.used_at is None
+        assert result.provider_reference == "sms-ref-123"
 
-    try:
+
+def test_verify_marks_code_used_on_success() -> None:
+    session_local = _session_local()
+    with session_local() as db:
+        provider = ArkeselOtpProvider(db=db, settings=_settings())
+        provider._generate_code = lambda: "123456"  # type: ignore[method-assign]
+        provider._send_sms = lambda **kwargs: "sms-ref-123"  # type: ignore[method-assign]
+
         provider.generate(phone_number="233244123456")
-    except OtpProviderError as exc:
-        assert "Insufficient balance" in str(exc)
-        assert "1007" in str(exc)
-    else:
-        raise AssertionError("Expected OtpProviderError for Arkesel error response.")
+        db.commit()
+
+        provider.verify(phone_number="233244123456", code="123456")
+        db.commit()
+
+        row = db.scalar(select(OtpCode).where(OtpCode.phone_number == "233244123456"))
+        assert row is not None
+        assert row.used_at is not None
+        assert row.attempt_count == 1
 
 
-def test_verify_uses_both_number_aliases_and_accepts_success_code() -> None:
-    provider = ArkeselOtpProvider(settings=_settings())
-    captured: dict[str, object] = {}
+def test_verify_wrong_code_increments_attempt_count() -> None:
+    session_local = _session_local()
+    with session_local() as db:
+        provider = ArkeselOtpProvider(db=db, settings=_settings())
+        provider._generate_code = lambda: "123456"  # type: ignore[method-assign]
+        provider._send_sms = lambda **kwargs: "sms-ref-123"  # type: ignore[method-assign]
 
-    def _fake_post_json(path: str, payload: dict[str, object]) -> dict[str, object]:
-        captured["path"] = path
-        captured["payload"] = payload
-        return {
-            "code": "1100",
-            "message": "Successful",
-        }
+        provider.generate(phone_number="233244123456")
+        db.commit()
 
-    provider._post_json = _fake_post_json  # type: ignore[method-assign]
-    provider.verify(phone_number="233244123456", code="123456")
+        try:
+            provider.verify(phone_number="233244123456", code="000000")
+        except OtpVerificationFailedError as exc:
+            assert "Invalid verification code." in str(exc)
+        else:
+            raise AssertionError("Expected invalid OTP verification failure.")
 
-    assert captured["path"] == "/api/otp/verify"
-    assert isinstance(captured["payload"], dict)
-    assert captured["payload"]["number"] == "233244123456"
-    assert captured["payload"]["phone_number"] == "233244123456"
-    assert captured["payload"]["code"] == "123456"
+        row = db.scalar(select(OtpCode).where(OtpCode.phone_number == "233244123456"))
+        assert row is not None
+        assert row.used_at is None
+        assert row.attempt_count == 1
+
+
+def test_generate_invalidates_previous_active_code() -> None:
+    session_local = _session_local()
+    with session_local() as db:
+        provider = ArkeselOtpProvider(db=db, settings=_settings())
+        provider._send_sms = lambda **kwargs: "sms-ref-123"  # type: ignore[method-assign]
+
+        provider._generate_code = lambda: "111111"  # type: ignore[method-assign]
+        provider.generate(phone_number="233244123456")
+        db.commit()
+
+        provider._generate_code = lambda: "222222"  # type: ignore[method-assign]
+        provider.generate(phone_number="233244123456")
+        db.commit()
+
+        rows = db.scalars(
+            select(OtpCode)
+            .where(OtpCode.phone_number == "233244123456")
+            .order_by(OtpCode.created_at.asc())
+        ).all()
+        assert len(rows) == 2
+        assert rows[0].used_at is not None
+        assert rows[1].used_at is None
