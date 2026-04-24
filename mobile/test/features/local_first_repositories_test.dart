@@ -631,7 +631,7 @@ void main() {
     final queueRows = await db.query('sync_queue', orderBy: 'id ASC');
 
     expect(updatedReceivableRows.first['outstanding_amount'], '30.00');
-    expect(updatedReceivableRows.first['status'], 'open');
+    expect(updatedReceivableRows.first['status'], 'partially_paid');
     expect(paymentRows, hasLength(1));
     expect(paymentRows.first['amount'], '20.00');
 

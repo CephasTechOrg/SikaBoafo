@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import 'receive_repayment_screen.dart';
@@ -18,33 +19,85 @@ class DebtDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(receivableDetailProvider(receivableId));
+    final detail = detailAsync.valueOrNull;
+    final statusColor =
+        detail == null ? Colors.white : _statusColor(detail.record.status);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: detailAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _DetailErrorView(
-          message: _humanizeError(error),
-          onRetry: () => ref.invalidate(receivableDetailProvider(receivableId)),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.hero),
+        child: Column(
+          children: [
+            PremiumPageHeader(
+              title: detail?.record.customerName ?? 'Debt Detail',
+              subtitle: detail == null
+                  ? 'Review balance, repayment history, and debt status.'
+                  : 'Track this customer ledger without leaving the debt workflow.',
+              leading: IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              ),
+              badge: PremiumBadge(
+                label: detail == null
+                    ? 'Debt record'
+                    : _statusLabel(detail.record.status),
+                icon: Icons.receipt_long_rounded,
+                foreground: Colors.white,
+                background: statusColor.withValues(alpha: 0.18),
+              ),
+            ),
+            Expanded(
+              child: PremiumSurface(
+                child: detailAsync.when(
+                  loading: () => ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: const [
+                      PremiumPanel(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                    ],
+                  ),
+                  error: (error, _) => ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: [
+                      _DetailErrorView(
+                        message: _humanizeError(error),
+                        onRetry: () => ref.invalidate(
+                          receivableDetailProvider(receivableId),
+                        ),
+                      ),
+                    ],
+                  ),
+                  data: (detail) {
+                    if (detail == null) {
+                      return ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        children: const [
+                          PremiumEmptyState(
+                            title: 'Debt record not found',
+                            message:
+                                'This receivable is no longer available in the active debt list.',
+                            icon: Icons.search_off_rounded,
+                          ),
+                        ],
+                      );
+                    }
+                    return _DetailBody(
+                      detail: detail,
+                      receivableId: receivableId,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
-        data: (detail) {
-          if (detail == null) {
-            return const Center(child: Text('Debt record not found.'));
-          }
-          return _DetailBody(detail: detail, receivableId: receivableId);
-        },
       ),
     );
-  }
-
-  String _humanizeError(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final message = error.toString();
-    return message.startsWith('Exception: ')
-        ? message.substring('Exception: '.length)
-        : message;
   }
 }
 
@@ -60,205 +113,129 @@ class _DetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final row = detail.record;
-    final outstanding = 'GHS ${row.outstandingAmount}';
-    final original = 'GHS ${row.originalAmount}';
+    final outstanding = '\u20B5${row.outstandingAmount}';
+    final original = '\u20B5${row.originalAmount}';
     final paymentTotal = _formatMoney(
       ((double.tryParse(row.originalAmount) ?? 0) -
               (double.tryParse(row.outstandingAmount) ?? 0))
           .toStringAsFixed(2),
     );
+    final canCollect = row.status == 'open' || row.status == 'partially_paid';
 
-    return SafeArea(
-      child: RefreshIndicator(
-        onRefresh: () async {
-          await ref.read(debtsControllerProvider.notifier).refresh();
-          ref.invalidate(receivableDetailProvider(receivableId));
-          await ref.read(receivableDetailProvider(receivableId).future);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            Row(
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(debtsControllerProvider.notifier).refresh();
+        ref.invalidate(receivableDetailProvider(receivableId));
+        await ref.read(receivableDetailProvider(receivableId).future);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          _BalanceHero(
+            outstanding: outstanding,
+            original: original,
+            paid: '\u20B5$paymentTotal',
+            dueDate: row.dueDateIso ?? 'Not set',
+            invoiceNumber: row.invoiceNumber,
+            status: row.status,
+          ),
+          if (canCollect) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    detail.record.customerName,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                if (detail.record.status == 'open' ||
-                    detail.record.status == 'partially_paid') ...[
-                  FilledButton.icon(
+                SizedBox(
+                  width: 180,
+                  child: FilledButton.icon(
                     onPressed: () => _openRepaymentScreen(context, ref),
                     icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Receive'),
+                    label: const Text('Receive Payment'),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Cancel debt',
-                    icon: const Icon(Icons.cancel_outlined, color: AppColors.danger),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: OutlinedButton.icon(
                     onPressed: () => _confirmCancel(context, ref),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A6B5B), Color(0xFF12473E)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Outstanding Balance',
-                          style: TextStyle(
-                            color: Color(0xFFD7F3EA),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      _Pill(
-                        label: switch (row.status) {
-                          'settled'        => 'Settled',
-                          'cancelled'      => 'Cancelled',
-                          'partially_paid' => 'Partial',
-                          _                => 'Open',
-                        },
-                        color: switch (row.status) {
-                          'settled'        => AppColors.success,
-                          'cancelled'      => AppColors.muted,
-                          'partially_paid' => AppColors.warning,
-                          _                => AppColors.gold,
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    outstanding,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
+                    icon: const Icon(
+                      Icons.cancel_outlined,
+                      color: AppColors.danger,
+                    ),
+                    label: const Text(
+                      'Cancel Debt',
+                      style: TextStyle(color: AppColors.danger),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      _HeroMetric(label: 'Original', value: original),
-                      _HeroMetric(label: 'Paid', value: 'GHS $paymentTotal'),
-                      _HeroMetric(
-                        label: 'Due Date',
-                        value: row.dueDateIso ?? 'Not set',
-                      ),
-                      if (row.invoiceNumber != null &&
-                          row.invoiceNumber!.isNotEmpty)
-                        _HeroMetric(label: 'Invoice', value: row.invoiceNumber!),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Customer', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    _InfoRow(label: 'Name', value: row.customerName),
-                    const SizedBox(height: 10),
-                    _InfoRow(
-                      label: 'Phone',
-                      value: detail.customerPhoneNumber ?? 'Not provided',
-                    ),
-                    const SizedBox(height: 10),
-                    _InfoRow(
-                      label: 'Sync',
-                      value: row.syncStatus,
-                      valueColor: _syncColor(row.syncStatus),
-                    ),
-                    const SizedBox(height: 10),
-                    _InfoRow(
-                      label: 'Created',
-                      value: _formatDateTime(
-                        DateTime.fromMillisecondsSinceEpoch(row.createdAtMillis),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Repayment History',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                Text(
-                  '${detail.paymentCount} payment${detail.paymentCount == 1 ? '' : 's'}',
-                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            if (detail.payments.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(18),
-                  child: Text('No repayments recorded yet.'),
-                ),
-              )
-            else
-              ...detail.payments.map(_buildPaymentCard),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentCard(LocalReceivablePaymentRecord payment) {
-    final syncColor = _syncColor(payment.syncStatus);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: AppColors.success.withValues(alpha: 0.12),
-          child: const Icon(Icons.payments_outlined, color: AppColors.success),
-        ),
-        title: Text(
-          'GHS ${payment.amount}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          '${_labelizePaymentMethod(payment.paymentMethodLabel)} | ${_formatDateTime(DateTime.fromMillisecondsSinceEpoch(payment.createdAtMillis))}',
-        ),
-        trailing: _Pill(label: payment.syncStatus, color: syncColor),
+          const SizedBox(height: 16),
+          PremiumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const PremiumSectionHeading(
+                  title: 'Customer',
+                  caption:
+                      'Identity, contact, and sync information for this debt owner.',
+                ),
+                const SizedBox(height: 16),
+                _InfoRow(label: 'Name', value: row.customerName),
+                const SizedBox(height: 12),
+                _InfoRow(
+                  label: 'Phone',
+                  value: detail.customerPhoneNumber ?? 'Not provided',
+                ),
+                const SizedBox(height: 12),
+                _InfoRow(
+                  label: 'Created',
+                  value: _formatDateTime(
+                    DateTime.fromMillisecondsSinceEpoch(row.createdAtMillis),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _InfoRow(
+                  label: 'Sync',
+                  value: row.syncStatus,
+                  valueColor: _syncColor(row.syncStatus),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          PremiumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PremiumSectionHeading(
+                  title: 'Repayment History',
+                  caption:
+                      '${detail.paymentCount} payment${detail.paymentCount == 1 ? '' : 's'} recorded for this debt.',
+                ),
+                const SizedBox(height: 14),
+                if (detail.payments.isEmpty)
+                  const _InlineEmptyState(
+                    icon: Icons.receipt_long_rounded,
+                    title: 'No repayments recorded yet',
+                    message:
+                        'Recorded collections will appear here in chronological order.',
+                  )
+                else
+                  Column(
+                    children: [
+                      for (var i = 0; i < detail.payments.length; i++) ...[
+                        _PaymentCard(payment: detail.payments[i]),
+                        if (i != detail.payments.length - 1)
+                          const SizedBox(height: 10),
+                      ],
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -310,165 +287,116 @@ class _DetailBody extends ConsumerWidget {
       );
     } catch (error) {
       if (!context.mounted) return;
-      final msg = error.toString().startsWith('Exception: ')
-          ? error.toString().substring(11)
-          : error.toString();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+      final msg = _humanizeError(error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
     }
   }
-
-  String _labelizePaymentMethod(String value) {
-    return switch (value) {
-      'mobile_money' => 'Mobile Money',
-      'bank_transfer' => 'Bank Transfer',
-      _ => 'Cash',
-    };
-  }
-
-  String _formatDateTime(DateTime value) {
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '${value.year}-$month-$day $hour:$minute';
-  }
-
-  String _formatMoney(String value) {
-    final parsed = double.tryParse(value) ?? 0;
-    return parsed.toStringAsFixed(2);
-  }
-
-  Color _syncColor(String status) {
-    return switch (status) {
-      'applied' || 'duplicate' => AppColors.success,
-      'failed' => AppColors.danger,
-      'conflict' => AppColors.warning,
-      'sending' => AppColors.sky,
-      _ => AppColors.warning,
-    };
-  }
 }
 
-class _RepaymentSheet extends ConsumerStatefulWidget {
-  const _RepaymentSheet({required this.receivableId});
+class _BalanceHero extends StatelessWidget {
+  const _BalanceHero({
+    required this.outstanding,
+    required this.original,
+    required this.paid,
+    required this.dueDate,
+    required this.invoiceNumber,
+    required this.status,
+  });
 
-  final String receivableId;
-
-  @override
-  ConsumerState<_RepaymentSheet> createState() => _RepaymentSheetState();
-}
-
-class _RepaymentSheetState extends ConsumerState<_RepaymentSheet> {
-  final _amountCtrl = TextEditingController();
-  String _method = 'cash';
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _amountCtrl.dispose();
-    super.dispose();
-  }
+  final String outstanding;
+  final String original;
+  final String paid;
+  final String dueDate;
+  final String? invoiceNumber;
+  final String status;
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(12, 12, 12, bottomInset + 12),
-      child: Material(
-        color: AppColors.surface,
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF173A75), Color(0xFF0E2245)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text('Receive Payment', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Amount',
-                  hintText: 'e.g. 25.00',
+              const Expanded(
+                child: Text(
+                  'Outstanding Balance',
+                  style: TextStyle(
+                    color: Color(0xFFD9E6FF),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: _method,
-                decoration: const InputDecoration(labelText: 'Payment method'),
-                items: const [
-                  DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                  DropdownMenuItem(value: 'mobile_money', child: Text('Mobile Money')),
-                  DropdownMenuItem(value: 'bank_transfer', child: Text('Bank Transfer')),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _method = value);
-                },
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check_rounded),
-                  label: const Text('Save Payment'),
-                ),
+              _StatusPill(
+                label: _statusLabel(status),
+                foreground: _statusColor(status),
+                background: Colors.white.withValues(alpha: 0.12),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Text(
+            outstanding,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = constraints.maxWidth >= 720
+                  ? (constraints.maxWidth - 24) / 3
+                  : (constraints.maxWidth - 12) / 2;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _MetricTile(label: 'Original', value: original),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _MetricTile(label: 'Paid', value: paid),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _MetricTile(label: 'Due date', value: dueDate),
+                  ),
+                  if (invoiceNumber != null && invoiceNumber!.isNotEmpty)
+                    SizedBox(
+                      width: itemWidth,
+                      child:
+                          _MetricTile(label: 'Invoice', value: invoiceNumber!),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    try {
-      await ref.read(debtsControllerProvider.notifier).recordRepayment(
-            receivableId: widget.receivableId,
-            amount: _amountCtrl.text,
-            paymentMethodLabel: _method,
-          );
-      if (!mounted) {
-        return;
-      }
-      Navigator.of(context).pop(true);
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_humanizeError(error))),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _saving = false);
-      }
-    }
-  }
-
-  String _humanizeError(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final message = error.toString();
-    return message.startsWith('Exception: ')
-        ? message.substring('Exception: '.length)
-        : message;
-  }
 }
 
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
     required this.label,
     required this.value,
   });
@@ -481,7 +409,7 @@ class _HeroMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -490,7 +418,7 @@ class _HeroMetric extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFFD7F3EA),
+              color: Color(0xFFD9E6FF),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -502,6 +430,75 @@ class _HeroMetric extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w800,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentCard extends StatelessWidget {
+  const _PaymentCard({required this.payment});
+
+  final LocalReceivablePaymentRecord payment;
+
+  @override
+  Widget build(BuildContext context) {
+    final syncColor = _syncColor(payment.syncStatus);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.payments_outlined,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '\u20B5${payment.amount}',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _labelizePaymentMethod(payment.paymentMethodLabel),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatDateTime(
+                    DateTime.fromMillisecondsSinceEpoch(
+                      payment.createdAtMillis,
+                    ),
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          _StatusPill(
+            label: payment.syncStatus,
+            foreground: syncColor,
+            background: syncColor.withValues(alpha: 0.12),
           ),
         ],
       ),
@@ -523,41 +520,101 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-        Text(
-          value,
-          style: TextStyle(color: valueColor, fontWeight: FontWeight.w700),
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: valueColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
     required this.label,
-    required this.color,
+    required this.foreground,
+    required this.background,
   });
 
   final String label;
-  final Color color;
+  final Color foreground;
+  final Color background;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+            ),
+      ),
+    );
+  }
+}
+
+class _InlineEmptyState extends StatelessWidget {
+  const _InlineEmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.infoSoft,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(icon, color: AppColors.info, size: 26),
+          ),
+          const SizedBox(height: 14),
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
       ),
     );
   }
@@ -574,20 +631,82 @@ class _DetailErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 40, color: AppColors.danger),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 14),
-            FilledButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
-        ),
+    return PremiumPanel(
+      backgroundColor: AppColors.dangerSoft,
+      borderColor: const Color(0xFFF2C9C0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.cloud_off_outlined,
+            size: 40,
+            color: AppColors.danger,
+          ),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          FilledButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
       ),
     );
   }
+}
+
+String _humanizeError(Object error) {
+  if (error is ArgumentError) {
+    return error.message?.toString() ?? 'Invalid input.';
+  }
+  final message = error.toString();
+  return message.startsWith('Exception: ')
+      ? message.substring('Exception: '.length)
+      : message;
+}
+
+String _labelizePaymentMethod(String value) {
+  return switch (value) {
+    'mobile_money' => 'Mobile Money',
+    'bank_transfer' => 'Bank Transfer',
+    _ => 'Cash',
+  };
+}
+
+String _formatDateTime(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${value.year}-$month-$day $hour:$minute';
+}
+
+String _formatMoney(String value) {
+  final parsed = double.tryParse(value) ?? 0;
+  return parsed.toStringAsFixed(2);
+}
+
+String _statusLabel(String status) {
+  return switch (status) {
+    'settled' => 'Settled',
+    'cancelled' => 'Cancelled',
+    'partially_paid' => 'Partial',
+    _ => 'Open',
+  };
+}
+
+Color _statusColor(String status) {
+  return switch (status) {
+    'settled' => AppColors.success,
+    'cancelled' => AppColors.muted,
+    'partially_paid' => AppColors.warning,
+    _ => AppColors.gold,
+  };
+}
+
+Color _syncColor(String status) {
+  return switch (status) {
+    'applied' || 'duplicate' => AppColors.success,
+    'failed' => AppColors.danger,
+    'conflict' => AppColors.warning,
+    'sending' => AppColors.sky,
+    _ => AppColors.warning,
+  };
 }

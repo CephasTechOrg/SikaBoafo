@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../providers/inventory_providers.dart';
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 int _priceToMinor(String value) {
   final parts = value.trim().split('.');
@@ -19,10 +20,10 @@ int _priceToMinor(String value) {
 String _fmtMoney(int minor) {
   final major = minor ~/ 100;
   final cents = (minor % 100).toString().padLeft(2, '0');
-  return 'GHS $major.$cents';
+  return '\u20B5$major.$cents';
 }
 
-// ─── screen ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -72,8 +73,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     int lowStockCount = 0;
     final categories = <String>{};
     for (final item in activeItems) {
-      totalValueMinor +=
-          _priceToMinor(item.defaultPrice) * item.quantityOnHand;
+      totalValueMinor += _priceToMinor(item.defaultPrice) * item.quantityOnHand;
       if (item.lowStockThreshold != null &&
           item.quantityOnHand <= item.lowStockThreshold!) {
         lowStockCount++;
@@ -108,34 +108,22 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           child: Column(
             children: [
               _Header(
-                itemCount: activeItems.length,
+                archivedCount: archivedItems.length,
                 lowStockCount: lowStockCount,
-                onRefresh: () =>
-                    ref.read(inventoryControllerProvider.notifier).refresh(),
+                categoryCount: categories.length,
+                totalValueMinor: totalValueMinor,
               ),
               Expanded(
-                child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
-                  child: Container(
-                    color: AppColors.canvas,
+                child: PremiumSurface(
                     child: RefreshIndicator(
                       onRefresh: () => ref
                           .read(inventoryControllerProvider.notifier)
                           .refresh(),
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                         children: [
-                          _StatsRow(
-                            itemCount: activeItems.length,
-                            lowStockCount: lowStockCount,
-                            totalValueMinor: totalValueMinor,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // ── Add Item accordion ──
+                          // â”€â”€ Add Item accordion â”€â”€
                           _AddItemAccordion(
                             expanded: _showForm,
                             nameCtrl: _nameCtrl,
@@ -154,11 +142,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           ),
                           const SizedBox(height: 20),
 
-                          // ── Search + filter ──
+                          // â”€â”€ Search + filter â”€â”€
                           _SearchBar(
                             controller: _searchCtrl,
-                            onChanged: (v) =>
-                                setState(() => _searchQuery = v),
+                            onChanged: (v) => setState(() => _searchQuery = v),
                           ),
                           if (categories.isNotEmpty) ...[
                             const SizedBox(height: 10),
@@ -171,7 +158,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           ],
                           const SizedBox(height: 16),
 
-                          // ── Items list ──
+                          // â”€â”€ Items list â”€â”€
                           Row(
                             children: [
                               Text(
@@ -201,15 +188,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             const _LoadingCard()
                           else if (itemsAsync.hasError)
                             _ErrorCard(
-                              message: humanizeInventoryError(
-                                  itemsAsync.error!),
+                              message:
+                                  humanizeInventoryError(itemsAsync.error!),
                             )
                           else if (items.isEmpty)
                             _EmptyCard(
-                              onAdd: () =>
-                                  setState(() => _showForm = true),
+                              onAdd: () => setState(() => _showForm = true),
                             )
-                          else if (filteredActive.isEmpty && activeItems.isEmpty)
+                          else if (filteredActive.isEmpty &&
+                              activeItems.isEmpty)
                             _EmptyActiveCard(
                               archivedCount: archivedItems.length,
                             )
@@ -252,7 +239,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         ],
                       ),
                     ),
-                  ),
                 ),
               ),
             ],
@@ -284,8 +270,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             category: _categoryCtrl.text.trim().isEmpty
                 ? null
                 : _categoryCtrl.text.trim(),
-            lowStockThreshold:
-                int.tryParse(_thresholdCtrl.text.trim()),
+            lowStockThreshold: int.tryParse(_thresholdCtrl.text.trim()),
             initialQuantity: initialQty ?? 0,
             imageAsset: _newItemImage,
           );
@@ -389,98 +374,181 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }
   }
 
-  void _msg(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _msg(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 }
 
-// ─── header ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _Header extends StatelessWidget {
   const _Header({
-    required this.itemCount,
+    required this.archivedCount,
     required this.lowStockCount,
-    required this.onRefresh,
+    required this.categoryCount,
+    required this.totalValueMinor,
   });
-  final int itemCount, lowStockCount;
-  final VoidCallback onRefresh;
+
+  final int archivedCount;
+  final int lowStockCount;
+  final int categoryCount;
+  final int totalValueMinor;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 16, 20),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Inventory',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(20),
+                    Text(
+                      'Inventory',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
-                      child: Text(
-                        '$itemCount item${itemCount == 1 ? '' : 's'}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Track stock cleanly and keep low-stock risk visible',
+                      style: TextStyle(
+                        color: Color(0xFFC7D0E5),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 144),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Stock Value',
+                        style: TextStyle(
+                          color: Color(0xFFC7D0E5),
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                    if (lowStockCount > 0) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF6B6B).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.warning_amber_rounded,
-                                color: Colors.white, size: 13),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$lowStockCount low stock',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 3),
+                      Text(
+                        _fmtMoney(totalValueMinor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Constantia',
+                          letterSpacing: -0.6,
                         ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroChip(
+                  label: 'Archived',
+                  value: '$archivedCount',
+                  tone: Colors.white.withValues(alpha: 0.90),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroChip(
+                  label: 'Low Stock',
+                  value: '$lowStockCount',
+                  tone: lowStockCount > 0
+                      ? const Color(0xFFF6A6A6)
+                      : Colors.white.withValues(alpha: 0.75),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroChip(
+                  label: 'Categories',
+                  value: '$categoryCount',
+                  tone: AppColors.gold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: tone,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          IconButton(
-            onPressed: onRefresh,
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.56),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -489,49 +557,48 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ─── stats row ────────────────────────────────────────────────────────────────
-
+// ignore: unused_element
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
-    required this.itemCount,
-    required this.lowStockCount,
-    required this.totalValueMinor,
+    required this.categoryCount,
+    required this.archivedCount,
   });
-  final int itemCount, lowStockCount, totalValueMinor;
+
+  final int categoryCount;
+  final int archivedCount;
 
   @override
   Widget build(BuildContext context) {
-    final lowColor = lowStockCount > 0 ? AppColors.danger : AppColors.muted;
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Total Items',
-            value: '$itemCount',
-            icon: Icons.inventory_2_rounded,
-            iconColor: AppColors.forest,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Low Stock',
-            value: '$lowStockCount',
-            icon: Icons.warning_amber_rounded,
-            iconColor: lowColor,
-            valueColor: lowColor,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Est. Value',
-            value: _fmtMoney(totalValueMinor),
-            icon: Icons.payments_rounded,
-            iconColor: AppColors.info,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _StatCard(
+                label: 'Categories',
+                value: '$categoryCount',
+                icon: Icons.category_rounded,
+                iconColor: AppColors.forest,
+                backgroundColor: AppColors.successSoft,
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _StatCard(
+                label: 'Archived',
+                value: '$archivedCount',
+                icon: Icons.archive_outlined,
+                iconColor: AppColors.inkSoft,
+                backgroundColor: AppColors.surface,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -542,22 +609,22 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.iconColor,
-    this.valueColor,
+    this.backgroundColor = AppColors.surface,
   });
   final String label, value;
   final IconData icon;
   final Color iconColor;
-  final Color? valueColor;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(AppRadii.sm),
         border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,10 +641,10 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 16,
-              color: valueColor ?? AppColors.ink,
+              color: AppColors.ink,
               letterSpacing: -0.3,
               height: 1.1,
             ),
@@ -595,7 +662,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ─── add item accordion ───────────────────────────────────────────────────────
+// â”€â”€â”€ add item accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AddItemAccordion extends StatelessWidget {
   const _AddItemAccordion({
@@ -614,8 +681,12 @@ class _AddItemAccordion extends StatelessWidget {
   });
 
   final bool expanded;
-  final TextEditingController nameCtrl, priceCtrl, skuCtrl, categoryCtrl,
-      thresholdCtrl, qtyCtrl;
+  final TextEditingController nameCtrl,
+      priceCtrl,
+      skuCtrl,
+      categoryCtrl,
+      thresholdCtrl,
+      qtyCtrl;
   final bool isLoading;
   final String? selectedImage;
   final VoidCallback onToggle, onSave;
@@ -627,7 +698,7 @@ class _AddItemAccordion extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.45)),
         boxShadow: AppShadows.card,
       ),
       child: Column(
@@ -649,8 +720,11 @@ class _AddItemAccordion extends StatelessWidget {
                       color: AppColors.mint,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.add_box_rounded,
-                        color: AppColors.forest, size: 20),
+                    child: const Icon(
+                      Icons.add_box_rounded,
+                      color: AppColors.forest,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -678,8 +752,7 @@ class _AddItemAccordion extends StatelessWidget {
                   AnimatedRotation(
                     turns: expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 250),
-                    child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
+                    child: const Icon(Icons.keyboard_arrow_down_rounded,
                         color: AppColors.muted),
                   ),
                 ],
@@ -688,9 +761,8 @@ class _AddItemAccordion extends StatelessWidget {
           ),
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 280),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -712,11 +784,11 @@ class _AddItemAccordion extends StatelessWidget {
                   const SizedBox(height: 10),
                   _IField(
                     controller: priceCtrl,
-                    label: 'Selling Price (GHS)',
+                    label: 'Selling Price (â‚µ)',
                     hint: 'e.g. 5.00',
                     prefixIcon: Icons.payments_rounded,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: 16),
 
@@ -790,9 +862,8 @@ class _AddItemAccordion extends StatelessWidget {
                         ),
                       ),
                       icon: const Icon(Icons.save_rounded, size: 18),
-                      label: Text(isLoading
-                          ? 'Saving...'
-                          : 'Save Item to Inventory'),
+                      label: Text(
+                          isLoading ? 'Saving...' : 'Save Item to Inventory'),
                     ),
                   ),
                 ],
@@ -829,7 +900,7 @@ class _FieldGroup extends StatelessWidget {
   }
 }
 
-// ─── search & filter ──────────────────────────────────────────────────────────
+// â”€â”€â”€ search & filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.controller, required this.onChanged});
@@ -842,24 +913,27 @@ class _SearchBar extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search items by name, category or SKU…',
-        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+        hintText: 'Search items by name, category or SKUâ€¦',
+        prefixIcon: const Icon(
+          Icons.search_rounded,
+          size: 20,
+          color: AppColors.forest,
+        ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.surface,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide:
-              const BorderSide(color: AppColors.forest, width: 1.4),
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
         ),
         suffixIcon: controller.text.isNotEmpty
             ? IconButton(
@@ -902,8 +976,7 @@ class _CategoryFilter extends StatelessWidget {
               child: _Chip(
                 label: c,
                 selected: selected == c,
-                onTap: () =>
-                    onChanged(selected == c ? null : c),
+                onTap: () => onChanged(selected == c ? null : c),
               ),
             ),
           ),
@@ -915,9 +988,7 @@ class _CategoryFilter extends StatelessWidget {
 
 class _Chip extends StatelessWidget {
   const _Chip(
-      {required this.label,
-      required this.selected,
-      required this.onTap});
+      {required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -928,12 +999,11 @@ class _Chip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.forest.withValues(alpha: 0.14)
-              : Colors.white,
+              ? AppColors.mint
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppColors.forest : AppColors.border,
@@ -945,8 +1015,7 @@ class _Chip extends StatelessWidget {
           style: TextStyle(
             color: selected ? AppColors.forest : AppColors.muted,
             fontSize: 12,
-            fontWeight:
-                selected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -954,7 +1023,7 @@ class _Chip extends StatelessWidget {
   }
 }
 
-// ─── item card ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ item card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _ItemCard extends StatelessWidget {
   const _ItemCard({
@@ -986,8 +1055,11 @@ class _ItemCard extends StatelessWidget {
         : isLow
             ? const Color(0xFFD97706)
             : AppColors.forest;
-    final String stockLabel =
-        isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock';
+    final String stockLabel = isOut
+        ? 'Out of Stock'
+        : isLow
+            ? 'Low Stock'
+            : 'In Stock';
 
     final double progress = hasThreshold && item.lowStockThreshold! > 0
         ? (item.quantityOnHand / (item.lowStockThreshold! * 2.0))
@@ -1001,19 +1073,19 @@ class _ItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.35)),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── main info ──
+          // â”€â”€ main info â”€â”€
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product image — always neutral background, image contained
+                // Product image â€” always neutral background, image contained
                 ItemImage(
                   imageAsset: item.imageAsset,
                   size: 56,
@@ -1056,11 +1128,11 @@ class _ItemCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'GHS ${item.defaultPrice}',
+                        'â‚µ${item.defaultPrice}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: AppColors.forest,
+                          color: AppColors.forestDark,
                         ),
                       ),
                       if (item.category != null || item.sku != null) ...[
@@ -1071,8 +1143,7 @@ class _ItemCard extends StatelessWidget {
                           children: [
                             if (item.category != null)
                               _SmallBadge(label: item.category!),
-                            if (item.sku != null)
-                              _SmallBadge(label: item.sku!),
+                            if (item.sku != null) _SmallBadge(label: item.sku!),
                           ],
                         ),
                       ],
@@ -1106,10 +1177,14 @@ class _ItemCard extends StatelessWidget {
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: stockColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        isOut ? 'Out' : isLow ? 'Low' : 'OK',
+                        isOut
+                            ? 'Out'
+                            : isLow
+                                ? 'Low'
+                                : 'OK',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -1123,7 +1198,7 @@ class _ItemCard extends StatelessWidget {
             ),
           ),
 
-          // ── stock bar (only when threshold set) ──
+          // â”€â”€ stock bar (only when threshold set) â”€â”€
           if (hasThreshold)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
@@ -1170,15 +1245,14 @@ class _ItemCard extends StatelessWidget {
                       value: progress,
                       minHeight: 5,
                       backgroundColor: const Color(0xFFE5E7EB),
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(stockColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(stockColor),
                     ),
                   ),
                 ],
               ),
             ),
 
-          // ── divider + actions ──
+          // â”€â”€ divider + actions â”€â”€
           const Divider(height: 1, color: AppColors.border),
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
@@ -1190,14 +1264,14 @@ class _ItemCard extends StatelessWidget {
                   _ActionBtn(
                     label: 'Edit',
                     icon: Icons.edit_rounded,
-                    color: AppColors.forest,
+                    color: AppColors.forestDark,
                     onTap: onEdit!,
                   ),
                 if (item.isActive && onStockIn != null)
                   _ActionBtn(
                     label: 'Stock In',
                     icon: Icons.add_box_rounded,
-                    color: const Color(0xFF2563EB),
+                    color: AppColors.forest,
                     onTap: onStockIn!,
                   ),
                 if (item.isActive && onAdjust != null)
@@ -1218,7 +1292,7 @@ class _ItemCard extends StatelessWidget {
                   _ActionBtn(
                     label: 'Restore',
                     icon: Icons.unarchive_outlined,
-                    color: AppColors.forest,
+                    color: AppColors.forestDark,
                     onTap: onRestore!,
                   ),
               ],
@@ -1239,15 +1313,16 @@ class _SmallBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(6),
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
       ),
       child: Text(
         label,
         style: const TextStyle(
           fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: AppColors.muted,
+          fontWeight: FontWeight.w600,
+          color: AppColors.inkSoft,
         ),
       ),
     );
@@ -1274,9 +1349,11 @@ class _ActionBtn extends StatelessWidget {
         onPressed: onTap,
         style: TextButton.styleFrom(
           foregroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          backgroundColor: color.withValues(alpha: 0.10),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: color.withValues(alpha: 0.14)),
           ),
         ),
         icon: Icon(icon, size: 14),
@@ -1289,7 +1366,7 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-// ─── bottom sheets ────────────────────────────────────────────────────────────
+// â”€â”€â”€ bottom sheets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _EditSheet extends StatefulWidget {
   const _EditSheet({required this.item, required this.ref});
@@ -1315,8 +1392,7 @@ class _EditSheetState extends State<_EditSheet> {
     _nameCtrl = TextEditingController(text: widget.item.name);
     _priceCtrl = TextEditingController(text: widget.item.defaultPrice);
     _skuCtrl = TextEditingController(text: widget.item.sku ?? '');
-    _categoryCtrl =
-        TextEditingController(text: widget.item.category ?? '');
+    _categoryCtrl = TextEditingController(text: widget.item.category ?? '');
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
     _imageAsset = widget.item.imageAsset;
@@ -1338,7 +1414,7 @@ class _EditSheetState extends State<_EditSheet> {
       title: 'Edit Item',
       subtitle: widget.item.name,
       icon: Icons.edit_rounded,
-      iconColor: AppColors.forest,
+      iconColor: AppColors.forestDark,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1350,11 +1426,10 @@ class _EditSheetState extends State<_EditSheet> {
           const SizedBox(height: 10),
           _IField(
             controller: _priceCtrl,
-            label: 'Selling Price (GHS)',
+            label: 'Selling Price (â‚µ)',
             hint: '0.00',
             prefixIcon: Icons.payments_rounded,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 10),
           Row(
@@ -1392,8 +1467,9 @@ class _EditSheetState extends State<_EditSheet> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F7F9),
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
             ),
             padding: const EdgeInsets.all(14),
             child: Text(
@@ -1424,15 +1500,11 @@ class _EditSheetState extends State<_EditSheet> {
       final threshold = thresholdText.isEmpty
           ? widget.item.lowStockThreshold
           : int.tryParse(thresholdText);
-      await widget.ref
-          .read(inventoryControllerProvider.notifier)
-          .updateItem(
+      await widget.ref.read(inventoryControllerProvider.notifier).updateItem(
             itemId: widget.item.id,
             name: _nameCtrl.text,
             defaultPrice: _priceCtrl.text,
-            sku: _skuCtrl.text.trim().isEmpty
-                ? null
-                : _skuCtrl.text.trim(),
+            sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
             category: _categoryCtrl.text.trim().isEmpty
                 ? null
                 : _categoryCtrl.text.trim(),
@@ -1454,7 +1526,7 @@ class _EditSheetState extends State<_EditSheet> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StockInSheet extends StatefulWidget {
   const _StockInSheet({required this.item, required this.ref});
@@ -1481,9 +1553,10 @@ class _StockInSheetState extends State<_StockInSheet> {
   Widget build(BuildContext context) {
     return _Sheet(
       title: 'Stock In',
-      subtitle: '${widget.item.name} · currently ${widget.item.quantityOnHand} units',
+      subtitle:
+          '${widget.item.name} Â· currently ${widget.item.quantityOnHand} units',
       icon: Icons.add_box_rounded,
-      iconColor: const Color(0xFF2563EB),
+      iconColor: AppColors.forest,
       child: Column(
         children: [
           _IField(
@@ -1503,7 +1576,7 @@ class _StockInSheetState extends State<_StockInSheet> {
           const SizedBox(height: 18),
           _SaveBtn(
             label: _saving ? 'Applying...' : 'Apply Stock In',
-            color: const Color(0xFF2563EB),
+            color: AppColors.forest,
             onTap: _saving ? null : _save,
           ),
         ],
@@ -1521,9 +1594,7 @@ class _StockInSheetState extends State<_StockInSheet> {
     }
     setState(() => _saving = true);
     try {
-      await widget.ref
-          .read(inventoryControllerProvider.notifier)
-          .stockIn(
+      await widget.ref.read(inventoryControllerProvider.notifier).stockIn(
             itemId: widget.item.id,
             quantity: qty,
             reason: _reasonCtrl.text.trim().isEmpty
@@ -1543,7 +1614,7 @@ class _StockInSheetState extends State<_StockInSheet> {
   }
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _AdjustSheet extends StatefulWidget {
   const _AdjustSheet({required this.item, required this.ref});
@@ -1570,7 +1641,8 @@ class _AdjustSheetState extends State<_AdjustSheet> {
   Widget build(BuildContext context) {
     return _Sheet(
       title: 'Adjust Stock',
-      subtitle: '${widget.item.name} · currently ${widget.item.quantityOnHand} units',
+      subtitle:
+          '${widget.item.name} Â· currently ${widget.item.quantityOnHand} units',
       icon: Icons.tune_rounded,
       iconColor: const Color(0xFFD97706),
       child: Column(
@@ -1589,8 +1661,8 @@ class _AdjustSheetState extends State<_AdjustSheet> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Use + to add and − to remove. '
-                    'e.g. +5 adds 5 units; −3 removes 3.',
+                    'Use + to add and âˆ’ to remove. '
+                    'e.g. +5 adds 5 units; âˆ’3 removes 3.',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF92400E),
@@ -1603,11 +1675,10 @@ class _AdjustSheetState extends State<_AdjustSheet> {
           const SizedBox(height: 12),
           _IField(
             controller: _deltaCtrl,
-            label: 'Quantity Delta (+ or −)',
+            label: 'Quantity Delta (+ or âˆ’)',
             hint: 'e.g. -2 or 5',
             prefixIcon: Icons.swap_vert_rounded,
-            keyboardType: const TextInputType.numberWithOptions(
-                signed: true),
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
           ),
           const SizedBox(height: 10),
           _IField(
@@ -1637,9 +1708,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
     }
     setState(() => _saving = true);
     try {
-      await widget.ref
-          .read(inventoryControllerProvider.notifier)
-          .adjustStock(
+      await widget.ref.read(inventoryControllerProvider.notifier).adjustStock(
             itemId: widget.item.id,
             quantityDelta: delta,
             reason: _reasonCtrl.text.trim().isEmpty
@@ -1659,7 +1728,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
   }
 }
 
-// ─── shared sheet wrapper ─────────────────────────────────────────────────────
+// â”€â”€â”€ shared sheet wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _Sheet extends StatelessWidget {
   const _Sheet({
@@ -1676,87 +1745,25 @@ class _Sheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(28)),
+    return PremiumSheetFrame(
+      title: title,
+      subtitle: subtitle,
+      badge: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // handle
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: iconColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(icon, color: iconColor, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 17,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            Text(
-                              subtitle,
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 12,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-                  child,
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: Icon(icon, color: iconColor, size: 20),
       ),
+      bottomInset: MediaQuery.of(context).viewInsets.bottom,
+      child: child,
     );
   }
 }
 
-// ─── placeholder / state cards ────────────────────────────────────────────────
+// â”€â”€â”€ placeholder / state cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _EmptyCard extends StatelessWidget {
   const _EmptyCard({required this.onAdd});
@@ -1767,15 +1774,10 @@ class _EmptyCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         children: [
@@ -1786,8 +1788,11 @@ class _EmptyCard extends StatelessWidget {
               color: AppColors.mint,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.inventory_2_outlined,
-                color: AppColors.forest, size: 30),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.forest,
+              size: 30,
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -1879,8 +1884,7 @@ class _HintRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               text,
-              style: const TextStyle(
-                  color: AppColors.muted, fontSize: 13),
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ),
         ),
@@ -1899,15 +1903,10 @@ class _EmptyActiveCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Row(
         children: [
@@ -1963,9 +1962,9 @@ class _ArchivedSection extends StatelessWidget {
       child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
@@ -1973,7 +1972,7 @@ class _ArchivedSection extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -2026,9 +2025,9 @@ class _ArchivedNoMatchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.border),
       ),
       child: const Row(
         children: [
@@ -2054,15 +2053,10 @@ class _NoMatchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: const Row(
         children: [
@@ -2111,8 +2105,7 @@ class _ErrorCard extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
-                  color: Color(0xFF991B1B), fontSize: 13),
+              style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
             ),
           ),
         ],
@@ -2121,7 +2114,7 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-// ─── shared field widgets ─────────────────────────────────────────────────────
+// â”€â”€â”€ shared field widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _IField extends StatelessWidget {
   const _IField({
@@ -2146,7 +2139,7 @@ class _IField extends StatelessWidget {
         hintText: hint,
         prefixIcon: Icon(prefixIcon, size: 18),
         filled: true,
-        fillColor: const Color(0xFFF6F7F9),
+        fillColor: AppColors.surfaceAlt,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -2157,8 +2150,7 @@ class _IField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.forest, width: 1.4),
+          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -2194,3 +2186,5 @@ class _SaveBtn extends StatelessWidget {
     );
   }
 }
+
+

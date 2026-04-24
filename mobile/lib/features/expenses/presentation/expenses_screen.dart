@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../data/expenses_repository.dart';
 import '../providers/expenses_providers.dart';
 
@@ -105,7 +106,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     // O(n) single-pass stats + category buckets
     final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
+    final todayStart =
+        DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
     final monthStart = DateTime(now.year, now.month).millisecondsSinceEpoch;
 
     int todayMinor = 0, monthMinor = 0;
@@ -120,42 +122,27 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A3D33), Color(0xFF1A6B5B), AppColors.canvas],
-            stops: [0.0, 0.28, 0.28],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: SafeArea(
           child: Column(
             children: [
               _Header(
+                todayMinor: todayMinor,
                 monthMinor: monthMinor,
-                onRefresh: () =>
-                    ref.read(expensesControllerProvider.notifier).refresh(),
+                count: expenses.length,
+                categoryCount: catMinors.length,
               ),
               Expanded(
-                child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
-                  child: Container(
-                    color: AppColors.canvas,
+                child: PremiumSurface(
                     child: RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(expensesControllerProvider.notifier).refresh(),
+                      onRefresh: () => ref
+                          .read(expensesControllerProvider.notifier)
+                          .refresh(),
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                         children: [
-                          _StatsRow(
-                            todayMinor: todayMinor,
-                            monthMinor: monthMinor,
-                            count: expenses.length,
-                          ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 4),
                           if (catMinors.isNotEmpty) ...[
                             _CategoryBreakdownCard(catMinors: catMinors),
                             const SizedBox(height: 16),
@@ -173,9 +160,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             onSave: _saveExpense,
                           ),
                           const SizedBox(height: 22),
-                          Row(
+                          const Row(
                             children: [
-                              const Text(
+                              Text(
                                 'Expense History',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
@@ -183,16 +170,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   color: AppColors.ink,
                                 ),
                               ),
-                              if (expenses.isNotEmpty) ...[
-                                const Spacer(),
-                                Text(
-                                  '${expenses.length} entries',
-                                  style: const TextStyle(
-                                    color: AppColors.muted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                           const SizedBox(height: 10),
@@ -205,7 +182,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         ],
                       ),
                     ),
-                  ),
                 ),
               ),
             ],
@@ -291,9 +267,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          row.note?.isNotEmpty == true
-                              ? row.note!
-                              : 'No note',
+                          row.note?.isNotEmpty == true ? row.note! : 'No note',
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
@@ -365,64 +339,180 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
 // ─── header ───────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
-  const _Header({required this.monthMinor, required this.onRefresh});
+  const _Header({
+    required this.todayMinor,
+    required this.monthMinor,
+    required this.count,
+    required this.categoryCount,
+  });
+
+  final int todayMinor;
   final int monthMinor;
-  final VoidCallback onRefresh;
+  final int count;
+  final int categoryCount;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 16, 20),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Expenses',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Expenses',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Track daily spending and category pressure',
+                      style: TextStyle(
+                        color: Color(0xFFC7D0E5),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
+              ),
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 138),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'This month: ${_fmtMoney(monthMinor)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
                     ),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Today',
+                        style: TextStyle(
+                          color: Color(0xFFC7D0E5),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _fmtMoney(todayMinor).replaceFirst('GHS ', '\u20B5'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Constantia',
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _HeroChip(
+                  label: 'This Month',
+                  value: _fmtMoney(monthMinor).replaceFirst('GHS ', '\u20B5'),
+                  tone: const Color(0xFF9AE7BF),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroChip(
+                  label: 'Locked Entries',
+                  value: '$count',
+                  tone: AppColors.gold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HeroChip(
+                  label: 'Categories',
+                  value: '$categoryCount',
+                  tone: const Color(0xFF9AE7BF),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: tone,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          IconButton(
-            onPressed: onRefresh,
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.58),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -433,45 +523,44 @@ class _Header extends StatelessWidget {
 
 // ─── stats row ────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
     required this.todayMinor,
     required this.monthMinor,
-    required this.count,
   });
-  final int todayMinor, monthMinor, count;
+  final int todayMinor, monthMinor;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Today',
-            value: _fmtMoney(todayMinor),
-            icon: Icons.today_rounded,
-            color: AppColors.forest,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'This Month',
-            value: _fmtMoney(monthMinor),
-            icon: Icons.calendar_month_rounded,
-            color: const Color(0xFFD97706),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Entries',
-            value: '$count',
-            icon: Icons.receipt_long_rounded,
-            color: const Color(0xFF7C3AED),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _StatCard(
+                label: 'Today',
+                value: _fmtMoney(todayMinor),
+                icon: Icons.today_rounded,
+                color: AppColors.forest,
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _StatCard(
+                label: 'This Month',
+                value: _fmtMoney(monthMinor),
+                icon: Icons.calendar_month_rounded,
+                color: const Color(0xFFD97706),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -611,8 +700,7 @@ class _CategoryBreakdownCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               meta.label,
@@ -744,9 +832,8 @@ class _LogExpenseCard extends StatelessWidget {
           ),
           AnimatedCrossFade(
             duration: const Duration(milliseconds: 280),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -774,8 +861,8 @@ class _LogExpenseCard extends StatelessWidget {
                     label: 'Amount (GHS)',
                     hint: '0.00',
                     prefixIcon: Icons.payments_rounded,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                   ),
                   const SizedBox(height: 10),
                   _EField(
@@ -798,8 +885,7 @@ class _LogExpenseCard extends StatelessWidget {
                         ),
                       ),
                       icon: const Icon(Icons.save_rounded, size: 18),
-                      label: Text(
-                          isLoading ? 'Saving...' : 'Save Expense'),
+                      label: Text(isLoading ? 'Saving...' : 'Save Expense'),
                     ),
                   ),
                 ],
@@ -815,8 +901,7 @@ class _LogExpenseCard extends StatelessWidget {
 // ─── category picker chips ────────────────────────────────────────────────────
 
 class _CategoryPicker extends StatelessWidget {
-  const _CategoryPicker(
-      {required this.selected, required this.onChanged});
+  const _CategoryPicker({required this.selected, required this.onChanged});
   final String selected;
   final ValueChanged<String> onChanged;
 
@@ -832,11 +917,11 @@ class _CategoryPicker extends StatelessWidget {
           onTap: () => onChanged(entry.key),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
             decoration: BoxDecoration(
-              color:
-                  isSel ? meta.color.withValues(alpha: 0.14) : const Color(0xFFF6F7F9),
+              color: isSel
+                  ? meta.color.withValues(alpha: 0.14)
+                  : const Color(0xFFF6F7F9),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSel ? meta.color : Colors.transparent,
@@ -908,8 +993,7 @@ class _EField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.forest, width: 1.4),
+          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -980,3 +1064,4 @@ class _EmptyCard extends StatelessWidget {
     );
   }
 }
+

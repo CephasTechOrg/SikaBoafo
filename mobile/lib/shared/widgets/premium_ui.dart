@@ -131,6 +131,92 @@ class PremiumPanel extends StatelessWidget {
   }
 }
 
+class PremiumSheetFrame extends StatelessWidget {
+  const PremiumSheetFrame({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.trailing,
+    this.badge,
+    this.bottomInset = 0,
+    this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 22),
+    super.key,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final Widget? trailing;
+  final Widget? badge;
+  final double bottomInset;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 12, 12, bottomInset + 12),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: padding,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            subtitle,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const SizedBox(width: 12),
+                      badge!,
+                    ],
+                    if (trailing != null) ...[
+                      const SizedBox(width: 8),
+                      trailing!,
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 20),
+                child,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class PremiumBadge extends StatelessWidget {
   const PremiumBadge({
     required this.label,

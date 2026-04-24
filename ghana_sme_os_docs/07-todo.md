@@ -397,16 +397,16 @@ All steps done:
 
 **Remaining**: Expand `require_role` to cover more sensitive routes (void sale, adjust stock, etc.) as part of future hardening.
 
-### C.2 Invoice Model Decision  `[ ] ❌`
+### C.2 Invoice Model Decision  `[x] ✅` *(M3 — done)*
 
 Docs describe `invoices (invoice_number, status lifecycle, payment_link, provider_reference, created_by)`. We have `receivables` (flatter).
 
-**Two paths — pick before Phase 4:**
-
-- **A. Extend `Receivable`** with `invoice_number` (auto-generated `INV-YYYY-####`), `payment_link` (nullable), `payment_provider_reference`, `created_by_user_id`, `sale_id` (nullable link), widen `status` to `draft|sent|partially_paid|paid|overdue|cancelled`.
-- **B. Add new `Invoice` model** wrapping receivable — correct long-term but doubles schema and forces UI rewrites.
-
-**Recommendation: A.** Keep UI unchanged; only external-facing language says "invoice".
+**Decision: Path A — extend `Receivable`.** Implemented M3:
+- Alembic migration `008_invoice_extension.py`: added `invoice_number`, `sale_id`, `created_by_user_id`, `payment_link`, `payment_provider_reference` columns
+- Service: `_generate_invoice_number()` auto-generates `INV-YYYY-####`; `cancel_receivable()` endpoint; `partially_paid` status on partial repayment; `_TERMINAL_STATUSES` guard
+- API: `POST /{id}/cancel` endpoint; `_receivable_out()` helper
+- Mobile: SQLite schema v11 migration; DTO fields; sync upsert; debt card shows invoice tag + `cancelled`/`partially_paid` status pills; detail screen shows Invoice metric + Cancel button with confirmation dialog; "Receive" button active for `open` and `partially_paid`
+- Tests: 53 backend / 37 Flutter all pass
 
 ### C.3 Audit Log Writes  `[~] 🚧` *(M1 complete — read endpoint + UI still missing)*
 
@@ -452,7 +452,7 @@ Each milestone is shippable on its own and unlocks the next.
 - §1.6 build standalone Customers feature (`mobile/lib/features/customers/`) `[x] ✅` *(done)*
   - Backend: `CustomerOut` extended with M1 fields + `total_outstanding`; `GET /receivables/customers/{id}` detail endpoint
   - Mobile: schema v10 migration; `CustomersScreen` + `CustomerDetailScreen`; people icon in Debts header
-- §C.2 extend Receivable with `invoice_number`, `payment_link`, `payment_provider_reference`, `created_by_user_id`, `sale_id`, wider status enum `[ ] ❌`
+- §C.2 extend Receivable with `invoice_number`, `payment_link`, `payment_provider_reference`, `created_by_user_id`, `sale_id`, wider status enum `[x] ✅` *(done)*
 - §6.7 compute real profit using `cost_price` snapshot on sale_items `[x] ✅` *(done)*
 
 ### M4 — Paystack Integration (~2–3 weeks)

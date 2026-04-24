@@ -495,7 +495,7 @@ ORDER BY p.created_at DESC
         );
       }
       final nextOutstanding = currentOutstanding - amountMinor;
-      final nextStatus = nextOutstanding == 0 ? 'settled' : 'open';
+      final nextStatus = nextOutstanding == 0 ? 'settled' : 'partially_paid';
 
       await tx.update(
         'receivables_local',

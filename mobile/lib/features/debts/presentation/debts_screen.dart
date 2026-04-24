@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'package:go_router/go_router.dart';
-
-import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';
 import 'debt_detail_screen.dart';
 import '../providers/debts_providers.dart';
@@ -84,7 +82,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final debtsAsync = ref.watch(debtsControllerProvider);
     final viewData = debtsAsync.valueOrNull;
     final customers = viewData?.customers ?? const <LocalDebtCustomer>[];
-    final receivables = viewData?.receivables ?? const <LocalReceivableRecord>[];
+    final receivables =
+        viewData?.receivables ?? const <LocalReceivableRecord>[];
     final paidThisMonth = viewData?.paidThisMonth ?? '0.00';
     final isBusy = debtsAsync.isLoading;
 
@@ -102,29 +101,28 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final filtered = _searchQuery.isEmpty
         ? receivables
         : receivables
-            .where((r) =>
-                r.customerName
-                    .toLowerCase()
-                    .contains(_searchQuery.toLowerCase()))
+            .where((r) => r.customerName
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()))
             .toList(growable: false);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Column(
-        children: [
-          // ── Hero header ───────────────────────────────────────────────
-          _buildHeader(),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.shell),
+        child: Column(
+          children: [
+            // ── Hero header ───────────────────────────────────────────────
+            _buildHeader(
+              outstandingMinor: outstandingMinor,
+              overdueMinor: overdueMinor,
+              paidThisMonth: paidThisMonth,
+              customerCount: customers.length,
+            ),
 
-          // ── Content canvas ────────────────────────────────────────────
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.canvas,
-                borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-              ),
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: AppRadii.heroRadius),
+            // ── Content canvas ────────────────────────────────────────────
+            Expanded(
+              child: PremiumSurface(
                 child: debtsAsync.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -139,7 +137,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         ref.read(debtsControllerProvider.notifier).refresh(),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
                       children: [
                         // Search bar
                         if (_showSearch) ...[
@@ -154,15 +152,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           const SizedBox(height: 16),
                         ],
 
-                        // KPI stats
-                        _StatsRow(
-                          totalOutstanding:
-                              _minorToMoneyLocal(outstandingMinor),
-                          overdue: _minorToMoneyLocal(overdueMinor),
-                          paidThisMonth: paidThisMonth,
-                          totalCustomers: customers.length,
-                        ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 4),
 
                         // Quick actions label
                         const Text(
@@ -229,11 +219,15 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           ),
                           recordPaymentForm: _RecordPaymentForm(
                             openReceivables: receivables
-                                .where((r) => r.status == 'open' || r.status == 'partially_paid')
+                                .where((r) =>
+                                    r.status == 'open' ||
+                                    r.status == 'partially_paid')
                                 .toList(growable: false),
                             selectedReceivableId: _resolveSelectedReceivable(
                               receivables
-                                  .where((r) => r.status == 'open' || r.status == 'partially_paid')
+                                  .where((r) =>
+                                      r.status == 'open' ||
+                                      r.status == 'partially_paid')
                                   .toList(growable: false),
                             ),
                             amountCtrl: _repaymentAmountCtrl,
@@ -291,89 +285,123 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // ── Header ───────────────────────────────────────────────────────────────
 
-  Widget _buildHeader() {
+  Widget _buildHeader({
+    required int outstandingMinor,
+    required int overdueMinor,
+    required String paidThisMonth,
+    required int customerCount,
+  }) {
     return Container(
       decoration: const BoxDecoration(gradient: AppGradients.hero),
       child: SafeArea(
         bottom: false,
-        child: SizedBox(
-          height: 130,
-          child: Stack(
-            clipBehavior: Clip.none,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon buttons top-right
-              Positioned(
-                top: 8,
-                right: 16,
-                child: Row(
-                  children: [
-                    _HeaderIconBtn(
-                      icon: Icons.people_rounded,
-                      onTap: () => context.push(AppRoute.customers.path),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Debts',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Track customers, due dates, and repayments',
+                          style: TextStyle(
+                            color: Color(0xFFC7D0E5),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    _HeaderIconBtn(
-                      icon: _showSearch
-                          ? Icons.search_off_rounded
-                          : Icons.search_rounded,
-                      onTap: () =>
-                          setState(() => _showSearch = !_showSearch),
-                    ),
-                    const SizedBox(width: 8),
-                    _HeaderIconBtn(
-                      icon: Icons.notifications_none_rounded,
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-              ),
-
-              // Title + subtitle (left)
-              const Positioned(
-                left: 20,
-                bottom: 22,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Debts',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
+                  ),
+                  const SizedBox(width: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 150),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.16),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Outstanding',
+                            style: TextStyle(
+                              color: Color(0xFFC7D0E5),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '\u20B5${_minorToMoneyLocal(outstandingMinor)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Constantia',
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Track customers, due dates and repayments',
-                      style: TextStyle(
-                        color: Color(0xB3FFFFFF),
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-
-              // Card illustration (right, extending below header)
-              Positioned(
-                right: 12,
-                bottom: -18,
-                child: Image.asset(
-                  'assets/images/card.png',
-                  height: 110,
-                  fit: BoxFit.contain,
-                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildHeroChip(
+                    label: '\u20B5${_minorToMoneyLocal(overdueMinor)}',
+                    value: 'Overdue',
+                    tone: overdueMinor > 0
+                        ? const Color(0xFFF6A6A6)
+                        : Colors.white.withValues(alpha: 0.72),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeroChip(
+                    label: '\u20B5$paidThisMonth',
+                    value: 'Collected',
+                    tone: const Color(0xFF9AE7BF),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeroChip(
+                    label: '$customerCount',
+                    value: 'Customers',
+                    tone: AppColors.gold,
+                  ),
+                ],
               ),
             ],
           ),
@@ -384,15 +412,58 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
   // ── Debt card ────────────────────────────────────────────────────────────
 
+  Widget _buildHeroChip({
+    required String label,
+    required String value,
+    required Color tone,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: tone,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.58),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDebtCard(LocalReceivableRecord row) {
     final status = _receivableStatus(row);
     final (statusLabel, statusColor, avatarBg) = switch (status) {
-      'overdue'        => ('Overdue',    AppColors.danger,   AppColors.dangerSoft),
-      'due_soon'       => ('Due Soon',   AppColors.warning,  AppColors.warningSoft),
-      'settled'        => ('Settled',    AppColors.success,  AppColors.successSoft),
-      'cancelled'      => ('Cancelled',  AppColors.muted,    AppColors.surfaceAlt),
-      'partially_paid' => ('Partial',    AppColors.warning,  AppColors.warningSoft),
-      _                => ('Open',       AppColors.info,     AppColors.infoSoft),
+      'overdue' => ('Overdue', AppColors.danger, AppColors.dangerSoft),
+      'due_soon' => ('Due Soon', AppColors.warning, AppColors.warningSoft),
+      'settled' => ('Settled', AppColors.success, AppColors.successSoft),
+      'cancelled' => ('Cancelled', AppColors.muted, AppColors.surfaceAlt),
+      'partially_paid' => ('Partial', AppColors.warning, AppColors.warningSoft),
+      _ => ('Open', AppColors.info, AppColors.infoSoft),
     };
 
     final initials = row.customerName.trim().isEmpty
@@ -470,7 +541,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           : FontWeight.normal,
                     ),
                   ),
-                  if (row.invoiceNumber != null && row.invoiceNumber!.isNotEmpty) ...[
+                  if (row.invoiceNumber != null &&
+                      row.invoiceNumber!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       row.invoiceNumber!,
@@ -490,7 +562,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  'GHS ${row.outstandingAmount}',
+                  '\u20B5${row.outstandingAmount}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
@@ -544,8 +616,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   String? _resolveSelectedReceivable(
       List<LocalReceivableRecord> openReceivables) {
     if (openReceivables.isEmpty) return null;
-    final hasCurrent = openReceivables
-        .any((r) => r.receivableId == _selectedReceivableId);
+    final hasCurrent =
+        openReceivables.any((r) => r.receivableId == _selectedReceivableId);
     return hasCurrent
         ? _selectedReceivableId
         : openReceivables.first.receivableId;
@@ -649,13 +721,13 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   void _showMessage(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
 // ── Stats row ───────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
     required this.totalOutstanding,
@@ -671,48 +743,58 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Outstanding',
-            value: 'GHS $totalOutstanding',
-            subLabel: 'Total owed',
-            iconColor: AppColors.success,
-            icon: Icons.account_balance_wallet_rounded,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Overdue',
-            value: 'GHS $overdue',
-            subLabel: 'Past due date',
-            iconColor: AppColors.danger,
-            icon: Icons.warning_amber_rounded,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Paid / Month',
-            value: 'GHS $paidThisMonth',
-            subLabel: 'This month',
-            iconColor: AppColors.info,
-            icon: Icons.check_circle_outline_rounded,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _StatCard(
-            label: 'Customers',
-            value: '$totalCustomers',
-            subLabel: 'Total tracked',
-            iconColor: AppColors.warning,
-            icon: Icons.group_rounded,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = constraints.maxWidth >= 720
+            ? (constraints.maxWidth - 30) / 4
+            : (constraints.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            SizedBox(
+              width: itemWidth,
+              child: _StatCard(
+                label: 'Outstanding',
+                value: '\u20B5$totalOutstanding',
+                subLabel: 'Total owed',
+                iconColor: AppColors.success,
+                icon: Icons.account_balance_wallet_rounded,
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _StatCard(
+                label: 'Overdue',
+                value: '\u20B5$overdue',
+                subLabel: 'Past due date',
+                iconColor: AppColors.danger,
+                icon: Icons.warning_amber_rounded,
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _StatCard(
+                label: 'Paid / Month',
+                value: '\u20B5$paidThisMonth',
+                subLabel: 'This month',
+                iconColor: AppColors.info,
+                icon: Icons.check_circle_outline_rounded,
+              ),
+            ),
+            SizedBox(
+              width: itemWidth,
+              child: _StatCard(
+                label: 'Customers',
+                value: '$totalCustomers',
+                subLabel: 'Total tracked',
+                iconColor: AppColors.warning,
+                icon: Icons.group_rounded,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -809,40 +891,43 @@ class _QuickActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _QuickTile(
-          icon: Icons.person_add_rounded,
-          label: 'Add\nCustomer',
-          iconColor: AppColors.success,
-          onTap: onAddCustomer,
-        ),
-        _QuickTile(
-          icon: Icons.receipt_long_rounded,
-          label: 'Create\nDebt',
-          iconColor: AppColors.warning,
-          onTap: onCreateDebt,
-        ),
-        _QuickTile(
-          icon: Icons.payments_rounded,
-          label: 'Record\nPayment',
-          iconColor: AppColors.info,
-          onTap: onRecordPayment,
-        ),
-        _QuickTile(
-          icon: Icons.bar_chart_rounded,
-          label: 'View\nReports',
-          iconColor: AppColors.forest,
-          onTap: onViewReports,
-        ),
-        _QuickTile(
-          icon: Icons.more_horiz_rounded,
-          label: 'More\nActions',
-          iconColor: AppColors.muted,
-          onTap: () {},
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _QuickTile(
+            icon: Icons.person_add_rounded,
+            label: 'Add Customer',
+            backgroundColor: AppColors.navy,
+            foregroundColor: Colors.white,
+            onTap: onAddCustomer,
+          ),
+          const SizedBox(width: 10),
+          _QuickTile(
+            icon: Icons.receipt_long_rounded,
+            label: 'Create Debt',
+            backgroundColor: AppColors.forest,
+            foregroundColor: Colors.white,
+            onTap: onCreateDebt,
+          ),
+          const SizedBox(width: 10),
+          _QuickTile(
+            icon: Icons.payments_rounded,
+            label: 'Record Payment',
+            backgroundColor: AppColors.goldSoft,
+            foregroundColor: AppColors.gold,
+            onTap: onRecordPayment,
+          ),
+          const SizedBox(width: 10),
+          _QuickTile(
+            icon: Icons.bar_chart_rounded,
+            label: 'Reports',
+            backgroundColor: AppColors.surfaceAlt,
+            foregroundColor: AppColors.inkSoft,
+            onTap: onViewReports,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -851,42 +936,54 @@ class _QuickTile extends StatelessWidget {
   const _QuickTile({
     required this.icon,
     required this.label,
-    required this.iconColor,
+    required this.backgroundColor,
+    required this.foregroundColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final Color iconColor;
+  final Color backgroundColor;
+  final Color foregroundColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: backgroundColor == AppColors.surfaceAlt
+                  ? AppColors.border
+                  : backgroundColor.withValues(alpha: 0.14),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+            boxShadow: backgroundColor == AppColors.surfaceAlt
+                ? AppShadows.subtle
+                : AppShadows.card,
           ),
-          const SizedBox(height: 7),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.inkSoft,
-              height: 1.25,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: foregroundColor, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: foregroundColor,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -945,7 +1042,7 @@ class _ActionSectionsList extends StatelessWidget {
             icon: Icons.receipt_long_rounded,
             iconColor: AppColors.warning,
             title: 'Create Debt',
-            subtitle: 'New a new debt for a customer',
+            subtitle: 'Create a new debt for a customer',
             expanded: showCreateDebt,
             isFirst: false,
             isLast: false,
@@ -1005,14 +1102,16 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topRadius = isFirst ? const Radius.circular(AppRadii.md) : Radius.zero;
+    final topRadius =
+        isFirst ? const Radius.circular(AppRadii.md) : Radius.zero;
     final bottomRadius =
         isLast && !expanded ? const Radius.circular(AppRadii.md) : Radius.zero;
 
     return Column(
       children: [
         if (!isFirst)
-          const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
+          const Divider(
+              height: 1, indent: 16, endIndent: 16, color: AppColors.border),
         InkWell(
           borderRadius: BorderRadius.only(
             topLeft: topRadius,
@@ -1211,7 +1310,7 @@ class _CreateDebtForm extends StatelessWidget {
                 icon: Icons.attach_money_rounded,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                prefixText: 'GHS ',
+                prefixText: '\u20B5 ',
               ),
             ),
             const SizedBox(width: 10),
@@ -1312,7 +1411,7 @@ class _RecordPaymentForm extends StatelessWidget {
                   .map((r) => DropdownMenuItem(
                         value: r.receivableId,
                         child: Text(
-                          '${r.customerName} — GHS ${r.outstandingAmount}',
+                          '${r.customerName} — \u20B5${r.outstandingAmount}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ))
@@ -1355,16 +1454,14 @@ class _RecordPaymentForm extends StatelessWidget {
           controller: amountCtrl,
           label: 'Repayment amount',
           icon: Icons.attach_money_rounded,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
-          prefixText: 'GHS ',
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          prefixText: '\u20B5 ',
         ),
         const SizedBox(height: 14),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed:
-                (isBusy || openReceivables.isEmpty) ? null : onSave,
+            onPressed: (isBusy || openReceivables.isEmpty) ? null : onSave,
             icon: const Icon(Icons.payments_rounded, size: 18),
             label: const Text('Save Repayment'),
             style: FilledButton.styleFrom(
@@ -1432,8 +1529,7 @@ class _FormField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide:
-              const BorderSide(color: AppColors.forest, width: 1.4),
+          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1529,31 +1625,6 @@ class _EmptyDebts extends StatelessWidget {
             style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Header icon button ─────────────────────────────────────────────────────────
-
-class _HeaderIconBtn extends StatelessWidget {
-  const _HeaderIconBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }

@@ -2,32 +2,35 @@ import 'package:flutter/material.dart';
 
 abstract final class AppColors {
   // Brand — unchanged
-  static const Color forest = Color(0xFF0F5C4F);
-  static const Color forestDark = Color(0xFF0A3A34);
-  static const Color forestNight = Color(0xFF062824);
-  static const Color gold = Color(0xFFB8902E);
-  static const Color goldSoft = Color(0xFFF5E7C6);
+  static const Color navy = Color(0xFF1A2744);
+  static const Color navyMuted = Color(0xFF243459);
+  static const Color navySoft = Color(0xFF2D4070);
+  static const Color forest = Color(0xFF1D7A4E);
+  static const Color forestDark = Color(0xFF165D3B);
+  static const Color forestNight = Color(0xFF111C33);
+  static const Color gold = Color(0xFFC49A2A);
+  static const Color goldSoft = Color(0xFFFDF4DC);
 
   // Cool neutral ramp
-  static const Color canvas = Color(0xFFF8FAFC);
+  static const Color canvas = Color(0xFFF6F7FA);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceAlt = Color(0xFFF1F5F9);
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color borderStrong = Color(0xFFCBD5E1);
-  static const Color ink = Color(0xFF0F172A);
-  static const Color inkSoft = Color(0xFF334155);
-  static const Color muted = Color(0xFF64748B);
-  static const Color mutedSoft = Color(0xFF94A3B8);
+  static const Color surfaceAlt = Color(0xFFF0F2F6);
+  static const Color border = Color(0xFFE4E7EE);
+  static const Color borderStrong = Color(0xFFC8CEDB);
+  static const Color ink = Color(0xFF1A202C);
+  static const Color inkSoft = Color(0xFF4A5568);
+  static const Color muted = Color(0xFF8892A4);
+  static const Color mutedSoft = Color(0xFFA4ADBC);
 
   // Semantic
-  static const Color success = Color(0xFF059669);
-  static const Color successSoft = Color(0xFFD1FAE5);
-  static const Color warning = Color(0xFFD97706);
-  static const Color warningSoft = Color(0xFFFEF3C7);
-  static const Color danger = Color(0xFFDC2626);
-  static const Color dangerSoft = Color(0xFFFEE2E2);
-  static const Color info = Color(0xFF2563EB);
-  static const Color infoSoft = Color(0xFFDBEAFE);
+  static const Color success = forest;
+  static const Color successSoft = Color(0xFFE8F5EE);
+  static const Color warning = gold;
+  static const Color warningSoft = goldSoft;
+  static const Color danger = Color(0xFFD94040);
+  static const Color dangerSoft = Color(0xFFFEF0F0);
+  static const Color info = navySoft;
+  static const Color infoSoft = Color(0xFFEAF0FF);
 
   // Legacy aliases — retained so existing call-sites compile until per-screen migration.
   static const Color mint = Color(0xFFE8F4F0);
@@ -59,20 +62,20 @@ abstract final class AppRadii {
 
 abstract final class AppGradients {
   static const LinearGradient hero = LinearGradient(
-    colors: [AppColors.forestNight, AppColors.forestDark, AppColors.forest],
+    colors: [AppColors.navy, AppColors.navyMuted, AppColors.navySoft],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient shell = LinearGradient(
-    colors: [AppColors.forestNight, AppColors.forest, AppColors.canvas],
-    stops: [0.0, 0.28, 0.28],
+    colors: [AppColors.navy, AppColors.navyMuted, AppColors.canvas],
+    stops: [0.0, 0.30, 0.30],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
   static const LinearGradient accent = LinearGradient(
-    colors: [Color(0x33D4A94D), Color(0x14FFFFFF)],
+    colors: [Color(0x33C49A2A), Color(0x14000000)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -140,6 +143,7 @@ ThemeData buildAppTheme() {
       fontSize: 32,
       fontWeight: FontWeight.w700,
       color: AppColors.ink,
+      fontFamily: 'Constantia',
       letterSpacing: -0.6,
       height: 1.12,
     ),
@@ -147,6 +151,7 @@ ThemeData buildAppTheme() {
       fontSize: 28,
       fontWeight: FontWeight.w700,
       color: AppColors.ink,
+      fontFamily: 'Constantia',
       letterSpacing: -0.4,
       height: 1.14,
     ),
@@ -154,6 +159,7 @@ ThemeData buildAppTheme() {
       fontSize: 24,
       fontWeight: FontWeight.w700,
       color: AppColors.ink,
+      fontFamily: 'Constantia',
       letterSpacing: -0.2,
       height: 1.25,
     ),
@@ -256,19 +262,19 @@ ThemeData buildAppTheme() {
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
       elevation: 0,
-      indicatorColor: AppColors.mint,
-      height: 76,
+      indicatorColor: const Color(0x00000000),
+      height: 68,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return textTheme.labelSmall?.copyWith(
-          color: selected ? AppColors.forest : AppColors.muted,
+          color: selected ? AppColors.navy : AppColors.muted,
           fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
         );
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return IconThemeData(
-          color: selected ? AppColors.forest : AppColors.muted,
+          color: selected ? AppColors.navy : AppColors.muted,
           size: 22,
         );
       }),
@@ -276,8 +282,7 @@ ThemeData buildAppTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.mutedSoft),
       labelStyle: textTheme.bodyMedium?.copyWith(color: AppColors.muted),
       border: OutlineInputBorder(

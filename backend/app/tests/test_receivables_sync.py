@@ -230,7 +230,78 @@ def test_sync_apply_receivable_flow_is_idempotent() -> None:
             receivable = db.scalar(select(Receivable).where(Receivable.id == UUID(receivable_id)))
             assert receivable is not None
             assert receivable.outstanding_amount == Decimal("30.00")
-            assert receivable.status == "open"
+            assert receivable.status == "partially_paid"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_invoice_number_auto_generated() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    from datetime import datetime, timezone
+
+    try:
+        customer_resp = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Invoice Test Customer"},
+        )
+        assert customer_resp.status_code == 201
+        customer_id = customer_resp.json()["customer_id"]
+
+        debt_resp = client.post(
+            "/api/v1/receivables",
+            json={"customer_id": customer_id, "original_amount": "200.00"},
+        )
+        assert debt_resp.status_code == 201
+        debt = debt_resp.json()
+        year = datetime.now(tz=timezone.utc).year
+        assert debt["invoice_number"] == f"INV-{year}-0001"
+
+        debt2_resp = client.post(
+            "/api/v1/receivables",
+            json={"customer_id": customer_id, "original_amount": "50.00"},
+        )
+        assert debt2_resp.status_code == 201
+        assert debt2_resp.json()["invoice_number"] == f"INV-{year}-0002"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cancel_receivable() -> None:
+    client, session_local, _ = _build_sqlite_test_stack()
+    try:
+        customer_resp = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Cancel Test Customer"},
+        )
+        assert customer_resp.status_code == 201
+        customer_id = customer_resp.json()["customer_id"]
+
+        debt_resp = client.post(
+            "/api/v1/receivables",
+            json={"customer_id": customer_id, "original_amount": "75.00"},
+        )
+        assert debt_resp.status_code == 201
+        receivable_id = debt_resp.json()["receivable_id"]
+
+        cancel_resp = client.post(f"/api/v1/receivables/{receivable_id}/cancel")
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["status"] == "cancelled"
+
+        # idempotency: cancelling again should fail (already terminal)
+        cancel_again = client.post(f"/api/v1/receivables/{receivable_id}/cancel")
+        assert cancel_again.status_code == 422
+
+        # repayment on cancelled debt should also fail
+        repay_resp = client.post(
+            f"/api/v1/receivables/{receivable_id}/repayments",
+            json={"amount": "10.00", "payment_method_label": "cash"},
+        )
+        assert repay_resp.status_code == 422
+
+        with session_local() as db:
+            receivable = db.scalar(select(Receivable).where(Receivable.id == UUID(receivable_id)))
+            assert receivable is not None
+            assert receivable.status == "cancelled"
     finally:
         app.dependency_overrides.clear()
 

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/sync_status_pill.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
@@ -52,41 +53,57 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
 
     return Scaffold(
       body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (v) => setState(() => _index = v),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x120F172A),
+              blurRadius: 18,
+              offset: Offset(0, -3),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: (v) => setState(() => _index = v),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.point_of_sale_outlined),
+                selectedIcon: Icon(Icons.point_of_sale_rounded),
+                label: 'Sales',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.inventory_2_outlined),
+                selectedIcon: Icon(Icons.inventory_2_rounded),
+                label: 'Inventory',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long_rounded),
+                label: 'Expenses',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.group_outlined),
+                selectedIcon: Icon(Icons.group_rounded),
+                label: 'Debts',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart_rounded),
+                label: 'Reports',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.point_of_sale_outlined),
-            selectedIcon: Icon(Icons.point_of_sale_rounded),
-            label: 'Sales',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2_rounded),
-            label: 'Inventory',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Expenses',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.group_outlined),
-            selectedIcon: Icon(Icons.group_rounded),
-            label: 'Debts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart_rounded),
-            label: 'Reports',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -132,7 +149,12 @@ class _HomeDashboard extends ConsumerWidget {
         data: (mc) => SafeArea(
           child: Column(
             children: [
-              _Header(mc: mc, onSettings: () => _openSettings(context, mc)),
+              _Header(
+                mc: mc,
+                summaryAsync: summaryAsync,
+                onSettings: () => _openSettings(context, mc),
+                onNavigate: onNavigate,
+              ),
               Expanded(
                 child: Container(
                   decoration: const BoxDecoration(
@@ -156,13 +178,8 @@ class _HomeDashboard extends ConsumerWidget {
                     },
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 40),
                       children: [
-                        _TodayPulse(
-                          summaryAsync: summaryAsync,
-                          onReport: () => onNavigate(5),
-                        ),
-                        const SizedBox(height: 24),
                         _QuickActions(onNavigate: onNavigate),
                         const SizedBox(height: 24),
                         const _InsightBanner(),
@@ -183,11 +200,18 @@ class _HomeDashboard extends ConsumerWidget {
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
-class _Header extends StatelessWidget {
-  const _Header({required this.mc, required this.onSettings});
+class _Header extends ConsumerWidget {
+  const _Header({
+    required this.mc,
+    required this.summaryAsync,
+    required this.onSettings,
+    required this.onNavigate,
+  });
 
   final MerchantContext mc;
+  final AsyncValue<DashboardSummary> summaryAsync;
   final VoidCallback onSettings;
+  final ValueChanged<int> onNavigate;
 
   String _firstName(String name) {
     final word = name.trim().split(' ').first;
@@ -195,84 +219,238 @@ class _Header extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = summaryAsync.valueOrNull;
+    final syncSnapshot = ref.watch(syncStatusControllerProvider).valueOrNull;
+    final sales = summary?.todaySalesTotal ?? '--';
+    final debt = summary?.debtOutstandingTotal ?? '--';
+    final lowStock = summary?.lowStockCount ?? 0;
+    final connectivity = _syncHeadline(syncSnapshot);
+    final descriptor = [mc.businessType, mc.storeName]
+        .whereType<String>()
+        .map((v) => v.trim())
+        .where((v) => v.isNotEmpty)
+        .join(' · ');
+    final location = (mc.storeLocation?.trim().isNotEmpty ?? false)
+        ? mc.storeLocation!.trim()
+        : mc.storeName;
+    final dateLabel = DateFormat('EEE, d MMM yyyy').format(DateTime.now());
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: AppShadows.card,
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: AppColors.forest,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hi, ${_firstName(mc.businessName)} 👋',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                        height: 1.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      mc.businessType ?? mc.businessName,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                child: Text(
+                  'SikaBoafo',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
               _HeaderBtn(icon: Icons.notifications_outlined, onTap: () {}),
               const SizedBox(width: 8),
               _HeaderBtn(icon: Icons.settings_outlined, onTap: onSettings),
             ],
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _HeaderPill(
-                icon: Icons.location_on_outlined,
-                label: mc.storeLocation ?? mc.storeName,
-              ),
-              _HeaderPill(
-                icon: Icons.schedule_outlined,
-                label: mc.timezone,
-              ),
-              const SyncStatusPill(),
-            ],
+          const SizedBox(height: 10),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'Hi, ${_firstName(mc.businessName)}${descriptor.isEmpty ? '' : ' · $descriptor'}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  dateLabel,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.42),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '\u20B5$sales',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Constantia',
+                    letterSpacing: -0.9,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Sales Today',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.56),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _HeroStatTile(
+                    label: 'Debt Owed',
+                    value: '\u20B5$debt',
+                    tone: AppColors.gold,
+                    onTap: () => onNavigate(4),
+                  ),
+                ),
+                _HeroDivider(),
+                Expanded(
+                  child: _HeroStatTile(
+                    label: 'Low Stock',
+                    value: '$lowStock items',
+                    tone: const Color(0xFFF6A6A6),
+                    onTap: () => onNavigate(2),
+                  ),
+                ),
+                _HeroDivider(),
+                Expanded(
+                  child: _HeroStatTile(
+                    label: 'Connectivity',
+                    value: connectivity.$1,
+                    tone: connectivity.$2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _HeaderPill(
+                  icon: Icons.location_on_outlined,
+                  label: location,
+                ),
+                const SizedBox(width: 8),
+                _HeaderPill(
+                  icon: Icons.schedule_outlined,
+                  label: mc.timezone,
+                ),
+                const SizedBox(width: 8),
+                const SyncStatusPill(),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  (String, Color) _syncHeadline(SyncStatusSnapshot? snapshot) {
+    if (snapshot == null || snapshot.isSyncing) {
+      return ('Syncing', const Color(0xFF9FD2FF));
+    }
+    if (!snapshot.backendReachable) {
+      final pending = snapshot.stats.pendingCount;
+      return (
+        pending > 0 ? 'Offline $pending' : 'Offline',
+        const Color(0xFFF6A6A6)
+      );
+    }
+    if (snapshot.stats.failedCount > 0 || snapshot.stats.conflictCount > 0) {
+      return ('Needs retry', AppColors.gold);
+    }
+    if (snapshot.stats.pendingCount > 0 || snapshot.stats.sendingCount > 0) {
+      final pending = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
+      return ('Pending $pending', AppColors.gold);
+    }
+    return ('Online', const Color(0xFF8BE0B2));
+  }
+}
+
+class _HeroStatTile extends StatelessWidget {
+  const _HeroStatTile({
+    required this.label,
+    required this.value,
+    required this.tone,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Column(
+            children: [
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: tone,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.52),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 36,
+      color: Colors.white.withValues(alpha: 0.10),
     );
   }
 }
@@ -287,14 +465,14 @@ class _HeaderBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
-        child: Icon(icon, color: Colors.white, size: 20),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
@@ -320,13 +498,13 @@ class _HeaderPill extends StatelessWidget {
           Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.8)),
           const SizedBox(width: 5),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 140),
+            constraints: const BoxConstraints(maxWidth: 120),
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.88),
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -339,218 +517,6 @@ class _HeaderPill extends StatelessWidget {
 
 // ─── Today's Pulse (stat grid) ────────────────────────────────────────────────
 
-class _TodayPulse extends StatelessWidget {
-  const _TodayPulse({required this.summaryAsync, required this.onReport});
-
-  final AsyncValue<DashboardSummary> summaryAsync;
-  final VoidCallback onReport;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = summaryAsync.valueOrNull;
-    final sales = s?.todaySalesTotal ?? '--';
-    final expenses = s?.todayExpensesTotal ?? '--';
-    final profit = s?.todayEstimatedProfit ?? '--';
-    final debt = s?.debtOutstandingTotal ?? '--';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    "Today's Pulse",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: onReport,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Full report',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.forest.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 11,
-                        color: AppColors.forest.withValues(alpha: 0.9),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // 2x2 grid using rows with dividers
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.trending_up_rounded,
-                  iconColor: AppColors.forest,
-                  label: 'Sales',
-                  value: sales,
-                  valueColor: AppColors.forest,
-                  isLeft: true,
-                  isTop: true,
-                ),
-              ),
-              Container(width: 1, height: 88, color: AppColors.border),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.trending_down_rounded,
-                  iconColor: AppColors.danger,
-                  label: 'Expenses',
-                  value: expenses,
-                  valueColor: AppColors.danger,
-                  isLeft: false,
-                  isTop: true,
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          Row(
-            children: [
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.savings_rounded,
-                  iconColor: AppColors.success,
-                  label: 'Profit',
-                  value: profit,
-                  valueColor: AppColors.success,
-                  isLeft: true,
-                  isTop: false,
-                ),
-              ),
-              Container(width: 1, height: 88, color: AppColors.border),
-              Expanded(
-                child: _StatTile(
-                  icon: Icons.account_balance_rounded,
-                  iconColor: AppColors.warning,
-                  label: 'Debt Owed',
-                  value: debt,
-                  valueColor: AppColors.warning,
-                  isLeft: false,
-                  isTop: false,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.valueColor,
-    required this.isLeft,
-    required this.isTop,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final Color valueColor;
-  final bool isLeft;
-  final bool isTop;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        isLeft ? 18 : 16,
-        isTop ? 14 : 14,
-        isLeft ? 16 : 18,
-        isTop ? 14 : 18,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: iconColor, size: 16),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          RichText(
-            text: TextSpan(
-              children: [
-                const TextSpan(
-                  text: 'GHS ',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.muted,
-                  ),
-                ),
-                TextSpan(
-                  text: value,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: valueColor,
-                    letterSpacing: -0.5,
-                    height: 1.0,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
 class _QuickActions extends StatelessWidget {
@@ -562,38 +528,60 @@ class _QuickActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel('Quick Actions'),
-        const SizedBox(height: 12),
         Row(
           children: [
-            _QuickTile(
-              icon: Icons.shopping_basket_rounded,
-              label: 'Record\nSale',
-              iconColor: AppColors.forest,
-              onTap: () => onNavigate(1),
-            ),
-            const SizedBox(width: 10),
-            _QuickTile(
-              icon: Icons.receipt_long_rounded,
-              label: 'Add\nExpense',
-              iconColor: AppColors.warning,
-              onTap: () => onNavigate(3),
-            ),
-            const SizedBox(width: 10),
-            _QuickTile(
-              icon: Icons.group_rounded,
-              label: 'Credit\nOwed',
-              iconColor: AppColors.info,
-              onTap: () => onNavigate(4),
-            ),
-            const SizedBox(width: 10),
-            _QuickTile(
-              icon: Icons.bar_chart_rounded,
-              label: 'View\nReports',
-              iconColor: AppColors.muted,
-              onTap: () => onNavigate(5),
+            const Expanded(child: _SectionLabel('Quick Actions')),
+            Text(
+              'Daily shortcuts',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _QuickTile(
+                  icon: Icons.shopping_basket_rounded,
+                  label: 'New Sale',
+                  backgroundColor: AppColors.navy,
+                  foregroundColor: Colors.white,
+                  onTap: () => onNavigate(1),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _QuickTile(
+                  icon: Icons.group_rounded,
+                  label: 'Collect Debt',
+                  backgroundColor: AppColors.forest,
+                  foregroundColor: Colors.white,
+                  onTap: () => onNavigate(4),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _QuickTile(
+                  icon: Icons.inventory_2_rounded,
+                  label: 'Add Stock',
+                  backgroundColor: AppColors.goldSoft,
+                  foregroundColor: AppColors.gold,
+                  onTap: () => onNavigate(2),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -604,56 +592,56 @@ class _QuickTile extends StatelessWidget {
   const _QuickTile({
     required this.icon,
     required this.label,
-    required this.iconColor,
+    required this.backgroundColor,
+    required this.foregroundColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final Color iconColor;
+  final Color backgroundColor;
+  final Color foregroundColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppShadows.subtle,
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: backgroundColor == AppColors.surface
+                  ? AppColors.border
+                  : backgroundColor.withValues(alpha: 0.14),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 22),
-                ),
-                const SizedBox(height: 8),
-                Text(
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: foregroundColor, size: 16),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
                   label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.inkSoft,
-                    height: 1.3,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: foregroundColor,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -669,109 +657,81 @@ class _InsightBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 148,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.forestNight, AppColors.forest],
+          colors: [Color(0xFFFDFEFF), Color(0xFFF6F8FC)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppRadii.md),
-        boxShadow: AppShadows.elevated,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // Subtle pattern overlay
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -30,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              SizedBox(
-                width: 120,
-                child: Image.asset(
-                  'assets/images/basket.png',
-                  height: 160,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.bottomCenter,
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 22, 20, 22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          '✨  Business Tip',
-                          style: TextStyle(
-                            color: Color(0xFF6DE4C4),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Track daily to\ngrow faster',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.4,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Consistent records reveal your best opportunities.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.68),
-                          fontSize: 11,
-                          height: 1.45,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF0FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.insights_rounded,
+                    size: 18,
+                    color: AppColors.info,
                   ),
                 ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Business Insights',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
-            ],
-          ),
-        ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'A clean space for your business recommendations.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'When insights are connected, this card will surface concise signals and next best actions for daily operations.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.muted,
+                          height: 1.45,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -841,8 +801,8 @@ class _RecentActivity extends ConsumerWidget {
               shrinkWrap: true,
               padding: EdgeInsets.zero,
               itemCount: rows.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, thickness: 1, color: AppColors.border),
+              separatorBuilder: (_, __) => const Divider(
+                  height: 1, thickness: 1, color: AppColors.border),
               itemBuilder: (_, i) => _ActivityRow(
                 data: rows[i],
                 imageAsset: rows[i].itemId != null
@@ -982,11 +942,10 @@ class _ActivitySkeleton extends StatelessWidget {
           3,
           (i) => Column(
             children: [
-              if (i != 0)
-                const Divider(height: 1, color: AppColors.border),
+              if (i != 0) const Divider(height: 1, color: AppColors.border),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     _shimmer(44, 44, radius: 11),
