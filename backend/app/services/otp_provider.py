@@ -137,17 +137,13 @@ class ArkeselOtpProvider:
             {
                 "action": "send-sms",
                 "api_key": self.settings.arkesel_api_key,
+                "to": phone_number,
+                "from": self.settings.arkesel_sender_id,
+                "sms": message,
             }
         )
         endpoint = f"{base}/sms/api?{query}"
-        payload = {
-            "action": "send-sms",
-            "api_key": self.settings.arkesel_api_key,
-            "to": phone_number,
-            "from": self.settings.arkesel_sender_id,
-            "sms": message,
-        }
-        response = self._post_json(endpoint=endpoint, payload=payload)
+        response = self._get_json(endpoint=endpoint)
         logger.info("OTP SMS response: phone=%s payload=%s", phone_number, response)
         provider_code = str(response.get("code") or "").strip().lower()
         if provider_code != "ok":
@@ -162,16 +158,13 @@ class ArkeselOtpProvider:
             )
         return self._extract_reference(response)
 
-    def _post_json(self, *, endpoint: str, payload: dict[str, object]) -> dict[str, object]:
-        raw_body = json.dumps(payload).encode("utf-8")
+    def _get_json(self, *, endpoint: str) -> dict[str, object]:
         req = request.Request(
             endpoint,
-            data=raw_body,
             headers={
-                "Content-Type": "application/json",
                 "Accept": "application/json",
             },
-            method="POST",
+            method="GET",
         )
         try:
             with request.urlopen(req, timeout=30) as resp:

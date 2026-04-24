@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from urllib import parse
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -118,3 +119,30 @@ def test_generate_invalidates_previous_active_code() -> None:
         assert len(rows) == 2
         assert rows[0].used_at is not None
         assert rows[1].used_at is None
+
+
+def test_send_sms_uses_query_string_route_expected_by_arkesel() -> None:
+    session_local = _session_local()
+    with session_local() as db:
+        provider = ArkeselOtpProvider(db=db, settings=_settings())
+        captured: dict[str, str] = {}
+
+        def fake_get_json(*, endpoint: str) -> dict[str, object]:
+            captured["endpoint"] = endpoint
+            return {"code": "ok", "message": "Successfully Sent"}
+
+        provider._get_json = fake_get_json  # type: ignore[method-assign]
+
+        provider._send_sms(
+            phone_number="233244123456",
+            message="Your BizTrack code is 123456.",
+        )
+
+        parsed = parse.urlparse(captured["endpoint"])
+        params = parse.parse_qs(parsed.query)
+        assert parsed.path.endswith("/sms/api")
+        assert params["action"] == ["send-sms"]
+        assert params["api_key"] == ["test-arkesel-key"]
+        assert params["to"] == ["233244123456"]
+        assert params["from"] == ["BizTrack"]
+        assert params["sms"] == ["Your BizTrack code is 123456."]
