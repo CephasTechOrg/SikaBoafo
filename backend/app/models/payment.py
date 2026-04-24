@@ -31,6 +31,13 @@ _JSONB_OR_JSON = JSONB().with_variant(sa.JSON(), "sqlite")
 class Payment(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "payments"
 
+    merchant_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("merchants.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     sale_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("sales.id", ondelete="SET NULL"),
@@ -49,6 +56,8 @@ class Payment(UUIDPrimaryKeyMixin, Base):
     provider_reference: Mapped[str | None] = mapped_column(
         String(255), nullable=True, unique=True
     )
+    internal_reference: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    provider_mode: Mapped[str | None] = mapped_column(String(16), nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(8), default=DEFAULT_CURRENCY, nullable=False)
     status: Mapped[str] = mapped_column(

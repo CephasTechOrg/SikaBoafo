@@ -46,6 +46,7 @@ from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale
 from app.models.store import Store
 from app.services.audit_service import log_audit
+from app.services.payment_settings_service import get_decrypted_secret_for_mode
 from app.services.store_context import StoreContextError, get_merchant_and_store
 
 _MONEY_SCALE = Decimal("0.01")
@@ -151,7 +152,11 @@ class PaymentService:
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
         configured = self.settings or get_settings()
-        secret_key = self._resolve_secret_key(mode=connection.mode, settings=configured)
+        secret_key = self._resolve_secret_key_for_connection(
+            connection=connection,
+            merchant_id=merchant.id,
+            settings=configured,
+        )
         reference = self._build_reference(receivable_id=receivable.id)
         amount = self._money(receivable.outstanding_amount)
         result = self._client(configured).initialize_transaction(
@@ -169,8 +174,11 @@ class PaymentService:
         )
 
         payment = Payment(
+            merchant_id=merchant.id,
             provider=PAYMENT_PROVIDER_PAYSTACK,
             provider_reference=result.reference,
+            internal_reference=reference,
+            provider_mode=connection.mode,
             amount=amount,
             currency=merchant.currency_code or DEFAULT_CURRENCY,
             status=PROVIDER_PAYMENT_PENDING,
@@ -240,7 +248,11 @@ class PaymentService:
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
         configured = self.settings or get_settings()
-        secret_key = self._resolve_secret_key(mode=connection.mode, settings=configured)
+        secret_key = self._resolve_secret_key_for_connection(
+            connection=connection,
+            merchant_id=merchant.id,
+            settings=configured,
+        )
         reference = self._build_sale_reference(sale_id=sale.id)
         amount = self._money(sale.total_amount)
         result = self._client(configured).initialize_transaction(
@@ -259,9 +271,12 @@ class PaymentService:
         )
 
         payment = Payment(
+            merchant_id=merchant.id,
             sale_id=sale.id,
             provider=PAYMENT_PROVIDER_PAYSTACK,
             provider_reference=result.reference,
+            internal_reference=reference,
+            provider_mode=connection.mode,
             amount=amount,
             currency=merchant.currency_code or DEFAULT_CURRENCY,
             status=PROVIDER_PAYMENT_PENDING,
@@ -312,27 +327,33 @@ class PaymentService:
     ) -> PaymentWebhookSnapshot:
         configured = self.settings or get_settings()
         payload = self._parse_webhook_payload(raw_body=raw_body)
-        self._verify_paystack_signature(
-            raw_body=raw_body,
-            signature=signature,
-            settings=configured,
-        )
-
         event = str(payload.get("event") or "").strip().lower()
         data = payload.get("data")
         if not isinstance(data, dict):
             raise PaystackWebhookPayloadError("Webhook payload missing event data.")
-
-        event_key = self._build_webhook_event_key(
-            event=event,
-            data=data,
-            raw_body=raw_body,
-        )
         provider_reference = data.get("reference")
         provider_reference = (
             provider_reference.strip()
             if isinstance(provider_reference, str) and provider_reference.strip()
             else None
+        )
+
+        payment = self._load_payment_by_reference(provider_reference=provider_reference)
+        secrets = self._resolve_webhook_signature_secrets(
+            payment=payment,
+            provider_reference=provider_reference,
+            settings=configured,
+        )
+        self._verify_paystack_signature(
+            raw_body=raw_body,
+            signature=signature,
+            secrets=secrets,
+        )
+
+        event_key = self._build_webhook_event_key(
+            event=event,
+            data=data,
+            raw_body=raw_body,
         )
 
         existing_event = self.db.scalar(
@@ -372,12 +393,6 @@ class PaymentService:
             self.db.commit()
             return PaymentWebhookSnapshot(status="ignored")
 
-        payment = self.db.scalar(
-            select(Payment).where(
-                Payment.provider == PAYMENT_PROVIDER_PAYSTACK,
-                Payment.provider_reference == provider_reference,
-            )
-        )
         if payment is None:
             webhook_event.result_status = "ignored"
             webhook_event.processed_at = datetime.now(tz=UTC)
@@ -416,7 +431,6 @@ class PaymentService:
                     payment_id=payment.id,
                     provider_reference=provider_reference,
                 )
-            mode = self._resolve_mode_for_sale(sale_id=sale.id)
         else:
             receivable = self.db.scalar(
                 select(Receivable)
@@ -448,9 +462,10 @@ class PaymentService:
                     payment_id=payment.id,
                     provider_reference=provider_reference,
                 )
-            mode = self._resolve_mode_for_receivable(receivable_id=receivable.id)
-
-        secret_key = self._resolve_secret_key(mode=mode, settings=configured)
+        secret_key = self._resolve_secret_key_for_payment(
+            payment=payment,
+            settings=configured,
+        )
         verified = self._client(configured).verify_transaction(
             secret_key=secret_key,
             reference=provider_reference,
@@ -582,37 +597,111 @@ class PaymentService:
         *,
         merchant_id: UUID,
     ) -> PaymentProviderConnection:
-        connection = self.db.scalar(
-            select(PaymentProviderConnection).where(
-                PaymentProviderConnection.merchant_id == merchant_id,
-                PaymentProviderConnection.provider == PAYMENT_PROVIDER_PAYSTACK,
-            )
-        )
+        connection = self._get_paystack_connection(merchant_id=merchant_id)
         if connection is None or not connection.is_connected:
             msg = "Paystack is not connected for this merchant."
             raise PaystackConnectionMissingError(msg)
         return connection
 
+    def _get_paystack_connection(self, *, merchant_id: UUID) -> PaymentProviderConnection | None:
+        return self.db.scalar(
+            select(PaymentProviderConnection).where(
+                PaymentProviderConnection.merchant_id == merchant_id,
+                PaymentProviderConnection.provider == PAYMENT_PROVIDER_PAYSTACK,
+            )
+        )
+
+    def _resolve_secret_key_for_connection(
+        self,
+        *,
+        connection: PaymentProviderConnection,
+        merchant_id: UUID,
+        settings: Settings,
+    ) -> str:
+        secret_key = get_decrypted_secret_for_mode(
+            row=connection,
+            mode=connection.mode,
+            settings=settings,
+        )
+        if secret_key is not None:
+            return secret_key
+        return self._resolve_env_fallback_secret(
+            mode=connection.mode,
+            settings=settings,
+            merchant_id=merchant_id,
+        )
+
+    def _resolve_secret_key_for_payment(
+        self,
+        *,
+        payment: Payment,
+        settings: Settings,
+    ) -> str:
+        mode = (payment.provider_mode or PAYSTACK_MODE_TEST).strip().lower()
+        merchant_id = payment.merchant_id or self._merchant_id_for_payment(payment=payment)
+        if merchant_id is None:
+            if settings.app_env == "production":
+                raise PaystackSecretKeyMissingError(
+                    "Merchant-specific Paystack secret is missing for webhook verification."
+                )
+            return self._resolve_env_fallback_secret(
+                mode=mode,
+                settings=settings,
+                merchant_id=None,
+            )
+        connection = self._get_paystack_connection(merchant_id=merchant_id)
+        if connection is None:
+            return self._resolve_env_fallback_secret(
+                mode=mode,
+                settings=settings,
+                merchant_id=merchant_id,
+            )
+        secret_key = get_decrypted_secret_for_mode(
+            row=connection,
+            mode=mode,
+            settings=settings,
+        )
+        if secret_key is not None:
+            return secret_key
+        return self._resolve_env_fallback_secret(
+            mode=mode,
+            settings=settings,
+            merchant_id=merchant_id,
+        )
+
     @staticmethod
-    def _resolve_secret_key(*, mode: str, settings: Settings) -> str:
-        normalized_mode = mode.strip().lower()
+    def _env_secret_for_mode(*, mode: str, settings: Settings) -> str | None:
         secret_key = (
             settings.paystack_secret_key_live
-            if normalized_mode == PAYSTACK_MODE_LIVE
+            if mode.strip().lower() == PAYSTACK_MODE_LIVE
             else settings.paystack_secret_key_test
         )
-        if secret_key is None or not secret_key.strip():
-            mode_name = (
-                PAYSTACK_MODE_LIVE
-                if normalized_mode == PAYSTACK_MODE_LIVE
-                else PAYSTACK_MODE_TEST
-            )
+        return secret_key.strip() if isinstance(secret_key, str) and secret_key.strip() else None
+
+    def _resolve_env_fallback_secret(
+        self,
+        *,
+        mode: str,
+        settings: Settings,
+        merchant_id: UUID | None,
+    ) -> str:
+        if settings.app_env == "production":
             msg = (
-                "Paystack secret key is missing for mode "
-                f"{mode_name}."
+                "Merchant-specific Paystack secret is missing for mode "
+                f"{mode.strip().lower()}."
             )
             raise PaystackSecretKeyMissingError(msg)
-        return secret_key.strip()
+        secret_key = self._env_secret_for_mode(mode=mode, settings=settings)
+        if secret_key is None:
+            if merchant_id is not None:
+                msg = (
+                    "Merchant-specific Paystack secret is missing for mode "
+                    f"{mode.strip().lower()}."
+                )
+            else:
+                msg = "Paystack secret key is missing for non-production fallback."
+            raise PaystackSecretKeyMissingError(msg)
+        return secret_key
 
     @staticmethod
     def _build_reference(*, receivable_id: UUID) -> str:
@@ -651,44 +740,6 @@ class PaymentService:
 
         body_hash = hashlib.sha256(raw_body).hexdigest()
         return f"{normalized_event}:hash:{body_hash}"[:255]
-
-    def _resolve_mode_for_receivable(self, *, receivable_id: UUID) -> str:
-        merchant_id = self.db.scalar(
-            select(Store.merchant_id)
-            .select_from(Receivable)
-            .join(Store, Store.id == Receivable.store_id)
-            .where(Receivable.id == receivable_id)
-        )
-        if merchant_id is None:
-            return PAYSTACK_MODE_TEST
-        connection = self.db.scalar(
-            select(PaymentProviderConnection).where(
-                PaymentProviderConnection.merchant_id == merchant_id,
-                PaymentProviderConnection.provider == PAYMENT_PROVIDER_PAYSTACK,
-            )
-        )
-        if connection is None:
-            return PAYSTACK_MODE_TEST
-        return connection.mode
-
-    def _resolve_mode_for_sale(self, *, sale_id: UUID) -> str:
-        merchant_id = self.db.scalar(
-            select(Store.merchant_id)
-            .select_from(Sale)
-            .join(Store, Store.id == Sale.store_id)
-            .where(Sale.id == sale_id)
-        )
-        if merchant_id is None:
-            return PAYSTACK_MODE_TEST
-        connection = self.db.scalar(
-            select(PaymentProviderConnection).where(
-                PaymentProviderConnection.merchant_id == merchant_id,
-                PaymentProviderConnection.provider == PAYMENT_PROVIDER_PAYSTACK,
-            )
-        )
-        if connection is None:
-            return PAYSTACK_MODE_TEST
-        return connection.mode
 
     def _business_id_for_receivable(self, *, receivable_id: UUID) -> UUID | None:
         return self.db.scalar(
@@ -730,6 +781,63 @@ class PaymentService:
             else RECEIVABLE_STATUS_PARTIALLY_PAID
         )
 
+    def _resolve_webhook_signature_secrets(
+        self,
+        *,
+        payment: Payment | None,
+        provider_reference: str | None,
+        settings: Settings,
+    ) -> list[str]:
+        if payment is not None:
+            return [self._resolve_secret_key_for_payment(payment=payment, settings=settings)]
+        if settings.app_env == "production":
+            raise PaystackWebhookSignatureError(
+                "Cannot resolve merchant secret for Paystack webhook verification."
+            )
+        fallback = [
+            secret
+            for secret in (
+                self._env_secret_for_mode(mode=PAYSTACK_MODE_TEST, settings=settings),
+                self._env_secret_for_mode(mode=PAYSTACK_MODE_LIVE, settings=settings),
+            )
+            if secret is not None
+        ]
+        if fallback:
+            return fallback
+        detail = (
+            "Cannot resolve merchant secret for Paystack webhook verification."
+            if provider_reference is None
+            else f"Cannot resolve merchant secret for Paystack reference {provider_reference}."
+        )
+        raise PaystackWebhookSignatureError(detail)
+
+    def _merchant_id_for_payment(self, *, payment: Payment) -> UUID | None:
+        if payment.sale_id is not None:
+            return self.db.scalar(
+                select(Store.merchant_id)
+                .select_from(Sale)
+                .join(Store, Store.id == Sale.store_id)
+                .where(Sale.id == payment.sale_id)
+            )
+        if payment.provider_reference is not None:
+            return self.db.scalar(
+                select(Store.merchant_id)
+                .select_from(Receivable)
+                .join(Store, Store.id == Receivable.store_id)
+                .where(Receivable.payment_provider_reference == payment.provider_reference)
+            )
+        return None
+
+    def _load_payment_by_reference(self, *, provider_reference: str | None) -> Payment | None:
+        if provider_reference is None:
+            return None
+        return self.db.scalar(
+            select(Payment).where(
+                Payment.provider == PAYMENT_PROVIDER_PAYSTACK,
+                Payment.provider_reference == provider_reference,
+            )
+        )
+
     @staticmethod
     def _parse_webhook_payload(*, raw_body: bytes) -> dict[str, Any]:
         try:
@@ -745,19 +853,11 @@ class PaymentService:
         *,
         raw_body: bytes,
         signature: str | None,
-        settings: Settings,
+        secrets: list[str],
     ) -> None:
         normalized = (signature or "").strip().lower()
         if not normalized:
             raise PaystackWebhookSignatureError("Missing Paystack signature.")
-        secrets = [
-            v.strip()
-            for v in (
-                settings.paystack_secret_key_test,
-                settings.paystack_secret_key_live,
-            )
-            if isinstance(v, str) and v.strip()
-        ]
         if not secrets:
             raise PaystackWebhookSignatureError("No Paystack secret key configured.")
         for secret in secrets:

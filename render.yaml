@@ -31,6 +31,8 @@ services:
         sync: false
       - key: PAYSTACK_SECRET_KEY_LIVE
         sync: false
+      - key: PAYMENT_CONFIG_ENCRYPTION_KEY
+        sync: false
       - key: ARKESEL_API_KEY
         sync: false
 

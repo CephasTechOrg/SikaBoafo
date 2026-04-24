@@ -19,25 +19,43 @@ class _FakeSettingsApi extends SettingsApi {
   PaystackConnectionSettings _state;
   int saveCalls = 0;
   int disconnectCalls = 0;
+  String? lastPublicKey;
+  String? lastSecretKey;
+  String? lastMode;
 
   @override
   Future<PaystackConnectionSettings> fetchPaystackConnection() async => _state;
 
   @override
   Future<PaystackConnectionSettings> savePaystackConnection({
-    required String publicKey,
+    String? publicKey,
+    String? secretKey,
     required String mode,
     String? accountLabel,
   }) async {
     saveCalls += 1;
+    lastPublicKey = publicKey;
+    lastSecretKey = secretKey;
+    lastMode = mode;
     _state = PaystackConnectionSettings(
       provider: 'paystack',
       isConnected: true,
       mode: mode,
       accountLabel: accountLabel,
-      publicKeyMasked: publicKey.length <= 10
-          ? publicKey
-          : '${publicKey.substring(0, 6)}...${publicKey.substring(publicKey.length - 4)}',
+      test: mode == 'test'
+          ? const PaystackModeState(
+              configured: true,
+              publicKeyMasked: 'pk_tes...5678',
+              secretKeyMasked: 'sk_test_...5678',
+            )
+          : _state.test,
+      live: mode == 'live'
+          ? const PaystackModeState(
+              configured: true,
+              publicKeyMasked: 'pk_liv...5678',
+              secretKeyMasked: 'sk_live_...5678',
+            )
+          : _state.live,
     );
     return _state;
   }
@@ -45,12 +63,13 @@ class _FakeSettingsApi extends SettingsApi {
   @override
   Future<PaystackConnectionSettings> disconnectPaystackConnection() async {
     disconnectCalls += 1;
-    _state = PaystackConnectionSettings(
+    _state = const PaystackConnectionSettings(
       provider: 'paystack',
       isConnected: false,
-      mode: _state.mode,
-      accountLabel: _state.accountLabel,
-      publicKeyMasked: _state.publicKeyMasked,
+      mode: 'test',
+      accountLabel: null,
+      test: PaystackModeState(configured: false),
+      live: PaystackModeState(configured: false),
     );
     return _state;
   }
@@ -79,7 +98,8 @@ void main() {
         isConnected: false,
         mode: 'test',
         accountLabel: null,
-        publicKeyMasked: null,
+        test: PaystackModeState(configured: false),
+        live: PaystackModeState(configured: false),
       ),
     );
 
@@ -87,7 +107,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Not Connected'), findsWidgets);
-    expect(find.text('Save Paystack Settings'), findsOneWidget);
+    expect(find.text('Save And Verify'), findsOneWidget);
+    expect(find.text('Not configured'), findsWidgets);
+  });
+
+  testWidgets('requires secret key for unconfigured selected mode',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final fakeApi = _FakeSettingsApi(
+      const PaystackConnectionSettings(
+        provider: 'paystack',
+        isConnected: false,
+        mode: 'test',
+        accountLabel: null,
+        test: PaystackModeState(configured: false),
+        live: PaystackModeState(configured: false),
+      ),
+    );
+
+    await tester.pumpWidget(_buildScreen(fakeApi));
+    await tester.pumpAndSettle();
+
+    final saveButton = find.text('Save And Verify');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    expect(fakeApi.saveCalls, 0);
+    expect(find.text('Secret key is required for the selected mode.'),
+        findsOneWidget);
   });
 
   testWidgets('save then disconnect updates connection status', (tester) async {
@@ -102,7 +154,8 @@ void main() {
         isConnected: false,
         mode: 'test',
         accountLabel: null,
-        publicKeyMasked: null,
+        test: PaystackModeState(configured: false),
+        live: PaystackModeState(configured: false),
       ),
     );
 
@@ -110,15 +163,21 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Public key'),
+      find.widgetWithText(TextField, 'Public key (optional)'),
       'pk_test_abcdefgh12345678',
     );
-    final saveButton = find.text('Save Paystack Settings');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Secret key'),
+      'sk_test_abcdefgh12345678',
+    );
+    final saveButton = find.text('Save And Verify');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     expect(fakeApi.saveCalls, 1);
+    expect(fakeApi.lastPublicKey, 'pk_test_abcdefgh12345678');
+    expect(fakeApi.lastSecretKey, 'sk_test_abcdefgh12345678');
     expect(find.text('Connected'), findsWidgets);
     expect(find.text('Disconnect Paystack'), findsOneWidget);
 

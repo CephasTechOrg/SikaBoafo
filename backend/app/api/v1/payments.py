@@ -26,9 +26,11 @@ from app.services.payment_service import (
     PaystackConnectionMissingError,
     PaystackSecretKeyMissingError,
 )
+from app.core.crypto import CryptoConfigError
 from app.services.payment_settings_service import (
     PaymentSettingsContextError,
     PaymentSettingsService,
+    PaymentSettingsValidationError,
 )
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -63,6 +65,15 @@ def upsert_paystack_connection(
         )
     except PaymentSettingsContextError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentSettingsValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 @router.delete("/paystack/connection", response_model=PaystackConnectionOut)
@@ -96,6 +107,11 @@ def initiate_payment(
     except (PaymentInitiationStateError, PaystackConnectionMissingError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
@@ -135,6 +151,11 @@ def initiate_sale_payment(
     except (PaymentInitiationStateError, PaystackConnectionMissingError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),

@@ -48,6 +48,22 @@ class PaystackClient:
     base_url: str = "https://api.paystack.co"
     timeout_seconds: float = 15.0
 
+    def fetch_payment_session_timeout(self, *, secret_key: str) -> int | None:
+        url = f"{self.base_url.rstrip('/')}/integration/payment_session_timeout"
+        raw = self._get_json(
+            url=url,
+            headers={
+                "Authorization": f"Bearer {secret_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        data = raw.get("data")
+        if raw.get("status") is not True or not isinstance(data, dict):
+            msg = str(raw.get("message") or "Paystack credential verification failed.")
+            raise PaystackClientError(msg, response_body=raw)
+        timeout = data.get("payment_session_timeout")
+        return timeout if isinstance(timeout, int) else None
+
     def initialize_transaction(
         self,
         *,

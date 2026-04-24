@@ -25,6 +25,7 @@ class ConnectPaystackScreen extends ConsumerStatefulWidget {
 class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   final TextEditingController _accountLabelCtrl = TextEditingController();
   final TextEditingController _publicKeyCtrl = TextEditingController();
+  final TextEditingController _secretKeyCtrl = TextEditingController();
   String _mode = 'test';
   bool _saving = false;
   bool _disconnecting = false;
@@ -34,6 +35,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   void dispose() {
     _accountLabelCtrl.dispose();
     _publicKeyCtrl.dispose();
+    _secretKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -46,6 +48,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     }
 
     final isConnected = connection?.isConnected ?? false;
+    final activeModeState = _activeModeState(connection);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -86,7 +89,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'Step 1: configure payment mode and public key',
+                                  'Store merchant-owned credentials securely on the backend',
                                   style: TextStyle(
                                     color: Color(0xFFC7D0E5),
                                     fontSize: 12.5,
@@ -119,16 +122,19 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                         isConnected: isConnected,
                         mode: connection?.mode ?? _mode,
                         accountLabel: connection?.accountLabel,
-                        publicKeyMasked: connection?.publicKeyMasked,
+                        test: connection?.test,
+                        live: connection?.live,
                       ),
                       const SizedBox(height: 14),
                       _ConnectionFormCard(
                         accountLabelCtrl: _accountLabelCtrl,
                         publicKeyCtrl: _publicKeyCtrl,
+                        secretKeyCtrl: _secretKeyCtrl,
                         mode: _mode,
                         saving: _saving,
                         disconnecting: _disconnecting,
                         isConnected: isConnected,
+                        activeModeState: activeModeState,
                         onModeChanged: (value) => setState(() => _mode = value),
                         onSave: _saving ? null : _saveConnection,
                         onDisconnect:
@@ -138,11 +144,10 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                       ),
                       const SizedBox(height: 14),
                       const _InfoCard(
-                        title: 'What this step covers',
+                        title: 'How this works',
                         body:
-                            'This page stores your Paystack mode and public key label. '
-                            'Transaction initialization, secret-key handling, and webhook '
-                            'verification are in the next M4 slices.',
+                            'The app only collects the merchant secret key. The backend verifies it, encrypts it, '
+                            'and uses it for Paystack calls. Secret keys are write-only and never shown back in full.',
                       ),
                     ],
                   ),
@@ -162,32 +167,48 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       if (!mounted) return;
       _accountLabelCtrl.text = connection.accountLabel ?? '';
       _publicKeyCtrl.text = '';
+      _secretKeyCtrl.text = '';
       setState(() => _mode = connection.mode);
     });
   }
 
+  PaystackModeState? _activeModeState(PaystackConnectionSettings? connection) {
+    if (connection == null) return null;
+    return _mode == 'live' ? connection.live : connection.test;
+  }
+
   Future<void> _saveConnection() async {
     final publicKey = _publicKeyCtrl.text.trim();
-    if (publicKey.isEmpty) {
-      _showMessage('Public key is required.');
+    final secretKey = _secretKeyCtrl.text.trim();
+    final activeModeState = _activeModeState(
+      ref.read(paystackConnectionProvider).valueOrNull,
+    );
+    if (publicKey.isNotEmpty && !publicKey.startsWith('pk_')) {
+      _showMessage('Public key should start with "pk_".');
       return;
     }
-    if (!publicKey.startsWith('pk_')) {
-      _showMessage('Public key should start with "pk_".');
+    if (secretKey.isEmpty && !(activeModeState?.configured ?? false)) {
+      _showMessage('Secret key is required for the selected mode.');
+      return;
+    }
+    if (secretKey.isNotEmpty && !secretKey.startsWith('sk_')) {
+      _showMessage('Secret key should start with "sk_".');
       return;
     }
 
     setState(() => _saving = true);
     try {
       await ref.read(paystackSettingsApiProvider).savePaystackConnection(
-            publicKey: publicKey,
+            publicKey: publicKey.isEmpty ? null : publicKey,
+            secretKey: secretKey.isEmpty ? null : secretKey,
             mode: _mode,
             accountLabel: _accountLabelCtrl.text,
           );
       _publicKeyCtrl.clear();
+      _secretKeyCtrl.clear();
       ref.invalidate(paystackConnectionProvider);
       if (!mounted) return;
-      _showMessage('Paystack settings saved.');
+      _showMessage('Paystack credentials saved and verified.');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString());
@@ -290,13 +311,15 @@ class _StatusCard extends StatelessWidget {
     required this.isConnected,
     required this.mode,
     required this.accountLabel,
-    required this.publicKeyMasked,
+    required this.test,
+    required this.live,
   });
 
   final bool isConnected;
   final String mode;
   final String? accountLabel;
-  final String? publicKeyMasked;
+  final PaystackModeState? test;
+  final PaystackModeState? live;
 
   @override
   Widget build(BuildContext context) {
@@ -307,19 +330,36 @@ class _StatusCard extends StatelessWidget {
           PremiumSectionHeading(
             title: 'Connection Status',
             caption: isConnected
-                ? 'Paystack is configured for this business.'
+                ? 'The active merchant mode is verified and ready.'
                 : 'Paystack is not connected yet.',
           ),
           const SizedBox(height: 12),
           _StatusRow(
-              label: 'Status',
-              value: isConnected ? 'Connected' : 'Not Connected'),
-          _StatusRow(label: 'Mode', value: mode == 'live' ? 'Live' : 'Test'),
+            label: 'Status',
+            value: isConnected ? 'Connected' : 'Not Connected',
+          ),
+          _StatusRow(label: 'Active mode', value: mode == 'live' ? 'Live' : 'Test'),
           _StatusRow(label: 'Label', value: accountLabel ?? 'Not set'),
-          _StatusRow(label: 'Public key', value: publicKeyMasked ?? 'Not set'),
+          _StatusRow(label: 'Test', value: _modeSummary(test)),
+          _StatusRow(label: 'Live', value: _modeSummary(live)),
         ],
       ),
     );
+  }
+
+  String _modeSummary(PaystackModeState? state) {
+    if (state == null || !state.configured) return 'Not configured';
+    final parts = <String>['Configured'];
+    if (state.verifiedAt != null) {
+      parts.add('Verified');
+    }
+    if (state.secretKeyMasked != null) {
+      parts.add(state.secretKeyMasked!);
+    }
+    if (state.publicKeyMasked != null) {
+      parts.add(state.publicKeyMasked!);
+    }
+    return parts.join(' · ');
   }
 }
 
@@ -366,10 +406,12 @@ class _ConnectionFormCard extends StatelessWidget {
   const _ConnectionFormCard({
     required this.accountLabelCtrl,
     required this.publicKeyCtrl,
+    required this.secretKeyCtrl,
     required this.mode,
     required this.saving,
     required this.disconnecting,
     required this.isConnected,
+    required this.activeModeState,
     required this.onModeChanged,
     required this.onSave,
     required this.onDisconnect,
@@ -377,10 +419,12 @@ class _ConnectionFormCard extends StatelessWidget {
 
   final TextEditingController accountLabelCtrl;
   final TextEditingController publicKeyCtrl;
+  final TextEditingController secretKeyCtrl;
   final String mode;
   final bool saving;
   final bool disconnecting;
   final bool isConnected;
+  final PaystackModeState? activeModeState;
   final ValueChanged<String> onModeChanged;
   final VoidCallback? onSave;
   final VoidCallback? onDisconnect;
@@ -393,7 +437,7 @@ class _ConnectionFormCard extends StatelessWidget {
         children: [
           const PremiumSectionHeading(
             title: 'Paystack Settings',
-            caption: 'Choose mode and save the public key for this merchant.',
+            caption: 'Choose a mode and save merchant credentials securely.',
           ),
           const SizedBox(height: 12),
           TextField(
@@ -420,9 +464,27 @@ class _ConnectionFormCard extends StatelessWidget {
           const SizedBox(height: 10),
           TextField(
             controller: publicKeyCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Public key',
-              hintText: 'pk_test_...',
+            decoration: InputDecoration(
+              labelText: 'Public key (optional)',
+              hintText: mode == 'live' ? 'pk_live_...' : 'pk_test_...',
+              helperText: activeModeState?.publicKeyMasked == null
+                  ? 'Optional metadata for support and display.'
+                  : 'Current: ${activeModeState!.publicKeyMasked}',
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: secretKeyCtrl,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: activeModeState?.configured == true
+                  ? 'Secret key (leave blank to keep current)'
+                  : 'Secret key',
+              hintText: mode == 'live' ? 'sk_live_...' : 'sk_test_...',
+              helperText: activeModeState?.secretKeyMasked == null
+                  ? 'Write-only. Sent to the backend for verification and encrypted storage.'
+                  : 'Stored: ${activeModeState!.secretKeyMasked}',
             ),
             textInputAction: TextInputAction.done,
           ),
@@ -438,7 +500,7 @@ class _ConnectionFormCard extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.link_rounded),
-              label: Text(saving ? 'Saving...' : 'Save Paystack Settings'),
+              label: Text(saving ? 'Saving...' : 'Save And Verify'),
             ),
           ),
           if (isConnected) ...[
@@ -455,7 +517,8 @@ class _ConnectionFormCard extends StatelessWidget {
                       )
                     : const Icon(Icons.link_off_rounded),
                 label: Text(
-                    disconnecting ? 'Disconnecting...' : 'Disconnect Paystack'),
+                  disconnecting ? 'Disconnecting...' : 'Disconnect Paystack',
+                ),
               ),
             ),
           ],

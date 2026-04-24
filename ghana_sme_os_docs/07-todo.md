@@ -167,9 +167,9 @@ File: `backend/app/models/payment.py` · Status: `[~] 🚧` (service writes now 
 **Action**: Add `business_id`, `customer_id`, `internal_reference`, `payment_channel`; complete webhook settlement + post-payment notification flow.
 
 ### A.12 `payment_provider_connections`
-Status: `[~] 🚧` *(M4 Step 1 complete — connection settings slice built)*
+Status: `[x] ✅` *(merchant-owned credential architecture implemented)*
 
-`payment_provider_connections` now exists with merchant-level Paystack connection state (`provider`, `mode`, `account_label`, `public_key`, `is_connected`) and owner-only APIs/UI. Remaining for full parity: encrypted secret storage and verification flow.
+`payment_provider_connections` now stores merchant-level Paystack state for **both test and live modes**: active `mode`, `account_label`, per-mode `public_key`, encrypted `secret_key`, last4 mask, verification timestamps, and `is_connected` for the active verified mode. Owner-only APIs/UI now use write-only secret submission with backend verification on save.
 
 ### A.13 `notifications`
 Status: `[ ] ❌` **Entire table missing.**
@@ -250,7 +250,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 1.5 | Inventory Screen (list, current stock, reorder warnings, movement history, add/adjust stock) | `[~] 🚧` | `features/inventory/` — has list/stock/reorder/add/adjust; **missing stock movement history UI** |
 | 1.6 | Customers Screen (list, phone, total owed, recent payments, preferred channel, reminder) | `[x] ✅` | Built M3 — `features/customers/` with `CustomersScreen` (list + outstanding badge) and `CustomerDetailScreen` (profile + debt history). Accessible via people icon in Debts header. **Remaining**: send reminder (M5), payment link (M4). |
 | 1.7 | Staff Screen (roles, activity, permissions) | `[x] ✅` | Built M2 — `features/settings/presentation/staff_screen.dart`. Invite, list, change role, deactivate. Accessible from Business Settings sheet. |
-| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[~] 🚧` | M4 Step 1 done: connect/status/mode in `features/settings/presentation/connect_paystack_screen.dart`. Remaining: verification/test flow. |
+| 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[x] ✅` | `features/settings/presentation/connect_paystack_screen.dart` now supports test/live mode selection, write-only secret capture, backend verify-on-save, and per-mode configured/verified status. |
 | 1.9 | Clickable prototype | `[~] 🚧` | Live app = prototype. Mockups in `mobile/UI UPDATES/`. |
 | 1.10 | Dashboard quick actions: New Sale, **New Invoice**, Record Stock, **Send Reminder**, Add Customer | `[~] 🚧` | Has New Sale and Add Customer. **Missing New Invoice, Record Stock shortcut, Send Reminder shortcut.** |
 | 1.11 | Enterprise UI polish (per `06-ui-design.md` visual tone) | `[~] 🚧` | Dashboard/Inventory/Sales/Debts migrated. **Remaining: Expenses, Auth, Settings, Onboarding.** |
@@ -285,8 +285,8 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 3.9 | inventory_movements | `[x] ✅` | `models/inventory.py` | M2: `user_id` added |
 | 3.10 | Sales + sale_items | `[x] ✅` | `models/sale.py` | M1+M2: `subtotal`, `discount`, `tax`, `cashier_id` all added |
 | 3.11 | Invoices | `[ ] ❌` | — | See §C.2 decision |
-| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-7: receivable initiation + receivable webhook settlement + sale initiation + sale webhook settlement + mobile sales/debt payment-status polling + partial-payment hardening built. Remaining: notifications + provider-abstraction/secret-hardening tasks. |
-| 3.13 | payment_provider_connections | `[~] 🚧` | `models/payment_provider_connection.py` + migration 009 | M4 Step 1 done; encrypted secret + verification still pending |
+| 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-7 plus merchant-owned credential refactor are built: initiation/webhooks now use merchant-specific encrypted secrets with payment-level mode snapshots. Remaining: notifications and optional provider abstraction cleanup. |
+| 3.13 | payment_provider_connections | `[x] ✅` | `models/payment_provider_connection.py` + migrations 009/012 | Merchant-owned test/live credentials now persist encrypted at rest with verify-on-save and active-mode connection status. |
 | 3.14 | Notifications | `[ ] ❌` | — | Phase 5 |
 | 3.15 | Audit logs | `[x] ✅` | `models/audit_log.py`, `services/audit_service.py` | M1: writes on every mutation |
 | 3.16 | Expenses | `[x] ✅` | `models/expense.py` | Ahead of docs |
@@ -303,8 +303,8 @@ Current stubs:
 |---|---|---|---|
 | 4.1 | Provider abstraction interface | `[ ] ❌` | `backend/app/integrations/payments/base.py` (new) |
 | 4.2 | `payment_provider_connections` table + model | `[x] ✅` | `models/payment_provider_connection.py` + migration 009 |
-| 4.3 | Encrypt merchant secret at rest (Fernet/libsodium) | `[ ] ❌` | `core/crypto.py` (new) |
-| 4.4 | Paystack HTTP client | `[ ] ❌` | `integrations/paystack/client.py` |
+| 4.3 | Encrypt merchant secret at rest (Fernet/libsodium) | `[x] ✅` | `core/crypto.py` + `PAYMENT_CONFIG_ENCRYPTION_KEY` |
+| 4.4 | Paystack HTTP client | `[x] ✅` | `integrations/paystack/client.py` now covers initialization, verify, and connection verification (`/integration/payment_session_timeout`) |
 | 4.5 | "Connect Paystack" settings UI | `[x] ✅` | `mobile/lib/features/settings/presentation/connect_paystack_screen.dart` |
 | 4.6 | Backend connect/disconnect API | `[x] ✅` | `/payments/paystack/connection` (`GET/PUT/DELETE`) |
 | 4.7 | Payment request creation service | `[~] 🚧` | `services/payment_service.py` + `POST /payments/initiate` + `POST /payments/initiate-sale` |
@@ -460,6 +460,12 @@ The big one. §4.1 through §4.16.
   - mobile `ConnectPaystackScreen` + Business Settings navigation entry
   - backend + mobile tests added and passing
   - stabilization sweep complete: `python -m pytest -q` (56 pass), `flutter analyze` (clean), `flutter test` (42 pass)
+- M4 Step 8 (2026-04-24) `[x] ✅`: merchant-owned credential refactor:
+  - merchant test/live Paystack credentials now stored encrypted at rest with backend verify-on-save
+  - mobile Paystack settings now collect write-only secret keys and expose per-mode configured/verified status
+  - payment initiation now uses merchant-specific secrets; Render env keys are non-production fallback only
+  - webhooks now validate signatures against the payment’s stored merchant/mode snapshot rather than current connection mode
+  - stabilization sweep: `python -m pytest -q backend/app/tests/test_auth.py backend/app/tests/test_crypto.py backend/app/tests/test_payment_settings.py backend/app/tests/test_payments_initiate.py backend/app/tests/test_paystack_webhooks.py` (31 pass), `flutter analyze` (clean), `flutter test test/features/connect_paystack_screen_test.dart` (3 pass)
 - M4 Step 2 (2026-04-24) `[~] 🚧`: built initiation slice for receivable links:
   - backend Paystack client + `POST /payments/initiate` (`services/payment_service.py`)
   - pending `payments` row now created on initiation; receivable `payment_link` + `payment_provider_reference` updated
@@ -590,5 +596,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are now complete with a stabilization pass on 2026-04-23. M4 is in progress with Paystack connection, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, and partial-payment hardening; auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications + provider-abstraction/secret-hardening tasks, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are complete. M4 now includes Paystack connection, merchant-owned encrypted credentials with verify-on-save, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, and partial-payment hardening; auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
 

@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     paystack_secret_key_test: str | None = Field(default=None)
     paystack_secret_key_live: str | None = Field(default=None)
     paystack_http_timeout_seconds: float = Field(default=15.0, ge=3.0, le=60.0)
+    payment_config_encryption_key: str | None = Field(default=None)
 
     secret_key: str = Field(default="change-me-in-production", min_length=16)
     auth_token_issuer: str = Field(default="biztrack-gh")
