@@ -117,14 +117,7 @@ class _HomeDashboard extends ConsumerWidget {
   final Future<void> Function() onSignOut;
   final ValueChanged<int> onNavigate;
 
-  Future<void> _openSettings(BuildContext ctx, MerchantContext mc) async {
-    await showModalBottomSheet<void>(
-      context: ctx,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BusinessSettingsSheet(initialContext: mc),
-    );
-  }
+  void _openSettings(BuildContext ctx) => ctx.push(AppRoute.settings.path);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -152,7 +145,7 @@ class _HomeDashboard extends ConsumerWidget {
               _Header(
                 mc: mc,
                 summaryAsync: summaryAsync,
-                onSettings: () => _openSettings(context, mc),
+                onSettings: () => _openSettings(context),
                 onNavigate: onNavigate,
               ),
               Expanded(
