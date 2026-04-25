@@ -76,8 +76,9 @@ class PaystackClient:
                 },
             )
         except PaystackClientError as exc:
-            if exc.status_code == 404:
-                # Transaction not found — key is valid, Paystack accepted it.
+            if exc.status_code in {400, 404}:
+                # Paystack looked up the reference and found nothing — key is valid.
+                # Paystack returns 400 (not 404) for non-existent transaction references.
                 return
             if exc.status_code == 403:
                 # Endpoint restricted at account level but key is recognised.
