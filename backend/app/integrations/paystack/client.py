@@ -56,18 +56,19 @@ class PaystackClient:
     timeout_seconds: float = 15.0
 
     def verify_secret_key(self, *, secret_key: str) -> None:
-        """Verify a Paystack secret key using GET /customer.
+        """Verify a Paystack secret key via GET /transaction/verify/{ref}.
 
-        /customer?perPage=1 is a core business endpoint that returns 200 (even with
-        an empty list) for any valid sk_test_ or sk_live_ key regardless of account
-        type or country. Invalid keys return 401. We also tolerate 403 from any
-        endpoint as "key recognized but endpoint restricted" — that is still a valid key.
+        We use a deliberately non-existent reference. A valid key returns 404
+        (transaction not found — key accepted by Paystack). An invalid key returns
+        401 before Paystack even looks up the reference. The /customer and /bank
+        endpoints are blocked at CDN level for Render's IPs; the transaction
+        endpoint is not.
 
-        Raises PaystackClientError only for 401 (genuinely invalid key) or network errors.
+        Raises PaystackClientError only for 401 (key rejected) or network errors.
         """
-        url = f"{self.base_url.rstrip('/')}/customer?perPage=1"
+        url = f"{self.base_url.rstrip('/')}/transaction/verify/BTGH_key_check_probe"
         try:
-            raw = self._get_json(
+            self._get_json(
                 url=url,
                 headers={
                     "Authorization": f"Bearer {secret_key}",
@@ -75,15 +76,13 @@ class PaystackClient:
                 },
             )
         except PaystackClientError as exc:
-            # 403 = key is recognized by Paystack but endpoint has account-level
-            # restrictions (common for non-Nigerian accounts on some endpoints).
-            # This is distinct from 401 which means the key itself is invalid.
+            if exc.status_code == 404:
+                # Transaction not found — key is valid, Paystack accepted it.
+                return
             if exc.status_code == 403:
+                # Endpoint restricted at account level but key is recognised.
                 return
             raise
-        if raw.get("status") is not True:
-            msg = str(raw.get("message") or "Paystack credential verification failed.")
-            raise PaystackClientError(msg, response_body=raw)
 
     def initialize_transaction(
         self,

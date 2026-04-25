@@ -156,8 +156,8 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                         const _InfoCard(
                           title: 'How this works',
                           body:
-                              'Your secret key is encrypted and stored securely on the server — never shown back in full. '
-                              'Format is validated on save; the key is confirmed working on your first payment.',
+                              'Your secret key is verified with Paystack, then encrypted and stored securely on the server — '
+                              'never shown back in full. Payments go directly into your own Paystack account.',
                         ),
                       ],
                     ),
@@ -311,8 +311,11 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       if (statusCode == 503) {
         return 'Server configuration error. Please contact support.';
       }
+      if (statusCode == 502) {
+        return 'Could not reach Paystack to verify the key. Check your internet and try again.';
+      }
       if (statusCode == 400) {
-        return 'Invalid key format. Check the copied value and selected mode.';
+        return 'Invalid key. Check you copied the correct secret key for this mode.';
       }
       if (statusCode == 401 || statusCode == 403) {
         return 'Permission denied. Only the merchant owner can update payment settings.';
@@ -726,8 +729,8 @@ class _ConnectionFormCardState extends State<_ConnectionFormCard> {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.save_rounded),
-              label: Text(widget.saving ? 'Saving...' : 'Save Key'),
+                  : const Icon(Icons.verified_rounded),
+              label: Text(widget.saving ? 'Verifying...' : 'Save & Verify'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
