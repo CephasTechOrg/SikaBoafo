@@ -107,7 +107,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Not Connected'), findsWidgets);
-    expect(find.text('Save And Verify'), findsOneWidget);
+    expect(find.text('Save & Verify'), findsOneWidget);
     expect(find.text('Not configured'), findsWidgets);
   });
 
@@ -132,13 +132,13 @@ void main() {
     await tester.pumpWidget(_buildScreen(fakeApi));
     await tester.pumpAndSettle();
 
-    final saveButton = find.text('Save And Verify');
+    final saveButton = find.text('Save & Verify');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
 
     expect(fakeApi.saveCalls, 0);
-    expect(find.text('Secret key is required for the selected mode.'),
+    expect(find.text('Secret key is required to connect this mode for the first time.'),
         findsOneWidget);
   });
 
@@ -170,7 +170,7 @@ void main() {
       find.widgetWithText(TextField, 'Secret key'),
       'sk_test_abcdefgh12345678',
     );
-    final saveButton = find.text('Save And Verify');
+    final saveButton = find.text('Save & Verify');
     await tester.ensureVisible(saveButton);
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
@@ -184,6 +184,12 @@ void main() {
     final disconnectButton = find.text('Disconnect Paystack');
     await tester.ensureVisible(disconnectButton);
     await tester.tap(disconnectButton);
+    await tester.pumpAndSettle();
+
+    // _DisconnectConfirmDialog is now shown — type the confirmation word
+    await tester.enterText(find.byType(TextField).last, 'DISCONNECT');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
