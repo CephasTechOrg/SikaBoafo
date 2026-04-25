@@ -23,6 +23,7 @@ def _settings() -> Settings:
         arkesel_otp_length=6,
         arkesel_otp_type="numeric",
         arkesel_otp_expiry_minutes=5,
+        auth_mock_otp_code=None,  # ensure .env mock code doesn't short-circuit DB writes
     )
 
 
