@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/premium_ui.dart';
@@ -41,7 +42,7 @@ class _ReceiveRepaymentScreenState
               title: 'Receive Payment',
               subtitle: 'Apply a repayment and keep the outstanding balance accurate.',
               leading: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               ),
               badge: const PremiumBadge(
@@ -218,7 +219,7 @@ class _ReceiveRepaymentScreenState
             paymentMethodLabel: _method,
           );
       if (!mounted) return;
-      Navigator.of(context).pop(true);
+      context.pop(true);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

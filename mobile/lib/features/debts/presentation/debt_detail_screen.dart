@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
@@ -9,7 +10,6 @@ import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
-import 'receive_repayment_screen.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -259,7 +259,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 ),
                 const SizedBox(height: 14),
                 if (widget.detail.payments.isEmpty)
-                  const _InlineEmptyState(
+                  const PremiumEmptyState(
                     icon: Icons.receipt_long_rounded,
                     title: 'No repayments recorded yet',
                     message:
@@ -286,11 +286,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 
   Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) =>
-            ReceiveRepaymentScreen(receivableId: widget.receivableId),
-      ),
+    final saved = await context.push<bool>(
+      '/debts/${widget.receivableId}/repayment',
     );
     if (saved != true || !context.mounted) return;
     ref.invalidate(receivableDetailProvider(widget.receivableId));
@@ -374,44 +371,28 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     );
   }
 
-  Future<ReceivableDto?> _pollReceivableStatus({
-    int attempts = 6,
-    Duration interval = const Duration(seconds: 2),
-  }) async {
-    ReceivableDto? latest;
-    for (var index = 0; index < attempts; index++) {
-      latest = await ref
-          .read(debtsApiProvider)
-          .fetchReceivableById(widget.receivableId);
-      if (latest.status == 'settled' ||
-          latest.status == 'cancelled' ||
-          latest.status == 'partially_paid') {
-        return latest;
-      }
-      if (index < attempts - 1) {
-        await Future<void>.delayed(interval);
-      }
-    }
-    return latest;
-  }
-
   Future<void> _checkPaymentStatus(BuildContext context) async {
     if (_isCheckingPaymentStatus) return;
     setState(() => _isCheckingPaymentStatus = true);
     try {
-      final latest = await _pollReceivableStatus();
+      final latest = await ref
+          .read(debtsApiProvider)
+          .fetchReceivableById(widget.receivableId);
       await ref.read(debtsControllerProvider.notifier).refresh();
       ref.invalidate(receivableDetailProvider(widget.receivableId));
       await ref.read(receivableDetailProvider(widget.receivableId).future);
       if (!context.mounted) return;
-      final status = _statusLabel(latest?.status ?? 'open');
-      final outstanding =
-          latest?.outstandingAmount ?? widget.detail.record.outstandingAmount;
+
+      final isTerminal = latest.status == 'settled' ||
+          latest.status == 'cancelled' ||
+          latest.status == 'partially_paid';
+      final status = _statusLabel(latest.status);
+      final outstanding = latest.outstandingAmount;
+      final message = isTerminal
+          ? 'Status updated: $status • Outstanding: ₵$outstanding'
+          : 'Status: $status • Outstanding: ₵$outstanding. If the customer just paid, confirmation may take a moment.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Current debt status: $status • Outstanding: ₵$outstanding'),
-        ),
+        SnackBar(content: Text(message)),
       );
     } catch (error) {
       if (!context.mounted) return;
@@ -419,9 +400,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         SnackBar(content: Text(humanizeDebtsApiError(error))),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isCheckingPaymentStatus = false);
-      }
+      if (mounted) setState(() => _isCheckingPaymentStatus = false);
     }
   }
 }
@@ -471,7 +450,7 @@ class _BalanceHero extends StatelessWidget {
                   ),
                 ),
               ),
-              _StatusPill(
+              PremiumStatusPill(
                 label: _statusLabel(status),
                 foreground: _statusColor(status),
                 background: Colors.white.withValues(alpha: 0.12),
@@ -626,7 +605,7 @@ class _PaymentCard extends StatelessWidget {
               ],
             ),
           ),
-          _StatusPill(
+          PremiumStatusPill(
             label: payment.syncStatus,
             foreground: syncColor,
             background: syncColor.withValues(alpha: 0.12),
@@ -671,82 +650,6 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({
-    required this.label,
-    required this.foreground,
-    required this.background,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: foreground,
-            ),
-      ),
-    );
-  }
-}
-
-class _InlineEmptyState extends StatelessWidget {
-  const _InlineEmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.infoSoft,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(icon, color: AppColors.info, size: 26),
-          ),
-          const SizedBox(height: 14),
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -868,13 +771,8 @@ String _labelizePaymentMethod(String value) {
   };
 }
 
-String _formatDateTime(DateTime value) {
-  final month = value.month.toString().padLeft(2, '0');
-  final day = value.day.toString().padLeft(2, '0');
-  final hour = value.hour.toString().padLeft(2, '0');
-  final minute = value.minute.toString().padLeft(2, '0');
-  return '${value.year}-$month-$day $hour:$minute';
-}
+String _formatDateTime(DateTime value) =>
+    DateFormat('yyyy-MM-dd HH:mm').format(value);
 
 String _formatMoney(String value) {
   final parsed = double.tryParse(value) ?? 0;

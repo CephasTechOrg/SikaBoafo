@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -389,17 +390,39 @@ class _ActiveStaffSection extends StatelessWidget {
                     _StaffTile(
                       member: members[i],
                       onRoleChanged: (newRole) async {
-                        await ref.read(_settingsApiProvider).updateRole(
-                              staffUserId: members[i].userId,
-                              role: newRole,
-                            );
-                        ref.invalidate(_staffListProvider);
+                        try {
+                          await ref.read(_settingsApiProvider).updateRole(
+                                staffUserId: members[i].userId,
+                                role: newRole,
+                              );
+                          ref.invalidate(_staffListProvider);
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to update role. Please try again.'),
+                              backgroundColor: AppColors.danger,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                       onDeactivate: () async {
-                        await ref
-                            .read(_settingsApiProvider)
-                            .deactivateStaff(members[i].userId);
-                        ref.invalidate(_staffListProvider);
+                        try {
+                          await ref
+                              .read(_settingsApiProvider)
+                              .deactivateStaff(members[i].userId);
+                          ref.invalidate(_staffListProvider);
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to deactivate staff. Please try again.'),
+                              backgroundColor: AppColors.danger,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                     ),
                     if (i != members.length - 1) const SizedBox(height: 10),
@@ -690,8 +713,8 @@ class _InviteSheetState extends State<_InviteSheet> {
 
   Future<void> _submit() async {
     final phone = _phoneCtrl.text.trim();
-    if (phone.length < 8) {
-      setState(() => _error = 'Enter a valid phone number.');
+    if (phone.length < 10) {
+      setState(() => _error = 'Enter a valid 10-digit phone number (e.g. 0244123456).');
       return;
     }
     setState(() {
@@ -702,12 +725,35 @@ class _InviteSheetState extends State<_InviteSheet> {
       await widget.settingsApi.inviteStaff(phoneNumber: phone, role: _role);
       widget.onInvited();
       if (mounted) Navigator.of(context).pop();
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _error = 'Failed to send invitation. Please try again.');
+      setState(() => _error = _humanizeInviteError(error));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _humanizeInviteError(Object error) {
+    if (error is DioException) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      if (statusCode == 409) {
+        return 'This phone number already has a pending invite.';
+      }
+      if (statusCode == 400) {
+        if (data is Map<String, dynamic> && data['detail'] is String) {
+          return data['detail'] as String;
+        }
+        return 'Invalid phone number or details.';
+      }
+      if (statusCode == 403) {
+        return 'Only the account owner can invite staff.';
+      }
+      if (error.type == DioExceptionType.connectionError) {
+        return 'No internet connection. Check your network and try again.';
+      }
+    }
+    return 'Failed to send invitation. Please try again.';
   }
 }
 

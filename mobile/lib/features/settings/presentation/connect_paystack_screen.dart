@@ -42,12 +42,14 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Hydrate form every time fresh data arrives (initial load + after save/disconnect).
+    ref.listen<AsyncValue<PaystackConnectionSettings>>(
+      paystackConnectionProvider,
+      (_, next) => next.whenData(_hydrateForm),
+    );
+
     final connectionAsync = ref.watch(paystackConnectionProvider);
     final connection = connectionAsync.valueOrNull;
-    if (connection != null) {
-      _hydrateForm(connection);
-    }
-
     final isConnected = connection?.isConnected ?? false;
     final activeModeState = _activeModeState(connection);
 
@@ -110,47 +112,52 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
             ),
             Expanded(
               child: PremiumSurface(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(paystackConnectionProvider);
-                    await ref.read(paystackConnectionProvider.future);
-                  },
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                    children: [
-                      _StatusCard(
-                        isConnected: isConnected,
-                        mode: connection?.mode ?? _mode,
-                        accountLabel: connection?.accountLabel,
-                        test: connection?.test,
-                        live: connection?.live,
-                      ),
-                      const SizedBox(height: 14),
-                      _ConnectionFormCard(
-                        accountLabelCtrl: _accountLabelCtrl,
-                        publicKeyCtrl: _publicKeyCtrl,
-                        secretKeyCtrl: _secretKeyCtrl,
-                        mode: _mode,
-                        saving: _saving,
-                        disconnecting: _disconnecting,
-                        isConnected: isConnected,
-                        activeModeState: activeModeState,
-                        onModeChanged: (value) => setState(() => _mode = value),
-                        onSave: _saving ? null : _saveConnection,
-                        onDisconnect:
-                            (isConnected && !_disconnecting && !_saving)
-                                ? _disconnectConnection
-                                : null,
-                      ),
-                      const SizedBox(height: 14),
-                      const _InfoCard(
-                        title: 'How this works',
-                        body:
-                            'The app only collects the merchant secret key. The backend verifies it, encrypts it, '
-                            'and uses it for Paystack calls. Secret keys are write-only and never shown back in full.',
-                      ),
-                    ],
+                child: connectionAsync.when(
+                  loading: () => _buildLoadingSkeleton(),
+                  error: (error, _) => _buildErrorPanel(error),
+                  data: (_) => RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(paystackConnectionProvider);
+                      await ref.read(paystackConnectionProvider.future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                      children: [
+                        _StatusCard(
+                          isConnected: isConnected,
+                          mode: connection?.mode ?? _mode,
+                          accountLabel: connection?.accountLabel,
+                          test: connection?.test,
+                          live: connection?.live,
+                        ),
+                        const SizedBox(height: 14),
+                        _ConnectionFormCard(
+                          accountLabelCtrl: _accountLabelCtrl,
+                          publicKeyCtrl: _publicKeyCtrl,
+                          secretKeyCtrl: _secretKeyCtrl,
+                          mode: _mode,
+                          saving: _saving,
+                          disconnecting: _disconnecting,
+                          isConnected: isConnected,
+                          activeModeState: activeModeState,
+                          onModeChanged: (value) =>
+                              setState(() => _mode = value),
+                          onSave: _saving ? null : _saveConnection,
+                          onDisconnect:
+                              (isConnected && !_disconnecting && !_saving)
+                                  ? _disconnectConnection
+                                  : null,
+                        ),
+                        const SizedBox(height: 14),
+                        const _InfoCard(
+                          title: 'How this works',
+                          body:
+                              'The app only collects the merchant secret key. The backend verifies it, encrypts it, '
+                              'and uses it for Paystack calls. Secret keys are write-only and never shown back in full.',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -161,9 +168,31 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     );
   }
 
+  Widget _buildLoadingSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+      children: [
+        _SkeletonPanel(height: 140),
+        const SizedBox(height: 14),
+        _SkeletonPanel(height: 320),
+        const SizedBox(height: 14),
+        _SkeletonPanel(height: 80),
+      ],
+    );
+  }
+
+  Widget _buildErrorPanel(Object error) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+      children: [
+        _LoadErrorPanel(
+          onRetry: () => ref.invalidate(paystackConnectionProvider),
+        ),
+      ],
+    );
+  }
+
   void _hydrateForm(PaystackConnectionSettings connection) {
-    if (_hydratedFromServer) return;
-    _hydratedFromServer = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _accountLabelCtrl.text = connection.accountLabel ?? '';
@@ -557,7 +586,7 @@ class _ModeStatusRow extends StatelessWidget {
   }
 }
 
-class _ConnectionFormCard extends StatelessWidget {
+class _ConnectionFormCard extends StatefulWidget {
   const _ConnectionFormCard({
     required this.accountLabelCtrl,
     required this.publicKeyCtrl,
@@ -585,15 +614,24 @@ class _ConnectionFormCard extends StatelessWidget {
   final VoidCallback? onDisconnect;
 
   @override
+  State<_ConnectionFormCard> createState() => _ConnectionFormCardState();
+}
+
+class _ConnectionFormCardState extends State<_ConnectionFormCard> {
+  bool _obscureSecret = true;
+
+  @override
   Widget build(BuildContext context) {
-    final alreadyConfigured = activeModeState?.configured ?? false;
+    final alreadyConfigured = widget.activeModeState?.configured ?? false;
+    final busy = widget.saving || widget.disconnecting;
+
     return PremiumPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PremiumSectionHeading(
             title: 'Your Paystack Credentials',
-            caption: mode == 'live'
+            caption: widget.mode == 'live'
                 ? 'Live mode — real payments will be processed.'
                 : 'Test mode — use test keys to try without real money.',
           ),
@@ -610,20 +648,21 @@ class _ConnectionFormCard extends StatelessWidget {
               children: [
                 _ModeTab(
                   label: 'Test Mode',
-                  selected: mode == 'test',
-                  onTap: () => onModeChanged('test'),
+                  selected: widget.mode == 'test',
+                  onTap: busy ? null : () => widget.onModeChanged('test'),
                 ),
                 _ModeTab(
                   label: 'Live Mode',
-                  selected: mode == 'live',
-                  onTap: () => onModeChanged('live'),
+                  selected: widget.mode == 'live',
+                  onTap: busy ? null : () => widget.onModeChanged('live'),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
           TextField(
-            controller: accountLabelCtrl,
+            controller: widget.accountLabelCtrl,
+            enabled: !busy,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Account label (optional)',
@@ -633,29 +672,43 @@ class _ConnectionFormCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           TextField(
-            controller: publicKeyCtrl,
+            controller: widget.publicKeyCtrl,
+            enabled: !busy,
             decoration: InputDecoration(
               labelText: 'Public key (optional)',
-              hintText: mode == 'live' ? 'pk_live_...' : 'pk_test_...',
+              hintText: widget.mode == 'live' ? 'pk_live_...' : 'pk_test_...',
               prefixIcon: const Icon(Icons.vpn_key_outlined),
-              helperText: activeModeState?.publicKeyMasked != null
-                  ? 'Saved: ${activeModeState!.publicKeyMasked}'
+              helperText: widget.activeModeState?.publicKeyMasked != null
+                  ? 'Saved: ${widget.activeModeState!.publicKeyMasked}'
                   : 'Found in Paystack Dashboard → Settings → API Keys',
             ),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 10),
           TextField(
-            controller: secretKeyCtrl,
-            obscureText: true,
+            controller: widget.secretKeyCtrl,
+            enabled: !busy,
+            obscureText: _obscureSecret,
             decoration: InputDecoration(
               labelText: alreadyConfigured
                   ? 'Secret key (leave empty to keep current)'
                   : 'Secret key *',
-              hintText: mode == 'live' ? 'sk_live_...' : 'sk_test_...',
+              hintText: widget.mode == 'live' ? 'sk_live_...' : 'sk_test_...',
               prefixIcon: const Icon(Icons.lock_outline_rounded),
-              helperText: activeModeState?.secretKeyMasked != null
-                  ? 'Saved key: ${activeModeState!.secretKeyMasked}'
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureSecret
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                ),
+                onPressed: busy
+                    ? null
+                    : () => setState(() => _obscureSecret = !_obscureSecret),
+                tooltip: _obscureSecret ? 'Show key' : 'Hide key',
+              ),
+              helperText: widget.activeModeState?.secretKeyMasked != null
+                  ? 'Saved key: ${widget.activeModeState!.secretKeyMasked}'
                   : 'Required. This is encrypted and stored securely — never shown back in full.',
             ),
             textInputAction: TextInputAction.done,
@@ -664,8 +717,8 @@ class _ConnectionFormCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: onSave,
-              icon: saving
+              onPressed: widget.onSave,
+              icon: widget.saving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
@@ -675,7 +728,8 @@ class _ConnectionFormCard extends StatelessWidget {
                       ),
                     )
                   : const Icon(Icons.verified_rounded),
-              label: Text(saving ? 'Verifying with Paystack...' : 'Save & Verify'),
+              label: Text(
+                  widget.saving ? 'Verifying with Paystack...' : 'Save & Verify'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
@@ -684,13 +738,13 @@ class _ConnectionFormCard extends StatelessWidget {
               ),
             ),
           ),
-          if (isConnected) ...[
+          if (widget.isConnected) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: onDisconnect,
-                icon: disconnecting
+                onPressed: widget.onDisconnect,
+                icon: widget.disconnecting
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -698,7 +752,9 @@ class _ConnectionFormCard extends StatelessWidget {
                       )
                     : const Icon(Icons.link_off_rounded),
                 label: Text(
-                  disconnecting ? 'Disconnecting...' : 'Disconnect Paystack',
+                  widget.disconnecting
+                      ? 'Disconnecting...'
+                      : 'Disconnect Paystack',
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
@@ -726,30 +782,102 @@ class _ModeTab extends StatelessWidget {
 
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.navy : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected ? Colors.white : AppColors.inkSoft,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.navy : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : onTap == null
+                        ? AppColors.mutedSoft
+                        : AppColors.inkSoft,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SkeletonPanel extends StatelessWidget {
+  const _SkeletonPanel({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadErrorPanel extends StatelessWidget {
+  const _LoadErrorPanel({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumPanel(
+      backgroundColor: AppColors.dangerSoft,
+      borderColor: AppColors.danger,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_outlined, size: 36, color: AppColors.danger),
+          const SizedBox(height: 12),
+          Text(
+            'Could not load your Paystack settings.',
+            style: Theme.of(context).textTheme.titleSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Check your internet connection and try again.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }

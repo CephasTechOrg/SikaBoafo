@@ -182,7 +182,7 @@ class _HomeDashboard extends ConsumerWidget {
                       children: [
                         _QuickActions(onNavigate: onNavigate),
                         const SizedBox(height: 24),
-                        const _InsightBanner(),
+                        _InsightBanner(summary: summaryAsync.valueOrNull),
                         const SizedBox(height: 24),
                         _RecentActivity(activityAsync: activityAsync),
                       ],
@@ -254,7 +254,15 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
               ),
-              _HeaderBtn(icon: Icons.notifications_outlined, onTap: () {}),
+              _HeaderBtn(
+                icon: Icons.notifications_outlined,
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Notifications coming soon'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               _HeaderBtn(icon: Icons.settings_outlined, onTap: onSettings),
             ],
@@ -462,17 +470,22 @@ class _HeaderBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.white.withValues(alpha: 0.18),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
-        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }
@@ -652,10 +665,54 @@ class _QuickTile extends StatelessWidget {
 // ─── Business Insight Banner ──────────────────────────────────────────────────
 
 class _InsightBanner extends StatelessWidget {
-  const _InsightBanner();
+  const _InsightBanner({required this.summary});
+
+  final DashboardSummary? summary;
+
+  ({String title, String body, IconData icon, Color iconBg, Color iconColor}) _insight() {
+    final s = summary;
+    if (s == null) {
+      return (
+        title: 'Loading insights…',
+        body: 'Fetching your business data.',
+        icon: Icons.insights_rounded,
+        iconBg: const Color(0xFFEAF0FF),
+        iconColor: AppColors.info,
+      );
+    }
+    if (s.lowStockCount > 0) {
+      final n = s.lowStockCount;
+      return (
+        title: '$n item${n == 1 ? '' : 's'} running low on stock',
+        body: 'Restock soon to avoid missed sales opportunities.',
+        icon: Icons.inventory_2_rounded,
+        iconBg: const Color(0xFFFFF3CD),
+        iconColor: AppColors.warning,
+      );
+    }
+    final debtIsZero =
+        s.debtOutstandingTotal == '0.00' || s.debtOutstandingTotal == '0';
+    if (!debtIsZero) {
+      return (
+        title: 'GHS ${s.debtOutstandingTotal} outstanding',
+        body: 'Follow up with customers to collect unpaid balances.',
+        icon: Icons.people_rounded,
+        iconBg: const Color(0xFFFFF8E1),
+        iconColor: AppColors.gold,
+      );
+    }
+    return (
+      title: 'All caught up today',
+      body: 'No low stock or outstanding debts — great work!',
+      icon: Icons.check_circle_rounded,
+      iconBg: const Color(0xFFE8F5E9),
+      iconColor: AppColors.success,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final tip = _insight();
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -669,59 +726,34 @@ class _InsightBanner extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF0FF),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.insights_rounded,
-                    size: 18,
-                    color: AppColors.info,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Business Insights',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: tip.iconBg,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
               ),
+              child: Icon(tip.icon, size: 20, color: tip.iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'A clean space for your business recommendations.',
+                    tip.title,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.ink,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
                         ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    'When insights are connected, this card will surface concise signals and next best actions for daily operations.',
+                    tip.body,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.muted,
                           height: 1.45,
@@ -756,33 +788,7 @@ class _RecentActivity extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Expanded(child: _SectionLabel('Recent Activity')),
-            GestureDetector(
-              onTap: () {},
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'View all',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.forest.withValues(alpha: 0.9),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 11,
-                    color: AppColors.forest.withValues(alpha: 0.9),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        const _SectionLabel('Recent Activity'),
         const SizedBox(height: 12),
         if (activityAsync.isLoading && rows.isEmpty)
           _ActivitySkeleton()

@@ -355,12 +355,17 @@ class PremiumReveal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const animMs = 420;
+    final totalMs = animMs + delay.inMilliseconds;
+    final delayFrac = delay.inMilliseconds / totalMs;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 420),
+      duration: Duration(milliseconds: totalMs),
       curve: Curves.easeOutCubic,
       builder: (context, value, _) {
-        final effective = delay == Duration.zero ? value : value;
+        final effective = delay == Duration.zero
+            ? value
+            : ((value - delayFrac) / (1 - delayFrac)).clamp(0.0, 1.0);
         return Opacity(
           opacity: effective,
           child: Transform.translate(
@@ -369,6 +374,36 @@ class PremiumReveal extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class PremiumStatusPill extends StatelessWidget {
+  const PremiumStatusPill({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    super.key,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+            ),
+      ),
     );
   }
 }
