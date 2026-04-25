@@ -180,7 +180,11 @@ void main() {
     expect(find.text('Connected'), findsWidgets);
     expect(find.text('Disconnect Paystack'), findsOneWidget);
 
-    final disconnectButton = find.text('Disconnect Paystack');
+    // Dismiss the success SnackBar (it can overlap the disconnect button and swallow taps)
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    final disconnectButton = find.widgetWithText(OutlinedButton, 'Disconnect Paystack');
     await tester.ensureVisible(disconnectButton);
     await tester.tap(disconnectButton);
     await tester.pumpAndSettle();
@@ -191,7 +195,7 @@ void main() {
       'DISCONNECT',
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
