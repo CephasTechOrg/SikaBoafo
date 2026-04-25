@@ -48,8 +48,16 @@ class PaystackClient:
     base_url: str = "https://api.paystack.co"
     timeout_seconds: float = 15.0
 
-    def fetch_payment_session_timeout(self, *, secret_key: str) -> int | None:
-        url = f"{self.base_url.rstrip('/')}/integration/payment_session_timeout"
+    def verify_secret_key(self, *, secret_key: str) -> None:
+        """Verify a Paystack secret key by listing transactions (perPage=1).
+
+        Uses GET /transaction rather than /integration/payment_session_timeout
+        because the integration endpoint requires elevated account permissions and
+        returns HTTP 403 for many valid keys. The transaction list endpoint works
+        for any valid sk_test_ or sk_live_ key with zero special permissions.
+        Raises PaystackClientError if the key is rejected or Paystack is unreachable.
+        """
+        url = f"{self.base_url.rstrip('/')}/transaction?perPage=1&page=1"
         raw = self._get_json(
             url=url,
             headers={
@@ -57,12 +65,9 @@ class PaystackClient:
                 "Content-Type": "application/json",
             },
         )
-        data = raw.get("data")
-        if raw.get("status") is not True or not isinstance(data, dict):
+        if raw.get("status") is not True:
             msg = str(raw.get("message") or "Paystack credential verification failed.")
             raise PaystackClientError(msg, response_body=raw)
-        timeout = data.get("payment_session_timeout")
-        return timeout if isinstance(timeout, int) else None
 
     def initialize_transaction(
         self,

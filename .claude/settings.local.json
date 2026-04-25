@@ -7,7 +7,11 @@
       "Bash(python -m pytest tests/ -k \"receivable or customer or debt\" -v)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(python -m pytest app/tests/test_payment_settings.py -v)",
+      "Bash(.venv\\\\Scripts\\\\python.exe -m pytest app/tests/test_payment_settings.py -v)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest app/tests/test_payment_settings.py -v)",
+      "Bash(\".venv/Scripts/pip.exe\" install *)"
     ]
   }
 }

@@ -74,7 +74,7 @@ class PaymentSettingsService:
         secret_key_last4 = row.get_secret_key_last4(mode=mode)
         if payload.secret_key is not None:
             configured = self.settings or get_settings()
-            self._client(configured).fetch_payment_session_timeout(
+            self._client(configured).verify_secret_key(
                 secret_key=payload.secret_key,
             )
             verified_at = datetime.now(tz=UTC)

@@ -109,8 +109,8 @@ def test_upsert_paystack_connection_verifies_and_encrypts_secret() -> None:
     original_encryption = _configure_encryption_env()
     try:
         with patch(
-            "app.integrations.paystack.client.PaystackClient.fetch_payment_session_timeout",
-            return_value=30,
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
         ) as mocked_verify:
             upsert = client.put(
                 "/api/v1/payments/paystack/connection",
@@ -148,8 +148,8 @@ def test_failed_verify_does_not_overwrite_existing_working_secret() -> None:
     original_encryption = _configure_encryption_env()
     try:
         with patch(
-            "app.integrations.paystack.client.PaystackClient.fetch_payment_session_timeout",
-            return_value=30,
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
         ):
             first = client.put(
                 "/api/v1/payments/paystack/connection",
@@ -167,7 +167,7 @@ def test_failed_verify_does_not_overwrite_existing_working_secret() -> None:
             verified_before = before.test_verified_at
 
         with patch(
-            "app.integrations.paystack.client.PaystackClient.fetch_payment_session_timeout",
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
             side_effect=PaystackClientError("provider down"),
         ):
             second = client.put(
@@ -196,8 +196,8 @@ def test_switching_to_verified_live_mode_does_not_require_secret_reentry() -> No
     original_encryption = _configure_encryption_env()
     try:
         with patch(
-            "app.integrations.paystack.client.PaystackClient.fetch_payment_session_timeout",
-            return_value=30,
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
         ):
             first = client.put(
                 "/api/v1/payments/paystack/connection",
@@ -240,8 +240,8 @@ def test_disconnect_paystack_connection_clears_both_modes() -> None:
     original_encryption = _configure_encryption_env()
     try:
         with patch(
-            "app.integrations.paystack.client.PaystackClient.fetch_payment_session_timeout",
-            return_value=30,
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
         ):
             client.put(
                 "/api/v1/payments/paystack/connection",
