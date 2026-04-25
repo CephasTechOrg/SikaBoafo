@@ -529,7 +529,7 @@ Make sure your Flutter SDK is 3.5 or newer:
 
 ```bash
 flutter --version
-flutter upgrad
+flutter upgrade
 ```
 
 ### Tests fail with "auth_mock_otp_code" errors
