@@ -43,6 +43,13 @@ class PaystackVerifyResult:
     raw_payload: dict[str, Any]
 
 
+_BASE_HEADERS: dict[str, str] = {
+    "User-Agent": "BizTrackGh-Python/1.0 (+https://biztrackgh-api.onrender.com)",
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+}
+
+
 @dataclass(slots=True)
 class PaystackClient:
     base_url: str = "https://api.paystack.co"
@@ -192,7 +199,7 @@ class PaystackClient:
         req = request.Request(
             url=url,
             data=json.dumps(payload).encode("utf-8"),
-            headers=headers,
+            headers={**_BASE_HEADERS, **headers},
             method="POST",
         )
         try:
@@ -221,7 +228,7 @@ class PaystackClient:
         parsed = _parse_json(body)
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
-            logger.warning("Paystack initialize returned non-JSON payload.")
+            logger.warning("Paystack POST returned non-JSON payload: %.200s", body)
             raise PaystackClientError(msg)
         return parsed
 
@@ -233,7 +240,7 @@ class PaystackClient:
     ) -> dict[str, Any]:
         req = request.Request(
             url=url,
-            headers=headers,
+            headers={**_BASE_HEADERS, **headers},
             method="GET",
         )
         try:
@@ -262,7 +269,7 @@ class PaystackClient:
         parsed = _parse_json(body)
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
-            logger.warning("Paystack verify returned non-JSON payload.")
+            logger.warning("Paystack GET returned non-JSON payload: %.200s", body)
             raise PaystackClientError(msg)
         return parsed
 
