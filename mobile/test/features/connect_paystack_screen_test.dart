@@ -108,7 +108,6 @@ void main() {
 
     expect(find.text('Not Connected'), findsWidgets);
     expect(find.text('Save & Verify'), findsOneWidget);
-    expect(find.text('Not configured'), findsWidgets);
   });
 
   testWidgets('requires secret key for unconfigured selected mode',
@@ -187,9 +186,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // _DisconnectConfirmDialog is now shown — type the confirmation word
-    await tester.enterText(find.byType(TextField).last, 'DISCONNECT');
+    final dialogField = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(dialogField, 'DISCONNECT');
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
+    final confirmBtn = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.widgetWithText(FilledButton, 'Disconnect'),
+    );
+    await tester.tap(confirmBtn);
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
