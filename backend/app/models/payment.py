@@ -44,6 +44,12 @@ class Payment(UUIDPrimaryKeyMixin, Base):
         nullable=True,
         index=True,
     )
+    receivable_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("receivables.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     receivable_payment_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("receivable_payments.id", ondelete="SET NULL"),

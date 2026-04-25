@@ -221,6 +221,7 @@ def test_initiate_receivable_payment_uses_merchant_secret_and_creates_payment() 
             assert payment.internal_reference is not None
             assert payment.provider_mode == "test"
             assert payment.merchant_id is not None
+            assert payment.receivable_id == receivable_id
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()

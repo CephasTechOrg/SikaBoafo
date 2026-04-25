@@ -73,7 +73,12 @@ def upsert_paystack_connection(
             detail=str(exc),
         ) from exc
     except PaystackClientError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        status_code = (
+            status.HTTP_400_BAD_REQUEST
+            if exc.status_code in {400, 401, 403}
+            else status.HTTP_502_BAD_GATEWAY
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @router.delete("/paystack/connection", response_model=PaystackConnectionOut)

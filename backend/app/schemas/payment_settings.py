@@ -3,12 +3,25 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.constants import PAYSTACK_MODE_LIVE, PAYSTACK_MODE_TEST
 
 _VALID_MODES = {PAYSTACK_MODE_TEST, PAYSTACK_MODE_LIVE}
+_KEY_WHITESPACE_RE = re.compile(r"\s+")
+_HIDDEN_KEY_CHARS = {"\u200b", "\u200c", "\u200d", "\ufeff"}
+
+
+def _normalize_api_key(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = "".join(
+        ch for ch in value.strip() if not ch.isspace() and ch not in _HIDDEN_KEY_CHARS
+    )
+    normalized = _KEY_WHITESPACE_RE.sub("", normalized)
+    return normalized or None
 
 
 class PaystackConnectionUpdateIn(BaseModel):
@@ -20,18 +33,12 @@ class PaystackConnectionUpdateIn(BaseModel):
     @field_validator("public_key")
     @classmethod
     def normalize_public_key(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        normalized = value.strip()
-        return normalized or None
+        return _normalize_api_key(value)
 
     @field_validator("secret_key")
     @classmethod
     def normalize_secret_key(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        normalized = value.strip()
-        return normalized or None
+        return _normalize_api_key(value)
 
     @field_validator("mode")
     @classmethod

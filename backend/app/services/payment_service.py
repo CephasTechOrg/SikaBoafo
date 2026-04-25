@@ -175,6 +175,7 @@ class PaymentService:
 
         payment = Payment(
             merchant_id=merchant.id,
+            receivable_id=receivable.id,
             provider=PAYMENT_PROVIDER_PAYSTACK,
             provider_reference=result.reference,
             internal_reference=reference,
@@ -432,10 +433,9 @@ class PaymentService:
                     provider_reference=provider_reference,
                 )
         else:
-            receivable = self.db.scalar(
-                select(Receivable)
-                .options(selectinload(Receivable.customer))
-                .where(Receivable.payment_provider_reference == provider_reference)
+            receivable = self._load_receivable_for_payment(
+                payment=payment,
+                provider_reference=provider_reference,
             )
             if receivable is None:
                 webhook_event.payment_id = payment.id
@@ -819,6 +819,13 @@ class PaymentService:
                 .join(Store, Store.id == Sale.store_id)
                 .where(Sale.id == payment.sale_id)
             )
+        if payment.receivable_id is not None:
+            return self.db.scalar(
+                select(Store.merchant_id)
+                .select_from(Receivable)
+                .join(Store, Store.id == Receivable.store_id)
+                .where(Receivable.id == payment.receivable_id)
+            )
         if payment.provider_reference is not None:
             return self.db.scalar(
                 select(Store.merchant_id)
@@ -827,6 +834,26 @@ class PaymentService:
                 .where(Receivable.payment_provider_reference == payment.provider_reference)
             )
         return None
+
+    def _load_receivable_for_payment(
+        self,
+        *,
+        payment: Payment,
+        provider_reference: str,
+    ) -> Receivable | None:
+        if payment.receivable_id is not None:
+            receivable = self.db.scalar(
+                select(Receivable)
+                .options(selectinload(Receivable.customer))
+                .where(Receivable.id == payment.receivable_id)
+            )
+            if receivable is not None:
+                return receivable
+        return self.db.scalar(
+            select(Receivable)
+            .options(selectinload(Receivable.customer))
+            .where(Receivable.payment_provider_reference == provider_reference)
+        )
 
     def _load_payment_by_reference(self, *, provider_reference: str | None) -> Payment | None:
         if provider_reference is None:

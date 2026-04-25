@@ -65,6 +65,7 @@ class PaymentSettingsService:
             self.db.add(row)
 
         mode = payload.mode
+        self._validate_mode_specific_keys(payload=payload)
         if payload.secret_key is None and row.get_secret_key_encrypted(mode=mode) is None:
             msg = "Secret key is required for this mode."
             raise PaymentSettingsValidationError(msg)
@@ -136,6 +137,23 @@ class PaymentSettingsService:
                 PaymentProviderConnection.provider == PAYMENT_PROVIDER_PAYSTACK,
             )
         )
+
+    @staticmethod
+    def _validate_mode_specific_keys(*, payload: PaystackConnectionUpdateIn) -> None:
+        secret_key = payload.secret_key
+        if secret_key is None:
+            return
+        if secret_key.startswith("pk_"):
+            msg = "Enter your Paystack secret key, not the public key."
+            raise PaymentSettingsValidationError(msg)
+
+        expected_prefix = (
+            "sk_live_" if payload.mode == PAYSTACK_MODE_LIVE else "sk_test_"
+        )
+        if not secret_key.startswith(expected_prefix):
+            mode_label = "live" if payload.mode == PAYSTACK_MODE_LIVE else "test"
+            msg = f"{mode_label.title()} mode requires a {expected_prefix} secret key."
+            raise PaymentSettingsValidationError(msg)
 
     @staticmethod
     def _default_out() -> PaystackConnectionOut:

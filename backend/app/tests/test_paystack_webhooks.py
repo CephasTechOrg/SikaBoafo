@@ -29,7 +29,7 @@ from app.core.constants import (
     SALE_STATUS_RECORDED,
 )
 from app.core.crypto import encrypt_text
-from app.integrations.paystack.client import PaystackVerifyResult
+from app.integrations.paystack.client import PaystackClientError, PaystackVerifyResult
 from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
@@ -144,6 +144,7 @@ def _build_sqlite_receivable_stack(
     receivable.id = uuid4()
     payment = Payment(
         merchant_id=merchant.id,
+        receivable_id=receivable.id,
         provider=PAYMENT_PROVIDER_PAYSTACK,
         provider_reference=provider_reference,
         internal_reference=provider_reference,
@@ -475,6 +476,26 @@ def test_paystack_webhook_invalid_signature_is_rejected() -> None:
         app.dependency_overrides.clear()
 
 
+def test_paystack_webhook_verify_failure_returns_retryable_502() -> None:
+    env = _configure_env()
+    client, _, reference = _build_sqlite_receivable_stack()
+    body, signature = _body_and_signature(reference=reference, secret="sk_test_webhook_123")
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            side_effect=PaystackClientError("upstream unavailable"),
+        ):
+            response = client.post(
+                "/api/v1/webhooks/paystack",
+                content=body,
+                headers={"x-paystack-signature": signature, "content-type": "application/json"},
+            )
+        assert response.status_code == 502
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
 def test_paystack_webhook_duplicate_is_idempotent() -> None:
     env = _configure_env()
     client, session_local, reference = _build_sqlite_receivable_stack()
@@ -511,6 +532,53 @@ def test_paystack_webhook_duplicate_is_idempotent() -> None:
                 select(AuditLog).where(AuditLog.action == "payment.succeeded")
             )
             assert success_audit is not None
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_paystack_webhook_settles_receivable_even_after_newer_link_is_generated() -> None:
+    env = _configure_env()
+    client, session_local, reference = _build_sqlite_receivable_stack()
+    replacement_reference = "PSK_REF_WEBHOOK_NEWER_456"
+    with session_local() as db:
+        receivable = db.scalar(select(Receivable).where(Receivable.payment_provider_reference == reference))
+        assert receivable is not None
+        receivable.payment_provider_reference = replacement_reference
+        receivable.payment_link = "https://checkout.paystack.com/newer-link"
+        db.add(receivable)
+        db.commit()
+
+    body, signature = _body_and_signature(reference=reference, secret="sk_test_webhook_123")
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=reference,
+                status="success",
+                amount_kobo=12000,
+                paid_at="2026-04-24T12:30:00Z",
+                raw_payload={"status": True, "data": {"status": "success"}},
+            ),
+        ):
+            response = client.post(
+                "/api/v1/webhooks/paystack",
+                content=body,
+                headers={"x-paystack-signature": signature, "content-type": "application/json"},
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "processed"
+
+        with session_local() as db:
+            payment = db.scalar(select(Payment).where(Payment.provider_reference == reference))
+            assert payment is not None
+            assert payment.status == "succeeded"
+
+            receivable = db.scalar(select(Receivable).where(Receivable.id == payment.receivable_id))
+            assert receivable is not None
+            assert receivable.status == "settled"
+            assert receivable.outstanding_amount == Decimal("0.00")
+            assert receivable.payment_provider_reference == replacement_reference
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()

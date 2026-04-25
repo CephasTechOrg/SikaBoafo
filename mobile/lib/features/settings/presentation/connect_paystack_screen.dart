@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -192,9 +193,20 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       _showError('Secret key is required to connect this mode for the first time.');
       return;
     }
-    if (secretKey.isNotEmpty && !secretKey.startsWith('sk_')) {
-      _showError('Secret key must start with "sk_test_" or "sk_live_".');
-      return;
+    if (secretKey.isNotEmpty) {
+      if (secretKey.startsWith('pk_')) {
+        _showError('Enter the Paystack secret key, not the public key.');
+        return;
+      }
+      final expectedPrefix = _mode == 'live' ? 'sk_live_' : 'sk_test_';
+      if (!secretKey.startsWith(expectedPrefix)) {
+        _showError(
+          _mode == 'live'
+              ? 'Live mode requires an "sk_live_" secret key.'
+              : 'Test mode requires an "sk_test_" secret key.',
+        );
+        return;
+      }
     }
 
     setState(() => _saving = true);
@@ -257,24 +269,36 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   }
 
   String _humanizeSettingsError(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map<String, dynamic> && data['detail'] is String) {
+        final detail = (data['detail'] as String).trim();
+        if (detail.isNotEmpty && error.response?.statusCode == 400) {
+          return detail;
+        }
+      }
+      final statusCode = error.response?.statusCode;
+      if (statusCode == 503) {
+        return 'Server configuration error. Please contact support.';
+      }
+      if (statusCode == 502) {
+        return 'Could not verify the Paystack secret key right now. Try again shortly.';
+      }
+      if (statusCode == 400) {
+        if (data is Map<String, dynamic> && data['detail'] is String) {
+          return data['detail'] as String;
+        }
+        return 'Invalid Paystack secret key. Check the copied value and selected mode.';
+      }
+      if (statusCode == 401 || statusCode == 403) {
+        return 'You do not have permission to update payment settings. Only the account owner can do this.';
+      }
+      if (error.type == DioExceptionType.connectionError) {
+        return 'No internet connection. Check your network and try again.';
+      }
+      return error.message ?? 'Something went wrong. Please try again.';
+    }
     final raw = error.toString();
-    // Extract detail from DioException response
-    if (raw.contains('503') || raw.contains('SERVICE_UNAVAILABLE')) {
-      return 'Server configuration error. Please contact support.';
-    }
-    if (raw.contains('502') || raw.contains('BAD_GATEWAY')) {
-      return 'Could not verify key with Paystack. Check the key is correct and try again.';
-    }
-    if (raw.contains('400') || raw.contains('BAD_REQUEST')) {
-      return 'Invalid credentials. Make sure you copied the key correctly from your Paystack dashboard.';
-    }
-    if (raw.contains('401') || raw.contains('403')) {
-      return 'You do not have permission to update payment settings. Only the account owner can do this.';
-    }
-    if (raw.contains('connection') || raw.contains('SocketException')) {
-      return 'No internet connection. Check your network and try again.';
-    }
-    // Try to extract a readable detail from API JSON
     final detailMatch = RegExp(r'"detail"\s*:\s*"([^"]+)"').firstMatch(raw);
     if (detailMatch != null) return detailMatch.group(1)!;
     return 'Something went wrong. Please try again.';

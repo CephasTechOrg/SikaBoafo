@@ -143,6 +143,89 @@ def test_upsert_paystack_connection_verifies_and_encrypts_secret() -> None:
         app.dependency_overrides.clear()
 
 
+def test_upsert_paystack_connection_accepts_live_secret_in_live_mode() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
+        ):
+            response = client.put(
+                "/api/v1/payments/paystack/connection",
+                json={
+                    "secret_key": "sk_live_abcdefgh12345678",
+                    "mode": "live",
+                },
+            )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["is_connected"] is True
+        assert body["mode"] == "live"
+        assert body["live"]["configured"] is True
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
+def test_upsert_paystack_connection_rejects_public_key_in_secret_field() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        response = client.put(
+            "/api/v1/payments/paystack/connection",
+            json={
+                "secret_key": "pk_test_abcdefgh12345678",
+                "mode": "test",
+            },
+        )
+        assert response.status_code == 400
+        assert "secret key" in response.json()["detail"].lower()
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
+def test_upsert_paystack_connection_rejects_mode_mismatch() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        response = client.put(
+            "/api/v1/payments/paystack/connection",
+            json={
+                "secret_key": "sk_live_abcdefgh12345678",
+                "mode": "test",
+            },
+        )
+        assert response.status_code == 400
+        assert "sk_test_" in response.json()["detail"]
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
+def test_upsert_paystack_connection_normalizes_whitespace_and_hidden_chars() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            return_value=None,
+        ) as mocked_verify:
+            response = client.put(
+                "/api/v1/payments/paystack/connection",
+                json={
+                    "secret_key": "  sk_test_abcd\u200b12345678 \n",
+                    "mode": "test",
+                },
+            )
+        assert response.status_code == 200
+        assert mocked_verify.call_args.kwargs["secret_key"] == "sk_test_abcd12345678"
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
 def test_failed_verify_does_not_overwrite_existing_working_secret() -> None:
     client, session_local, _ = _build_sqlite_test_stack()
     original_encryption = _configure_encryption_env()
@@ -186,6 +269,49 @@ def test_failed_verify_does_not_overwrite_existing_working_secret() -> None:
             assert after.test_secret_key_encrypted == encrypted_before
             assert after.test_verified_at == verified_before
             assert after.account_label is None
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
+def test_invalid_merchant_secret_returns_400() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            side_effect=PaystackClientError("Invalid key", status_code=401),
+        ):
+            response = client.put(
+                "/api/v1/payments/paystack/connection",
+                json={
+                    "secret_key": "sk_test_badbadbad5678",
+                    "mode": "test",
+                },
+            )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Invalid key"
+    finally:
+        _restore_encryption_env(original_encryption)
+        app.dependency_overrides.clear()
+
+
+def test_paystack_outage_returns_502() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    original_encryption = _configure_encryption_env()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_secret_key",
+            side_effect=PaystackClientError("Could not reach Paystack"),
+        ):
+            response = client.put(
+                "/api/v1/payments/paystack/connection",
+                json={
+                    "secret_key": "sk_test_abcdefgh12345678",
+                    "mode": "test",
+                },
+            )
+        assert response.status_code == 502
     finally:
         _restore_encryption_env(original_encryption)
         app.dependency_overrides.clear()
