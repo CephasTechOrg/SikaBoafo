@@ -219,7 +219,7 @@ class _ReceiveRepaymentScreenState
             paymentMethodLabel: _method,
           );
       if (!mounted) return;
-      context.pop(true);
+      Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
