@@ -49,15 +49,13 @@ class PaystackClient:
     timeout_seconds: float = 15.0
 
     def verify_secret_key(self, *, secret_key: str) -> None:
-        """Verify a Paystack secret key by listing transactions (perPage=1).
+        """Verify a Paystack secret key using GET /bank.
 
-        Uses GET /transaction rather than /integration/payment_session_timeout
-        because the integration endpoint requires elevated account permissions and
-        returns HTTP 403 for many valid keys. The transaction list endpoint works
-        for any valid sk_test_ or sk_live_ key with zero special permissions.
+        /bank is a simple read-only endpoint that works for any valid sk_test_ or
+        sk_live_ key with no special account permissions. Invalid keys return 401.
         Raises PaystackClientError if the key is rejected or Paystack is unreachable.
         """
-        url = f"{self.base_url.rstrip('/')}/transaction?perPage=1&page=1"
+        url = f"{self.base_url.rstrip('/')}/bank"
         raw = self._get_json(
             url=url,
             headers={

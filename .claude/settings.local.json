@@ -11,7 +11,9 @@
       "Bash(python -m pytest app/tests/test_payment_settings.py -v)",
       "Bash(.venv\\\\Scripts\\\\python.exe -m pytest app/tests/test_payment_settings.py -v)",
       "Bash(\".venv/Scripts/python.exe\" -m pytest app/tests/test_payment_settings.py -v)",
-      "Bash(\".venv/Scripts/pip.exe\" install *)"
+      "Bash(\".venv/Scripts/pip.exe\" install *)",
+      "WebSearch",
+      "WebFetch(domain:paystack.com)"
     ]
   }
 }
