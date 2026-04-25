@@ -264,24 +264,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   Future<void> _disconnectConnection() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Disconnect Paystack?'),
-        content: const Text(
-          'This will remove your saved credentials. '
-          'Any pending payment links will stop working.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Disconnect'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _DisconnectConfirmDialog(),
     );
     if (confirmed != true || !mounted) return;
 
@@ -1058,6 +1041,137 @@ class _InfoCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DisconnectConfirmDialog extends StatefulWidget {
+  const _DisconnectConfirmDialog();
+
+  @override
+  State<_DisconnectConfirmDialog> createState() =>
+      _DisconnectConfirmDialogState();
+}
+
+class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  bool _confirmed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(() {
+      final matches = _ctrl.text == 'DISCONNECT';
+      if (matches != _confirmed) setState(() => _confirmed = matches);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.link_off_rounded,
+              color: AppColors.danger,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Disconnect Paystack',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.25),
+              ),
+            ),
+            child: const Text(
+              'This will remove your encrypted Paystack credentials from the server. '
+              'Payments will stop working immediately until you reconnect.',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Type DISCONNECT to confirm:',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              hintText: 'DISCONNECT',
+              errorText: _ctrl.text.isNotEmpty && !_confirmed
+                  ? 'Type exactly: DISCONNECT'
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _confirmed
+              ? () => Navigator.of(context).pop(true)
+              : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.danger,
+            disabledBackgroundColor: AppColors.dangerSoft,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Disconnect'),
+        ),
+      ],
     );
   }
 }
