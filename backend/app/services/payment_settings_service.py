@@ -16,7 +16,7 @@ from app.core.constants import (
     PAYSTACK_MODE_TEST,
 )
 from app.core.crypto import CryptoConfigError, decrypt_text, encrypt_text
-from app.integrations.paystack.client import PaystackClient, PaystackClientError
+from app.integrations.paystack.client import PaystackClientError
 from app.models.merchant import Merchant
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.schemas.payment_settings import PaystackConnectionOut, PaystackConnectionUpdateIn
@@ -36,7 +36,6 @@ class PaymentSettingsValidationError(Exception):
 class PaymentSettingsService:
     db: Session
     settings: Settings | None = None
-    paystack_client: PaystackClient | None = None
 
     def get_paystack_connection(self, *, owner_user_id: UUID) -> PaystackConnectionOut:
         merchant = self._get_merchant(owner_user_id=owner_user_id)
@@ -77,9 +76,6 @@ class PaymentSettingsService:
         secret_key_last4 = row.get_secret_key_last4(mode=mode)
         if payload.secret_key is not None:
             configured = self.settings or get_settings()
-            self._client(configured).verify_secret_key(
-                secret_key=payload.secret_key,
-            )
             verified_at = datetime.now(tz=UTC)
             encrypted_secret = encrypt_text(
                 plaintext=payload.secret_key,
@@ -116,14 +112,6 @@ class PaymentSettingsService:
         self.db.commit()
         self.db.refresh(row)
         return _to_out(row)
-
-    def _client(self, settings: Settings) -> PaystackClient:
-        if self.paystack_client is not None:
-            return self.paystack_client
-        return PaystackClient(
-            base_url=settings.paystack_api_base_url,
-            timeout_seconds=settings.paystack_http_timeout_seconds,
-        )
 
     def _get_merchant(self, *, owner_user_id: UUID) -> Merchant:
         merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == owner_user_id))

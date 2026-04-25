@@ -26,7 +26,7 @@ def _normalize_api_key(value: str | None) -> str | None:
 
 class PaystackConnectionUpdateIn(BaseModel):
     public_key: str | None = Field(default=None, max_length=255)
-    secret_key: str | None = Field(default=None, min_length=10, max_length=255)
+    secret_key: str | None = Field(default=None, min_length=32, max_length=255)
     mode: str = Field(default=PAYSTACK_MODE_TEST)
     account_label: str | None = Field(default=None, max_length=120)
 

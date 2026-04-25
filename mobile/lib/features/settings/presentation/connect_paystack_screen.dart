@@ -156,8 +156,8 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                         const _InfoCard(
                           title: 'How this works',
                           body:
-                              'Your secret key is verified with Paystack, then encrypted and stored on the server — '
-                              'it is never transmitted back in full. Payments go directly into your own Paystack account.',
+                              'Your secret key is encrypted and stored securely on the server — never shown back in full. '
+                              'Format is validated on save; the key is confirmed working on your first payment.',
                         ),
                       ],
                     ),
@@ -252,7 +252,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       _secretKeyCtrl.clear();
       ref.invalidate(paystackConnectionProvider);
       if (!mounted) return;
-      _showSuccess('Paystack credentials saved and verified successfully.');
+      _showSuccess('Paystack credentials saved successfully.');
     } catch (error) {
       if (!mounted) return;
       _showError(_humanizeSettingsError(error));
@@ -311,9 +311,6 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       final statusCode = error.response?.statusCode;
       if (statusCode == 503) {
         return 'Server configuration error. Please contact support.';
-      }
-      if (statusCode == 502) {
-        return 'Could not verify the Paystack secret key right now. Try again shortly.';
       }
       if (statusCode == 400) {
         if (data is Map<String, dynamic> && data['detail'] is String) {
@@ -730,9 +727,8 @@ class _ConnectionFormCardState extends State<_ConnectionFormCard> {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(Icons.verified_rounded),
-              label: Text(
-                  widget.saving ? 'Verifying with Paystack...' : 'Save & Verify'),
+                  : const Icon(Icons.save_rounded),
+              label: Text(widget.saving ? 'Saving...' : 'Save Key'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
