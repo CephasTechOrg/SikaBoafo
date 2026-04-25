@@ -302,24 +302,23 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   String _humanizeSettingsError(Object error) {
     if (error is DioException) {
       final data = error.response?.data;
+      // Always prefer the backend's exact detail message for all error codes.
       if (data is Map<String, dynamic> && data['detail'] is String) {
         final detail = (data['detail'] as String).trim();
-        if (detail.isNotEmpty && error.response?.statusCode == 400) {
-          return detail;
-        }
+        if (detail.isNotEmpty) return detail;
       }
       final statusCode = error.response?.statusCode;
       if (statusCode == 503) {
         return 'Server configuration error. Please contact support.';
       }
       if (statusCode == 400) {
-        if (data is Map<String, dynamic> && data['detail'] is String) {
-          return data['detail'] as String;
-        }
-        return 'Invalid Paystack secret key. Check the copied value and selected mode.';
+        return 'Invalid key format. Check the copied value and selected mode.';
       }
       if (statusCode == 401 || statusCode == 403) {
-        return 'You do not have permission to update payment settings. Only the account owner can do this.';
+        return 'Permission denied. Only the merchant owner can update payment settings.';
+      }
+      if (statusCode == 404) {
+        return 'Merchant profile not found. Try logging out and back in.';
       }
       if (error.type == DioExceptionType.connectionError) {
         return 'No internet connection. Check your network and try again.';

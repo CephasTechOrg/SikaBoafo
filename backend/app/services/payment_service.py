@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import Settings, get_settings
 from app.core.constants import (
     DEFAULT_CURRENCY,
+    PAYMENT_METHOD_BANK_TRANSFER,
     PAYMENT_METHOD_MOBILE_MONEY,
     PAYMENT_STATUS_FAILED,
     PAYMENT_STATUS_PENDING_PROVIDER,
