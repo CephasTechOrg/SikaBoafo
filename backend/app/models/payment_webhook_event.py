@@ -43,7 +43,7 @@ class PaymentWebhookEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
         index=True,
     )
-    result_status: Mapped[str] = mapped_column(String(32), nullable=False, default="processed")
+    result_status: Mapped[str] = mapped_column(String(32), nullable=False, default="received")
     payload: Mapped[dict[str, Any] | None] = mapped_column(_JSONB_OR_JSON, nullable=True)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

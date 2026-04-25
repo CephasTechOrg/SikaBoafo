@@ -157,7 +157,7 @@ class PaymentService:
             merchant_id=merchant.id,
             settings=configured,
         )
-        reference = self._build_reference(receivable_id=receivable.id)
+        reference = self._build_reference(merchant_id=merchant.id, receivable_id=receivable.id)
         amount = self._money(receivable.outstanding_amount)
         result = self._client(configured).initialize_transaction(
             secret_key=secret_key,
@@ -254,7 +254,7 @@ class PaymentService:
             merchant_id=merchant.id,
             settings=configured,
         )
-        reference = self._build_sale_reference(sale_id=sale.id)
+        reference = self._build_sale_reference(merchant_id=merchant.id, sale_id=sale.id)
         amount = self._money(sale.total_amount)
         result = self._client(configured).initialize_transaction(
             secret_key=secret_key,
@@ -477,6 +477,7 @@ class PaymentService:
             payment.amount = verified_amount
         failure_reason: str | None = None
         expected_amount: Decimal | None = None
+        channel = _paystack_channel_label(data.get("channel"))
         if verified.status == "success":
             if sale is not None:
                 expected_amount = self._money(sale.total_amount)
@@ -505,6 +506,7 @@ class PaymentService:
                     self._apply_receivable_settlement(
                         payment=payment,
                         receivable=receivable,
+                        channel=channel,
                     )
                     action = "payment.succeeded"
                 else:
@@ -704,12 +706,28 @@ class PaymentService:
         return secret_key
 
     @staticmethod
-    def _build_reference(*, receivable_id: UUID) -> str:
-        return f"btx_{receivable_id.hex}_{uuid4().hex[:10]}"
+    def _build_reference(*, merchant_id: UUID, receivable_id: UUID) -> str:
+        # Format: BTGH_{32-char merchant hex}_{suffix}
+        # The merchant_id prefix lets webhook verification resolve the signing key
+        # even before the payment record is committed (race-condition safety).
+        return f"BTGH_{merchant_id.hex}_{uuid4().hex[:12]}"
 
     @staticmethod
-    def _build_sale_reference(*, sale_id: UUID) -> str:
-        return f"btx_sale_{sale_id.hex}_{uuid4().hex[:10]}"
+    def _build_sale_reference(*, merchant_id: UUID, sale_id: UUID) -> str:
+        return f"BTGH_{merchant_id.hex}_{uuid4().hex[:12]}"
+
+    @staticmethod
+    def _extract_merchant_id_from_reference(reference: str) -> UUID | None:
+        """Parse merchant_id from a BTGH_ reference; returns None for old-format refs."""
+        if not reference.startswith("BTGH_"):
+            return None
+        merchant_hex = reference[5:37]  # chars 5-36 are the 32-hex merchant UUID
+        if len(merchant_hex) < 32:
+            return None
+        try:
+            return UUID(hex=merchant_hex)
+        except ValueError:
+            return None
 
     @staticmethod
     def _money(value: Decimal) -> Decimal:
@@ -757,7 +775,13 @@ class PaymentService:
             .where(Sale.id == sale_id)
         )
 
-    def _apply_receivable_settlement(self, *, payment: Payment, receivable: Receivable) -> None:
+    def _apply_receivable_settlement(
+        self,
+        *,
+        payment: Payment,
+        receivable: Receivable,
+        channel: str,
+    ) -> None:
         outstanding = self._money(receivable.outstanding_amount)
         if outstanding <= Decimal("0.00"):
             receivable.status = RECEIVABLE_STATUS_SETTLED
@@ -767,7 +791,7 @@ class PaymentService:
             receivable_payment = ReceivablePayment(
                 receivable_id=receivable.id,
                 amount=settlement_amount,
-                payment_method_label=PAYMENT_METHOD_MOBILE_MONEY,
+                payment_method_label=channel,
             )
             self.db.add(receivable_payment)
             self.db.flush()
@@ -788,26 +812,43 @@ class PaymentService:
         provider_reference: str | None,
         settings: Settings,
     ) -> list[str]:
+        # Fast path: payment record already links us to the merchant.
         if payment is not None:
             return [self._resolve_secret_key_for_payment(payment=payment, settings=settings)]
-        if settings.app_env == "production":
-            raise PaystackWebhookSignatureError(
-                "Cannot resolve merchant secret for Paystack webhook verification."
-            )
-        fallback = [
-            secret
-            for secret in (
-                self._env_secret_for_mode(mode=PAYSTACK_MODE_TEST, settings=settings),
-                self._env_secret_for_mode(mode=PAYSTACK_MODE_LIVE, settings=settings),
-            )
-            if secret is not None
-        ]
-        if fallback:
-            return fallback
+
+        # Reference-based path: extract merchant_id from the BTGH_ reference prefix.
+        # This works even when the payment isn't persisted yet (timing edge case) or for
+        # webhook events fired by Paystack before we committed the payment row.
+        if provider_reference is not None:
+            merchant_id = self._extract_merchant_id_from_reference(provider_reference)
+            if merchant_id is not None:
+                connection = self._get_paystack_connection(merchant_id=merchant_id)
+                if connection is not None:
+                    secret_key = get_decrypted_secret_for_mode(
+                        row=connection,
+                        mode=connection.mode,
+                        settings=settings,
+                    )
+                    if secret_key is not None:
+                        return [secret_key]
+
+        # Non-production fallback to env keys (lets dev test without merchant credentials).
+        if settings.app_env != "production":
+            fallback = [
+                secret
+                for secret in (
+                    self._env_secret_for_mode(mode=PAYSTACK_MODE_TEST, settings=settings),
+                    self._env_secret_for_mode(mode=PAYSTACK_MODE_LIVE, settings=settings),
+                )
+                if secret is not None
+            ]
+            if fallback:
+                return fallback
+
         detail = (
             "Cannot resolve merchant secret for Paystack webhook verification."
             if provider_reference is None
-            else f"Cannot resolve merchant secret for Paystack reference {provider_reference}."
+            else f"Cannot resolve merchant secret for reference {provider_reference}."
         )
         raise PaystackWebhookSignatureError(detail)
 
@@ -914,6 +955,22 @@ def _sale_contact_email(*, sale: Sale) -> str:
     if sale.customer is not None:
         return _customer_email(sale.customer)
     return f"sale-{sale.id.hex[:12]}@biztrackgh.local"
+
+
+_PAYSTACK_CHANNEL_MAP: dict[str, str] = {
+    "mobile_money": PAYMENT_METHOD_MOBILE_MONEY,
+    "bank_transfer": PAYMENT_METHOD_BANK_TRANSFER,
+    "bank": PAYMENT_METHOD_BANK_TRANSFER,
+}
+
+
+def _paystack_channel_label(channel: str | None) -> str:
+    """Map a Paystack channel string to our internal payment_method_label constant."""
+    if channel and isinstance(channel, str):
+        normalized = channel.strip().lower()
+        if normalized in _PAYSTACK_CHANNEL_MAP:
+            return _PAYSTACK_CHANNEL_MAP[normalized]
+    return PAYMENT_METHOD_MOBILE_MONEY
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:

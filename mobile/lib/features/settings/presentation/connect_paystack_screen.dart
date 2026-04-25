@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
@@ -150,11 +151,13 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                                   : null,
                         ),
                         const SizedBox(height: 14),
+                        const _WebhookCard(),
+                        const SizedBox(height: 14),
                         const _InfoCard(
                           title: 'How this works',
                           body:
-                              'The app only collects the merchant secret key. The backend verifies it, encrypts it, '
-                              'and uses it for Paystack calls. Secret keys are write-only and never shown back in full.',
+                              'Your secret key is verified with Paystack, then encrypted and stored on the server — '
+                              'it is never transmitted back in full. Payments go directly into your own Paystack account.',
                         ),
                       ],
                     ),
@@ -876,6 +879,135 @@ class _LoadErrorPanel extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebhookCard extends StatelessWidget {
+  const _WebhookCard();
+
+  static const _webhookUrl =
+      'https://biztrackgh-api.onrender.com/api/v1/webhooks/paystack';
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.warningSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.webhook_rounded,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Webhook Setup Required',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'One-time setup in your Paystack dashboard',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.muted,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Paste this URL into your Paystack dashboard under '
+            'Settings → API Keys & Webhooks → Webhook URL. '
+            'This tells Paystack where to send payment confirmations.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.inkSoft,
+                  height: 1.45,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _webhookUrl,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.navy,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: AppColors.navy,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    onTap: () {
+                      Clipboard.setData(
+                        const ClipboardData(text: _webhookUrl),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Webhook URL copied to clipboard'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.copy_rounded, size: 14, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text(
+                            'Copy',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

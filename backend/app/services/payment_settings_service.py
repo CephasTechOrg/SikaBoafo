@@ -43,10 +43,12 @@ class PaymentSettingsService:
         row = self._get_connection_row(merchant_id=merchant.id)
         if row is None:
             return self._default_out()
-        row.is_connected = _is_mode_usable(row=row, mode=row.mode)
-        self.db.add(row)
-        self.db.commit()
-        self.db.refresh(row)
+        new_is_connected = _is_mode_usable(row=row, mode=row.mode)
+        if row.is_connected != new_is_connected:
+            row.is_connected = new_is_connected
+            self.db.add(row)
+            self.db.commit()
+            self.db.refresh(row)
         return _to_out(row)
 
     def upsert_paystack_connection(
