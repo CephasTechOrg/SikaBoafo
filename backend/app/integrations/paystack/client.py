@@ -49,20 +49,31 @@ class PaystackClient:
     timeout_seconds: float = 15.0
 
     def verify_secret_key(self, *, secret_key: str) -> None:
-        """Verify a Paystack secret key using GET /bank.
+        """Verify a Paystack secret key using GET /customer.
 
-        /bank is a simple read-only endpoint that works for any valid sk_test_ or
-        sk_live_ key with no special account permissions. Invalid keys return 401.
-        Raises PaystackClientError if the key is rejected or Paystack is unreachable.
+        /customer?perPage=1 is a core business endpoint that returns 200 (even with
+        an empty list) for any valid sk_test_ or sk_live_ key regardless of account
+        type or country. Invalid keys return 401. We also tolerate 403 from any
+        endpoint as "key recognized but endpoint restricted" — that is still a valid key.
+
+        Raises PaystackClientError only for 401 (genuinely invalid key) or network errors.
         """
-        url = f"{self.base_url.rstrip('/')}/bank"
-        raw = self._get_json(
-            url=url,
-            headers={
-                "Authorization": f"Bearer {secret_key}",
-                "Content-Type": "application/json",
-            },
-        )
+        url = f"{self.base_url.rstrip('/')}/customer?perPage=1"
+        try:
+            raw = self._get_json(
+                url=url,
+                headers={
+                    "Authorization": f"Bearer {secret_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+        except PaystackClientError as exc:
+            # 403 = key is recognized by Paystack but endpoint has account-level
+            # restrictions (common for non-Nigerian accounts on some endpoints).
+            # This is distinct from 401 which means the key itself is invalid.
+            if exc.status_code == 403:
+                return
+            raise
         if raw.get("status") is not True:
             msg = str(raw.get("message") or "Paystack credential verification failed.")
             raise PaystackClientError(msg, response_body=raw)
