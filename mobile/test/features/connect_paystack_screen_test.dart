@@ -141,7 +141,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('save then disconnect updates connection status', (tester) async {
+  testWidgets('saves credentials successfully', (tester) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -178,24 +178,53 @@ void main() {
     expect(fakeApi.lastPublicKey, 'pk_test_abcdefgh12345678');
     expect(fakeApi.lastSecretKey, 'sk_test_abcdefgh12345678');
     expect(find.text('Connected'), findsWidgets);
-    expect(find.text('Disconnect Paystack'), findsOneWidget);
+  });
 
-    // Dismiss the success SnackBar (it can overlap the disconnect button and swallow taps)
-    await tester.pump(const Duration(seconds: 5));
+  testWidgets('disconnect shows confirmation dialog and disconnects', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // Start in the connected state so we can test the disconnect flow directly
+    final fakeApi = _FakeSettingsApi(
+      const PaystackConnectionSettings(
+        provider: 'paystack',
+        isConnected: true,
+        mode: 'test',
+        accountLabel: null,
+        test: PaystackModeState(
+          configured: true,
+          publicKeyMasked: 'pk_tes...5678',
+          secretKeyMasked: 'sk_test_...5678',
+        ),
+        live: PaystackModeState(configured: false),
+      ),
+    );
+
+    await tester.pumpWidget(_buildScreen(fakeApi));
     await tester.pumpAndSettle();
 
-    final disconnectButton = find.widgetWithText(OutlinedButton, 'Disconnect Paystack');
+    expect(find.text('Connected'), findsWidgets);
+    expect(find.text('Disconnect Paystack'), findsOneWidget);
+
+    final disconnectButton = find.text('Disconnect Paystack');
     await tester.ensureVisible(disconnectButton);
     await tester.tap(disconnectButton);
     await tester.pumpAndSettle();
 
-    // _DisconnectConfirmDialog is now shown — type the confirmation word
+    // _DisconnectConfirmDialog should now be showing
+    expect(
+      find.byKey(const Key('disconnect_confirm_input')),
+      findsOneWidget,
+      reason: 'Disconnect confirmation dialog should appear after tapping button',
+    );
     await tester.enterText(
       find.byKey(const Key('disconnect_confirm_input')),
       'DISCONNECT',
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'), warnIfMissed: false);
+    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
