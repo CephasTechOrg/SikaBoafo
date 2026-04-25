@@ -31,7 +31,6 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   String _mode = 'test';
   bool _saving = false;
   bool _disconnecting = false;
-  bool _hydratedFromServer = false;
 
   @override
   void dispose() {
