@@ -237,10 +237,9 @@ class PaymentService:
             raise PaymentInitiationContextError(str(exc)) from exc
 
         sale = self.db.scalar(
-            select(Sale).where(
-                Sale.id == sale_id,
-                Sale.store_id == store.id,
-            )
+            select(Sale)
+            .where(Sale.id == sale_id, Sale.store_id == store.id)
+            .options(selectinload(Sale.customer))
         )
         if sale is None:
             msg = "Sale not found."
@@ -948,14 +947,14 @@ def _customer_email(customer: Customer) -> str:
     phone = customer.phone_number or ""
     digits = re.sub(r"\D", "", phone)
     if digits:
-        return f"{digits}@biztrackgh.local"
-    return f"customer-{customer.id.hex[:12]}@biztrackgh.local"
+        return f"{digits}@pay.biztrackgh.com"
+    return f"customer-{customer.id.hex[:12]}@pay.biztrackgh.com"
 
 
 def _sale_contact_email(*, sale: Sale) -> str:
     if sale.customer is not None:
         return _customer_email(sale.customer)
-    return f"sale-{sale.id.hex[:12]}@biztrackgh.local"
+    return f"sale-{sale.id.hex[:12]}@pay.biztrackgh.com"
 
 
 _PAYSTACK_CHANNEL_MAP: dict[str, str] = {
