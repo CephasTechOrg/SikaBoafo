@@ -329,7 +329,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         Text(
                           'Track customers, due dates, and repayments',
                           style: TextStyle(
-                            color: Color(0xFFC7D0E5),
+                            color: AppColors.heroSubtitle,
                             fontSize: 12.5,
                           ),
                         ),
@@ -356,7 +356,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           const Text(
                             'Outstanding',
                             style: TextStyle(
-                              color: Color(0xFFC7D0E5),
+                              color: AppColors.heroSubtitle,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),

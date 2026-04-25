@@ -163,7 +163,7 @@ class _CustomerDetailHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xFFC7D0E5),
+                        color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
                     ),

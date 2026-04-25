@@ -136,7 +136,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                   'Record new sales and follow today'
                                   's cashflow',
                                   style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
+                                    color: AppColors.heroSubtitle,
                                     fontSize: 12.5,
                                   ),
                                 ),
@@ -161,7 +161,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 const Text(
                                   'Today\'s Revenue',
                                   style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
+                                    color: AppColors.heroSubtitle,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),

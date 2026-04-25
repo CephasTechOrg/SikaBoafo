@@ -131,7 +131,7 @@ class _CustomersHeader extends StatelessWidget {
                     Text(
                       'View customer balances and debt relationships',
                       style: TextStyle(
-                        color: Color(0xFFC7D0E5),
+                        color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
                     ),

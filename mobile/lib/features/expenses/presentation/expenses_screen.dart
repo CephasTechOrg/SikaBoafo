@@ -385,7 +385,7 @@ class _Header extends StatelessWidget {
                     Text(
                       'Track daily spending and category pressure',
                       style: TextStyle(
-                        color: Color(0xFFC7D0E5),
+                        color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
                     ),
@@ -412,7 +412,7 @@ class _Header extends StatelessWidget {
                       const Text(
                         'Today',
                         style: TextStyle(
-                          color: Color(0xFFC7D0E5),
+                          color: AppColors.heroSubtitle,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),

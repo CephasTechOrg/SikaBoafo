@@ -175,7 +175,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 Text(
                                   'Performance overview and business health',
                                   style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
+                                    color: AppColors.heroSubtitle,
                                     fontSize: 12.5,
                                   ),
                                 ),
@@ -202,7 +202,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   Text(
                                     _periods[_periodIndex],
                                     style: const TextStyle(
-                                      color: Color(0xFFC7D0E5),
+                                      color: AppColors.heroSubtitle,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                     ),
