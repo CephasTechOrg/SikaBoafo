@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element, prefer_const_constructors
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
@@ -913,6 +913,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       await _showPaystackLinkDialog(
         checkoutUrl: initiated.checkoutUrl,
         saleId: initiated.saleId,
+        amount: initiated.amount,
+        currency: initiated.currency,
       );
     } catch (error) {
       if (!mounted) return;
@@ -994,76 +996,39 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     _searchCtrl.clear();
   }
 
-  Future<SalePaymentStatusDto?> _pollSalePaymentStatus({
-    required String saleId,
-    int attempts = 6,
-    Duration interval = const Duration(seconds: 2),
-  }) async {
-    SalePaymentStatusDto? latest;
-    for (var index = 0; index < attempts; index++) {
-      latest = await ref
-          .read(salesPaymentsApiProvider)
-          .fetchSalePaymentStatus(saleId);
-      if (latest.isTerminal) {
-        return latest;
-      }
-      if (index < attempts - 1) {
-        await Future<void>.delayed(interval);
-      }
-    }
-    return latest;
-  }
-
-  String _formatPaymentStatusLabel(String rawStatus) {
-    return switch (rawStatus) {
-      'succeeded' => 'Succeeded',
-      'failed' => 'Failed',
-      'pending_provider' => 'Pending provider confirmation',
-      'recorded' => 'Recorded (not yet initiated)',
-      _ => rawStatus.replaceAll('_', ' '),
-    };
-  }
-
   Future<void> _showPaystackLinkDialog({
     required String checkoutUrl,
     required String saleId,
+    required String amount,
+    required String currency,
   }) async {
+    if (!mounted) return;
+    var confirmed = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _PaystackQrSheet(
+        checkoutUrl: checkoutUrl,
+        saleId: saleId,
+        onPaymentConfirmed: () {
+          confirmed = true;
+          Navigator.of(sheetCtx).pop();
+        },
+      ),
+    );
+    if (!mounted || !confirmed) return;
+    await ref
+        .read(salesControllerProvider.notifier)
+        .refresh(includeVoided: _showVoided);
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetCtx) {
-        return _PaystackQrSheet(
-          checkoutUrl: checkoutUrl,
-          saleId: saleId,
-          onCheckStatus: () async {
-            final messenger = ScaffoldMessenger.of(context);
-            try {
-              final latest = await _pollSalePaymentStatus(saleId: saleId);
-              if (!mounted) return;
-              await ref
-                  .read(salesControllerProvider.notifier)
-                  .refresh(includeVoided: _showVoided);
-              final statusLabel = _formatPaymentStatusLabel(
-                latest?.paymentStatus ?? 'pending_provider',
-              );
-              messenger.showSnackBar(
-                SnackBar(content: Text('Payment status: $statusLabel')),
-              );
-            } catch (error) {
-              if (!mounted) return;
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Could not refresh: ${humanizeSalesPaymentsError(error)}',
-                  ),
-                ),
-              );
-            }
-          },
-        );
-      },
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => _PaymentSuccessSheet(amount: amount, currency: currency),
     );
   }
 
@@ -2189,16 +2154,78 @@ class _BottomBar extends StatelessWidget {
 
 // ── Paystack QR payment sheet ─────────────────────────────────────────────────
 
-class _PaystackQrSheet extends StatelessWidget {
+class _PaystackQrSheet extends ConsumerStatefulWidget {
   const _PaystackQrSheet({
     required this.checkoutUrl,
     required this.saleId,
-    required this.onCheckStatus,
+    required this.onPaymentConfirmed,
   });
 
   final String checkoutUrl;
   final String saleId;
-  final VoidCallback onCheckStatus;
+  final VoidCallback onPaymentConfirmed;
+
+  @override
+  ConsumerState<_PaystackQrSheet> createState() => _PaystackQrSheetState();
+}
+
+class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
+  Timer? _timer;
+  int _pollCount = 0;
+  bool _checking = false;
+  static const _maxPolls = 20;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _check(auto: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _check({bool auto = false}) async {
+    if (_checking) return;
+    if (auto && _pollCount >= _maxPolls) {
+      _timer?.cancel();
+      return;
+    }
+    if (auto) _pollCount++;
+    setState(() => _checking = true);
+    try {
+      final status = await ref
+          .read(salesPaymentsApiProvider)
+          .fetchSalePaymentStatus(widget.saleId);
+      if (!mounted) return;
+      if (status.paymentStatus == 'succeeded') {
+        _timer?.cancel();
+        widget.onPaymentConfirmed();
+        return;
+      }
+      if (!auto) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status.paymentStatus == 'pending_provider'
+              ? 'Still waiting for payment...'
+              : 'Payment ${status.paymentStatus.replaceAll('_', ' ')}'),
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    } catch (_) {
+      if (!auto && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Could not check status. Try again.'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2216,7 +2243,6 @@ class _PaystackQrSheet extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // drag handle
               Center(
                 child: Container(
                   width: 44,
@@ -2238,13 +2264,9 @@ class _PaystackQrSheet extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Ask the customer to scan this QR code with their phone to open the payment page.',
+                'Show this QR to the customer. Payment confirms automatically.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12.5,
-                  height: 1.4,
-                ),
+                style: TextStyle(color: AppColors.muted, fontSize: 12.5, height: 1.4),
               ),
               const SizedBox(height: 20),
               Container(
@@ -2256,9 +2278,9 @@ class _PaystackQrSheet extends StatelessWidget {
                   boxShadow: AppShadows.card,
                 ),
                 child: QrImageView(
-                  data: checkoutUrl,
+                  data: widget.checkoutUrl,
                   version: QrVersions.auto,
-                  size: 220,
+                  size: 210,
                   eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
                     color: AppColors.navy,
@@ -2269,18 +2291,39 @@ class _PaystackQrSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _checking
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        )
+                      : const Icon(Icons.wifi_rounded,
+                          size: 12, color: AppColors.success),
+                  const SizedBox(width: 6),
+                  Text(
+                    _checking ? 'Checking...' : 'Waiting for payment',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.muted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         await Clipboard.setData(
-                          ClipboardData(text: checkoutUrl),
-                        );
+                            ClipboardData(text: widget.checkoutUrl));
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Payment link copied.')),
+                          const SnackBar(
+                              content: Text('Payment link copied.'),
+                              duration: Duration(seconds: 2)),
                         );
                       },
                       icon: const Icon(Icons.copy_rounded, size: 16),
@@ -2288,66 +2331,40 @@ class _PaystackQrSheet extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(46),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: () async {
-                        final uri = Uri.parse(checkoutUrl);
-                        final launched = await launchUrl(
-                          uri,
-                          mode: LaunchMode.externalApplication,
-                        );
-                        if (!launched && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Could not open browser. Use Copy Link instead.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_browser_rounded, size: 16),
-                      label: const Text('Open Link'),
+                      onPressed: _checking ? null : () => _check(),
+                      icon: _checking
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Check Now'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.navy,
                         minimumSize: const Size.fromHeight(46),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: onCheckStatus,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Check Payment Status'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
                   minimumSize: const Size.fromHeight(44),
                   foregroundColor: AppColors.inkSoft,
                 ),
-                child: const Text('Close'),
+                child: const Text('Cancel'),
               ),
             ],
           ),
@@ -2355,6 +2372,231 @@ class _PaystackQrSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Payment success overlay ───────────────────────────────────────────────────
+
+class _PaymentSuccessSheet extends StatefulWidget {
+  const _PaymentSuccessSheet({required this.amount, required this.currency});
+  final String amount;
+  final String currency;
+
+  @override
+  State<_PaymentSuccessSheet> createState() => _PaymentSuccessSheetState();
+}
+
+class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
+    with TickerProviderStateMixin {
+  late final AnimationController _circleCtrl;
+  late final AnimationController _checkCtrl;
+  late final AnimationController _contentCtrl;
+  late final Animation<double> _circleAnim;
+  late final Animation<double> _checkAnim;
+  late final Animation<double> _contentAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _circleCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 420));
+    _checkCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _contentCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 350));
+
+    _circleAnim =
+        CurvedAnimation(parent: _circleCtrl, curve: Curves.elasticOut);
+    _checkAnim = CurvedAnimation(parent: _checkCtrl, curve: Curves.easeOut);
+    _contentAnim =
+        CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut);
+
+    HapticFeedback.heavyImpact();
+    _circleCtrl.forward().then((_) {
+      _checkCtrl.forward().then((_) {
+        HapticFeedback.mediumImpact();
+        _contentCtrl.forward();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _circleCtrl.dispose();
+    _checkCtrl.dispose();
+    _contentCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AppShadows.elevated,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: Listenable.merge([_circleCtrl, _checkCtrl]),
+                builder: (_, __) => SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: CustomPaint(
+                    painter: _SuccessCheckPainter(
+                      circleProgress: _circleAnim.value,
+                      checkProgress: _checkAnim.value,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FadeTransition(
+                opacity: _contentAnim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.15),
+                    end: Offset.zero,
+                  ).animate(_contentAnim),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Payment Confirmed!',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${widget.currency} ${widget.amount}',
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.success,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Received via Paystack · Sale updated',
+                        style:
+                            TextStyle(color: AppColors.muted, fontSize: 13),
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuccessCheckPainter extends CustomPainter {
+  const _SuccessCheckPainter({
+    required this.circleProgress,
+    required this.checkProgress,
+  });
+
+  final double circleProgress;
+  final double checkProgress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final p = circleProgress.clamp(0.0, 1.0);
+
+    // Soft background circle
+    canvas.drawCircle(
+      center,
+      radius * p,
+      Paint()
+        ..color = AppColors.success.withValues(alpha: 0.12)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Solid filled circle
+    canvas.drawCircle(
+      center,
+      (radius - 10) * p,
+      Paint()
+        ..color = AppColors.success
+        ..style = PaintingStyle.fill,
+    );
+
+    if (checkProgress <= 0 || p < 0.7) return;
+
+    // Animated checkmark drawn progressively
+    final p1 = Offset(center.dx - 22, center.dy + 2);
+    final p2 = Offset(center.dx - 6, center.dy + 18);
+    final p3 = Offset(center.dx + 24, center.dy - 16);
+
+    final seg1 = _dist(p1, p2);
+    final seg2 = _dist(p2, p3);
+    final total = seg1 + seg2;
+    final drawn = total * checkProgress.clamp(0.0, 1.0);
+
+    final path = Path()..moveTo(p1.dx, p1.dy);
+    if (drawn <= seg1) {
+      final t = drawn / seg1;
+      path.lineTo(p1.dx + (p2.dx - p1.dx) * t, p1.dy + (p2.dy - p1.dy) * t);
+    } else {
+      path.lineTo(p2.dx, p2.dy);
+      final t = (drawn - seg1) / seg2;
+      path.lineTo(p2.dx + (p3.dx - p2.dx) * t, p2.dy + (p3.dy - p2.dy) * t);
+    }
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.5
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  double _dist(Offset a, Offset b) {
+    final dx = b.dx - a.dx;
+    final dy = b.dy - a.dy;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  @override
+  bool shouldRepaint(_SuccessCheckPainter old) =>
+      old.circleProgress != circleProgress ||
+      old.checkProgress != checkProgress;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
