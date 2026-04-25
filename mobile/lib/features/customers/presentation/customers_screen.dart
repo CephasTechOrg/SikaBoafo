@@ -32,7 +32,7 @@ class CustomersScreen extends ConsumerWidget {
                 customerCount: customers.length,
                 outstandingMinor: outstandingMinor,
                 clearedCount: clearedCount,
-                onBack: () => Navigator.of(context).maybePop(),
+                onBack: () => context.pop(),
                 onRefresh: () =>
                     ref.read(debtsControllerProvider.notifier).refresh(),
               ),

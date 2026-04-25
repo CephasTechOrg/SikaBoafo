@@ -253,7 +253,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 1.8 | Payment Settings (Connect Paystack, status, verify, test) | `[x] ✅` | `features/settings/presentation/connect_paystack_screen.dart` now supports test/live mode selection, write-only secret capture, backend verify-on-save, and per-mode configured/verified status. |
 | 1.9 | Clickable prototype | `[~] 🚧` | Live app = prototype. Mockups in `mobile/UI UPDATES/`. |
 | 1.10 | Dashboard quick actions: New Sale, **New Invoice**, Record Stock, **Send Reminder**, Add Customer | `[~] 🚧` | Has New Sale and Add Customer. **Missing New Invoice, Record Stock shortcut, Send Reminder shortcut.** |
-| 1.11 | Enterprise UI polish (per `06-ui-design.md` visual tone) | `[~] 🚧` | Dashboard/Inventory/Sales/Debts migrated. **Remaining: Expenses, Auth, Settings, Onboarding.** |
+| 1.11 | Enterprise UI polish (per `06-ui-design.md` visual tone) | `[~] 🚧` | Dashboard/Inventory/Sales/Debts/Customers/Staff/Settings migrated. Navigation consistency sweep done (all `maybePop` → GoRouter `pop`). **Remaining: Expenses screen, Auth screens, Onboarding screens.** |
 | 1.12 | Color system (docs say blue+white+green; we use forest+gold) | **decision made** | Brand is forest+gold. Keep. Just note the divergence from doc. |
 
 ### Phase 2 — Technical Setup
@@ -497,6 +497,13 @@ The big one. §4.1 through §4.16.
   - receivables now settle correctly for partial payments (outstanding reduced by verified amount; status moves to `partially_paid` when needed)
   - underpaid sale verifications now fail sale settlement (`sales.payment_status = failed`) instead of incorrectly marking success
   - stabilization sweep: `python -m pytest -q backend/app/tests/test_paystack_webhooks.py backend/app/tests/test_payments_initiate.py backend/app/tests/test_receivables_sync.py` (21 pass)
+- M4 UX/UI stabilization sweep (2026-04-24) `[x] ✅`: navigation consistency + payment UI polish:
+  - **Root fix**: `PAYMENT_CONFIG_ENCRYPTION_KEY` added to `.env` — this was the root cause of all key-save failures (backend was returning HTTP 503 `CryptoConfigError` on every save attempt)
+  - **`connect_paystack_screen.dart`** fully rewritten: Test/Live mode tab toggle (`_ModeTab` widget), clearer status banner with connected/disconnected styling, per-mode configured/verified status rows (`_ModeStatusRow`), human-readable error messages (maps 503/502/400/401 → friendly copy), danger-styled disconnect button, confirmation dialog on disconnect
+  - **`business_settings_sheet.dart`**: all `Navigator.of(context).maybePop()` → `context.pop()`; Paystack connection status badge wired via `paystackConnectionProvider` — shows connected/disconnected pill with active mode, and button label changes from "Connect Paystack" to "Manage Paystack" when connected
+  - **Sales QR payment sheet**: `_PaystackQrSheet` widget added — shows checkout URL as scannable QR code (via `qr_flutter`), Copy Link, Open Link (via `url_launcher`), Check Status actions; "Send Paystack Payment Link" button shown for ALL payment methods in checkout sheet
+  - **Navigation sweep**: all `Navigator.of(context).maybePop()` calls across the entire mobile codebase replaced with GoRouter `context.pop()` (or `Navigator.of(context).pop()` for screens opened via MaterialPageRoute). Files fixed: `connect_paystack_screen.dart`, `business_settings_sheet.dart`, `customer_detail_screen.dart`, `customers_screen.dart`, `staff_screen.dart`, `debt_detail_screen.dart`, `receive_repayment_screen.dart`; added `go_router` import where missing
+  - **Router**: `/debts/:id` GoRoute added; `debt_detail_screen.dart` back-navigation converted to GoRouter
 - Provider abstraction + encrypted key storage
 - "Connect Paystack" settings screen
 - Create payment request
@@ -596,5 +603,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are complete. M4 now includes Paystack connection, merchant-owned encrypted credentials with verify-on-save, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, and partial-payment hardening; auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are complete. M4 now includes Paystack connection, merchant-owned encrypted credentials with verify-on-save, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, partial-payment hardening, and a full UX/navigation consistency sweep (all `maybePop` calls replaced with GoRouter `context.pop()`, QR checkout sheet in sales, Paystack status badge in Business Settings, human-readable error messages throughout settings); auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
 

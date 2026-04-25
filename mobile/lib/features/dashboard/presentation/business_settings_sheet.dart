@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../settings/presentation/connect_paystack_screen.dart'
+    show paystackConnectionProvider;
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
 
@@ -82,7 +84,7 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
         background: AppColors.infoSoft,
       ),
       trailing: IconButton(
-        onPressed: () => Navigator.of(context).maybePop(),
+        onPressed: () => context.pop(),
         icon: const Icon(Icons.close_rounded),
       ),
       child: Column(
@@ -136,7 +138,7 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  Navigator.of(context).maybePop();
+                  context.pop();
                   context.push(AppRoute.staff.path);
                 },
                 icon: const Icon(Icons.people_rounded),
@@ -145,22 +147,11 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
             ),
           ),
           const SizedBox(height: 14),
-          _SectionCard(
-            icon: Icons.account_balance_wallet_rounded,
-            iconColor: AppColors.navy,
-            title: 'Payment Settings',
-            subtitle: 'Connect Paystack and manage collection mode.',
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).maybePop();
-                  context.push(AppRoute.paystack.path);
-                },
-                icon: const Icon(Icons.link_rounded),
-                label: const Text('Connect Paystack'),
-              ),
-            ),
+          _PaymentSettingsCard(
+            onNavigate: () {
+              context.pop();
+              context.push(AppRoute.paystack.path);
+            },
           ),
           const SizedBox(height: 14),
           _SectionCard(
@@ -286,6 +277,70 @@ class _BusinessSettingsSheetState extends ConsumerState<BusinessSettingsSheet> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _PaymentSettingsCard extends ConsumerWidget {
+  const _PaymentSettingsCard({required this.onNavigate});
+
+  final VoidCallback onNavigate;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connectionAsync = ref.watch(paystackConnectionProvider);
+    final isConnected = connectionAsync.valueOrNull?.isConnected ?? false;
+    final mode = connectionAsync.valueOrNull?.mode;
+
+    return _SectionCard(
+      icon: Icons.account_balance_wallet_rounded,
+      iconColor: AppColors.navy,
+      title: 'Payment Settings',
+      subtitle: 'Connect Paystack and manage collection mode.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (connectionAsync.hasValue)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isConnected ? AppColors.successSoft : AppColors.warningSoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isConnected
+                        ? Icons.check_circle_rounded
+                        : Icons.warning_amber_rounded,
+                    size: 16,
+                    color: isConnected ? AppColors.success : AppColors.warning,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isConnected
+                        ? 'Connected · ${mode == 'live' ? 'Live mode' : 'Test mode'}'
+                        : 'Not connected',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: isConnected ? AppColors.success : AppColors.warning,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onNavigate,
+              icon: const Icon(Icons.link_rounded),
+              label: Text(isConnected ? 'Manage Paystack' : 'Connect Paystack'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
@@ -37,7 +38,7 @@ class DebtDetailScreen extends ConsumerWidget {
                   ? 'Review balance, repayment history, and debt status.'
                   : 'Track this customer ledger without leaving the debt workflow.',
               leading: IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               ),
               badge: PremiumBadge(
@@ -326,7 +327,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       ref.invalidate(receivableDetailProvider(widget.receivableId));
       await ref.read(debtsControllerProvider.notifier).refresh();
       if (!context.mounted) return;
-      Navigator.of(context).maybePop();
+      context.pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Debt cancelled.')),
       );

@@ -8,6 +8,7 @@ import '../features/onboarding/presentation/business_onboarding_screen.dart';
 import '../features/onboarding/presentation/splash_screen.dart';
 import '../features/customers/presentation/customer_detail_screen.dart';
 import '../features/customers/presentation/customers_screen.dart';
+import '../features/debts/presentation/debt_detail_screen.dart';
 import '../features/settings/presentation/connect_paystack_screen.dart';
 import '../features/settings/presentation/staff_screen.dart';
 
@@ -20,7 +21,8 @@ enum AppRoute {
   staff('/staff'),
   paystack('/settings/payments/paystack'),
   customers('/customers'),
-  customerDetail('/customers/:id');
+  customerDetail('/customers/:id'),
+  debtDetail('/debts/:id');
 
   const AppRoute(this.path);
   final String path;
@@ -72,6 +74,13 @@ GoRouter createAppRouter() {
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
           return CustomerDetailScreen(customerId: id);
+        },
+      ),
+      GoRoute(
+        path: AppRoute.debtDetail.path,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return DebtDetailScreen(receivableId: id);
         },
       ),
     ],

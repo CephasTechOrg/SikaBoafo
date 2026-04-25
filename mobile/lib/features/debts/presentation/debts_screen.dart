@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';
-import 'debt_detail_screen.dart';
 import '../providers/debts_providers.dart';
 
 // O(n) YYYY-MM-DD lexicographic comparison — no DateTime.parse needed.
@@ -601,11 +602,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   // ── Navigation ───────────────────────────────────────────────────────────
 
   Future<void> _openDebtDetail(String receivableId) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DebtDetailScreen(receivableId: receivableId),
-      ),
-    );
+    await context.push('/debts/$receivableId');
     if (!mounted) return;
     ref.invalidate(receivableDetailProvider(receivableId));
     await ref.read(debtsControllerProvider.notifier).refresh();

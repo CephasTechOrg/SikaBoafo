@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../debts/data/debts_repository.dart';
@@ -55,7 +56,7 @@ class CustomerDetailScreen extends ConsumerWidget {
                 outstandingMinor: outstandingMinor,
                 openCount: openCount,
                 phoneNumber: customer?.phoneNumber,
-                onBack: () => Navigator.of(context).maybePop(),
+                onBack: () => context.pop(),
                 onRefresh: () =>
                     ref.invalidate(_customerDetailProvider(customerId)),
               ),

@@ -41,7 +41,7 @@ class _ReceiveRepaymentScreenState
               title: 'Receive Payment',
               subtitle: 'Apply a repayment and keep the outstanding balance accurate.',
               leading: IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               ),
               badge: const PremiumBadge(

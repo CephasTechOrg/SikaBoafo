@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
@@ -626,34 +630,35 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           ),
                         ),
                       ),
-                      if (selectedMethod == 'mobile_money') ...[
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              Navigator.of(sheetContext).pop();
-                              if (!mounted) return;
-                              setState(() => _paymentMethod = selectedMethod);
-                              await _recordSaleWithPaystackLink(items: items);
-                            },
-                            icon: const Icon(Icons.link_rounded, size: 18),
-                            label: const Text('Generate Paystack Link'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.navy,
-                              minimumSize: const Size.fromHeight(50),
-                              side: const BorderSide(color: AppColors.navy),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              textStyle: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            Navigator.of(sheetContext).pop();
+                            if (!mounted) return;
+                            setState(() => _paymentMethod = selectedMethod);
+                            await _recordSaleWithPaystackLink(
+                              items: items,
+                              paymentMethodLabel: selectedMethod,
+                            );
+                          },
+                          icon: const Icon(Icons.link_rounded, size: 18),
+                          label: const Text('Send Paystack Payment Link'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.navy,
+                            minimumSize: const Size.fromHeight(50),
+                            side: const BorderSide(color: AppColors.navy),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
@@ -876,6 +881,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _recordSaleWithPaystackLink({
     required List<LocalInventoryItem> items,
+    required String paymentMethodLabel,
   }) async {
     final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {
@@ -891,7 +897,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       final saleId = await ref
           .read(salesControllerProvider.notifier)
           .recordSaleReturningId(
-            paymentMethodLabel: 'mobile_money',
+            paymentMethodLabel: paymentMethodLabel,
             lines: lines,
             note: note,
           );
@@ -914,6 +920,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         ref.invalidate(inventoryControllerProvider);
         _resetDraftAfterSale();
       }
+      final isPaystackNotConnected = _isPaystackNotConnectedError(error);
+      if (isPaystackNotConnected) {
+        await _showPaystackSetupPrompt();
+        return;
+      }
       final message = saleSaved
           ? 'Sale recorded, but payment link failed: ${humanizeSalesPaymentsError(error)}'
           : humanizeInventoryError(error);
@@ -921,6 +932,40 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         SnackBar(content: Text(message)),
       );
     }
+  }
+
+  bool _isPaystackNotConnectedError(Object error) {
+    final msg = humanizeSalesPaymentsError(error).toLowerCase();
+    return msg.contains('paystack is not connected') ||
+        msg.contains('not connected') ||
+        msg.contains('paystack connection');
+  }
+
+  Future<void> _showPaystackSetupPrompt() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Paystack Not Connected'),
+        content: const Text(
+          'You need to connect your Paystack account before generating payment links.\n\n'
+          'Go to Settings → Payments → Connect Paystack to set it up.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.push(AppRoute.paystack.path);
+            },
+            child: const Text('Set Up Paystack'),
+          ),
+        ],
+      ),
+    );
   }
 
   List<SaleDraftLine> _buildSaleDraftLines(List<LocalInventoryItem> items) {
@@ -984,77 +1029,39 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String saleId,
   }) async {
     if (!mounted) return;
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Paystack Link Ready'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Share or open this link, then tap Check Status to refresh payment state.',
-                style: TextStyle(fontSize: 12.5),
-              ),
-              const SizedBox(height: 10),
-              SelectableText(
-                checkoutUrl,
-                style: const TextStyle(fontSize: 13),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Close'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                try {
-                  final latest = await _pollSalePaymentStatus(saleId: saleId);
-                  if (!mounted) return;
-                  await ref
-                      .read(salesControllerProvider.notifier)
-                      .refresh(includeVoided: _showVoided);
-                  final statusLabel = _formatPaymentStatusLabel(
-                    latest?.paymentStatus ?? 'pending_provider',
-                  );
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Current payment status: $statusLabel'),
-                    ),
-                  );
-                } catch (error) {
-                  if (!mounted) return;
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Could not refresh payment status: '
-                        '${humanizeSalesPaymentsError(error)}',
-                      ),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Check Status'),
-            ),
-            FilledButton.icon(
-              onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                await Clipboard.setData(ClipboardData(text: checkoutUrl));
-                if (!dialogContext.mounted) return;
-                Navigator.of(dialogContext).pop();
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Payment link copied.')),
-                );
-              },
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              label: const Text('Copy Link'),
-            ),
-          ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return _PaystackQrSheet(
+          checkoutUrl: checkoutUrl,
+          saleId: saleId,
+          onCheckStatus: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            try {
+              final latest = await _pollSalePaymentStatus(saleId: saleId);
+              if (!mounted) return;
+              await ref
+                  .read(salesControllerProvider.notifier)
+                  .refresh(includeVoided: _showVoided);
+              final statusLabel = _formatPaymentStatusLabel(
+                latest?.paymentStatus ?? 'pending_provider',
+              );
+              messenger.showSnackBar(
+                SnackBar(content: Text('Payment status: $statusLabel')),
+              );
+            } catch (error) {
+              if (!mounted) return;
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Could not refresh: ${humanizeSalesPaymentsError(error)}',
+                  ),
+                ),
+              );
+            }
+          },
         );
       },
     );
@@ -1800,150 +1807,6 @@ class _CheckoutMethodButton extends StatelessWidget {
   }
 }
 
-class _PaymentCard extends StatelessWidget {
-  const _PaymentCard({
-    required this.paymentMethod,
-    required this.onSelected,
-  });
-
-  final String paymentMethod;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Choose payment method',
-            style: TextStyle(
-              color: AppColors.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Pick the collection channel before you confirm the sale.',
-            style: TextStyle(
-              color: AppColors.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _PaymentTile(
-                  label: 'Cash',
-                  icon: Icons.account_balance_wallet_rounded,
-                  selected: paymentMethod == 'cash',
-                  onTap: () => onSelected('cash'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PaymentTile(
-                  label: 'Mobile\nMoney',
-                  icon: Icons.phone_android_rounded,
-                  selected: paymentMethod == 'mobile_money',
-                  onTap: () => onSelected('mobile_money'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PaymentTile(
-                  label: 'Bank\nTransfer',
-                  icon: Icons.account_balance_rounded,
-                  selected: paymentMethod == 'bank_transfer',
-                  onTap: () => onSelected('bank_transfer'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentTile extends StatelessWidget {
-  const _PaymentTile({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = switch (label) {
-      'Mobile\nMoney' => AppColors.gold,
-      'Bank\nTransfer' => AppColors.navySoft,
-      _ => AppColors.navy,
-    };
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-        decoration: BoxDecoration(
-          color: selected
-              ? accent.withValues(alpha: accent == AppColors.gold ? 0.18 : 0.12)
-              : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? accent : AppColors.border,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: selected ? accent : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: selected ? Colors.white : accent,
-                size: 20,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.ink : AppColors.ink,
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ── Item card ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
@@ -2324,58 +2187,169 @@ class _BottomBar extends StatelessWidget {
   }
 }
 
-// ── Compact search ────────────────────────────────────────────────────────────
+// ── Paystack QR payment sheet ─────────────────────────────────────────────────
 
-class _CompactSearch extends StatelessWidget {
-  const _CompactSearch({
-    required this.controller,
-    required this.hasQuery,
-    required this.onChanged,
-    required this.onClear,
+class _PaystackQrSheet extends StatelessWidget {
+  const _PaystackQrSheet({
+    required this.checkoutUrl,
+    required this.saleId,
+    required this.onCheckStatus,
   });
 
-  final TextEditingController controller;
-  final bool hasQuery;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
+  final String checkoutUrl;
+  final String saleId;
+  final VoidCallback onCheckStatus;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 148,
-      height: 36,
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: const TextStyle(fontSize: 13, color: AppColors.ink),
-        decoration: InputDecoration(
-          hintText: 'Search items...',
-          hintStyle: const TextStyle(fontSize: 13, color: AppColors.muted),
-          prefixIcon: const Icon(Icons.search_rounded,
-              size: 17, color: AppColors.muted),
-          suffixIcon: hasQuery
-              ? GestureDetector(
-                  onTap: onClear,
-                  child: const Icon(Icons.close_rounded,
-                      size: 15, color: AppColors.muted),
-                )
-              : null,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
-          filled: true,
-          fillColor: Colors.white,
-          isDense: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: AppShadows.elevated,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.forest, width: 1.2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // drag handle
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderStrong,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Scan to Pay',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ask the customer to scan this QR code with their phone to open the payment page.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12.5,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppShadows.card,
+                ),
+                child: QrImageView(
+                  data: checkoutUrl,
+                  version: QrVersions.auto,
+                  size: 220,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: AppColors.navy,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: checkoutUrl),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Payment link copied.')),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 16),
+                      label: const Text('Copy Link'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(checkoutUrl);
+                        final launched = await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                        if (!launched && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Could not open browser. Use Copy Link instead.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_browser_rounded, size: 16),
+                      label: const Text('Open Link'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.navy,
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onCheckStatus,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Check Payment Status'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  foregroundColor: AppColors.inkSoft,
+                ),
+                child: const Text('Close'),
+              ),
+            ],
           ),
         ),
       ),

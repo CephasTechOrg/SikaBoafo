@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -49,7 +50,7 @@ class StaffScreen extends ConsumerWidget {
                         children: [
                           _HeaderActionButton(
                             icon: Icons.arrow_back_rounded,
-                            onTap: () => Navigator.of(context).maybePop(),
+                            onTap: () => context.pop(),
                             tooltip: 'Back',
                           ),
                           const SizedBox(width: 10),
@@ -609,7 +610,7 @@ class _InviteSheetState extends State<_InviteSheet> {
         background: AppColors.successSoft,
       ),
       trailing: IconButton(
-        onPressed: () => Navigator.of(context).maybePop(),
+        onPressed: () => context.pop(),
         icon: const Icon(Icons.close_rounded),
       ),
       child: Column(
