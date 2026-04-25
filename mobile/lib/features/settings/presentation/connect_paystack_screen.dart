@@ -920,6 +920,7 @@ class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
           ),
           const SizedBox(height: 8),
           TextField(
+            key: const Key('disconnect_confirm_input'),
             controller: _ctrl,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,

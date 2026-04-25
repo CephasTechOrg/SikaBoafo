@@ -186,17 +186,12 @@ void main() {
     await tester.pumpAndSettle();
 
     // _DisconnectConfirmDialog is now shown — type the confirmation word
-    final dialogField = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(TextField),
+    await tester.enterText(
+      find.byKey(const Key('disconnect_confirm_input')),
+      'DISCONNECT',
     );
-    await tester.enterText(dialogField, 'DISCONNECT');
     await tester.pumpAndSettle();
-    final confirmBtn = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.widgetWithText(FilledButton, 'Disconnect'),
-    );
-    await tester.tap(confirmBtn);
+    await tester.tap(find.widgetWithText(FilledButton, 'Disconnect'));
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
