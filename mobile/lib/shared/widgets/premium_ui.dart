@@ -70,6 +70,41 @@ class PremiumPageHeader extends StatelessWidget {
   }
 }
 
+class PremiumHeaderButton extends StatelessWidget {
+  const PremiumHeaderButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    super.key,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Material(
+      color: Colors.white.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+    return tooltip == null ? child : Tooltip(message: tooltip!, child: child);
+  }
+}
+
 class PremiumSurface extends StatelessWidget {
   const PremiumSurface({
     required this.child,

@@ -26,9 +26,7 @@ class StaffScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final staffAsync = ref.watch(_staffListProvider);
-    final invitesAsync = ref.watch(_pendingInvitesProvider);
     final members = staffAsync.valueOrNull ?? const <StaffMember>[];
-    final invites = invitesAsync.valueOrNull ?? const <StaffInvite>[];
     final activeCount = members.where((m) => m.isActive).length;
 
     return Scaffold(
@@ -37,81 +35,23 @@ class StaffScreen extends ConsumerWidget {
         decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: Column(
           children: [
-            Container(
-              decoration: const BoxDecoration(gradient: AppGradients.hero),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _HeaderActionButton(
-                            icon: Icons.arrow_back_rounded,
-                            onTap: () => context.pop(),
-                            tooltip: 'Back',
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Staff',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Invite teammates and manage store access',
-                                  style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _HeaderActionButton(
-                            icon: Icons.person_add_rounded,
-                            onTap: () => _showInviteSheet(context, ref),
-                            tooltip: 'Invite staff',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _StaffHeroChip(
-                            label: '${members.length}',
-                            value: 'Members',
-                            tone: AppColors.gold,
-                          ),
-                          const SizedBox(width: 8),
-                          _StaffHeroChip(
-                            label: '$activeCount',
-                            value: 'Active',
-                            tone: const Color(0xFF8BE0B2),
-                          ),
-                          const SizedBox(width: 8),
-                          _StaffHeroChip(
-                            label: '${invites.length}',
-                            value: 'Pending',
-                            tone: AppColors.gold,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+            PremiumPageHeader(
+              leading: PremiumHeaderButton(
+                icon: Icons.arrow_back_rounded,
+                onTap: () => context.pop(),
+                tooltip: 'Back',
+              ),
+              title: 'Staff',
+              subtitle: 'Invite teammates and manage store access',
+              badge: PremiumBadge(
+                label: '$activeCount active',
+                foreground: AppColors.success,
+                background: AppColors.successSoft,
+              ),
+              trailing: PremiumHeaderButton(
+                icon: Icons.person_add_rounded,
+                onTap: () => _showInviteSheet(context, ref),
+                tooltip: 'Invite staff',
               ),
             ),
             Expanded(
@@ -149,93 +89,6 @@ class StaffScreen extends ConsumerWidget {
           ref.invalidate(_pendingInvitesProvider);
         },
         settingsApi: ref.read(_settingsApiProvider),
-      ),
-    );
-  }
-}
-
-class _HeaderActionButton extends StatelessWidget {
-  const _HeaderActionButton({
-    required this.icon,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Material(
-      color: Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-    return tooltip == null ? child : Tooltip(message: tooltip!, child: child);
-  }
-}
-
-class _StaffHeroChip extends StatelessWidget {
-  const _StaffHeroChip({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tone,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.56),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

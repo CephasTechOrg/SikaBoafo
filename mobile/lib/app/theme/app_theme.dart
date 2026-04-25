@@ -32,6 +32,9 @@ abstract final class AppColors {
   static const Color info = navySoft;
   static const Color infoSoft = Color(0xFFEAF0FF);
 
+  // Hero header subtitle — blue-white used across all screen headers
+  static const Color heroSubtitle = Color(0xFFC7D0E5);
+
   // Legacy aliases — retained so existing call-sites compile until per-screen migration.
   static const Color mint = Color(0xFFE8F4F0);
   static const Color mist = Color(0xFFF1F5F9);
