@@ -342,7 +342,7 @@ class _PinSignInView extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            flex: 5,
+            flex: 6,
             child: MockupHeroHeader(
               waveHeight: 56,
               child: Column(
@@ -357,9 +357,8 @@ class _PinSignInView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Icon(Icons.account_balance_wallet_outlined,
-                      color: Colors.white, size: 34),
-                  const SizedBox(height: 16),
+                  const MockupAppMark(size: 66),
+                  const SizedBox(height: 14),
                   Text(
                     'SikaBoafo',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -510,7 +509,7 @@ class _OtpVerifyView extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            flex: 5,
+            flex: 6,
             child: MockupHeroHeader(
               waveHeight: 56,
               child: Column(

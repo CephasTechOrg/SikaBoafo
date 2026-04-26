@@ -10,25 +10,44 @@ class MockupHeroHeader extends StatelessWidget {
   const MockupHeroHeader({
     required this.child,
     this.waveHeight = 42,
+    this.enableSwirl = true,
     super.key,
   });
 
   final Widget child;
   final double waveHeight;
+  final bool enableSwirl;
 
   @override
   Widget build(BuildContext context) {
     return ClipPath(
       clipper: _WaveClipper(waveHeight: waveHeight),
-      child: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.hero),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24 + 18),
-            child: child,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(decoration: BoxDecoration(gradient: AppGradients.hero)),
+          if (enableSwirl)
+            CustomPaint(
+              painter: _SwirlPainter(
+                light: const Color(0x33FFFFFF),
+                accent: const Color(0x22C49A2A),
+                dark: const Color(0x22000000),
+              ),
+            ),
+          // Slight softening like the mockup texture
+          if (enableSwirl)
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 0.6, sigmaY: 0.6),
+              child: const SizedBox.expand(),
+            ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24 + 18),
+              child: child,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -196,5 +215,98 @@ class _WaveClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant _WaveClipper oldClipper) {
     return oldClipper.waveHeight != waveHeight;
+  }
+}
+
+class _SwirlPainter extends CustomPainter {
+  const _SwirlPainter({
+    required this.light,
+    required this.accent,
+    required this.dark,
+  });
+
+  final Color light;
+  final Color accent;
+  final Color dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width * 0.55, size.height * 0.45);
+
+    void strokePath(Path path, Color color, double width, double blur) {
+      final p = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color
+        ..strokeWidth = width
+        ..maskFilter = blur <= 0 ? null : MaskFilter.blur(BlurStyle.normal, blur);
+      canvas.drawPath(path, p);
+    }
+
+    // Build a few smooth “latte” ribbons.
+    Path ribbon(double phase, double radius) {
+      final path = Path();
+      const steps = 7;
+      for (int i = 0; i <= steps; i++) {
+        final t = i / steps;
+        final ang = (t * math.pi * 2) + phase;
+        final r = radius * (0.9 + 0.18 * math.sin(ang * 1.6 + phase));
+        final x = center.dx + math.cos(ang) * r * 1.25;
+        final y = center.dy + math.sin(ang) * r * 0.85;
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.quadraticBezierTo(
+            (x + center.dx) / 2,
+            (y + center.dy) / 2,
+            x,
+            y,
+          );
+        }
+      }
+      return path;
+    }
+
+    // Dark under-ribbons (depth)
+    for (int i = 0; i < 4; i++) {
+      final path = ribbon(i * 0.55, size.shortestSide * (0.30 + i * 0.06));
+      strokePath(path, dark, 36 - i * 4, 10);
+    }
+
+    // Highlight ribbons (milk)
+    for (int i = 0; i < 4; i++) {
+      final path = ribbon(0.35 + i * 0.6, size.shortestSide * (0.26 + i * 0.06));
+      strokePath(path, light, 28 - i * 4, 8);
+    }
+
+    // A touch of warm accent
+    strokePath(
+      ribbon(1.15, size.shortestSide * 0.34),
+      accent,
+      22,
+      7,
+    );
+
+    // Subtle vignette so text remains readable.
+    final vignette = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.2, -0.3),
+        radius: 1.05,
+        colors: [
+          Colors.transparent,
+          const Color(0x22000000),
+          const Color(0x3A000000),
+        ],
+        stops: const [0.0, 0.72, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, vignette);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SwirlPainter oldDelegate) {
+    return oldDelegate.light != light ||
+        oldDelegate.accent != accent ||
+        oldDelegate.dark != dark;
   }
 }

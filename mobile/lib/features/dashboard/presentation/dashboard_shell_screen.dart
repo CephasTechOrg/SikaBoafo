@@ -125,46 +125,55 @@ class _HomeDashboard extends ConsumerWidget {
           },
         ),
         data: (mc) => SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              _Header(
-                mc: mc,
-                summaryAsync: summaryAsync,
-                onSettings: () => _openSettings(context),
-                onNavigate: onNavigate,
+              Column(
+                children: [
+                  _Header(
+                    mc: mc,
+                    summaryAsync: summaryAsync,
+                    onSettings: () => _openSettings(context),
+                    onNavigate: onNavigate,
+                  ),
+                  const SizedBox(height: 64), // room for overlapping quick actions
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.vertical(
+                          top: AppRadii.heroRadius,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: RefreshIndicator(
+                        color: AppColors.forest,
+                        onRefresh: () async {
+                          ref.invalidate(merchantContextProvider);
+                          ref.invalidate(dashboardSummaryProvider);
+                          ref.invalidate(dashboardRecentActivityProvider);
+                          await Future.wait([
+                            ref.read(merchantContextProvider.future),
+                            ref.read(dashboardSummaryProvider.future),
+                            ref.read(dashboardRecentActivityProvider.future),
+                          ]);
+                        },
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 66, 20, 40),
+                          children: [
+                            _RecentActivity(activityAsync: activityAsync),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.canvas,
-                    borderRadius: BorderRadius.vertical(
-                      top: AppRadii.heroRadius,
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: RefreshIndicator(
-                    color: AppColors.forest,
-                    onRefresh: () async {
-                      ref.invalidate(merchantContextProvider);
-                      ref.invalidate(dashboardSummaryProvider);
-                      ref.invalidate(dashboardRecentActivityProvider);
-                      await Future.wait([
-                        ref.read(merchantContextProvider.future),
-                        ref.read(dashboardSummaryProvider.future),
-                        ref.read(dashboardRecentActivityProvider.future),
-                      ]);
-                    },
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
-                      children: [
-                        _QuickActions(onNavigate: onNavigate),
-                        const SizedBox(height: 18),
-                        _RecentActivity(activityAsync: activityAsync),
-                      ],
-                    ),
-                  ),
-                ),
+              Positioned(
+                left: 20,
+                right: 20,
+                top: 248,
+                child: _QuickActions(onNavigate: onNavigate),
               ),
             ],
           ),
