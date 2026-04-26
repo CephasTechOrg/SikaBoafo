@@ -16,6 +16,8 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  static const _minSplashDuration = Duration(milliseconds: 3000);
+
   @override
   void initState() {
     super.initState();
@@ -23,7 +25,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _goNext() async {
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    // Keep splash visible long enough to read + avoid a “flash” on fast devices.
+    await Future<void>.delayed(_minSplashDuration);
     if (!mounted) return;
     final token = await ref.read(secureTokenStorageProvider).readAccessToken();
     if (!mounted) return;
@@ -53,7 +56,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     curve: Curves.easeOutCubic,
                     builder: (_, value, child) =>
                         Transform.scale(scale: value, child: child),
-                    child: const MockupAppMark(size: 96),
+                    child: const MockupAppMark(
+                      size: 96,
+                      assetPath: 'assets/images/sikaboafo.png',
+                    ),
                   ),
                   const SizedBox(height: 22),
                   Text(
