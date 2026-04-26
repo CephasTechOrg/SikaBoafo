@@ -11,11 +11,9 @@ import '../../../shared/widgets/sync_status_pill.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
-import 'reports_screen.dart';
-import '../../debts/presentation/debts_screen.dart';
-import '../../expenses/presentation/expenses_screen.dart';
 import '../../inventory/presentation/inventory_screen.dart';
 import '../../sales/presentation/sales_screen.dart';
+import 'more_screen.dart';
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
@@ -45,9 +43,7 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
       ),
       const SalesScreen(),
       const InventoryScreen(),
-      const ExpensesScreen(),
-      DebtsScreen(onNavigate: (i) => setState(() => _index = i)),
-      const ReportsScreen(),
+      const MoreScreen(),
     ];
 
     return Scaffold(
@@ -73,7 +69,7 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home_rounded),
-                label: 'Home',
+                label: 'Dashboard',
               ),
               NavigationDestination(
                 icon: Icon(Icons.point_of_sale_outlined),
@@ -86,19 +82,9 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
                 label: 'Inventory',
               ),
               NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long_rounded),
-                label: 'Expenses',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.group_outlined),
-                selectedIcon: Icon(Icons.group_rounded),
-                label: 'Debts',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.bar_chart_outlined),
-                selectedIcon: Icon(Icons.bar_chart_rounded),
-                label: 'Reports',
+                icon: Icon(Icons.grid_view_outlined),
+                selectedIcon: Icon(Icons.grid_view_rounded),
+                label: 'More',
               ),
             ],
           ),
@@ -170,12 +156,10 @@ class _HomeDashboard extends ConsumerWidget {
                     },
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 40),
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
                       children: [
                         _QuickActions(onNavigate: onNavigate),
-                        const SizedBox(height: 24),
-                        _InsightBanner(summary: summaryAsync.valueOrNull),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 18),
                         _RecentActivity(activityAsync: activityAsync),
                       ],
                     ),
@@ -215,33 +199,36 @@ class _Header extends ConsumerWidget {
     final summary = summaryAsync.valueOrNull;
     final syncSnapshot = ref.watch(syncStatusControllerProvider).valueOrNull;
     final sales = summary?.todaySalesTotal ?? '--';
-    final debt = summary?.debtOutstandingTotal ?? '--';
-    final lowStock = summary?.lowStockCount ?? 0;
     final connectivity = _syncHeadline(syncSnapshot);
-    final descriptor = [mc.businessType, mc.storeName]
-        .whereType<String>()
-        .map((v) => v.trim())
-        .where((v) => v.isNotEmpty)
-        .join(' · ');
-    final location = (mc.storeLocation?.trim().isNotEmpty ?? false)
-        ? mc.storeLocation!.trim()
-        : mc.storeName;
-    final dateLabel = DateFormat('EEE, d MMM yyyy').format(DateTime.now());
+    final greeting = _firstName(mc.businessName);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: const Icon(Icons.person_rounded,
+                    color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'SikaBoafo',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.92),
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 0.1,
                   ),
                 ),
@@ -255,113 +242,44 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _HeaderBtn(icon: Icons.settings_outlined, onTap: onSettings),
             ],
           ),
-          const SizedBox(height: 10),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  'Hi, ${_firstName(mc.businessName)}${descriptor.isEmpty ? '' : ' · $descriptor'}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.68),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
+          const SizedBox(height: 22),
+          Text(
+            'SALES TODAY',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.70),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.0,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  dateLabel,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.42),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '\u20B5$sales',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -0.9,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Sales Today',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.56),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 10),
+          Text(
+            '\u20B5$sales',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 40,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Constantia',
+              letterSpacing: -0.8,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _HeroStatTile(
-                    label: 'Debt Owed',
-                    value: '\u20B5$debt',
-                    tone: AppColors.gold,
-                    onTap: () => onNavigate(4),
+            child: Text(
+              '+12% from yesterday · ${connectivity.$1} · Hi, $greeting',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
                   ),
-                ),
-                _HeroDivider(),
-                Expanded(
-                  child: _HeroStatTile(
-                    label: 'Low Stock',
-                    value: '$lowStock items',
-                    tone: const Color(0xFFF6A6A6),
-                    onTap: () => onNavigate(2),
-                  ),
-                ),
-                _HeroDivider(),
-                Expanded(
-                  child: _HeroStatTile(
-                    label: 'Connectivity',
-                    value: connectivity.$1,
-                    tone: connectivity.$2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _HeaderPill(
-                  icon: Icons.location_on_outlined,
-                  label: location,
-                ),
-                const SizedBox(width: 8),
-                _HeaderPill(
-                  icon: Icons.schedule_outlined,
-                  label: mc.timezone,
-                ),
-                const SizedBox(width: 8),
-                const SyncStatusPill(),
-              ],
             ),
           ),
         ],
@@ -530,62 +448,35 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Row(
-          children: [
-            const Expanded(child: _SectionLabel('Quick Actions')),
-            Text(
-              'Daily shortcuts',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.card,
+        Expanded(
+          child: _QuickTile(
+            icon: Icons.shopping_cart_rounded,
+            label: 'New Sale',
+            backgroundColor: AppColors.navy,
+            foregroundColor: Colors.white,
+            onTap: () => onNavigate(1),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _QuickTile(
-                  icon: Icons.shopping_basket_rounded,
-                  label: 'New Sale',
-                  backgroundColor: AppColors.navy,
-                  foregroundColor: Colors.white,
-                  onTap: () => onNavigate(1),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickTile(
-                  icon: Icons.group_rounded,
-                  label: 'Collect Debt',
-                  backgroundColor: AppColors.forest,
-                  foregroundColor: Colors.white,
-                  onTap: () => onNavigate(4),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _QuickTile(
-                  icon: Icons.inventory_2_rounded,
-                  label: 'Add Stock',
-                  backgroundColor: AppColors.goldSoft,
-                  foregroundColor: AppColors.gold,
-                  onTap: () => onNavigate(2),
-                ),
-              ),
-            ],
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _QuickTile(
+            icon: Icons.payments_rounded,
+            label: 'Collect Debt',
+            backgroundColor: AppColors.forest,
+            foregroundColor: Colors.white,
+            onTap: () => onNavigate(3),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _QuickTile(
+            icon: Icons.inventory_2_rounded,
+            label: 'Add Stock',
+            backgroundColor: const Color(0xFFF2B713),
+            foregroundColor: Colors.black,
+            onTap: () => onNavigate(2),
           ),
         ),
       ],
@@ -612,38 +503,45 @@ class _QuickTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(18),
+      elevation: 0,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          height: 86,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: backgroundColor == AppColors.surface
-                  ? AppColors.border
-                  : backgroundColor.withValues(alpha: 0.14),
-            ),
-            boxShadow: AppShadows.subtle,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x24000000),
+                blurRadius: 18,
+                offset: Offset(0, 10),
+              ),
+            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.max,
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: foregroundColor, size: 16),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: foregroundColor,
-                  ),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: foregroundColor, size: 22),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: foregroundColor,
                 ),
               ),
             ],
@@ -781,7 +679,27 @@ class _RecentActivity extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionLabel('Recent Activity'),
+        Row(
+          children: [
+            const Expanded(child: _SectionLabel('Recent Activity')),
+            TextButton(
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Activity list coming soon'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              ),
+              child: Text(
+                'VIEW ALL',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.7,
+                    ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         if (activityAsync.isLoading && rows.isEmpty)
           _ActivitySkeleton()

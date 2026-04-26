@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/app_components.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../data/auth_api.dart';
 import '../providers/auth_providers.dart';
 
@@ -33,6 +36,7 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
   bool _loading = false;
   int _expiryMinutes = 5;
   String? _error;
+  bool _pinObscured = true;
 
   @override
   void dispose() {
@@ -173,149 +177,37 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInOut,
         child: switch (_step) {
-          _AuthFlowStep.entry => _EntryView(
+          _AuthFlowStep.entry => _EntryViewMockup(
               onSignIn: _loading ? null : _goPinSignIn,
               onCreateAccount: _loading ? null : _goOtpCreate,
             ),
-          _AuthFlowStep.pinSignIn => _AuthFormScaffold(
-              key: const ValueKey('pin_sign_in'),
-              title: 'Welcome back',
-              subtitle:
-                  'Use your phone number and PIN to get into your workspace quickly.',
-              badgeLabel: 'Daily sign-in',
+          _AuthFlowStep.pinSignIn => _PinSignInView(
+              phoneCtrl: _phoneCtrl,
+              pinCtrl: _pinCtrl,
+              pinObscured: _pinObscured,
+              loading: _loading,
+              error: _error,
               onBack: _loading ? null : _backToEntry,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _AuthInput(
-                    controller: _phoneCtrl,
-                    label: 'Phone number',
-                    hintText: '+233 24 123 4567',
-                    keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_iphone_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _AuthInput(
-                    controller: _pinCtrl,
-                    label: 'PIN',
-                    hintText: '4-6 digits',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icons.password_rounded,
-                    obscure: true,
-                  ),
-                  _ErrorBlock(message: _error),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: _loading ? null : _loginWithPin,
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.login_rounded),
-                    label: Text(_loading ? 'Signing in...' : 'Sign in'),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _loading ? null : _goOtpRecovery,
-                    icon: const Icon(Icons.lock_reset_rounded),
-                    label: const Text('Forgot PIN?'),
-                  ),
-                ],
-              ),
+              onForgotPin: _loading ? null : _goOtpRecovery,
+              onTogglePin: () => setState(() => _pinObscured = !_pinObscured),
+              onSubmit: _loading ? null : _loginWithPin,
+              onCreateAccount: _loading ? null : _goOtpCreate,
             ),
-          _AuthFlowStep.otpVerify => _AuthFormScaffold(
-              key: const ValueKey('otp_verify'),
-              title: _otpIntent == _OtpIntent.create
-                  ? 'Verify your phone'
-                  : 'Reset your access',
-              subtitle: _otpIntent == _OtpIntent.create
-                  ? 'We will send a one-time code to confirm you control this number.'
-                  : 'Confirm the phone number on the account so you can set a new PIN.',
-              badgeLabel: _otpTitle,
+          _AuthFlowStep.otpVerify => _OtpVerifyView(
+              phoneCtrl: _phoneCtrl,
+              codeCtrl: _codeCtrl,
+              otpRequested: _otpRequested,
+              expiryMinutes: _expiryMinutes,
+              loading: _loading,
+              error: _error,
+              intent: _otpIntent,
               onBack: _loading
                   ? null
                   : (_otpIntent == _OtpIntent.recovery
                       ? _goPinSignIn
                       : _backToEntry),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _AuthInput(
-                    controller: _phoneCtrl,
-                    label: 'Phone number',
-                    hintText: '+233 24 123 4567',
-                    keyboardType: TextInputType.phone,
-                    prefixIcon: Icons.phone_iphone_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _AuthInput(
-                    controller: _codeCtrl,
-                    label: 'One-time code',
-                    hintText: _otpRequested
-                        ? 'Enter code from SMS'
-                        : 'Request code first',
-                    keyboardType: TextInputType.number,
-                    prefixIcon: Icons.mark_chat_unread_rounded,
-                    obscure: true,
-                    enabled: _otpRequested,
-                  ),
-                  if (_otpRequested) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Code expires in $_expiryMinutes minutes',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                  _ErrorBlock(message: _error),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: _loading
-                        ? null
-                        : (_otpRequested ? _verifyOtp : _requestOtp),
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            _otpRequested
-                                ? Icons.check_circle_rounded
-                                : Icons.sms_rounded,
-                          ),
-                    label: Text(
-                      _loading
-                          ? 'Working...'
-                          : (_otpRequested ? 'Continue' : 'Send OTP'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _loading
-                        ? null
-                        : (_otpRequested
-                            ? _requestOtp
-                            : (_otpIntent == _OtpIntent.recovery
-                                ? _goPinSignIn
-                                : _backToEntry)),
-                    icon: Icon(
-                      _otpRequested
-                          ? Icons.refresh_rounded
-                          : Icons.arrow_back_rounded,
-                    ),
-                    label: Text(_otpRequested ? 'Resend OTP' : 'Back'),
-                  ),
-                  if (_otpIntent == _OtpIntent.create) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Standard SMS rates may apply. Once you set your PIN, daily sign-in will not require SMS.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ],
-              ),
+              onRequestOrResend: _loading ? null : _requestOtp,
+              onVerify: _loading ? null : _verifyOtp,
             ),
         },
       ),
@@ -323,8 +215,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
   }
 }
 
-class _EntryView extends StatelessWidget {
-  const _EntryView({
+class _EntryViewMockup extends StatelessWidget {
+  const _EntryViewMockup({
     required this.onSignIn,
     required this.onCreateAccount,
   });
@@ -334,162 +226,240 @@ class _EntryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       key: const ValueKey('entry_view'),
-      decoration: const BoxDecoration(gradient: AppGradients.hero),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PremiumBadge(
-                label: 'Merchant control for every day',
-                icon: Icons.auto_graph_rounded,
+      color: AppColors.canvas,
+      child: Column(
+        children: [
+          Expanded(
+            flex: 6,
+            child: MockupHeroHeader(
+              waveHeight: 56,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  SizedBox(height: 8),
+                  MockupAppMark(size: 92),
+                ],
               ),
-              const Spacer(),
-              Center(
-                child: Container(
-                  width: 118,
-                  height: 118,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(34),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33000000),
-                        blurRadius: 28,
-                        offset: Offset(0, 14),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(26),
-                    child: Image.asset(
-                      'assets/images/sikaboafo.png',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 26),
-              Center(
-                child: Text(
-                  'SikaBoafo',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                        color: Colors.white,
-                      ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  'A calm, professional workspace for sales, stock, expenses, debts, and daily business clarity.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: const Color(0xFFDCEAE7),
-                      ),
-                ),
-              ),
-              const Spacer(),
-              PremiumPanel(
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
-                borderColor: Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          Expanded(
+            flex: 7,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    FilledButton.icon(
-                      onPressed: onSignIn,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.forestDark,
-                      ),
-                      icon: const Icon(Icons.login_rounded),
-                      label: const Text('Sign in'),
+                    Text(
+                      'Your business,\nsimplified.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w900,
+                            height: 1.08,
+                          ),
                     ),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
+                    const SizedBox(height: 12),
+                    Text(
+                      'The modern financial workspace\ndesigned for professionals who demand\nclarity and efficiency.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.muted,
+                            height: 1.5,
+                          ),
+                    ),
+                    const SizedBox(height: 18),
+                    MockupCtaButton.primary(
+                      label: 'Sign In',
+                      onPressed: onSignIn,
+                    ),
+                    const SizedBox(height: 12),
+                    MockupCtaButton.secondary(
+                      label: 'Create account',
                       onPressed: onCreateAccount,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.24),
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.circle,
+                            size: 6, color: AppColors.success),
+                        const SizedBox(width: 8),
+                        Text(
+                          'ENTERPRISE WORKSPACE V2.4',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.7,
+                              ),
                         ),
-                      ),
-                      icon: const Icon(Icons.person_add_alt_1_rounded),
-                      label: const Text('Create account'),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _AuthFormScaffold extends StatelessWidget {
-  const _AuthFormScaffold({
-    required this.title,
-    required this.subtitle,
-    required this.badgeLabel,
+class _PinSignInView extends StatelessWidget {
+  const _PinSignInView({
+    required this.phoneCtrl,
+    required this.pinCtrl,
+    required this.pinObscured,
+    required this.loading,
+    required this.error,
     required this.onBack,
-    required this.child,
-    super.key,
+    required this.onForgotPin,
+    required this.onTogglePin,
+    required this.onSubmit,
+    required this.onCreateAccount,
   });
 
-  final String title;
-  final String subtitle;
-  final String badgeLabel;
+  final TextEditingController phoneCtrl;
+  final TextEditingController pinCtrl;
+  final bool pinObscured;
+  final bool loading;
+  final String? error;
   final VoidCallback? onBack;
-  final Widget child;
+  final VoidCallback? onForgotPin;
+  final VoidCallback onTogglePin;
+  final VoidCallback? onSubmit;
+  final VoidCallback? onCreateAccount;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(gradient: AppGradients.shell),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 24, 18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return ColoredBox(
+      key: const ValueKey('pin_sign_in'),
+      color: AppColors.canvas,
+      child: Column(
+        children: [
+          Expanded(
+            flex: 5,
+            child: MockupHeroHeader(
+              waveHeight: 56,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    onPressed: onBack,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: onBack,
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        PremiumBadge(label: badgeLabel),
-                        const SizedBox(height: 14),
-                        Text(
-                          title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontFamily: 'SegoeUI',
-                              ),
+                  const SizedBox(height: 10),
+                  const Icon(Icons.account_balance_wallet_outlined,
+                      color: Colors.white, size: 34),
+                  const SizedBox(height: 16),
+                  Text(
+                    'SikaBoafo',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          subtitle,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: const Color(0xFFD8E8E4),
-                                  ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Welcome back',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 7,
+            child: SafeArea(
+              top: false,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
+                children: [
+                  AppCard(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppTextField(
+                          controller: phoneCtrl,
+                          label: 'Phone Number',
+                          hint: '+233 55 123 4567',
+                          keyboardType: TextInputType.phone,
+                          prefixIcon:
+                              const Icon(Icons.phone_iphone_rounded, size: 18),
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Security PIN',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(color: AppColors.inkSoft),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: onForgotPin,
+                              child: const Text('Forgot PIN?'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: pinCtrl,
+                          keyboardType: TextInputType.number,
+                          obscureText: pinObscured,
+                          enabled: !loading,
+                          decoration: InputDecoration(
+                            hintText: '••••',
+                            prefixIcon: const Icon(Icons.lock_rounded),
+                            suffixIcon: IconButton(
+                              onPressed: onTogglePin,
+                              icon: Icon(pinObscured
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined),
+                            ),
+                          ),
+                        ),
+                        if (error != null && error!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          _InlineError(message: error!),
+                        ],
+                        const SizedBox(height: 16),
+                        MockupCtaButton.primary(
+                          label: loading ? 'Signing In' : 'Sign In',
+                          onPressed: onSubmit,
+                          loading: loading,
+                        ),
+                        const SizedBox(height: 14),
+                        Center(
+                          child: Text(
+                            'NEW TO SIKABOAFO?',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        MockupCtaButton.secondary(
+                          label: 'Create account',
+                          onPressed: onCreateAccount,
                         ),
                       ],
                     ),
@@ -497,89 +467,208 @@ class _AuthFormScaffold extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: PremiumSurface(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
-                  children: [
-                    PremiumPanel(child: child),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AuthInput extends StatelessWidget {
-  const _AuthInput({
-    required this.controller,
-    required this.label,
-    required this.hintText,
-    required this.keyboardType,
-    required this.prefixIcon,
-    this.obscure = false,
-    this.enabled = true,
+class _OtpVerifyView extends StatelessWidget {
+  const _OtpVerifyView({
+    required this.phoneCtrl,
+    required this.codeCtrl,
+    required this.otpRequested,
+    required this.expiryMinutes,
+    required this.loading,
+    required this.error,
+    required this.intent,
+    required this.onBack,
+    required this.onRequestOrResend,
+    required this.onVerify,
   });
 
-  final TextEditingController controller;
-  final String label;
-  final String hintText;
-  final TextInputType keyboardType;
-  final IconData prefixIcon;
-  final bool obscure;
-  final bool enabled;
+  final TextEditingController phoneCtrl;
+  final TextEditingController codeCtrl;
+  final bool otpRequested;
+  final int expiryMinutes;
+  final bool loading;
+  final String? error;
+  final _OtpIntent intent;
+  final VoidCallback? onBack;
+  final VoidCallback? onRequestOrResend;
+  final VoidCallback? onVerify;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscure,
-      enabled: enabled,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        prefixIcon: Icon(prefixIcon),
-        fillColor: enabled ? Colors.white : const Color(0xFFF0F2EE),
+    final title =
+        intent == _OtpIntent.create ? 'Create your account' : 'Recover access';
+
+    return ColoredBox(
+      key: const ValueKey('otp_verify'),
+      color: AppColors.canvas,
+      child: Column(
+        children: [
+          Expanded(
+            flex: 5,
+            child: MockupHeroHeader(
+              waveHeight: 56,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: onBack,
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const MockupAppMark(size: 72),
+                  const SizedBox(height: 14),
+                  Text(
+                    'SikaBoafo',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: SafeArea(
+              top: false,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
+                children: [
+                  AppCard(
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AppTextField(
+                          controller: phoneCtrl,
+                          label: 'Phone Number',
+                          hint: '+233 55 123 4567',
+                          keyboardType: TextInputType.phone,
+                          prefixIcon: const Icon(Icons.call_rounded, size: 18),
+                        ),
+                        const SizedBox(height: 14),
+                        MockupCtaButton.primary(
+                          label: 'Send Verification Code',
+                          onPressed: onRequestOrResend,
+                          loading: loading && !otpRequested,
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'Enter the 6-digit code sent to your phone',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.inkSoft,
+                                height: 1.45,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        OtpCodeInputRow(
+                          controller: codeCtrl,
+                          enabled: otpRequested && !loading,
+                          onChanged: (_) {},
+                        ),
+                        if (otpRequested) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Code expires in $expiryMinutes minutes',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Center(
+                          child: TextButton(
+                            onPressed: otpRequested ? onRequestOrResend : null,
+                            child: const Text('Didn’t receive code? Resend OTP'),
+                          ),
+                        ),
+                        if (error != null && error!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _InlineError(message: error!),
+                        ],
+                        const SizedBox(height: 14),
+                        AnimatedBuilder(
+                          animation: codeCtrl,
+                          builder: (context, _) {
+                            final codeComplete =
+                                codeCtrl.text.trim().length >= 6;
+                            return AppButton(
+                              label: loading ? 'Verifying…' : 'Verify & Continue',
+                              onPressed: (!otpRequested || !codeComplete)
+                                  ? null
+                                  : onVerify,
+                              variant: AppButtonVariant.primary,
+                              size: AppButtonSize.lg,
+                              loading: loading && otpRequested,
+                              fullWidth: true,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: AppButton.tertiary(
+                            label: 'Sign In',
+                            onPressed: onBack,
+                            icon: Icons.arrow_forward_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _ErrorBlock extends StatelessWidget {
-  const _ErrorBlock({required this.message});
-
-  final String? message;
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    if (message == null || message!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 14),
-      child: PremiumPanel(
-        backgroundColor: const Color(0xFFFFF0ED),
-        borderColor: const Color(0xFFF4C6BE),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppColors.danger),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message!,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.danger),
-              ),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.dangerSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF4C6BE)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
