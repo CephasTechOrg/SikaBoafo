@@ -304,7 +304,8 @@ class _PaymentSettingsCard extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isConnected ? AppColors.successSoft : AppColors.warningSoft,
+                color:
+                    isConnected ? AppColors.successSoft : AppColors.warningSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -324,7 +325,8 @@ class _PaymentSettingsCard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: isConnected ? AppColors.success : AppColors.warning,
+                      color:
+                          isConnected ? AppColors.success : AppColors.warning,
                     ),
                   ),
                 ],

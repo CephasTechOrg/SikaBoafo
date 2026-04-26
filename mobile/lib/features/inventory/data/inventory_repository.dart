@@ -95,8 +95,9 @@ class InventoryRepository {
           whereArgs: [item.itemId],
           limit: 1,
         );
-        final existingImage =
-            existing.isNotEmpty ? existing.first['image_asset'] as String? : null;
+        final existingImage = existing.isNotEmpty
+            ? existing.first['image_asset'] as String?
+            : null;
 
         await tx.insert(
           'items_local',

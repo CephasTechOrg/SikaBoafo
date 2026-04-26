@@ -181,12 +181,12 @@ class AppButton extends StatelessWidget {
       };
 
   TextStyle get _textStyle => switch (size) {
-        AppButtonSize.sm =>
-          const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.1),
-        AppButtonSize.md =>
-          const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1),
-        AppButtonSize.lg =>
-          const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.1),
+        AppButtonSize.sm => const TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.1),
+        AppButtonSize.md => const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: 0.1),
+        AppButtonSize.lg => const TextStyle(
+            fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 0.1),
       };
 
   @override
@@ -412,7 +412,8 @@ class AppTextField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: theme.textTheme.labelMedium?.copyWith(color: AppColors.inkSoft),
+            style:
+                theme.textTheme.labelMedium?.copyWith(color: AppColors.inkSoft),
           ),
           const SizedBox(height: 6),
         ],

@@ -17,7 +17,7 @@ from app.core.constants import (
     STAFF_INVITE_STATUS_PENDING,
     USER_ROLE_MERCHANT_OWNER,
 )
-from app.core.security import create_session_token
+from app.core.security import create_session_token, decode_and_verify_session_token
 from app.models.merchant import Merchant
 from app.models.staff_invite import StaffInvite
 from app.models.user import User
@@ -38,6 +38,10 @@ class PinNotSetError(Exception):
 
 class InvalidPinLoginError(Exception):
     """Wrong phone, wrong PIN, or inactive user (generic client message)."""
+
+
+class InvalidRefreshTokenError(Exception):
+    """Refresh token is missing, expired, malformed, or not a refresh token."""
 
 
 @dataclass(slots=True)
@@ -98,6 +102,20 @@ class AuthService:
         self.db.add(user)
         self.db.commit()
 
+    def refresh_session(self, *, refresh_token: str) -> UserSessionOut:
+        try:
+            payload = decode_and_verify_session_token(refresh_token)
+            if payload.get("type") != AUTH_TOKEN_TYPE_REFRESH:
+                raise ValueError("Refresh token required.")
+            user_id = UUID(str(payload["sub"]))
+        except (KeyError, ValueError) as exc:
+            raise InvalidRefreshTokenError from exc
+
+        user = self.db.get(User, user_id)
+        if user is None or not user.is_active:
+            raise InvalidRefreshTokenError
+        return self._issue_session(user=user, is_new_user=False)
+
     def _issue_session(self, *, user: User, is_new_user: bool) -> UserSessionOut:
         access_token = create_session_token(
             user_id=user.id,
@@ -112,7 +130,10 @@ class AuthService:
             expires_in_minutes=self.settings.auth_refresh_token_exp_minutes,
         )
         owner_merchant = self._get_owner_merchant(user_id=user.id)
-        active_merchant_id = owner_merchant.id if owner_merchant else user.merchant_id
+        if user.role not in {None, USER_ROLE_MERCHANT_OWNER} and user.merchant_id is not None:
+            active_merchant_id = user.merchant_id
+        else:
+            active_merchant_id = owner_merchant.id if owner_merchant else user.merchant_id
         # Staff users always have onboarding done (owner completed it for their business).
         onboarding_required = active_merchant_id is None
         pin_set = user.pin_hash is not None
@@ -161,6 +182,7 @@ class AuthService:
 __all__ = [
     "AuthService",
     "InvalidPinLoginError",
+    "InvalidRefreshTokenError",
     "OtpVerificationFailedError",
     "PinNotSetError",
 ]

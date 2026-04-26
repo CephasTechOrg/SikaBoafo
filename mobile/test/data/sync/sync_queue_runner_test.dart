@@ -66,7 +66,8 @@ class _FakeSyncQueueRepository extends SyncQueueRepository {
         .where(
           (row) =>
               row['status'] == SyncQueueRepository.pending ||
-              row['status'] == SyncQueueRepository.failed,
+              row['status'] == SyncQueueRepository.failed ||
+              row['status'] == SyncQueueRepository.sending,
         )
         .take(limit)
         .map((row) => Map<String, Object?>.from(row))
@@ -281,5 +282,66 @@ void main() {
     expect(summary.statusByOperationId['op-2'], 'failed');
     expect(appDb.queue.rowById(1)['status'], SyncQueueRepository.failed);
     expect(appDb.queue.rowById(2)['status'], SyncQueueRepository.failed);
+  });
+
+  test('retries rows previously stranded in sending state', () async {
+    final appDb = _FakeAppDatabase([
+      _queueRow(
+        id: 1,
+        deviceId: 'dev-1',
+        opId: 'op-1',
+        entityType: 'sale',
+        operation: 'create',
+        status: SyncQueueRepository.sending,
+      ),
+    ]);
+
+    final runner = SyncQueueRunner(
+      appDb: appDb,
+      syncApi: _FakeSyncApi((_, __) async {
+        return const [
+          SyncApplyResult(localOperationId: 'op-1', status: 'applied'),
+        ];
+      }),
+    );
+
+    final summary = await runner.run();
+
+    expect(summary.applied, 1);
+    expect(summary.failed, 0);
+    expect(summary.conflicts, 0);
+    expect(summary.statusByOperationId['op-1'], 'applied');
+    expect(appDb.queue.rowById(1)['status'], SyncQueueRepository.applied);
+  });
+
+  test('concurrent run calls share one in-flight sync pass', () async {
+    var apiCalls = 0;
+    final appDb = _FakeAppDatabase([
+      _queueRow(
+        id: 1,
+        deviceId: 'dev-1',
+        opId: 'op-1',
+        entityType: 'expense',
+        operation: 'create',
+      ),
+    ]);
+
+    final runner = SyncQueueRunner(
+      appDb: appDb,
+      syncApi: _FakeSyncApi((_, __) async {
+        apiCalls += 1;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return const [
+          SyncApplyResult(localOperationId: 'op-1', status: 'applied'),
+        ];
+      }),
+    );
+
+    final results = await Future.wait([runner.run(), runner.run()]);
+
+    expect(apiCalls, 1);
+    expect(results[0].applied, 1);
+    expect(results[1].applied, 1);
+    expect(appDb.queue.rowById(1)['status'], SyncQueueRepository.applied);
   });
 }

@@ -8,14 +8,29 @@ import 'package:biztrack_gh/core/services/secure_token_storage.dart';
 
 class _FakeSecureTokenStorage extends SecureTokenStorage {
   String? accessToken;
+  String? refreshToken;
   bool cleared = false;
 
   @override
   Future<String?> readAccessToken() async => accessToken;
 
   @override
+  Future<void> writeAccessToken(String? value) async {
+    accessToken = value;
+  }
+
+  @override
+  Future<String?> readRefreshToken() async => refreshToken;
+
+  @override
+  Future<void> writeRefreshToken(String? value) async {
+    refreshToken = value;
+  }
+
+  @override
   Future<void> clearSession() async {
     accessToken = null;
+    refreshToken = null;
     cleared = true;
   }
 }
@@ -41,9 +56,69 @@ class _Always401Adapter implements HttpClientAdapter {
   }
 }
 
+class _RefreshSuccessAdapter implements HttpClientAdapter {
+  int summaryCalls = 0;
+  int refreshCalls = 0;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path == '/auth/refresh') {
+      refreshCalls += 1;
+      final payload = options.data as Map<String, dynamic>? ?? const {};
+      if (payload['refresh_token'] == 'valid-refresh') {
+        return ResponseBody.fromString(
+          '{"access_token":"new-access","refresh_token":"new-refresh"}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
+      return ResponseBody.fromString(
+        '{"detail":"Invalid refresh token."}',
+        401,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+        statusMessage: 'Unauthorized',
+      );
+    }
+
+    if (options.path == '/reports/summary') {
+      summaryCalls += 1;
+      final authHeader = options.headers['Authorization'];
+      if (authHeader == 'Bearer new-access') {
+        return ResponseBody.fromString(
+          '{"status":"ok"}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
+    }
+
+    return ResponseBody.fromString(
+      '{"detail":"Unauthorized"}',
+      401,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+      statusMessage: 'Unauthorized',
+    );
+  }
+}
+
 void main() {
   test(
-      '401 on protected endpoint clears session and triggers unauthorized callback once',
+      '401 on protected endpoint clears session and triggers unauthorized callback once when refresh is unavailable',
       () async {
     final storage = _FakeSecureTokenStorage()..accessToken = 'valid-token';
     var unauthorizedCalls = 0;
@@ -67,6 +142,35 @@ void main() {
     expect(storage.cleared, isTrue);
     expect(storage.accessToken, isNull);
     expect(unauthorizedCalls, 1);
+  });
+
+  test('401 on protected endpoint refreshes tokens and retries once', () async {
+    final storage = _FakeSecureTokenStorage()
+      ..accessToken = 'expired-access'
+      ..refreshToken = 'valid-refresh';
+    var unauthorizedCalls = 0;
+
+    final adapter = _RefreshSuccessAdapter();
+    final dio = Dio();
+    dio.httpClientAdapter = adapter;
+
+    final apiClient = ApiClient(
+      tokenStorage: storage,
+      dio: dio,
+      onUnauthorized: () async {
+        unauthorizedCalls += 1;
+      },
+    );
+
+    final response = await apiClient.dio.get<dynamic>('/reports/summary');
+
+    expect(response.statusCode, 200);
+    expect(adapter.summaryCalls, 2);
+    expect(adapter.refreshCalls, 1);
+    expect(storage.cleared, isFalse);
+    expect(storage.accessToken, 'new-access');
+    expect(storage.refreshToken, 'new-refresh');
+    expect(unauthorizedCalls, 0);
   });
 
   test(

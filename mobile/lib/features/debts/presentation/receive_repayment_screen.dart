@@ -30,7 +30,8 @@ class _ReceiveRepaymentScreenState
 
   @override
   Widget build(BuildContext context) {
-    final detailAsync = ref.watch(receivableDetailProvider(widget.receivableId));
+    final detailAsync =
+        ref.watch(receivableDetailProvider(widget.receivableId));
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -40,7 +41,8 @@ class _ReceiveRepaymentScreenState
           children: [
             PremiumPageHeader(
               title: 'Receive Payment',
-              subtitle: 'Apply a repayment and keep the outstanding balance accurate.',
+              subtitle:
+                  'Apply a repayment and keep the outstanding balance accurate.',
               leading: IconButton(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
@@ -127,7 +129,8 @@ class _ReceiveRepaymentScreenState
                                 PremiumBadge(
                                   label: 'Due ${row.dueDateIso}',
                                   icon: Icons.event_note_rounded,
-                                  background: Colors.white.withValues(alpha: 0.1),
+                                  background:
+                                      Colors.white.withValues(alpha: 0.1),
                                 ),
                               ],
                             ],
@@ -142,13 +145,14 @@ class _ReceiveRepaymentScreenState
                         children: [
                           const PremiumSectionHeading(
                             title: 'Record Repayment',
-                            caption: 'Enter the amount and payment method used.',
+                            caption:
+                                'Enter the amount and payment method used.',
                           ),
                           const SizedBox(height: 14),
                           TextField(
                             controller: _amountCtrl,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
                             decoration: const InputDecoration(
                               labelText: 'Amount',
                               hintText: 'e.g. 25.00',
@@ -157,10 +161,11 @@ class _ReceiveRepaymentScreenState
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
                             initialValue: _method,
-                            decoration:
-                                const InputDecoration(labelText: 'Payment method'),
+                            decoration: const InputDecoration(
+                                labelText: 'Payment method'),
                             items: const [
-                              DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                              DropdownMenuItem(
+                                  value: 'cash', child: Text('Cash')),
                               DropdownMenuItem(
                                 value: 'mobile_money',
                                 child: Text('Mobile Money'),

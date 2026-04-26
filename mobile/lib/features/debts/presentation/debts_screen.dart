@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';

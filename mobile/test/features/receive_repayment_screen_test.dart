@@ -55,7 +55,8 @@ Widget _buildScreen({
 
 void main() {
   group('ReceiveRepaymentScreen', () {
-    testWidgets('displays customer name and outstanding balance', (tester) async {
+    testWidgets('displays customer name and outstanding balance',
+        (tester) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -65,7 +66,8 @@ void main() {
       expect(find.text('Due 2026-05-01'), findsOneWidget);
     });
 
-    testWidgets('shows Record Repayment form and Save Payment button', (tester) async {
+    testWidgets('shows Record Repayment form and Save Payment button',
+        (tester) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
@@ -159,8 +161,8 @@ class _FakeDebtsController extends DebtsController {
   final Future<void> Function()? onRecordRepayment;
 
   @override
-  Future<DebtsViewData> build() async =>
-      const DebtsViewData(customers: [], receivables: [], paidThisMonth: '0.00');
+  Future<DebtsViewData> build() async => const DebtsViewData(
+      customers: [], receivables: [], paidThisMonth: '0.00');
 
   @override
   Future<void> recordRepayment({

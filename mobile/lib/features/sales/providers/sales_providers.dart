@@ -13,7 +13,7 @@ final salesRepositoryProvider = Provider<SalesRepository>((ref) {
 });
 
 final salesControllerProvider =
-    AsyncNotifierProvider<SalesController, List<LocalSaleRecord>>(
+    AsyncNotifierProvider.autoDispose<SalesController, List<LocalSaleRecord>>(
   SalesController.new,
 );
 
@@ -21,7 +21,7 @@ final salesPaymentsApiProvider = Provider<SalesPaymentsApi>((ref) {
   return SalesPaymentsApi(ref.watch(apiClientProvider));
 });
 
-class SalesController extends AsyncNotifier<List<LocalSaleRecord>> {
+class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
   SalesRepository get _repo => ref.read(salesRepositoryProvider);
   bool _includeVoided = false;
 

@@ -105,7 +105,8 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                         backgroundColor: Color(0xFFF7F3EA),
                         child: Row(
                           children: [
-                            Icon(Icons.shield_moon_rounded, color: AppColors.gold),
+                            Icon(Icons.shield_moon_rounded,
+                                color: AppColors.gold),
                             SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -176,7 +177,8 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.check_circle_rounded),
                         label: Text(_busy ? 'Saving PIN...' : 'Save PIN'),
@@ -211,9 +213,10 @@ class _PinField extends StatelessWidget {
       keyboardType: TextInputType.number,
       obscureText: true,
       maxLength: 6,
-      buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-          null,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(letterSpacing: 2),
+      buildCounter:
+          (_, {required currentLength, required isFocused, maxLength}) => null,
+      style:
+          Theme.of(context).textTheme.titleMedium?.copyWith(letterSpacing: 2),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,

@@ -31,7 +31,7 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
   int _index = 0;
 
   Future<void> _signOut() async {
-    await ref.read(secureTokenStorageProvider).clearSession();
+    await ref.read(sessionServiceProvider).signOut();
     if (!mounted) return;
     context.go(AppRoute.auth.path);
   }
@@ -661,7 +661,8 @@ class _InsightBanner extends StatelessWidget {
 
   final DashboardSummary? summary;
 
-  ({String title, String body, IconData icon, Color iconBg, Color iconColor}) _insight() {
+  ({String title, String body, IconData icon, Color iconBg, Color iconColor})
+      _insight() {
     final s = summary;
     if (s == null) {
       return (

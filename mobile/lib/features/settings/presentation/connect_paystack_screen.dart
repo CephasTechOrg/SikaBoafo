@@ -124,11 +124,11 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
       children: [
-        _SkeletonPanel(height: 90),
+        const _SkeletonPanel(height: 90),
         const SizedBox(height: 14),
-        _SkeletonPanel(height: 300),
+        const _SkeletonPanel(height: 300),
         const SizedBox(height: 14),
-        _SkeletonPanel(height: 60),
+        const _SkeletonPanel(height: 60),
       ],
     );
   }
@@ -170,7 +170,8 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       return;
     }
     if (secretKey.isEmpty && !(activeModeState?.configured ?? false)) {
-      _showError('Secret key is required to connect this mode for the first time.');
+      _showError(
+          'Secret key is required to connect this mode for the first time.');
       return;
     }
     if (secretKey.isNotEmpty) {
@@ -219,7 +220,9 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
 
     setState(() => _disconnecting = true);
     try {
-      await ref.read(paystackSettingsApiProvider).disconnectPaystackConnection();
+      await ref
+          .read(paystackSettingsApiProvider)
+          .disconnectPaystackConnection();
       ref.invalidate(paystackConnectionProvider);
       if (!mounted) return;
       _showSuccess('Paystack disconnected.');
@@ -593,7 +596,9 @@ class _CredentialsFormState extends State<_CredentialsForm> {
                       )
                     : const Icon(Icons.link_off_rounded),
                 label: Text(
-                  widget.disconnecting ? 'Disconnecting...' : 'Disconnect Paystack',
+                  widget.disconnecting
+                      ? 'Disconnecting...'
+                      : 'Disconnect Paystack',
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.danger,
@@ -683,11 +688,11 @@ class _WebhookRow extends StatelessWidget {
         children: [
           const Icon(Icons.webhook_rounded, color: AppColors.warning, size: 18),
           const SizedBox(width: 10),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Webhook URL',
                   style: TextStyle(
                     fontSize: 11,
@@ -695,18 +700,18 @@ class _WebhookRow extends StatelessWidget {
                     color: AppColors.ink,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
                   _webhookUrl,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: AppColors.navy,
                     fontFamily: 'monospace',
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
+                SizedBox(height: 2),
+                Text(
                   'Paste this in Paystack Dashboard → Settings → Webhook URL',
                   style: TextStyle(
                     fontSize: 10.5,
@@ -743,7 +748,8 @@ class _WebhookRow extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.copy_rounded, size: 14, color: AppColors.warning),
+                    Icon(Icons.copy_rounded,
+                        size: 14, color: AppColors.warning),
                     SizedBox(width: 5),
                     Text(
                       'Copy',
@@ -804,7 +810,8 @@ class _LoadErrorPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_outlined, size: 36, color: AppColors.danger),
+          const Icon(Icons.cloud_off_outlined,
+              size: 36, color: AppColors.danger),
           const SizedBox(height: 12),
           Text(
             'Could not load your Paystack settings.',

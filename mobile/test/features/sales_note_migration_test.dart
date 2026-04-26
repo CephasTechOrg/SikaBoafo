@@ -222,7 +222,8 @@ class _FakeSyncApi extends SyncApi {
   Future<List<SyncApplyResult>> apply({
     required String deviceId,
     required List<SyncOperationPayload> operations,
-  }) async => const [];
+  }) async =>
+      const [];
 }
 
 SalesRepository _makeRepo(Database db) {
@@ -248,8 +249,7 @@ void main() {
           await db.execute('ALTER TABLE sales_local ADD COLUMN note TEXT');
         }
 
-        final colsAfter =
-            await db.rawQuery('PRAGMA table_info(sales_local)');
+        final colsAfter = await db.rawQuery('PRAGMA table_info(sales_local)');
         final namesAfter =
             colsAfter.map((r) => (r['name'] ?? '').toString()).toSet();
         expect(namesAfter.contains('note'), isTrue);
@@ -266,7 +266,9 @@ void main() {
 
         await repo.createSaleLocal(
           paymentMethodLabel: 'cash',
-          lines: [SaleDraftLine(itemId: itemId, quantity: 1, unitPrice: '10.00')],
+          lines: [
+            SaleDraftLine(itemId: itemId, quantity: 1, unitPrice: '10.00')
+          ],
           note: 'Please bring change',
         );
 
@@ -287,7 +289,9 @@ void main() {
 
         await repo.createSaleLocal(
           paymentMethodLabel: 'cash',
-          lines: [SaleDraftLine(itemId: itemId, quantity: 2, unitPrice: '10.00')],
+          lines: [
+            SaleDraftLine(itemId: itemId, quantity: 2, unitPrice: '10.00')
+          ],
           note: noteText,
         );
 
@@ -297,8 +301,8 @@ void main() {
           limit: 1,
         );
         expect(rows, hasLength(1));
-        final payload =
-            jsonDecode(rows.first['payload_json'] as String) as Map<String, dynamic>;
+        final payload = jsonDecode(rows.first['payload_json'] as String)
+            as Map<String, dynamic>;
         expect(payload['note'], equals(noteText));
       } finally {
         await db.close();
@@ -313,7 +317,9 @@ void main() {
 
         await repo.createSaleLocal(
           paymentMethodLabel: 'cash',
-          lines: [SaleDraftLine(itemId: itemId, quantity: 1, unitPrice: '10.00')],
+          lines: [
+            SaleDraftLine(itemId: itemId, quantity: 1, unitPrice: '10.00')
+          ],
           // note omitted
         );
 
@@ -322,8 +328,8 @@ void main() {
           where: "entity_type = 'sale' AND operation = 'create'",
           limit: 1,
         );
-        final payload =
-            jsonDecode(rows.first['payload_json'] as String) as Map<String, dynamic>;
+        final payload = jsonDecode(rows.first['payload_json'] as String)
+            as Map<String, dynamic>;
         expect(payload.containsKey('note'), isFalse);
       } finally {
         await db.close();

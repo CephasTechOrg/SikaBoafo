@@ -42,10 +42,14 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     super.dispose();
   }
 
-  Future<void> _applySession(AuthSession session, {required bool forceSetPin}) async {
-    final secureStore = ref.read(secureTokenStorageProvider);
-    await secureStore.writeAccessToken(session.accessToken);
-    await secureStore.writeRefreshToken(session.refreshToken);
+  Future<void> _applySession(AuthSession session,
+      {required bool forceSetPin}) async {
+    await ref.read(sessionServiceProvider).applyAuthenticatedSession(
+          userId: session.userId,
+          merchantId: session.merchantId,
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+        );
     if (!mounted) return;
     if (session.onboardingRequired) {
       context.go(AppRoute.onboarding.path);
@@ -62,7 +66,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
       _error = null;
     });
     try {
-      final expires = await ref.read(authApiProvider).requestOtp(_phoneCtrl.text.trim());
+      final expires =
+          await ref.read(authApiProvider).requestOtp(_phoneCtrl.text.trim());
       if (!mounted) return;
       setState(() {
         _otpRequested = true;
@@ -175,7 +180,8 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
           _AuthFlowStep.pinSignIn => _AuthFormScaffold(
               key: const ValueKey('pin_sign_in'),
               title: 'Welcome back',
-              subtitle: 'Use your phone number and PIN to get into your workspace quickly.',
+              subtitle:
+                  'Use your phone number and PIN to get into your workspace quickly.',
               badgeLabel: 'Daily sign-in',
               onBack: _loading ? null : _backToEntry,
               child: Column(
@@ -230,7 +236,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
               badgeLabel: _otpTitle,
               onBack: _loading
                   ? null
-                  : (_otpIntent == _OtpIntent.recovery ? _goPinSignIn : _backToEntry),
+                  : (_otpIntent == _OtpIntent.recovery
+                      ? _goPinSignIn
+                      : _backToEntry),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -245,7 +253,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                   _AuthInput(
                     controller: _codeCtrl,
                     label: 'One-time code',
-                    hintText: _otpRequested ? 'Enter code from SMS' : 'Request code first',
+                    hintText: _otpRequested
+                        ? 'Enter code from SMS'
+                        : 'Request code first',
                     keyboardType: TextInputType.number,
                     prefixIcon: Icons.mark_chat_unread_rounded,
                     obscure: true,
@@ -261,7 +271,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                   _ErrorBlock(message: _error),
                   const SizedBox(height: 18),
                   FilledButton.icon(
-                    onPressed: _loading ? null : (_otpRequested ? _verifyOtp : _requestOtp),
+                    onPressed: _loading
+                        ? null
+                        : (_otpRequested ? _verifyOtp : _requestOtp),
                     icon: _loading
                         ? const SizedBox(
                             width: 18,
@@ -289,7 +301,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
                                 ? _goPinSignIn
                                 : _backToEntry)),
                     icon: Icon(
-                      _otpRequested ? Icons.refresh_rounded : Icons.arrow_back_rounded,
+                      _otpRequested
+                          ? Icons.refresh_rounded
+                          : Icons.arrow_back_rounded,
                     ),
                     label: Text(_otpRequested ? 'Resend OTP' : 'Back'),
                   ),
@@ -461,7 +475,10 @@ class _AuthFormScaffold extends StatelessWidget {
                         const SizedBox(height: 14),
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
                                 color: Colors.white,
                                 fontFamily: 'SegoeUI',
                               ),
@@ -469,9 +486,10 @@ class _AuthFormScaffold extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           subtitle,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFFD8E8E4),
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: const Color(0xFFD8E8E4),
+                                  ),
                         ),
                       ],
                     ),

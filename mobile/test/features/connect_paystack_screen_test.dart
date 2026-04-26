@@ -84,6 +84,15 @@ Widget _buildScreen(_FakeSettingsApi fakeApi) {
   );
 }
 
+Finder _textFieldWithLabelPrefix(String labelPrefix) {
+  return find.byWidgetPredicate(
+    (widget) =>
+        widget is TextField &&
+        (widget.decoration?.labelText?.startsWith(labelPrefix) ?? false),
+    description: 'TextField with label starting with "$labelPrefix"',
+  );
+}
+
 void main() {
   testWidgets('shows disconnected status when paystack is not configured',
       (tester) async {
@@ -137,7 +146,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeApi.saveCalls, 0);
-    expect(find.text('Secret key is required to connect this mode for the first time.'),
+    expect(
+        find.text(
+            'Secret key is required to connect this mode for the first time.'),
         findsOneWidget);
   });
 
@@ -162,11 +173,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Public key (optional)'),
+      _textFieldWithLabelPrefix('Public key'),
       'pk_test_abcdefgh12345678',
     );
     await tester.enterText(
-      find.widgetWithText(TextField, 'Secret key'),
+      _textFieldWithLabelPrefix('Secret key'),
       'sk_test_abcdefgh12345678',
     );
     final saveButton = find.text('Save & Verify');
@@ -180,7 +191,8 @@ void main() {
     expect(find.text('Connected'), findsWidgets);
   });
 
-  testWidgets('disconnect shows confirmation dialog and disconnects', (tester) async {
+  testWidgets('disconnect shows confirmation dialog and disconnects',
+      (tester) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -217,7 +229,8 @@ void main() {
     expect(
       find.byKey(const Key('disconnect_confirm_input')),
       findsOneWidget,
-      reason: 'Disconnect confirmation dialog should appear after tapping button',
+      reason:
+          'Disconnect confirmation dialog should appear after tapping button',
     );
     await tester.enterText(
       find.byKey(const Key('disconnect_confirm_input')),

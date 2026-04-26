@@ -64,11 +64,12 @@ final syncQueueRunnerProvider = Provider<SyncQueueRunner>((ref) {
 });
 
 final syncStatusControllerProvider =
-    AsyncNotifierProvider<SyncStatusController, SyncStatusSnapshot>(
+    AsyncNotifierProvider.autoDispose<SyncStatusController, SyncStatusSnapshot>(
   SyncStatusController.new,
 );
 
-class SyncStatusController extends AsyncNotifier<SyncStatusSnapshot> {
+class SyncStatusController
+    extends AutoDisposeAsyncNotifier<SyncStatusSnapshot> {
   static const _pollingInterval = Duration(seconds: 20);
 
   AppDatabase get _appDb => ref.read(appDatabaseProvider);

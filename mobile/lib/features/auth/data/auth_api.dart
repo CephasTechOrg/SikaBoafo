@@ -6,6 +6,7 @@ class AuthSession {
   const AuthSession({
     required this.userId,
     required this.phoneNumber,
+    required this.merchantId,
     required this.accessToken,
     required this.refreshToken,
     required this.isNewUser,
@@ -15,6 +16,7 @@ class AuthSession {
 
   final String userId;
   final String phoneNumber;
+  final String? merchantId;
   final String accessToken;
   final String refreshToken;
   final bool isNewUser;
@@ -25,11 +27,29 @@ class AuthSession {
     return AuthSession(
       userId: (json['user_id'] ?? '') as String,
       phoneNumber: (json['phone_number'] ?? '') as String,
+      merchantId: json['merchant_id'] as String?,
       accessToken: (json['access_token'] ?? '') as String,
       refreshToken: (json['refresh_token'] ?? '') as String,
       isNewUser: (json['is_new_user'] ?? false) as bool,
       onboardingRequired: (json['onboarding_required'] ?? false) as bool,
       pinSet: (json['pin_set'] ?? false) as bool,
+    );
+  }
+}
+
+class OnboardingResult {
+  const OnboardingResult({
+    required this.merchantId,
+    required this.storeId,
+  });
+
+  final String merchantId;
+  final String storeId;
+
+  factory OnboardingResult.fromJson(Map<String, dynamic> json) {
+    return OnboardingResult(
+      merchantId: (json['merchant_id'] ?? '') as String,
+      storeId: (json['store_id'] ?? '') as String,
     );
   }
 }
@@ -88,12 +108,12 @@ class AuthApi {
     );
   }
 
-  Future<void> completeOnboarding({
+  Future<OnboardingResult> completeOnboarding({
     required String businessName,
     String? businessType,
     String? storeName,
   }) async {
-    await _apiClient.dio.post<dynamic>(
+    final response = await _apiClient.dio.post<dynamic>(
       '/auth/onboarding/complete',
       data: {
         'business_name': businessName,
@@ -101,6 +121,11 @@ class AuthApi {
         'store_name': storeName,
       },
     );
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected onboarding response payload.');
+    }
+    return OnboardingResult.fromJson(body);
   }
 }
 

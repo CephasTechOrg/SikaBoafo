@@ -14,7 +14,7 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
-    await ref.read(secureTokenStorageProvider).clearSession();
+    await ref.read(sessionServiceProvider).signOut();
     if (!context.mounted) return;
     context.go(AppRoute.auth.path);
   }

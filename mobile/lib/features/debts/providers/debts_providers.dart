@@ -24,19 +24,19 @@ final debtsRepositoryProvider = Provider<DebtsRepository>((ref) {
 });
 
 final debtsControllerProvider =
-    AsyncNotifierProvider<DebtsController, DebtsViewData>(
+    AsyncNotifierProvider.autoDispose<DebtsController, DebtsViewData>(
   DebtsController.new,
 );
 
 final receivableDetailProvider =
-    FutureProvider.family<LocalReceivableDetail?, String>((
+    FutureProvider.autoDispose.family<LocalReceivableDetail?, String>((
   ref,
   receivableId,
 ) {
   return ref.watch(debtsRepositoryProvider).getReceivableDetail(receivableId);
 });
 
-class DebtsController extends AsyncNotifier<DebtsViewData> {
+class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   DebtsRepository get _repo => ref.read(debtsRepositoryProvider);
 
   @override

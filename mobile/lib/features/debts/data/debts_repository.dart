@@ -269,7 +269,8 @@ LIMIT ?
     return rows.map(LocalReceivableRecord.fromRow).toList(growable: false);
   }
 
-  Future<LocalReceivableDetail?> getReceivableDetail(String receivableId) async {
+  Future<LocalReceivableDetail?> getReceivableDetail(
+      String receivableId) async {
     final db = await _appDb.database;
     final detailRows = await db.rawQuery(
       '''

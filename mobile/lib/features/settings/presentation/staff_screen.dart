@@ -253,7 +253,8 @@ class _ActiveStaffSection extends StatelessWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Failed to update role. Please try again.'),
+                              content: Text(
+                                  'Failed to update role. Please try again.'),
                               backgroundColor: AppColors.danger,
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -270,7 +271,8 @@ class _ActiveStaffSection extends StatelessWidget {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Failed to deactivate staff. Please try again.'),
+                              content: Text(
+                                  'Failed to deactivate staff. Please try again.'),
                               backgroundColor: AppColors.danger,
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -567,7 +569,8 @@ class _InviteSheetState extends State<_InviteSheet> {
   Future<void> _submit() async {
     final phone = _phoneCtrl.text.trim();
     if (phone.length < 10) {
-      setState(() => _error = 'Enter a valid 10-digit phone number (e.g. 0244123456).');
+      setState(() =>
+          _error = 'Enter a valid 10-digit phone number (e.g. 0244123456).');
       return;
     }
     setState(() {
