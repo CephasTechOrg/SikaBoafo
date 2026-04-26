@@ -7,7 +7,6 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
-import '../../../shared/widgets/sync_status_pill.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
@@ -110,41 +109,91 @@ class _HomeDashboard extends ConsumerWidget {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final activityAsync = ref.watch(dashboardRecentActivityProvider);
 
-    return Container(
-      decoration: const BoxDecoration(gradient: AppGradients.hero),
-      child: ctxAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-        error: (e, _) => _ErrorView(
-          message: humanizeDashboardError(e),
-          onRetry: () {
-            ref.invalidate(merchantContextProvider);
-            ref.invalidate(dashboardSummaryProvider);
-            ref.invalidate(dashboardRecentActivityProvider);
-          },
-        ),
-        data: (mc) => SafeArea(
-          child: Stack(
-            children: [
-              Column(
-                children: [
-                  _Header(
-                    mc: mc,
-                    summaryAsync: summaryAsync,
-                    onSettings: () => _openSettings(context),
-                    onNavigate: onNavigate,
-                  ),
-                  const SizedBox(height: 64), // room for overlapping quick actions
-                  Expanded(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: AppColors.canvas,
-                        borderRadius: BorderRadius.vertical(
-                          top: AppRadii.heroRadius,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final h = constraints.maxHeight;
+        final heroHeight = (h * 0.40).clamp(280.0, 360.0);
+        const quickTileHeight = 78.0;
+        // How far the curved top of the white sheet pulls up into the hero
+        // so the rounded corners are clearly visible against the green/swirl.
+        const sheetCurveLift = 28.0;
+        // Cards should straddle the new (lifted) flat top of the sheet —
+        // ~50% on green / ~50% on white.
+        const quickOverlap = quickTileHeight * 0.50 + sheetCurveLift;
+
+        return Container(
+          decoration: const BoxDecoration(color: AppColors.canvas),
+          child: ctxAsync.when(
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+            error: (e, _) => _ErrorView(
+              message: humanizeDashboardError(e),
+              onRetry: () {
+                ref.invalidate(merchantContextProvider);
+                ref.invalidate(dashboardSummaryProvider);
+                ref.invalidate(dashboardRecentActivityProvider);
+              },
+            ),
+            data: (mc) => Stack(
+              children: [
+                // Hero background (matches mockup)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: heroHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'assets/images/swirlLatte.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                      ),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0x3A000000),
+                              Color(0x1A000000),
+                              Color(0x00000000),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0.0, 0.55, 1.0],
+                          ),
                         ),
                       ),
-                      clipBehavior: Clip.antiAlias,
+                    ],
+                  ),
+                ),
+
+                // White sheet — pulled slightly up into the hero so the
+                // rounded top corners are visible against the green/swirl,
+                // matching the dashboard mockup's curved transition.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: heroHeight - sheetCurveLift,
+                  bottom: 0,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: AppColors.canvas,
+                      borderRadius: BorderRadius.vertical(
+                        top: AppRadii.heroRadius,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x1F0F172A),
+                          blurRadius: 28,
+                          offset: Offset(0, -8),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: SafeArea(
+                      top: false,
                       child: RefreshIndicator(
                         color: AppColors.forest,
                         onRefresh: () async {
@@ -159,7 +208,19 @@ class _HomeDashboard extends ConsumerWidget {
                         },
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(20, 66, 20, 40),
+                          // Leave room for the portion of the cards that
+                          // overhangs into the white sheet (cards sit
+                          // `quickOverlap` above the original seam, so the
+                          // amount poking into the sheet is the rest of the
+                          // card height, plus the lift we applied above).
+                          padding: EdgeInsets.fromLTRB(
+                            20,
+                            (quickTileHeight - quickOverlap) +
+                                sheetCurveLift +
+                                24,
+                            20,
+                            40,
+                          ),
                           children: [
                             _RecentActivity(activityAsync: activityAsync),
                           ],
@@ -167,18 +228,44 @@ class _HomeDashboard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                ],
-              ),
-              Positioned(
-                left: 20,
-                right: 20,
-                top: 248,
-                child: _QuickActions(onNavigate: onNavigate),
-              ),
-            ],
+                ),
+
+                // Hero content (safe-area)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: heroHeight,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: _Header(
+                        mc: mc,
+                        summaryAsync: summaryAsync,
+                        onSettings: () => _openSettings(context),
+                        onNavigate: onNavigate,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Quick actions: straddle the hero / white-sheet seam.
+                // The seam is at `heroHeight`; we lift the cards up by
+                // `quickOverlap` so the top portion overlaps the hero and the
+                // remainder sits on top of the white sheet.
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  top: heroHeight - quickOverlap,
+                  height: quickTileHeight,
+                  child: _QuickActions(onNavigate: onNavigate),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -208,8 +295,7 @@ class _Header extends ConsumerWidget {
     final summary = summaryAsync.valueOrNull;
     final syncSnapshot = ref.watch(syncStatusControllerProvider).valueOrNull;
     final sales = summary?.todaySalesTotal ?? '--';
-    final connectivity = _syncHeadline(syncSnapshot);
-    final greeting = _firstName(mc.businessName);
+    final _ = _syncHeadline(syncSnapshot); // keep compute for future use
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -282,13 +368,21 @@ class _Header extends ConsumerWidget {
               borderRadius: BorderRadius.circular(999),
               border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
             ),
-            child: Text(
-              '+12% from yesterday · ${connectivity.$1} · Hi, $greeting',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.trending_up_rounded,
+                    size: 14, color: Colors.white.withValues(alpha: 0.9)),
+                const SizedBox(width: 6),
+                Text(
+                  '+12% from yesterday',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                ),
+              ],
             ),
           ),
         ],
@@ -516,17 +610,17 @@ class _QuickTile extends StatelessWidget {
       elevation: 0,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 86,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          height: 78,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x24000000),
-                blurRadius: 18,
-                offset: Offset(0, 10),
+                color: Color(0x1F000000),
+                blurRadius: 14,
+                offset: Offset(0, 8),
               ),
             ],
           ),
@@ -534,23 +628,26 @@ class _QuickTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: foregroundColor, size: 22),
+                child: Icon(icon, color: foregroundColor, size: 18),
               ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: foregroundColor,
+              const SizedBox(height: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: foregroundColor,
+                    height: 1.1,
+                  ),
                 ),
               ),
             ],
@@ -753,7 +850,7 @@ class _ActivityRow extends StatelessWidget {
     final timeStr = _relativeTime(data.createdAt);
     final isIncome =
         data.activityType == 'sale' || data.activityType == 'repayment';
-    final amountStr = '${isIncome ? '+' : '−'} GHS ${data.amount}';
+    final amountStr = '${isIncome ? '+' : '−'}\u20B5${data.amount}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -807,15 +904,28 @@ class _ActivityRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Text(
-            amountStr,
-            style: TextStyle(
-              color: isIncome ? AppColors.success : AppColors.danger,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              letterSpacing: -0.2,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                amountStr,
+                style: TextStyle(
+                  color: isIncome ? AppColors.success : AppColors.danger,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  letterSpacing: -0.2,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Completed',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.mutedSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
           ),
         ],
       ),
