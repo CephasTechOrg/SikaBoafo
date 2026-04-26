@@ -200,8 +200,10 @@ class SettingsApi {
     final response = await _apiClient.dio.put<dynamic>(
       '/payments/paystack/connection',
       data: {
-        'public_key': publicKey?.trim().isEmpty == true ? null : publicKey?.trim(),
-        'secret_key': secretKey?.trim().isEmpty == true ? null : secretKey?.trim(),
+        'public_key':
+            publicKey?.trim().isEmpty == true ? null : publicKey?.trim(),
+        'secret_key':
+            secretKey?.trim().isEmpty == true ? null : secretKey?.trim(),
         'mode': mode,
         'account_label':
             accountLabel?.trim().isEmpty == true ? null : accountLabel?.trim(),

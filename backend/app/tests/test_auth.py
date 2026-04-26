@@ -10,7 +10,11 @@ from sqlalchemy.sql import Select
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import Settings, get_settings
-from app.core.constants import AUTH_TOKEN_TYPE_ACCESS, AUTH_TOKEN_TYPE_REFRESH
+from app.core.constants import (
+    AUTH_TOKEN_TYPE_ACCESS,
+    AUTH_TOKEN_TYPE_REFRESH,
+    USER_ROLE_CASHIER,
+)
 from app.core.security import create_session_token
 from app.main import app
 from app.models.merchant import Merchant
@@ -72,6 +76,11 @@ class _FakeDbSession:
         if isinstance(entity, User):
             self.users_by_phone[entity.phone_number] = entity
             self.users_by_id[entity.id] = entity
+
+    def get(self, model, identity):
+        if model is User:
+            return self.users_by_id.get(identity)
+        return None
 
     def close(self) -> None:
         return None
@@ -300,6 +309,78 @@ def test_pin_set_saves_hash() -> None:
         app.dependency_overrides.clear()
 
 
+def test_refresh_session_issues_new_tokens_for_valid_refresh_token() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    user.pin_hash = hash_pin("4242")
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        refresh_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_REFRESH,
+            expires_in_minutes=60,
+        )
+        resp = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["access_token"]
+        assert body["refresh_token"]
+        assert body["user_id"] == str(user.id)
+        assert body["phone_number"] == "233244123456"
+        assert body["pin_set"] is True
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_refresh_session_rejects_access_token() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        access_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_ACCESS,
+            expires_in_minutes=60,
+        )
+        resp = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": access_token},
+        )
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "Invalid refresh token."
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_onboarding_complete_creates_merchant_and_default_store() -> None:
     fake_db = _FakeDbSession()
     user = User(phone_number="233244123456")
@@ -331,6 +412,33 @@ def test_onboarding_complete_creates_merchant_and_default_store() -> None:
         assert body["onboarding_completed"] is True
         assert body["merchant_id"]
         assert body["store_id"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_onboarding_rejects_staff_user() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456", role=USER_ROLE_CASHIER)
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_current_user() -> User:
+        return user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
+    client = TestClient(app)
+    try:
+        resp = client.post(
+            "/api/v1/auth/onboarding/complete",
+            json={"business_name": "Ama Ventures"},
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Only merchant owners can complete onboarding."
     finally:
         app.dependency_overrides.clear()
 

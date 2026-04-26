@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -43,11 +44,14 @@ class _BusinessOnboardingScreenState
       _error = null;
     });
     try {
-      await ref.read(authApiProvider).completeOnboarding(
+      final result = await ref.read(authApiProvider).completeOnboarding(
             businessName: businessName,
             businessType: _businessTypeCtrl.text.trim(),
             storeName: _storeNameCtrl.text.trim(),
           );
+      await ref
+          .read(sessionServiceProvider)
+          .bindMerchantToCurrentSession(result.merchantId);
       if (!mounted) return;
       context.go(AppRoute.setPin.path);
     } catch (e) {
@@ -196,10 +200,12 @@ class _BusinessOnboardingScreenState
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.arrow_forward_rounded),
-                        label: Text(_submitting ? 'Saving profile...' : 'Continue'),
+                        label: Text(
+                            _submitting ? 'Saving profile...' : 'Continue'),
                       ),
                     ],
                   ),

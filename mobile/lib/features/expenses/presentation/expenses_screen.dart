@@ -134,54 +134,53 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               Expanded(
                 child: PremiumSurface(
-                    child: RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(expensesControllerProvider.notifier)
-                          .refresh(),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                        children: [
-                          const SizedBox(height: 4),
-                          if (catMinors.isNotEmpty) ...[
-                            _CategoryBreakdownCard(catMinors: catMinors),
-                            const SizedBox(height: 16),
-                          ],
-                          _LogExpenseCard(
-                            expanded: _showForm,
-                            category: _category,
-                            amountCtrl: _amountCtrl,
-                            noteCtrl: _noteCtrl,
-                            isLoading: expensesAsync.isLoading,
-                            onToggle: () =>
-                                setState(() => _showForm = !_showForm),
-                            onCategoryChanged: (c) =>
-                                setState(() => _category = c),
-                            onSave: _saveExpense,
-                          ),
-                          const SizedBox(height: 22),
-                          const Row(
-                            children: [
-                              Text(
-                                'Expense History',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          if (expensesAsync.isLoading && expenses.isEmpty)
-                            const _LoadingCard()
-                          else if (expenses.isEmpty)
-                            const _EmptyCard()
-                          else
-                            ...expenses.map(_buildExpenseTile),
+                  child: RefreshIndicator(
+                    onRefresh: () =>
+                        ref.read(expensesControllerProvider.notifier).refresh(),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                      children: [
+                        const SizedBox(height: 4),
+                        if (catMinors.isNotEmpty) ...[
+                          _CategoryBreakdownCard(catMinors: catMinors),
+                          const SizedBox(height: 16),
                         ],
-                      ),
+                        _LogExpenseCard(
+                          expanded: _showForm,
+                          category: _category,
+                          amountCtrl: _amountCtrl,
+                          noteCtrl: _noteCtrl,
+                          isLoading: expensesAsync.isLoading,
+                          onToggle: () =>
+                              setState(() => _showForm = !_showForm),
+                          onCategoryChanged: (c) =>
+                              setState(() => _category = c),
+                          onSave: _saveExpense,
+                        ),
+                        const SizedBox(height: 22),
+                        const Row(
+                          children: [
+                            Text(
+                              'Expense History',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (expensesAsync.isLoading && expenses.isEmpty)
+                          const _LoadingCard()
+                        else if (expenses.isEmpty)
+                          const _EmptyCard()
+                        else
+                          ...expenses.map(_buildExpenseTile),
+                      ],
                     ),
+                  ),
                 ),
               ),
             ],
@@ -385,7 +384,7 @@ class _Header extends StatelessWidget {
                     Text(
                       'Track daily spending and category pressure',
                       style: TextStyle(
-                        color: Color(0xFFC7D0E5),
+                        color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
                     ),
@@ -412,7 +411,7 @@ class _Header extends StatelessWidget {
                       const Text(
                         'Today',
                         style: TextStyle(
-                          color: Color(0xFFC7D0E5),
+                          color: AppColors.heroSubtitle,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1064,4 +1063,3 @@ class _EmptyCard extends StatelessWidget {
     );
   }
 }
-

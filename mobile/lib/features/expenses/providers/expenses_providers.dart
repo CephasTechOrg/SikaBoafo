@@ -11,12 +11,13 @@ final expensesRepositoryProvider = Provider<ExpensesRepository>((ref) {
   );
 });
 
-final expensesControllerProvider =
-    AsyncNotifierProvider<ExpensesController, List<LocalExpenseRecord>>(
+final expensesControllerProvider = AsyncNotifierProvider.autoDispose<
+    ExpensesController, List<LocalExpenseRecord>>(
   ExpensesController.new,
 );
 
-class ExpensesController extends AsyncNotifier<List<LocalExpenseRecord>> {
+class ExpensesController
+    extends AutoDisposeAsyncNotifier<List<LocalExpenseRecord>> {
   ExpensesRepository get _repo => ref.read(expensesRepositoryProvider);
 
   @override

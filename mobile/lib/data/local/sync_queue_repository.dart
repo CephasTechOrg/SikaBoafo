@@ -97,8 +97,8 @@ class SyncQueueRepository {
     final db = await _appDb.database;
     return db.query(
       'sync_queue',
-      where: 'status IN (?, ?)',
-      whereArgs: [pending, failed],
+      where: 'status IN (?, ?, ?)',
+      whereArgs: [pending, failed, sending],
       orderBy: 'created_at ASC, id ASC',
       limit: limit,
     );

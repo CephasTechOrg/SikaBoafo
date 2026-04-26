@@ -199,10 +199,12 @@ class DashboardPeriodSummary {
 
   factory DashboardPeriodSummary.fromJson(Map<String, dynamic> json) {
     return DashboardPeriodSummary(
-      periodStartUtc: DateTime.tryParse('${json['period_start_utc'] ?? ''}')?.toLocal() ??
-          DateTime.fromMillisecondsSinceEpoch(0),
-      periodEndUtc: DateTime.tryParse('${json['period_end_utc'] ?? ''}')?.toLocal() ??
-          DateTime.fromMillisecondsSinceEpoch(0),
+      periodStartUtc:
+          DateTime.tryParse('${json['period_start_utc'] ?? ''}')?.toLocal() ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+      periodEndUtc:
+          DateTime.tryParse('${json['period_end_utc'] ?? ''}')?.toLocal() ??
+              DateTime.fromMillisecondsSinceEpoch(0),
       salesTotal: '${json['sales_total'] ?? '0.00'}',
       expensesTotal: '${json['expenses_total'] ?? '0.00'}',
       estimatedProfit: '${json['estimated_profit'] ?? '0.00'}',
@@ -227,7 +229,8 @@ class DashboardPaymentBreakdown {
   factory DashboardPaymentBreakdown.fromJson(Map<String, dynamic> json) {
     return DashboardPaymentBreakdown(
       paymentMethodLabel: (json['payment_method_label'] ?? 'cash') as String,
-      paymentMethodDisplay: (json['payment_method_display'] ?? 'Cash') as String,
+      paymentMethodDisplay:
+          (json['payment_method_display'] ?? 'Cash') as String,
       totalAmount: '${json['total_amount'] ?? '0.00'}',
       saleCount: (json['sale_count'] ?? 0) as int,
     );

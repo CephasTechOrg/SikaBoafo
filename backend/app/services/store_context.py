@@ -1,4 +1,4 @@
-"""Unified store context resolution — works for owners and staff members."""
+"""Unified store context resolution for merchant owners and staff users."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.constants import USER_ROLE_MERCHANT_OWNER
 from app.models.merchant import Merchant
 from app.models.store import Store
 from app.models.user import User
@@ -17,19 +18,22 @@ class StoreContextError(Exception):
 
 
 def get_merchant_and_store(*, user_id: UUID, db: Session) -> tuple[Merchant, Store]:
-    """Return (merchant, default_store) for user_id.
+    """Return ``(merchant, default_store)`` for ``user_id``.
 
-    Owner path: Merchant.owner_user_id == user_id.
-    Staff path: user.merchant_id → Merchant.id.
-    Raises StoreContextError if neither path resolves.
+    Merchant owners resolve through ``Merchant.owner_user_id``. Staff users resolve
+    through ``User.merchant_id`` even if a legacy owner-owned merchant row also
+    exists for the same account.
     """
-    # Owner path (most common — check first for performance)
-    merchant = db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
 
-    if merchant is None:
-        # Staff path
-        user = db.scalar(select(User).where(User.id == user_id))
-        if user is not None and user.merchant_id is not None:
+    user = db.scalar(select(User).where(User.id == user_id))
+    merchant = None
+
+    if user is not None and user.role not in {None, USER_ROLE_MERCHANT_OWNER}:
+        if user.merchant_id is not None:
+            merchant = db.scalar(select(Merchant).where(Merchant.id == user.merchant_id))
+    else:
+        merchant = db.scalar(select(Merchant).where(Merchant.owner_user_id == user_id))
+        if merchant is None and user is not None and user.merchant_id is not None:
             merchant = db.scalar(select(Merchant).where(Merchant.id == user.merchant_id))
 
     if merchant is None:

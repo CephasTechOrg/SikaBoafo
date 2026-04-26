@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -115,130 +115,128 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               ),
               Expanded(
                 child: PremiumSurface(
-                    child: RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(inventoryControllerProvider.notifier)
-                          .refresh(),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                        children: [
-                          // â”€â”€ Add Item accordion â”€â”€
-                          _AddItemAccordion(
-                            expanded: _showForm,
-                            nameCtrl: _nameCtrl,
-                            priceCtrl: _priceCtrl,
-                            skuCtrl: _skuCtrl,
-                            categoryCtrl: _categoryCtrl,
-                            thresholdCtrl: _thresholdCtrl,
-                            qtyCtrl: _qtyCtrl,
-                            isLoading: itemsAsync.isLoading,
-                            selectedImage: _newItemImage,
-                            onToggle: () =>
-                                setState(() => _showForm = !_showForm),
-                            onSave: _saveItem,
-                            onImageChanged: (v) =>
-                                setState(() => _newItemImage = v),
-                          ),
-                          const SizedBox(height: 20),
+                  child: RefreshIndicator(
+                    onRefresh: () => ref
+                        .read(inventoryControllerProvider.notifier)
+                        .refresh(),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                      children: [
+                        // â”€â”€ Add Item accordion â”€â”€
+                        _AddItemAccordion(
+                          expanded: _showForm,
+                          nameCtrl: _nameCtrl,
+                          priceCtrl: _priceCtrl,
+                          skuCtrl: _skuCtrl,
+                          categoryCtrl: _categoryCtrl,
+                          thresholdCtrl: _thresholdCtrl,
+                          qtyCtrl: _qtyCtrl,
+                          isLoading: itemsAsync.isLoading,
+                          selectedImage: _newItemImage,
+                          onToggle: () =>
+                              setState(() => _showForm = !_showForm),
+                          onSave: _saveItem,
+                          onImageChanged: (v) =>
+                              setState(() => _newItemImage = v),
+                        ),
+                        const SizedBox(height: 20),
 
-                          // â”€â”€ Search + filter â”€â”€
-                          _SearchBar(
-                            controller: _searchCtrl,
-                            onChanged: (v) => setState(() => _searchQuery = v),
-                          ),
-                          if (categories.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            _CategoryFilter(
-                              categories: categories.toList()..sort(),
-                              selected: _filterCategory,
-                              onChanged: (c) =>
-                                  setState(() => _filterCategory = c),
-                            ),
-                          ],
-                          const SizedBox(height: 16),
-
-                          // â”€â”€ Items list â”€â”€
-                          Row(
-                            children: [
-                              Text(
-                                filteredActive.isEmpty && q.isNotEmpty
-                                    ? 'No active matches'
-                                    : 'Active Items',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const Spacer(),
-                              if (items.isNotEmpty)
-                                Text(
-                                  '${filteredActive.length} of ${activeItems.length}',
-                                  style: const TextStyle(
-                                    color: AppColors.muted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                            ],
-                          ),
+                        // â”€â”€ Search + filter â”€â”€
+                        _SearchBar(
+                          controller: _searchCtrl,
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        ),
+                        if (categories.isNotEmpty) ...[
                           const SizedBox(height: 10),
+                          _CategoryFilter(
+                            categories: categories.toList()..sort(),
+                            selected: _filterCategory,
+                            onChanged: (c) =>
+                                setState(() => _filterCategory = c),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
 
-                          if (itemsAsync.isLoading && items.isEmpty)
-                            const _LoadingCard()
-                          else if (itemsAsync.hasError)
-                            _ErrorCard(
-                              message:
-                                  humanizeInventoryError(itemsAsync.error!),
-                            )
-                          else if (items.isEmpty)
-                            _EmptyCard(
-                              onAdd: () => setState(() => _showForm = true),
-                            )
-                          else if (filteredActive.isEmpty &&
-                              activeItems.isEmpty)
-                            _EmptyActiveCard(
-                              archivedCount: archivedItems.length,
-                            )
-                          else if (filteredActive.isEmpty)
-                            const _NoMatchCard()
-                          else
-                            ...filteredActive.map(
-                              (item) => _ItemCard(
-                                item: item,
-                                onEdit: () => _openEdit(item),
-                                onStockIn: () => _openStockIn(item),
-                                onAdjust: () => _openAdjust(item),
-                                onArchive: () => _archiveItem(item),
+                        // â”€â”€ Items list â”€â”€
+                        Row(
+                          children: [
+                            Text(
+                              filteredActive.isEmpty && q.isNotEmpty
+                                  ? 'No active matches'
+                                  : 'Active Items',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: AppColors.ink,
                               ),
                             ),
-                          if (archivedItems.isNotEmpty) ...[
-                            const SizedBox(height: 18),
-                            _ArchivedSection(
-                              archivedCount: archivedItems.length,
-                              visibleCount: filteredArchived.length,
-                              expanded: _showArchived,
-                              onToggle: () => setState(
-                                () => _showArchived = !_showArchived,
-                              ),
-                            ),
-                            if (_showArchived) ...[
-                              const SizedBox(height: 10),
-                              if (filteredArchived.isEmpty)
-                                const _ArchivedNoMatchCard()
-                              else
-                                ...filteredArchived.map(
-                                  (item) => _ItemCard(
-                                    item: item,
-                                    onEdit: () => _openEdit(item),
-                                    onRestore: () => _restoreItem(item),
-                                  ),
+                            const Spacer(),
+                            if (items.isNotEmpty)
+                              Text(
+                                '${filteredActive.length} of ${activeItems.length}',
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
                                 ),
-                            ],
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        if (itemsAsync.isLoading && items.isEmpty)
+                          const _LoadingCard()
+                        else if (itemsAsync.hasError)
+                          _ErrorCard(
+                            message: humanizeInventoryError(itemsAsync.error!),
+                          )
+                        else if (items.isEmpty)
+                          _EmptyCard(
+                            onAdd: () => setState(() => _showForm = true),
+                          )
+                        else if (filteredActive.isEmpty && activeItems.isEmpty)
+                          _EmptyActiveCard(
+                            archivedCount: archivedItems.length,
+                          )
+                        else if (filteredActive.isEmpty)
+                          const _NoMatchCard()
+                        else
+                          ...filteredActive.map(
+                            (item) => _ItemCard(
+                              item: item,
+                              onEdit: () => _openEdit(item),
+                              onStockIn: () => _openStockIn(item),
+                              onAdjust: () => _openAdjust(item),
+                              onArchive: () => _archiveItem(item),
+                            ),
+                          ),
+                        if (archivedItems.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          _ArchivedSection(
+                            archivedCount: archivedItems.length,
+                            visibleCount: filteredArchived.length,
+                            expanded: _showArchived,
+                            onToggle: () => setState(
+                              () => _showArchived = !_showArchived,
+                            ),
+                          ),
+                          if (_showArchived) ...[
+                            const SizedBox(height: 10),
+                            if (filteredArchived.isEmpty)
+                              const _ArchivedNoMatchCard()
+                            else
+                              ...filteredArchived.map(
+                                (item) => _ItemCard(
+                                  item: item,
+                                  onEdit: () => _openEdit(item),
+                                  onRestore: () => _restoreItem(item),
+                                ),
+                              ),
                           ],
                         ],
-                      ),
+                      ],
                     ),
+                  ),
                 ),
               ),
             ],
@@ -420,7 +418,7 @@ class _Header extends StatelessWidget {
                     Text(
                       'Track stock cleanly and keep low-stock risk visible',
                       style: TextStyle(
-                        color: Color(0xFFC7D0E5),
+                        color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
                     ),
@@ -446,7 +444,7 @@ class _Header extends StatelessWidget {
                       const Text(
                         'Stock Value',
                         style: TextStyle(
-                          color: Color(0xFFC7D0E5),
+                          color: AppColors.heroSubtitle,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -698,7 +696,8 @@ class _AddItemAccordion extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.45)),
+        border:
+            Border.all(color: AppColors.borderStrong.withValues(alpha: 0.45)),
         boxShadow: AppShadows.card,
       ),
       child: Column(
@@ -1001,9 +1000,7 @@ class _Chip extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.mint
-              : AppColors.surface,
+          color: selected ? AppColors.mint : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppColors.forest : AppColors.border,
@@ -1073,7 +1070,8 @@ class _ItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.borderStrong.withValues(alpha: 0.35)),
+        border:
+            Border.all(color: AppColors.borderStrong.withValues(alpha: 0.35)),
         boxShadow: AppShadows.card,
       ),
       child: Column(
@@ -2186,5 +2184,3 @@ class _SaveBtn extends StatelessWidget {
     );
   }
 }
-
-

@@ -9,6 +9,9 @@ import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
 const _schemaVersion = 11;
+const _deviceIdMetaKey = 'device_id';
+const _activeUserIdMetaKey = 'active_user_id';
+const _activeMerchantIdMetaKey = 'active_merchant_id';
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -207,7 +210,8 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     final cols = await db.rawQuery('PRAGMA table_info(customers_local)');
     final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
     if (!names.contains('whatsapp_number')) {
-      await db.execute('ALTER TABLE customers_local ADD COLUMN whatsapp_number TEXT');
+      await db.execute(
+          'ALTER TABLE customers_local ADD COLUMN whatsapp_number TEXT');
     }
     if (!names.contains('email')) {
       await db.execute('ALTER TABLE customers_local ADD COLUMN email TEXT');
@@ -221,13 +225,16 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     final cols = await db.rawQuery('PRAGMA table_info(receivables_local)');
     final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
     if (!names.contains('invoice_number')) {
-      await db.execute('ALTER TABLE receivables_local ADD COLUMN invoice_number TEXT');
+      await db.execute(
+          'ALTER TABLE receivables_local ADD COLUMN invoice_number TEXT');
     }
     if (!names.contains('payment_link')) {
-      await db.execute('ALTER TABLE receivables_local ADD COLUMN payment_link TEXT');
+      await db.execute(
+          'ALTER TABLE receivables_local ADD COLUMN payment_link TEXT');
     }
     if (!names.contains('created_by_user_id')) {
-      await db.execute('ALTER TABLE receivables_local ADD COLUMN created_by_user_id TEXT');
+      await db.execute(
+          'ALTER TABLE receivables_local ADD COLUMN created_by_user_id TEXT');
     }
     if (!names.contains('sale_id')) {
       await db.execute('ALTER TABLE receivables_local ADD COLUMN sale_id TEXT');
@@ -345,16 +352,129 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
 
   /// Stable device id for idempotent sync (stored in [local_meta]).
   Future<String> getOrCreateDeviceId() async {
-    const key = 'device_id';
     final db = await database;
-    final rows =
-        await db.query('local_meta', where: 'key = ?', whereArgs: [key]);
+    final rows = await db.query(
+      'local_meta',
+      where: 'key = ?',
+      whereArgs: [_deviceIdMetaKey],
+    );
     if (rows.isNotEmpty) {
       return rows.first['value']! as String;
     }
     final id = _uuid.v4();
-    await db.insert('local_meta', {'key': key, 'value': id});
+    await db.insert('local_meta', {'key': _deviceIdMetaKey, 'value': id});
     return id;
+  }
+
+  /// Reset local business data when a different account signs in on this device.
+  Future<void> prepareForSession({
+    required String userId,
+    String? merchantId,
+  }) async {
+    final db = await database;
+    final normalizedMerchantId = _normalizeMetaValue(merchantId);
+    await db.transaction((tx) async {
+      final currentUserId = await _readMeta(tx, _activeUserIdMetaKey);
+      final currentMerchantId = await _readMeta(tx, _activeMerchantIdMetaKey);
+      final userChanged = currentUserId != null && currentUserId != userId;
+      final merchantChanged = normalizedMerchantId != null &&
+          currentMerchantId != null &&
+          currentMerchantId != normalizedMerchantId;
+      if (userChanged || merchantChanged) {
+        await _clearBusinessData(tx, clearSessionMarkers: true);
+      }
+      await _writeMeta(tx, _activeUserIdMetaKey, userId);
+      await _writeMeta(tx, _activeMerchantIdMetaKey, normalizedMerchantId);
+    });
+  }
+
+  Future<void> bindMerchantToCurrentSession(String merchantId) async {
+    final normalizedMerchantId = _normalizeMetaValue(merchantId);
+    if (normalizedMerchantId == null) {
+      return;
+    }
+    final db = await database;
+    await db.insert(
+      'local_meta',
+      {'key': _activeMerchantIdMetaKey, 'value': normalizedMerchantId},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> clearBusinessData() async {
+    final db = await database;
+    await db.transaction(
+      (tx) => _clearBusinessData(tx, clearSessionMarkers: true),
+    );
+  }
+
+  Future<void> _clearBusinessData(
+    DatabaseExecutor executor, {
+    required bool clearSessionMarkers,
+  }) async {
+    const tables = [
+      'sale_items_local',
+      'inventory_movements_local',
+      'receivable_payments_local',
+      'sales_local',
+      'expenses_local',
+      'receivables_local',
+      'customers_local',
+      'items_local',
+      'sync_queue',
+    ];
+    for (final table in tables) {
+      await executor.delete(table);
+    }
+    if (clearSessionMarkers) {
+      await executor.delete(
+        'local_meta',
+        where: 'key IN (?, ?)',
+        whereArgs: [_activeUserIdMetaKey, _activeMerchantIdMetaKey],
+      );
+    }
+  }
+
+  Future<String?> _readMeta(DatabaseExecutor executor, String key) async {
+    final rows = await executor.query(
+      'local_meta',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return rows.first['value'] as String?;
+  }
+
+  Future<void> _writeMeta(
+    DatabaseExecutor executor,
+    String key,
+    String? value,
+  ) async {
+    if (value == null || value.isEmpty) {
+      await executor.delete(
+        'local_meta',
+        where: 'key = ?',
+        whereArgs: [key],
+      );
+      return;
+    }
+    await executor.insert(
+      'local_meta',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  String? _normalizeMetaValue(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   Future<void> close() async {

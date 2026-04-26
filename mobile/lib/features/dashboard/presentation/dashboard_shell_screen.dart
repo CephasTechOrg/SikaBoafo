@@ -11,7 +11,6 @@ import '../../../shared/widgets/sync_status_pill.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
-import 'business_settings_sheet.dart';
 import 'reports_screen.dart';
 import '../../debts/presentation/debts_screen.dart';
 import '../../expenses/presentation/expenses_screen.dart';
@@ -32,7 +31,7 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
   int _index = 0;
 
   Future<void> _signOut() async {
-    await ref.read(secureTokenStorageProvider).clearSession();
+    await ref.read(sessionServiceProvider).signOut();
     if (!mounted) return;
     context.go(AppRoute.auth.path);
   }
@@ -117,14 +116,7 @@ class _HomeDashboard extends ConsumerWidget {
   final Future<void> Function() onSignOut;
   final ValueChanged<int> onNavigate;
 
-  Future<void> _openSettings(BuildContext ctx, MerchantContext mc) async {
-    await showModalBottomSheet<void>(
-      context: ctx,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BusinessSettingsSheet(initialContext: mc),
-    );
-  }
+  void _openSettings(BuildContext ctx) => ctx.push(AppRoute.settings.path);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -152,7 +144,7 @@ class _HomeDashboard extends ConsumerWidget {
               _Header(
                 mc: mc,
                 summaryAsync: summaryAsync,
-                onSettings: () => _openSettings(context, mc),
+                onSettings: () => _openSettings(context),
                 onNavigate: onNavigate,
               ),
               Expanded(
@@ -669,7 +661,8 @@ class _InsightBanner extends StatelessWidget {
 
   final DashboardSummary? summary;
 
-  ({String title, String body, IconData icon, Color iconBg, Color iconColor}) _insight() {
+  ({String title, String body, IconData icon, Color iconBg, Color iconColor})
+      _insight() {
     final s = summary;
     if (s == null) {
       return (

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';
@@ -329,7 +328,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         Text(
                           'Track customers, due dates, and repayments',
                           style: TextStyle(
-                            color: Color(0xFFC7D0E5),
+                            color: AppColors.heroSubtitle,
                             fontSize: 12.5,
                           ),
                         ),
@@ -356,7 +355,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           const Text(
                             'Outstanding',
                             style: TextStyle(
-                              color: Color(0xFFC7D0E5),
+                              color: AppColors.heroSubtitle,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),

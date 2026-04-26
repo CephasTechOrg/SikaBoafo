@@ -7,10 +7,15 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.constants import USER_ROLE_MERCHANT_OWNER
 from app.models.merchant import Merchant
 from app.models.store import Store
 from app.models.user import User
 from app.schemas.auth import OnboardingIn, OnboardingOut
+
+
+class OnboardingPermissionError(Exception):
+    """Authenticated user is not allowed to create or update owner onboarding."""
 
 
 @dataclass(slots=True)
@@ -18,6 +23,10 @@ class OnboardingService:
     db: Session
 
     def complete(self, *, user: User, payload: OnboardingIn) -> OnboardingOut:
+        if user.role not in {None, USER_ROLE_MERCHANT_OWNER}:
+            msg = "Only merchant owners can complete onboarding."
+            raise OnboardingPermissionError(msg)
+
         merchant = self.db.scalar(select(Merchant).where(Merchant.owner_user_id == user.id))
         if merchant is None:
             merchant = Merchant(

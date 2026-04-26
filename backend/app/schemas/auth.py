@@ -50,6 +50,10 @@ class PinLoginIn(BaseModel):
         return v
 
 
+class RefreshTokenIn(BaseModel):
+    refresh_token: str = Field(min_length=20)
+
+
 class PinSetIn(BaseModel):
     pin: str = Field(min_length=4, max_length=6)
 

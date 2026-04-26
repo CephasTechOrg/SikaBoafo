@@ -71,6 +71,13 @@ Future<Database> _openInMemoryDatabase() async {
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
+CREATE TABLE local_meta (
+  key TEXT PRIMARY KEY NOT NULL,
+  value TEXT NOT NULL
+)
+''');
+
+        await db.execute('''
 CREATE TABLE sync_queue (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   entity_type TEXT NOT NULL,
@@ -207,6 +214,68 @@ SyncQueueRunner _unusedRunner(AppDatabase appDb) {
 }
 
 void main() {
+  test('prepareForSession clears prior business data but preserves device id',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+
+    await db.insert('local_meta', {'key': 'device_id', 'value': 'test-device'});
+    await db.insert('local_meta', {'key': 'active_user_id', 'value': 'user-a'});
+    await db.insert(
+        'local_meta', {'key': 'active_merchant_id', 'value': 'merchant-a'});
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Soap',
+      'default_price': '4.50',
+      'sku': null,
+      'category': 'groceries',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 5,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    await db.insert('customers_local', {
+      'id': 'customer-1',
+      'name': 'Ama',
+      'phone_number': '0240000000',
+      'local_operation_id': 'customer-op-1',
+      'source_device_id': 'test-device',
+      'status': 'pending',
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    await db.insert('sync_queue', {
+      'entity_type': 'item',
+      'operation': 'create',
+      'entity_id': 'item-1',
+      'payload_json': '{}',
+      'source_device_id': 'test-device',
+      'local_operation_id': 'op-1',
+      'status': 'pending',
+      'created_at': 1,
+      'attempts': 0,
+    });
+
+    await appDb.prepareForSession(userId: 'user-b', merchantId: 'merchant-b');
+
+    expect(await db.query('items_local'), isEmpty);
+    expect(await db.query('customers_local'), isEmpty);
+    expect(await db.query('sync_queue'), isEmpty);
+
+    final metaRows = await db.query('local_meta', orderBy: 'key ASC');
+    expect(
+      metaRows,
+      containsAll([
+        {'key': 'device_id', 'value': 'test-device'},
+        {'key': 'active_user_id', 'value': 'user-b'},
+        {'key': 'active_merchant_id', 'value': 'merchant-b'},
+      ]),
+    );
+
+    await appDb.close();
+  });
+
   test(
       'inventory create with initial stock writes quantity and enqueues item+stock_in',
       () async {

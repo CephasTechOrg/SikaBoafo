@@ -17,6 +17,7 @@ from app.schemas.auth import (
     OtpRequestOut,
     OtpVerifyIn,
     PinLoginIn,
+    RefreshTokenIn,
     PinSetIn,
     PinSetOut,
     UserSessionOut,
@@ -24,10 +25,14 @@ from app.schemas.auth import (
 from app.services.auth_service import (
     AuthService,
     InvalidPinLoginError,
+    InvalidRefreshTokenError,
     OtpVerificationFailedError,
     PinNotSetError,
 )
-from app.services.onboarding_service import OnboardingService
+from app.services.onboarding_service import (
+    OnboardingPermissionError,
+    OnboardingService,
+)
 from app.services.otp_provider import ArkeselOtpProvider, OtpProviderError
 from app.services.phone_number import InvalidPhoneNumberError
 
@@ -119,6 +124,22 @@ def login_with_pin(
         ) from exc
 
 
+@router.post("/refresh", response_model=UserSessionOut)
+def refresh_session(
+    payload: RefreshTokenIn,
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> UserSessionOut:
+    service = _build_auth_service(db=db, settings=settings)
+    try:
+        return service.refresh_session(refresh_token=payload.refresh_token)
+    except InvalidRefreshTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token.",
+        ) from exc
+
+
 @router.post("/pin/set", response_model=PinSetOut)
 def set_pin(
     payload: PinSetIn,
@@ -144,4 +165,10 @@ def complete_onboarding(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OnboardingOut:
     service = OnboardingService(db=db)
-    return service.complete(user=current_user, payload=payload)
+    try:
+        return service.complete(user=current_user, payload=payload)
+    except OnboardingPermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc

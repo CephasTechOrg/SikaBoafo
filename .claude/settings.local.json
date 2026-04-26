@@ -14,7 +14,10 @@
       "Bash(\".venv/Scripts/pip.exe\" install *)",
       "WebSearch",
       "WebFetch(domain:paystack.com)",
-      "Bash(dart analyze *)"
+      "Bash(dart analyze *)",
+      "Bash(python -m pytest --tb=short -q)",
+      "Bash(python -m pytest app/tests/test_payment_settings.py app/tests/test_otp_provider.py --tb=short -q)",
+      "Bash(flutter test *)"
     ]
   }
 }

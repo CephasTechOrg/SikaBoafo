@@ -27,7 +27,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final token = await ref.read(secureTokenStorageProvider).readAccessToken();
     if (!mounted) return;
     context.go(
-      token != null && token.isNotEmpty ? AppRoute.home.path : AppRoute.auth.path,
+      token != null && token.isNotEmpty
+          ? AppRoute.home.path
+          : AppRoute.auth.path,
     );
   }
 
@@ -59,7 +61,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(999),
@@ -115,10 +118,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     Center(
                       child: Text(
                         'SikaBoafo',
-                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                              color: Colors.white,
-                              fontFamily: 'Constantia',
-                            ),
+                        style:
+                            Theme.of(context).textTheme.displayMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontFamily: 'Constantia',
+                                ),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -140,7 +144,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         ),
                         SizedBox(width: 12),

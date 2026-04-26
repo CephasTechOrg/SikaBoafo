@@ -141,7 +141,8 @@ class SyncStatusPill extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sync Status', style: Theme.of(context).textTheme.titleLarge),
+                    Text('Sync Status',
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 14),
                     Wrap(
                       spacing: 10,
@@ -149,7 +150,9 @@ class SyncStatusPill extends ConsumerWidget {
                       children: [
                         _MetricCard(
                           label: 'Backend',
-                          value: snapshot?.backendReachable == true ? 'Reachable' : 'Offline',
+                          value: snapshot?.backendReachable == true
+                              ? 'Reachable'
+                              : 'Offline',
                         ),
                         _MetricCard(
                           label: 'Pending',
@@ -192,7 +195,8 @@ class SyncStatusPill extends ConsumerWidget {
                     ],
                     if ((snapshot?.failedEntries.isNotEmpty ?? false)) ...[
                       const SizedBox(height: 16),
-                      Text('Needs Attention', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Needs Attention',
+                          style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 10),
                       ...snapshot!.failedEntries.map(
                         (entry) => Padding(
@@ -334,7 +338,9 @@ class _FailedRow extends StatelessWidget {
           Text(
             entry.status,
             style: TextStyle(
-              color: entry.status == 'conflict' ? AppColors.warning : AppColors.danger,
+              color: entry.status == 'conflict'
+                  ? AppColors.warning
+                  : AppColors.danger,
               fontWeight: FontWeight.w800,
             ),
           ),

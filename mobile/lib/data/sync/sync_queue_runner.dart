@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 
@@ -32,8 +33,26 @@ class SyncQueueRunner {
   final AppDatabase _appDb;
   final SyncApi _syncApi;
   final SyncRefreshService? _refreshService;
+  static Future<SyncQueueRunSummary>? _activeRun;
 
   Future<SyncQueueRunSummary> run({int limit = 100}) async {
+    final existingRun = _activeRun;
+    if (existingRun != null) {
+      return existingRun;
+    }
+
+    final future = _runInternal(limit: limit);
+    _activeRun = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_activeRun, future)) {
+        _activeRun = null;
+      }
+    }
+  }
+
+  Future<SyncQueueRunSummary> _runInternal({required int limit}) async {
     final queueRows = await _appDb.syncQueue.pendingRows(limit: limit);
     if (queueRows.isEmpty) {
       return const SyncQueueRunSummary(
@@ -62,7 +81,8 @@ class SyncQueueRunner {
         for (final row in rows) {
           final queueId = row['id'] as int;
           final opId = (row['local_operation_id'] ?? '') as String;
-          await _appDb.syncQueue.markFailed(queueId, 'Missing source_device_id.');
+          await _appDb.syncQueue
+              .markFailed(queueId, 'Missing source_device_id.');
           if (opId.isNotEmpty) statusByOperationId[opId] = 'failed';
           failed += 1;
         }
@@ -90,7 +110,8 @@ class SyncQueueRunner {
           );
         }).toList(growable: false);
 
-        final results = await _syncApi.apply(deviceId: deviceId, operations: operations);
+        final results =
+            await _syncApi.apply(deviceId: deviceId, operations: operations);
         final resolvedQueueIds = <int>{};
         for (final result in results) {
           final queueId = queueIdByOpId[result.localOperationId];
@@ -166,14 +187,16 @@ class SyncQueueRunner {
     if (_refreshService == null || refreshTargets.isEmpty) {
       return;
     }
-    if (refreshTargets.any((value) => value == 'inventory' || value == 'sale' || value == 'item')) {
+    if (refreshTargets.any((value) =>
+        value == 'inventory' || value == 'sale' || value == 'item')) {
       try {
         await _refreshService.refreshInventorySnapshot();
       } catch (_) {
         // Keep the conflict row visible even if refresh itself fails.
       }
     }
-    if (refreshTargets.any((value) => value == 'receivable' || value == 'receivable_payment')) {
+    if (refreshTargets.any(
+        (value) => value == 'receivable' || value == 'receivable_payment')) {
       try {
         await _refreshService.refreshDebtSnapshot();
       } catch (_) {

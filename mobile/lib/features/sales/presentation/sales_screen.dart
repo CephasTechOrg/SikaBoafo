@@ -136,7 +136,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                   'Record new sales and follow today'
                                   's cashflow',
                                   style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
+                                    color: AppColors.heroSubtitle,
                                     fontSize: 12.5,
                                   ),
                                 ),
@@ -161,7 +161,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 const Text(
                                   'Today\'s Revenue',
                                   style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
+                                    color: AppColors.heroSubtitle,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -2266,7 +2266,8 @@ class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
               const Text(
                 'Show this QR to the customer. Payment confirms automatically.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted, fontSize: 12.5, height: 1.4),
+                style: TextStyle(
+                    color: AppColors.muted, fontSize: 12.5, height: 1.4),
               ),
               const SizedBox(height: 20),
               Container(
@@ -2306,8 +2307,8 @@ class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
                   const SizedBox(width: 6),
                   Text(
                     _checking ? 'Checking...' : 'Waiting for payment',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.muted),
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.muted),
                   ),
                 ],
               ),
@@ -2407,8 +2408,7 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
     _circleAnim =
         CurvedAnimation(parent: _circleCtrl, curve: Curves.elasticOut);
     _checkAnim = CurvedAnimation(parent: _checkCtrl, curve: Curves.easeOut);
-    _contentAnim =
-        CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut);
+    _contentAnim = CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut);
 
     HapticFeedback.heavyImpact();
     _circleCtrl.forward().then((_) {
@@ -2488,8 +2488,7 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
                       const SizedBox(height: 6),
                       const Text(
                         'Received via Paystack · Sale updated',
-                        style:
-                            TextStyle(color: AppColors.muted, fontSize: 13),
+                        style: TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                       const SizedBox(height: 28),
                       SizedBox(

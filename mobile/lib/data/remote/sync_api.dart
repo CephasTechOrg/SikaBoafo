@@ -57,7 +57,8 @@ class SyncApi {
       '/sync/apply',
       data: {
         'device_id': deviceId,
-        'operations': operations.map((op) => op.toJson()).toList(growable: false),
+        'operations':
+            operations.map((op) => op.toJson()).toList(growable: false),
       },
     );
     final data = response.data;

@@ -43,7 +43,6 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Hydrate form every time fresh data arrives (initial load + after save/disconnect).
     ref.listen<AsyncValue<PaystackConnectionSettings>>(
       paystackConnectionProvider,
       (_, next) => next.whenData(_hydrateForm),
@@ -60,56 +59,17 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
         decoration: const BoxDecoration(gradient: AppGradients.shell),
         child: Column(
           children: [
-            Container(
-              decoration: const BoxDecoration(gradient: AppGradients.hero),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _HeaderActionButton(
-                            icon: Icons.arrow_back_rounded,
-                            onTap: () => context.pop(),
-                            tooltip: 'Back',
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Connect Paystack',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Store merchant-owned credentials securely on the backend',
-                                  style: TextStyle(
-                                    color: Color(0xFFC7D0E5),
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _ConnectionPill(isConnected: isConnected),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+            PremiumPageHeader(
+              leading: PremiumHeaderButton(
+                icon: Icons.arrow_back_rounded,
+                onTap: () => context.pop(),
+                tooltip: 'Back',
               ),
+              title: 'Paystack',
+              subtitle: isConnected
+                  ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
+                  : 'Not connected — save credentials to start',
+              badge: _ConnectionPill(isConnected: isConnected),
             ),
             Expanded(
               child: PremiumSurface(
@@ -125,15 +85,11 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
                       children: [
-                        _StatusCard(
-                          isConnected: isConnected,
-                          mode: connection?.mode ?? _mode,
-                          accountLabel: connection?.accountLabel,
-                          test: connection?.test,
-                          live: connection?.live,
-                        ),
-                        const SizedBox(height: 14),
-                        _ConnectionFormCard(
+                        if (isConnected) ...[
+                          _StatusRows(connection: connection!),
+                          const SizedBox(height: 14),
+                        ],
+                        _CredentialsForm(
                           accountLabelCtrl: _accountLabelCtrl,
                           publicKeyCtrl: _publicKeyCtrl,
                           secretKeyCtrl: _secretKeyCtrl,
@@ -151,14 +107,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                                   : null,
                         ),
                         const SizedBox(height: 14),
-                        const _WebhookCard(),
-                        const SizedBox(height: 14),
-                        const _InfoCard(
-                          title: 'How this works',
-                          body:
-                              'Your secret key is verified with Paystack, then encrypted and stored securely on the server — '
-                              'never shown back in full. Payments go directly into your own Paystack account.',
-                        ),
+                        const _WebhookRow(),
                       ],
                     ),
                   ),
@@ -175,11 +124,11 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
       children: [
-        _SkeletonPanel(height: 140),
+        const _SkeletonPanel(height: 90),
         const SizedBox(height: 14),
-        _SkeletonPanel(height: 320),
+        const _SkeletonPanel(height: 300),
         const SizedBox(height: 14),
-        _SkeletonPanel(height: 80),
+        const _SkeletonPanel(height: 60),
       ],
     );
   }
@@ -221,7 +170,8 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       return;
     }
     if (secretKey.isEmpty && !(activeModeState?.configured ?? false)) {
-      _showError('Secret key is required to connect this mode for the first time.');
+      _showError(
+          'Secret key is required to connect this mode for the first time.');
       return;
     }
     if (secretKey.isNotEmpty) {
@@ -264,30 +214,15 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   Future<void> _disconnectConnection() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Disconnect Paystack?'),
-        content: const Text(
-          'This will remove your saved credentials. '
-          'Any pending payment links will stop working.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
-            child: const Text('Disconnect'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _DisconnectConfirmDialog(),
     );
     if (confirmed != true || !mounted) return;
 
     setState(() => _disconnecting = true);
     try {
-      await ref.read(paystackSettingsApiProvider).disconnectPaystackConnection();
+      await ref
+          .read(paystackSettingsApiProvider)
+          .disconnectPaystackConnection();
       ref.invalidate(paystackConnectionProvider);
       if (!mounted) return;
       _showSuccess('Paystack disconnected.');
@@ -302,7 +237,6 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   String _humanizeSettingsError(Object error) {
     if (error is DioException) {
       final data = error.response?.data;
-      // Always prefer the backend's exact detail message for all error codes.
       if (data is Map<String, dynamic> && data['detail'] is String) {
         final detail = (data['detail'] as String).trim();
         if (detail.isNotEmpty) return detail;
@@ -355,39 +289,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   }
 }
 
-class _HeaderActionButton extends StatelessWidget {
-  const _HeaderActionButton({
-    required this.icon,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Material(
-      color: Colors.white.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-    return tooltip == null ? child : Tooltip(message: tooltip!, child: child);
-  }
-}
+// ─── Connection pill ─────────────────────────────────────────────────────────
 
 class _ConnectionPill extends StatelessWidget {
   const _ConnectionPill({required this.isConnected});
@@ -417,85 +319,31 @@ class _ConnectionPill extends StatelessWidget {
   }
 }
 
-class _StatusCard extends StatelessWidget {
-  const _StatusCard({
-    required this.isConnected,
-    required this.mode,
-    required this.accountLabel,
-    required this.test,
-    required this.live,
-  });
+// ─── Status rows ─────────────────────────────────────────────────────────────
 
-  final bool isConnected;
-  final String mode;
-  final String? accountLabel;
-  final PaystackModeState? test;
-  final PaystackModeState? live;
+class _StatusRows extends StatelessWidget {
+  const _StatusRows({required this.connection});
+
+  final PaystackConnectionSettings connection;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumPanel(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.successSoft,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.22)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: PremiumSectionHeading(
-                  title: 'Connection Status',
-                  caption: isConnected
-                      ? 'Your Paystack account is active and ready to accept payments.'
-                      : 'Save your Paystack credentials below to start accepting payments.',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Status banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isConnected ? AppColors.successSoft : AppColors.warningSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isConnected
-                    ? AppColors.success.withValues(alpha: 0.3)
-                    : AppColors.warning.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isConnected
-                      ? Icons.check_circle_rounded
-                      : Icons.warning_amber_rounded,
-                  color: isConnected ? AppColors.success : AppColors.warning,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    isConnected
-                        ? 'Connected · ${mode == 'live' ? 'Live mode' : 'Test mode'}'
-                        : 'Not connected — credentials not saved yet',
-                    style: TextStyle(
-                      color: isConnected ? AppColors.success : AppColors.warning,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (accountLabel != null) ...[
-            const SizedBox(height: 10),
-            _StatusRow(label: 'Account', value: accountLabel!),
+          if (connection.accountLabel != null) ...[
+            _StatusRow(label: 'Account', value: connection.accountLabel!),
+            const Divider(height: 14),
           ],
-          const SizedBox(height: 10),
-          _ModeStatusRow(label: 'Test mode', state: test),
-          _ModeStatusRow(label: 'Live mode', state: live),
+          _ModeStatusRow(label: 'Test mode', state: connection.test),
+          _ModeStatusRow(label: 'Live mode', state: connection.live),
         ],
       ),
     );
@@ -588,8 +436,10 @@ class _ModeStatusRow extends StatelessWidget {
   }
 }
 
-class _ConnectionFormCard extends StatefulWidget {
-  const _ConnectionFormCard({
+// ─── Credentials form ─────────────────────────────────────────────────────────
+
+class _CredentialsForm extends StatefulWidget {
+  const _CredentialsForm({
     required this.accountLabelCtrl,
     required this.publicKeyCtrl,
     required this.secretKeyCtrl,
@@ -616,10 +466,10 @@ class _ConnectionFormCard extends StatefulWidget {
   final VoidCallback? onDisconnect;
 
   @override
-  State<_ConnectionFormCard> createState() => _ConnectionFormCardState();
+  State<_CredentialsForm> createState() => _CredentialsFormState();
 }
 
-class _ConnectionFormCardState extends State<_ConnectionFormCard> {
+class _CredentialsFormState extends State<_CredentialsForm> {
   bool _obscureSecret = true;
 
   @override
@@ -631,13 +481,6 @@ class _ConnectionFormCardState extends State<_ConnectionFormCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PremiumSectionHeading(
-            title: 'Your Paystack Credentials',
-            caption: widget.mode == 'live'
-                ? 'Live mode — real payments will be processed.'
-                : 'Test mode — use test keys to try without real money.',
-          ),
-          const SizedBox(height: 14),
           // Mode toggle
           Container(
             padding: const EdgeInsets.all(4),
@@ -711,7 +554,7 @@ class _ConnectionFormCardState extends State<_ConnectionFormCard> {
               ),
               helperText: widget.activeModeState?.secretKeyMasked != null
                   ? 'Saved key: ${widget.activeModeState!.secretKeyMasked}'
-                  : 'Required. This is encrypted and stored securely — never shown back in full.',
+                  : 'Required. Encrypted and stored securely — never shown back in full.',
             ),
             textInputAction: TextInputAction.done,
           ),
@@ -774,6 +617,8 @@ class _ConnectionFormCardState extends State<_ConnectionFormCard> {
   }
 }
 
+// ─── Mode tab ────────────────────────────────────────────────────────────────
+
 class _ModeTab extends StatelessWidget {
   const _ModeTab({
     required this.label,
@@ -821,6 +666,112 @@ class _ModeTab extends StatelessWidget {
   }
 }
 
+// ─── Webhook row ─────────────────────────────────────────────────────────────
+
+class _WebhookRow extends StatelessWidget {
+  const _WebhookRow();
+
+  static const _webhookUrl =
+      'https://biztrackgh-api.onrender.com/api/v1/webhooks/paystack';
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warningSoft,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.webhook_rounded, color: AppColors.warning, size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Webhook URL',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  _webhookUrl,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.navy,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Paste this in Paystack Dashboard → Settings → Webhook URL',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Material(
+            color: AppColors.warning.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              onTap: () {
+                Clipboard.setData(const ClipboardData(text: _webhookUrl));
+                ScaffoldMessenger.of(
+                  // ignore: use_build_context_synchronously
+                  // The context is valid here since this is a tap handler
+                  // and the widget is still mounted when tap fires.
+                  // ignore: use_build_context_synchronously
+                  context,
+                ).showSnackBar(
+                  const SnackBar(
+                    content: Text('Webhook URL copied'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.copy_rounded,
+                        size: 14, color: AppColors.warning),
+                    SizedBox(width: 5),
+                    Text(
+                      'Copy',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Skeleton / error ─────────────────────────────────────────────────────────
+
 class _SkeletonPanel extends StatelessWidget {
   const _SkeletonPanel({required this.height});
 
@@ -859,7 +810,8 @@ class _LoadErrorPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_outlined, size: 36, color: AppColors.danger),
+          const Icon(Icons.cloud_off_outlined,
+              size: 36, color: AppColors.danger),
           const SizedBox(height: 12),
           Text(
             'Could not load your Paystack settings.',
@@ -884,180 +836,134 @@ class _LoadErrorPanel extends StatelessWidget {
   }
 }
 
-class _WebhookCard extends StatelessWidget {
-  const _WebhookCard();
+// ─── Disconnect confirmation dialog ──────────────────────────────────────────
 
-  static const _webhookUrl =
-      'https://biztrackgh-api.onrender.com/api/v1/webhooks/paystack';
+class _DisconnectConfirmDialog extends StatefulWidget {
+  const _DisconnectConfirmDialog();
 
   @override
-  Widget build(BuildContext context) {
-    return PremiumPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.warningSoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.webhook_rounded,
-                  color: AppColors.warning,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Webhook Setup Required',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'One-time setup in your Paystack dashboard',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.muted,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Paste this URL into your Paystack dashboard under '
-            'Settings → API Keys & Webhooks → Webhook URL. '
-            'This tells Paystack where to send payment confirmations.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.inkSoft,
-                  height: 1.45,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _webhookUrl,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Material(
-                  color: AppColors.navy,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InkWell(
-                    onTap: () {
-                      Clipboard.setData(
-                        const ClipboardData(text: _webhookUrl),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Webhook URL copied to clipboard'),
-                          behavior: SnackBarBehavior.floating,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.copy_rounded, size: 14, color: Colors.white),
-                          SizedBox(width: 5),
-                          Text(
-                            'Copy',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_DisconnectConfirmDialog> createState() =>
+      _DisconnectConfirmDialogState();
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.body});
+class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  bool _confirmed = false;
 
-  final String title;
-  final String body;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(() {
+      final matches = _ctrl.text == 'DISCONNECT';
+      if (matches != _confirmed) setState(() => _confirmed = matches);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return PremiumPanel(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: AppColors.infoSoft,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child:
-                const Icon(Icons.info_outline_rounded, color: AppColors.navy),
+            child: const Icon(
+              Icons.link_off_rounded,
+              color: AppColors.danger,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    color: AppColors.inkSoft,
-                    fontSize: 12.5,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          const Expanded(
+            child: Text(
+              'Disconnect Paystack',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
           ),
         ],
       ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.25),
+              ),
+            ),
+            child: const Text(
+              'This will remove your encrypted Paystack credentials from the server. '
+              'Payments will stop working immediately until you reconnect.',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Type DISCONNECT to confirm:',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('disconnect_confirm_input'),
+            controller: _ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              hintText: 'DISCONNECT',
+              errorText: _ctrl.text.isNotEmpty && !_confirmed
+                  ? 'Type exactly: DISCONNECT'
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _confirmed ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.danger,
+            disabledBackgroundColor: AppColors.dangerSoft,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text('Disconnect'),
+        ),
+      ],
     );
   }
 }

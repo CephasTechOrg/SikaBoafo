@@ -17,12 +17,13 @@ final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
   );
 });
 
-final inventoryControllerProvider =
-    AsyncNotifierProvider<InventoryController, List<LocalInventoryItem>>(
+final inventoryControllerProvider = AsyncNotifierProvider.autoDispose<
+    InventoryController, List<LocalInventoryItem>>(
   InventoryController.new,
 );
 
-class InventoryController extends AsyncNotifier<List<LocalInventoryItem>> {
+class InventoryController
+    extends AutoDisposeAsyncNotifier<List<LocalInventoryItem>> {
   InventoryRepository get _repo => ref.read(inventoryRepositoryProvider);
 
   @override
