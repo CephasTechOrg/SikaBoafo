@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../data/debts_repository.dart';
 
@@ -58,6 +60,7 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     }
     try {
       await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
+      ref.invalidate(freshnessTsProvider(KvCacheRepository.kDebtsTs));
     } catch (_) {
       // Keep local data visible when network refresh fails.
     }

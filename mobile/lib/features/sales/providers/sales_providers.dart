@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
@@ -32,7 +34,12 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
   @override
   Future<List<LocalSaleRecord>> build() async {
     try {
-      await _repo.syncPendingQueue();
+      final result = await _repo.syncPendingQueue();
+      if (result.applied > 0) {
+        ref.invalidate(freshnessTsProvider(KvCacheRepository.kSalesTs));
+        await ref.read(appDatabaseProvider).kv.putTimestamp(
+            KvCacheRepository.kSalesTs, DateTime.now().toUtc());
+      }
     } catch (_) {
       // Keep offline mode resilient; failed queue rows remain for retry.
     }
@@ -44,7 +51,16 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
     if (includeVoided != null) {
       _includeVoided = includeVoided;
     }
-    await _repo.syncPendingQueue();
+    try {
+      final result = await _repo.syncPendingQueue();
+      if (result.applied > 0) {
+        ref.invalidate(freshnessTsProvider(KvCacheRepository.kSalesTs));
+        await ref.read(appDatabaseProvider).kv.putTimestamp(
+            KvCacheRepository.kSalesTs, DateTime.now().toUtc());
+      }
+    } catch (_) {
+      // ignore sync errors during refresh
+    }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
     state = AsyncValue.data(await _loadSales());
   }
