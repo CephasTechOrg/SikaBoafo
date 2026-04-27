@@ -5,6 +5,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/inventory_api.dart';
@@ -122,6 +123,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   lowStockCount: lowStockCount,
                   categoryCount: categories.length,
                   totalValueMinor: totalValueMinor,
+                ),
+                const StaleBanner(
+                  screenKey: 'inventory',
+                  kvKey: KvCacheRepository.kInventoryTs,
                 ),
                 Expanded(
                   child: PremiumSurface(

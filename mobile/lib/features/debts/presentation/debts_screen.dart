@@ -8,6 +8,7 @@ import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/stale_banner.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 
@@ -121,6 +122,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               overdueMinor: overdueMinor,
               paidThisMonth: paidThisMonth,
               customerCount: customers.length,
+            ),
+
+            const StaleBanner(
+              screenKey: 'debts',
+              kvKey: KvCacheRepository.kDebtsTs,
             ),
 
             // ── Content canvas ────────────────────────────────────────────
@@ -335,6 +341,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                             color: AppColors.heroSubtitle,
                             fontSize: 12.5,
                           ),
+                        ),
+                        SizedBox(height: 4),
+                        DataFreshnessLabel(
+                          kvKey: KvCacheRepository.kDebtsTs,
+                          color: AppColors.heroSubtitle,
                         ),
                       ],
                     ),
