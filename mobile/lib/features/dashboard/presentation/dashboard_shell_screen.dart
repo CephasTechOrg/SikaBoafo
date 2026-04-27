@@ -925,15 +925,8 @@ class _KpiTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            gradient: LinearGradient(
-              colors: [
-                AppColors.surface,
-                toneSoft.withValues(alpha: 0.9),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: tone.withValues(alpha: 0.12)),
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
             boxShadow: AppShadows.subtle,
           ),
           child: Column(
@@ -943,7 +936,7 @@ class _KpiTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.10),
+                  color: toneSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 16, color: tone),

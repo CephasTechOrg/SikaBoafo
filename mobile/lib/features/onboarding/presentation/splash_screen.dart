@@ -98,7 +98,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                         Transform.scale(scale: value, child: child),
                     child: const MockupAppMark(
                       size: 96,
-                      assetPath: 'assets/images/sikaboafo.png',
+                      assetPath: 'assets/images/logo.png',
                     ),
                   ),
                   const SizedBox(height: 22),
