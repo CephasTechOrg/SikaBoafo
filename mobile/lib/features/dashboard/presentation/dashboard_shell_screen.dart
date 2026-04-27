@@ -145,7 +145,12 @@ class _HomeDashboard extends ConsumerWidget {
                   right: 0,
                   top: 0,
                   height: heroHeight,
-                  child: const HeroBackdrop(),
+                  child: const HeroBackdrop(
+                    swirlAssetPath: 'assets/images/flag.png',
+                    swirlOpacity: 0.64,
+                    topShade: 0.72,
+                    midShade: 0.34,
+                  ),
                 ),
 
                 // White sheet — pulled slightly up into the hero so the
