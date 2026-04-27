@@ -8,9 +8,31 @@ import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../providers/biometric_pref_provider.dart';
+import '../../../core/services/biometric_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  static final _biometricAvailabilityProvider =
+      FutureProvider<BiometricAvailability>((ref) async {
+    return ref.watch(biometricServiceProvider).availability();
+  });
+
+  static String _biometricCaption(
+    BiometricAvailability? availability,
+    AsyncValue<bool> enabledAsync,
+  ) {
+    if (enabledAsync.isLoading) return 'Checking…';
+    if (availability == BiometricAvailability.notSupported) {
+      return 'Not available on this device';
+    }
+    if (availability == BiometricAvailability.notEnrolled) {
+      return 'Not set up — enable Face/Fingerprint in phone settings';
+    }
+    return enabledAsync.valueOrNull == true
+        ? 'Enabled — unlock with fingerprint/Face ID'
+        : 'Disabled';
+  }
 
   Future<bool?> _confirmBiometricToggle(
     BuildContext context, {
@@ -157,6 +179,7 @@ class SettingsScreen extends ConsumerWidget {
     final businessName = ctxAsync.valueOrNull?.businessName;
     final subtitle = businessName ?? 'Manage your account';
     final biometricAsync = ref.watch(biometricPrefProvider);
+    final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
 
     return MockupScreenScaffold(
       title: 'Settings',
@@ -250,12 +273,27 @@ class SettingsScreen extends ConsumerWidget {
             iconBg: AppColors.surfaceAlt,
             iconColor: AppColors.ink,
             label: 'Biometric unlock',
-            caption: biometricAsync.isLoading
-                ? 'Checking…'
-                : (biometricAsync.valueOrNull == true
-                    ? 'Enabled — unlock with fingerprint/Face ID'
-                    : 'Disabled'),
-            onTap: () => _toggleBiometric(context, ref),
+            caption: _biometricCaption(
+              availabilityAsync.valueOrNull,
+              biometricAsync,
+            ),
+            onTap: availabilityAsync.valueOrNull == BiometricAvailability.available
+                ? () => _toggleBiometric(context, ref)
+                : () {
+                    final msg = switch (availabilityAsync.valueOrNull) {
+                      BiometricAvailability.notEnrolled =>
+                        'No biometrics enrolled. Enable Face/Fingerprint in phone settings first.',
+                      BiometricAvailability.notSupported =>
+                        'Biometrics not supported on this device.',
+                      _ => 'Biometrics not available right now.',
+                    };
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(msg),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
           ),
           const SizedBox(height: 10),
           _SettingsTile(
