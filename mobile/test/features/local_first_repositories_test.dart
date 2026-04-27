@@ -68,12 +68,21 @@ Future<Database> _openInMemoryDatabase() async {
   final db = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
+      singleInstance: false,
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
 CREATE TABLE local_meta (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
+)
+''');
+
+        await db.execute('''
+CREATE TABLE kv_cache (
+  key TEXT PRIMARY KEY NOT NULL,
+  value_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
 )
 ''');
 
