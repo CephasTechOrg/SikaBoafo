@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/services/api_client.dart';
+import '../../../data/local/kv_cache_repository.dart';
 
 class MerchantContext {
   const MerchantContext({
@@ -31,53 +34,128 @@ class MerchantContext {
 }
 
 class DashboardApi {
-  DashboardApi(this._apiClient);
+  DashboardApi(this._apiClient, {KvCacheRepository? cache})
+      : _cache = cache;
 
   final ApiClient _apiClient;
+  final KvCacheRepository? _cache;
+
+  static const _cacheContextKey = 'dashboard.context';
+  static const _cacheSummaryKey = 'dashboard.summary';
+  static const _cacheInsightsKey = 'dashboard.insights';
+  static const _cacheRecentActivityKey = 'dashboard.recent_activity';
 
   Future<MerchantContext> fetchContext() async {
-    final response = await _apiClient.dio.get<dynamic>('/merchants/me/context');
-    final body = response.data;
-    if (body is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected dashboard context payload.');
+    try {
+      final response =
+          await _apiClient.dio.get<dynamic>('/merchants/me/context');
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected dashboard context payload.');
+      }
+      await _cache?.put(_cacheContextKey, jsonEncode(body));
+      return MerchantContext.fromJson(body);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheContextKey);
+        if (cached != null) {
+          final body = jsonDecode(cached);
+          if (body is Map<String, dynamic>) {
+            return MerchantContext.fromJson(body);
+          }
+        }
+      }
+      rethrow;
     }
-    return MerchantContext.fromJson(body);
   }
 
   Future<DashboardSummary> fetchSummary() async {
-    final response = await _apiClient.dio.get<dynamic>('/reports/summary');
-    final body = response.data;
-    if (body is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected dashboard summary payload.');
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/reports/summary');
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected dashboard summary payload.');
+      }
+      await _cache?.put(_cacheSummaryKey, jsonEncode(body));
+      return DashboardSummary.fromJson(body);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheSummaryKey);
+        if (cached != null) {
+          final body = jsonDecode(cached);
+          if (body is Map<String, dynamic>) {
+            return DashboardSummary.fromJson(body);
+          }
+        }
+      }
+      rethrow;
     }
-    return DashboardSummary.fromJson(body);
   }
 
   Future<List<DashboardActivity>> fetchRecentActivity({int limit = 8}) async {
-    final response = await _apiClient.dio.get<dynamic>(
-      '/reports/recent-activity',
-      queryParameters: {'limit': limit},
-    );
-    final body = response.data;
-    if (body is! List) {
-      throw const FormatException('Unexpected recent activity payload.');
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/reports/recent-activity',
+        queryParameters: {'limit': limit},
+      );
+      final body = response.data;
+      if (body is! List) {
+        throw const FormatException('Unexpected recent activity payload.');
+      }
+      await _cache?.put(_cacheRecentActivityKey, jsonEncode(body));
+      return body
+          .whereType<Map<String, dynamic>>()
+          .map(DashboardActivity.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheRecentActivityKey);
+        if (cached != null) {
+          final body = jsonDecode(cached);
+          if (body is List) {
+            return body
+                .whereType<Map<String, dynamic>>()
+                .map(DashboardActivity.fromJson)
+                .toList(growable: false);
+          }
+        }
+      }
+      rethrow;
     }
-    return body
-        .whereType<Map<String, dynamic>>()
-        .map(DashboardActivity.fromJson)
-        .toList(growable: false);
   }
 
   Future<DashboardInsights> fetchInsights({int topN = 5}) async {
-    final response = await _apiClient.dio.get<dynamic>(
-      '/reports/insights',
-      queryParameters: {'top_n': topN},
-    );
-    final body = response.data;
-    if (body is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected dashboard insights payload.');
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/reports/insights',
+        queryParameters: {'top_n': topN},
+      );
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected dashboard insights payload.');
+      }
+      await _cache?.put(_cacheInsightsKey, jsonEncode(body));
+      return DashboardInsights.fromJson(body);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheInsightsKey);
+        if (cached != null) {
+          final body = jsonDecode(cached);
+          if (body is Map<String, dynamic>) {
+            return DashboardInsights.fromJson(body);
+          }
+        }
+      }
+      rethrow;
     }
-    return DashboardInsights.fromJson(body);
+  }
+
+  bool _isOfflineish(DioException e) {
+    return e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.unknown;
   }
 
   Future<void> updateMerchantProfile({

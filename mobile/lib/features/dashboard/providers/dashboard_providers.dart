@@ -1,10 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers/core_providers.dart';
+import '../../../data/local/kv_cache_repository.dart';
 import '../data/dashboard_api.dart';
 
 final dashboardApiProvider = Provider<DashboardApi>((ref) {
-  return DashboardApi(ref.watch(apiClientProvider));
+  return DashboardApi(
+    ref.watch(apiClientProvider),
+    cache: KvCacheRepository(ref.watch(appDatabaseProvider)),
+  );
 });
 
 final merchantContextProvider =

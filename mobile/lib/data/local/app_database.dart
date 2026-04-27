@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 11;
+const _schemaVersion = 12;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -65,6 +65,9 @@ class AppDatabase {
         if (oldVersion < 11) {
           await _upgradeReceivablesSchemaV11(db);
         }
+        if (oldVersion < 12) {
+          await _createCacheSchema(db);
+        }
       },
     );
     return _db!;
@@ -77,6 +80,7 @@ CREATE TABLE local_meta (
   value TEXT NOT NULL
 )
 ''');
+    await _createCacheSchema(db);
     await db.execute('''
 CREATE TABLE sync_queue (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,6 +104,19 @@ CREATE TABLE sync_queue (
     await _createSalesSchema(db);
     await _createExpenseSchema(db);
     await _createDebtSchema(db);
+  }
+
+  Future<void> _createCacheSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS kv_cache (
+  key TEXT PRIMARY KEY NOT NULL,
+  value_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+:)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_kv_cache_updated_at ON kv_cache (updated_at DESC)',
+    );
   }
 
   Future<void> _createInventorySchema(Database db) async {
@@ -413,6 +430,7 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
     required bool clearSessionMarkers,
   }) async {
     const tables = [
+      'kv_cache',
       'sale_items_local',
       'inventory_movements_local',
       'receivable_payments_local',
