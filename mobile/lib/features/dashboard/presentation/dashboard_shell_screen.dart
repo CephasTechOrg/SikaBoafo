@@ -211,12 +211,20 @@ class _HomeDashboard extends ConsumerWidget {
                             const SizedBox(height: 18),
                             _InsightBanner(summary: summaryAsync.valueOrNull),
                             const SizedBox(height: 22),
-                            _MonthOverviewCard(insightsAsync: insightsAsync),
+                            _MonthOverviewCard(
+                              insightsAsync: insightsAsync,
+                              overlayAsync: overlayAsync,
+                            ),
                             const SizedBox(height: 22),
                             _PaymentBreakdownStrip(
-                                insightsAsync: insightsAsync),
+                              insightsAsync: insightsAsync,
+                              overlayAsync: overlayAsync,
+                            ),
                             const SizedBox(height: 22),
-                            _TopSellingSection(insightsAsync: insightsAsync),
+                            _TopSellingSection(
+                              insightsAsync: insightsAsync,
+                              overlayAsync: overlayAsync,
+                            ),
                             const SizedBox(height: 22),
                             _RecentActivity(activityAsync: activityAsync),
                           ],
@@ -1071,14 +1079,24 @@ class _KpiTile extends StatelessWidget {
 // ─── This Month Overview ──────────────────────────────────────────────────────
 
 class _MonthOverviewCard extends StatelessWidget {
-  const _MonthOverviewCard({required this.insightsAsync});
+  const _MonthOverviewCard({required this.insightsAsync, required this.overlayAsync});
 
   final AsyncValue<DashboardInsights> insightsAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
 
   @override
   Widget build(BuildContext context) {
     final data = insightsAsync.valueOrNull;
     final month = data?.month;
+    final overlay = overlayAsync.valueOrNull;
+    final addSales = overlay?.monthPendingSalesMinor ?? 0;
+    final addExpenses = overlay?.monthPendingExpensesMinor ?? 0;
+    final addProfit = addSales - addExpenses;
+    final salesText = _addMoneyStrings(month?.salesTotal ?? '0.00', minorToMoney(addSales));
+    final expensesText =
+        _addMoneyStrings(month?.expensesTotal ?? '0.00', minorToMoney(addExpenses));
+    final profitText =
+        _addMoneyStrings(month?.estimatedProfit ?? '0.00', minorToMoney(addProfit));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1145,7 +1163,7 @@ class _MonthOverviewCard extends StatelessWidget {
                   Expanded(
                     child: _MonthStat(
                       label: 'Sales',
-                      value: '\u20B5${month?.salesTotal ?? '0.00'}',
+                      value: '\u20B5$salesText',
                       tone: const Color(0xFF8BE0B2),
                     ),
                   ),
@@ -1157,7 +1175,7 @@ class _MonthOverviewCard extends StatelessWidget {
                   Expanded(
                     child: _MonthStat(
                       label: 'Expenses',
-                      value: '\u20B5${month?.expensesTotal ?? '0.00'}',
+                      value: '\u20B5$expensesText',
                       tone: const Color(0xFFF6A6A6),
                     ),
                   ),
@@ -1169,12 +1187,23 @@ class _MonthOverviewCard extends StatelessWidget {
                   Expanded(
                     child: _MonthStat(
                       label: 'Profit',
-                      value: '\u20B5${month?.estimatedProfit ?? '0.00'}',
+                      value: '\u20B5$profitText',
                       tone: const Color(0xFFFFD37A),
                     ),
                   ),
                 ],
               ),
+              if (addSales != 0 || addExpenses != 0) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Includes offline entries not yet synced.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1233,14 +1262,21 @@ class _MonthStat extends StatelessWidget {
 // ─── Payment Breakdown Strip ──────────────────────────────────────────────────
 
 class _PaymentBreakdownStrip extends StatelessWidget {
-  const _PaymentBreakdownStrip({required this.insightsAsync});
+  const _PaymentBreakdownStrip({
+    required this.insightsAsync,
+    required this.overlayAsync,
+  });
 
   final AsyncValue<DashboardInsights> insightsAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
 
   @override
   Widget build(BuildContext context) {
     final data = insightsAsync.valueOrNull;
     final rows = data?.monthlyPaymentBreakdown ?? const [];
+    final overlay = overlayAsync.valueOrNull;
+    final pendingByMethod = overlay?.monthPendingPaymentMinorByMethod ?? const {};
+    final merged = _mergePaymentBreakdown(rows, pendingByMethod);
     if (insightsAsync.isLoading && rows.isEmpty) {
       return const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1262,7 +1298,7 @@ class _PaymentBreakdownStrip extends StatelessWidget {
         ],
       );
     }
-    if (rows.isEmpty) {
+    if (merged.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1296,15 +1332,70 @@ class _PaymentBreakdownStrip extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                _PaymentChip(row: rows[i]),
-                if (i != rows.length - 1) const SizedBox(width: 10),
+              for (var i = 0; i < merged.length; i++) ...[
+                _PaymentChip(row: merged[i]),
+                if (i != merged.length - 1) const SizedBox(width: 10),
               ],
             ],
           ),
         ),
       ],
     );
+  }
+}
+
+List<DashboardPaymentBreakdown> _mergePaymentBreakdown(
+  List<DashboardPaymentBreakdown> server,
+  Map<String, int> pendingMinorByMethod,
+) {
+  final byLabel = <String, DashboardPaymentBreakdown>{
+    for (final r in server) r.paymentMethodLabel: r,
+  };
+
+  for (final entry in pendingMinorByMethod.entries) {
+    final label = entry.key;
+    final minor = entry.value;
+    if (minor == 0) continue;
+    final existing = byLabel[label];
+    if (existing == null) {
+      byLabel[label] = DashboardPaymentBreakdown(
+        paymentMethodLabel: label,
+        paymentMethodDisplay: _displayMethod(label),
+        totalAmount: minorToMoney(minor),
+        saleCount: 0,
+      );
+      continue;
+    }
+    final mergedMinor =
+        _moneyToMinorSafe(existing.totalAmount) + minor;
+    byLabel[label] = DashboardPaymentBreakdown(
+      paymentMethodLabel: existing.paymentMethodLabel,
+      paymentMethodDisplay: existing.paymentMethodDisplay,
+      totalAmount: minorToMoney(mergedMinor),
+      saleCount: existing.saleCount,
+    );
+  }
+
+  final list = byLabel.values.toList(growable: false);
+  list.sort((a, b) =>
+      _moneyToMinorSafe(b.totalAmount).compareTo(_moneyToMinorSafe(a.totalAmount)));
+  return list;
+}
+
+String _displayMethod(String label) {
+  switch (label) {
+    case 'cash':
+      return 'Cash';
+    case 'mobile_money':
+      return 'Mobile money';
+    case 'bank_transfer':
+      return 'Bank transfer';
+    case 'bank':
+      return 'Bank';
+    case 'card':
+      return 'Card';
+    default:
+      return label.replaceAll('_', ' ');
   }
 }
 
@@ -1401,14 +1492,21 @@ class _PaymentChip extends StatelessWidget {
 // ─── Top Selling Items ────────────────────────────────────────────────────────
 
 class _TopSellingSection extends StatelessWidget {
-  const _TopSellingSection({required this.insightsAsync});
+  const _TopSellingSection({
+    required this.insightsAsync,
+    required this.overlayAsync,
+  });
 
   final AsyncValue<DashboardInsights> insightsAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
 
   @override
   Widget build(BuildContext context) {
     final data = insightsAsync.valueOrNull;
     final rows = data?.monthlyTopSellingItems ?? const [];
+    final overlay = overlayAsync.valueOrNull;
+    final pending = overlay?.monthPendingTopSelling ?? const [];
+    final merged = _mergeTopSelling(rows, pending, limit: 8);
     if (insightsAsync.isLoading && rows.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1441,9 +1539,9 @@ class _TopSellingSection extends StatelessWidget {
         Row(
           children: [
             const Expanded(child: _SectionLabel('Top Selling This Month')),
-            if (rows.isNotEmpty)
+            if (merged.isNotEmpty)
               Text(
-                '${rows.length} item${rows.length == 1 ? '' : 's'}',
+                '${merged.length} item${merged.length == 1 ? '' : 's'}',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppColors.muted,
                       fontWeight: FontWeight.w800,
@@ -1452,7 +1550,7 @@ class _TopSellingSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (rows.isEmpty)
+        if (merged.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -1480,11 +1578,11 @@ class _TopSellingSection extends StatelessWidget {
             ),
             child: Column(
               children: [
-                for (var i = 0; i < rows.length; i++) ...[
+                for (var i = 0; i < merged.length; i++) ...[
                   if (i != 0)
                     const Divider(
                         height: 1, thickness: 1, color: AppColors.border),
-                  _TopSellingRow(rank: i + 1, row: rows[i]),
+                  _TopSellingRow(rank: i + 1, row: merged[i]),
                 ],
               ],
             ),
@@ -1492,6 +1590,77 @@ class _TopSellingSection extends StatelessWidget {
       ],
     );
   }
+}
+
+List<DashboardTopSellingItem> _mergeTopSelling(
+  List<DashboardTopSellingItem> server,
+  List<LocalTopSellingOverlayRow> pending,
+  {int limit = 8}
+) {
+  final byId = <String, _TopAgg>{};
+  for (final r in server) {
+    byId[r.itemId] = _TopAgg(
+      itemId: r.itemId,
+      itemName: r.itemName,
+      qty: r.quantitySold,
+      totalMinor: _moneyToMinorSafe(r.salesTotal),
+    );
+  }
+  for (final p in pending) {
+    final existing = byId[p.itemId];
+    if (existing == null) {
+      byId[p.itemId] = _TopAgg(
+        itemId: p.itemId,
+        itemName: p.itemName,
+        qty: p.quantitySold,
+        totalMinor: p.salesTotalMinor,
+      );
+    } else {
+      byId[p.itemId] = existing.copyWith(
+        qty: existing.qty + p.quantitySold,
+        totalMinor: existing.totalMinor + p.salesTotalMinor,
+      );
+    }
+  }
+
+  final list = byId.values.toList(growable: false);
+  list.sort((a, b) {
+    final byQty = b.qty.compareTo(a.qty);
+    if (byQty != 0) return byQty;
+    return b.totalMinor.compareTo(a.totalMinor);
+  });
+
+  return list
+      .take(limit)
+      .map(
+        (a) => DashboardTopSellingItem(
+          itemId: a.itemId,
+          itemName: a.itemName,
+          quantitySold: a.qty,
+          salesTotal: minorToMoney(a.totalMinor),
+        ),
+      )
+      .toList(growable: false);
+}
+
+class _TopAgg {
+  const _TopAgg({
+    required this.itemId,
+    required this.itemName,
+    required this.qty,
+    required this.totalMinor,
+  });
+  final String itemId;
+  final String itemName;
+  final int qty;
+  final int totalMinor;
+
+  _TopAgg copyWith({int? qty, int? totalMinor}) => _TopAgg(
+        itemId: itemId,
+        itemName: itemName,
+        qty: qty ?? this.qty,
+        totalMinor: totalMinor ?? this.totalMinor,
+      );
 }
 
 class _TopSellingRow extends StatelessWidget {
@@ -1577,12 +1746,28 @@ class _RecentActivity extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rows = activityAsync.valueOrNull ?? const <DashboardActivity>[];
+    final pending = ref.watch(localPendingActivityProvider).valueOrNull ??
+        const <LocalPendingActivityRow>[];
     final inventory = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
     // Build a lookup: itemId → imageAsset
     final imageByItemId = <String, String?>{
       for (final item in inventory)
         if (item.imageAsset != null) item.id: item.imageAsset,
     };
+
+    final mergedRows = <DashboardActivity>[
+      for (final p in pending)
+        DashboardActivity(
+          activityType: p.activityType,
+          title: p.title,
+          detail: p.detail,
+          amount: p.amount,
+          createdAt: p.createdAt,
+          itemId: p.itemId,
+          itemName: p.itemName,
+        ),
+      ...rows,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1609,9 +1794,9 @@ class _RecentActivity extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (activityAsync.isLoading && rows.isEmpty)
+        if (activityAsync.isLoading && rows.isEmpty && pending.isEmpty)
           _ActivitySkeleton()
-        else if (rows.isEmpty)
+        else if (mergedRows.isEmpty)
           _ActivityEmpty()
         else
           Container(
@@ -1625,13 +1810,13 @@ class _RecentActivity extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               padding: EdgeInsets.zero,
-              itemCount: rows.length,
+              itemCount: mergedRows.length,
               separatorBuilder: (_, __) => const Divider(
                   height: 1, thickness: 1, color: AppColors.border),
               itemBuilder: (_, i) => _ActivityRow(
-                data: rows[i],
-                imageAsset: rows[i].itemId != null
-                    ? imageByItemId[rows[i].itemId]
+                data: mergedRows[i],
+                imageAsset: mergedRows[i].itemId != null
+                    ? imageByItemId[mergedRows[i].itemId]
                     : null,
               ),
             ),

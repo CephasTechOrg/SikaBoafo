@@ -49,6 +49,26 @@ class LocalTopSellingOverlayRow {
   final int salesTotalMinor;
 }
 
+class LocalPendingActivityRow {
+  const LocalPendingActivityRow({
+    required this.activityType,
+    required this.title,
+    required this.detail,
+    required this.amount,
+    required this.createdAt,
+    this.itemId,
+    this.itemName,
+  });
+
+  final String activityType; // 'sale' | 'expense'
+  final String title;
+  final String detail;
+  final String amount;
+  final DateTime createdAt;
+  final String? itemId;
+  final String? itemName;
+}
+
 final dashboardApiProvider = Provider<DashboardApi>((ref) {
   return DashboardApi(
     ref.watch(apiClientProvider),
@@ -221,6 +241,52 @@ WHERE status IN ('open', 'partially_paid')
     lowStockCountLocal: lowStockCount,
     debtOutstandingMinorLocal: debtMinor,
   );
+});
+
+final localPendingActivityProvider =
+    FutureProvider.autoDispose<List<LocalPendingActivityRow>>((ref) async {
+  final db = await ref.watch(appDatabaseProvider).database;
+
+  final rows = await db.rawQuery(
+    '''
+SELECT 'sale' AS activity_type,
+       s.id AS id,
+       s.total_amount AS amount,
+       s.created_at AS created_at
+FROM sales_local s
+LEFT JOIN sync_queue q
+  ON q.local_operation_id = s.local_operation_id
+ AND q.source_device_id = s.source_device_id
+WHERE s.sale_status != 'voided'
+  AND COALESCE(q.status, s.status) IN ('pending', 'failed', 'sending')
+UNION ALL
+SELECT 'expense' AS activity_type,
+       e.id AS id,
+       e.amount AS amount,
+       e.created_at AS created_at
+FROM expenses_local e
+LEFT JOIN sync_queue q
+  ON q.local_operation_id = e.local_operation_id
+ AND q.source_device_id = e.source_device_id
+WHERE COALESCE(q.status, e.status) IN ('pending', 'failed', 'sending')
+ORDER BY created_at DESC
+LIMIT 6
+''',
+  );
+
+  return rows.map((row) {
+    final type = (row['activity_type'] ?? 'sale') as String;
+    final amount = (row['amount'] ?? '0.00').toString();
+    final createdAtMillis = (row['created_at'] as int? ?? 0);
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtMillis);
+    return LocalPendingActivityRow(
+      activityType: type,
+      title: type == 'expense' ? 'Expense (offline)' : 'Sale (offline)',
+      detail: 'Pending sync',
+      amount: amount,
+      createdAt: createdAt,
+    );
+  }).toList(growable: false);
 });
 
 int _moneyToMinor(String value) {
