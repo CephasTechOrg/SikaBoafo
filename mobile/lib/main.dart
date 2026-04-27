@@ -7,6 +7,7 @@ import 'shared/providers/core_providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final container = ProviderContainer();
+  await container.read(secureTokenStorageProvider).clearSessionGate();
   await container.read(notificationsServiceProvider).init();
   await container.read(notificationsServiceProvider).requestPermissionsIfNeeded();
   runApp(UncontrolledProviderScope(container: container, child: const BizTrackApp()));

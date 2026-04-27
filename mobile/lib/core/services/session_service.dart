@@ -20,6 +20,7 @@ class SessionService {
     await _appDb.prepareForSession(userId: userId, merchantId: merchantId);
     await _tokenStorage.writeAccessToken(accessToken);
     await _tokenStorage.writeRefreshToken(refreshToken);
+    await _tokenStorage.markSessionGateComplete(DateTime.now());
   }
 
   Future<void> bindMerchantToCurrentSession(String merchantId) {
