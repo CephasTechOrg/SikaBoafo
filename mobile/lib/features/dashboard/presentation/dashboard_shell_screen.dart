@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
@@ -192,7 +193,7 @@ class _HomeDashboard extends ConsumerWidget {
                           // `quickOverlap` above the original seam, so the
                           // amount poking into the sheet is the rest of the
                           // card height, plus the lift we applied above).
-                          padding: EdgeInsets.fromLTRB(
+                          padding: const EdgeInsets.fromLTRB(
                             20,
                             (quickTileHeight - quickOverlap) +
                                 sheetCurveLift +
@@ -282,6 +283,8 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = summaryAsync.valueOrNull;
     final sales = summary?.todaySalesTotal ?? '--';
+    final syncAsync = ref.watch(syncStatusControllerProvider);
+    final syncSnapshot = syncAsync.valueOrNull;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -304,14 +307,25 @@ class _Header extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'SikaBoafo',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.1,
-                  ),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'SikaBoafo',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                    ),
+                    if (syncSnapshot != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(child: _SyncPill(snapshot: syncSnapshot)),
+                    ],
+                  ],
                 ),
               ),
               _HeaderBtn(
@@ -378,70 +392,6 @@ class _Header extends ConsumerWidget {
 
 }
 
-class _HeroStatTile extends StatelessWidget {
-  const _HeroStatTile({
-    required this.label,
-    required this.value,
-    required this.tone,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Column(
-            children: [
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: tone,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.52),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 36,
-      color: Colors.white.withValues(alpha: 0.10),
-    );
-  }
-}
-
 class _HeaderBtn extends StatelessWidget {
   const _HeaderBtn({required this.icon, required this.onTap});
   final IconData icon;
@@ -470,34 +420,49 @@ class _HeaderBtn extends StatelessWidget {
   }
 }
 
-class _HeaderPill extends StatelessWidget {
-  const _HeaderPill({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
+/// Compact pill that surfaces the most relevant sync state next to the brand.
+/// Hidden when everything is healthy (online + nothing pending) to avoid noise.
+class _SyncPill extends StatelessWidget {
+  const _SyncPill({required this.snapshot});
+  final SyncStatusSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
+    final descriptor = _resolve(snapshot);
+    if (descriptor == null) return const SizedBox.shrink();
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: descriptor.background,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        border: Border.all(color: descriptor.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.8)),
-          const SizedBox(width: 5),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 120),
+          if (descriptor.spinner)
+            const SizedBox(
+              width: 11,
+              height: 11,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                valueColor: AlwaysStoppedAnimation(Colors.white),
+              ),
+            )
+          else
+            Icon(descriptor.icon, size: 12, color: Colors.white),
+          const SizedBox(width: 6),
+          Flexible(
             child: Text(
-              label,
+              descriptor.label,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
               ),
             ),
           ),
@@ -505,9 +470,151 @@ class _HeaderPill extends StatelessWidget {
       ),
     );
   }
+
+  static _SyncPillDescriptor? _resolve(SyncStatusSnapshot s) {
+    if (s.isSyncing) {
+      return _SyncPillDescriptor(
+        label: 'Syncing…',
+        icon: Icons.sync_rounded,
+        spinner: true,
+        background: Colors.white.withValues(alpha: 0.18),
+        border: Colors.white.withValues(alpha: 0.22),
+      );
+    }
+    if (!s.backendReachable) {
+      return _SyncPillDescriptor(
+        label: 'Offline',
+        icon: Icons.cloud_off_rounded,
+        spinner: false,
+        background: const Color(0xFFB54848).withValues(alpha: 0.85),
+        border: Colors.white.withValues(alpha: 0.22),
+      );
+    }
+    if (s.hasFailures || s.hasConflicts) {
+      final count = s.stats.failedCount + s.stats.conflictCount;
+      return _SyncPillDescriptor(
+        label: 'Failed: $count',
+        icon: Icons.error_outline_rounded,
+        spinner: false,
+        background: const Color(0xFFB54848).withValues(alpha: 0.85),
+        border: Colors.white.withValues(alpha: 0.22),
+      );
+    }
+    if (s.hasPendingWork) {
+      final count = s.stats.pendingCount + s.stats.sendingCount;
+      return _SyncPillDescriptor(
+        label: 'Pending: $count',
+        icon: Icons.cloud_upload_outlined,
+        spinner: false,
+        background: const Color(0xFFC68A2E).withValues(alpha: 0.85),
+        border: Colors.white.withValues(alpha: 0.22),
+      );
+    }
+    return null;
+  }
 }
 
-// ─── Today's Pulse (stat grid) ────────────────────────────────────────────────
+class _SyncPillDescriptor {
+  const _SyncPillDescriptor({
+    required this.label,
+    required this.icon,
+    required this.spinner,
+    required this.background,
+    required this.border,
+  });
+  final String label;
+  final IconData icon;
+  final bool spinner;
+  final Color background;
+  final Color border;
+}
+
+// ─── Skeleton placeholders ────────────────────────────────────────────────────
+
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({
+    required this.width,
+    required this.height,
+    this.borderRadius = 8,
+  });
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6E9EE),
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+    );
+  }
+}
+
+class _SkeletonChip extends StatelessWidget {
+  const _SkeletonChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SkeletonBox(width: 32, height: 32, borderRadius: 10),
+          SizedBox(width: 10),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SkeletonBox(width: 70, height: 9),
+              SizedBox(height: 6),
+              _SkeletonBox(width: 56, height: 12),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkeletonTopSellingRow extends StatelessWidget {
+  const _SkeletonTopSellingRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          _SkeletonBox(width: 32, height: 32, borderRadius: 10),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SkeletonBox(width: 140, height: 11),
+                SizedBox(height: 6),
+                _SkeletonBox(width: 80, height: 9),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          _SkeletonBox(width: 64, height: 14),
+        ],
+      ),
+    );
+  }
+}
 
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
@@ -1034,7 +1141,25 @@ class _PaymentBreakdownStrip extends StatelessWidget {
     final data = insightsAsync.valueOrNull;
     final rows = data?.monthlyPaymentBreakdown ?? const [];
     if (insightsAsync.isLoading && rows.isEmpty) {
-      return const SizedBox.shrink();
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionLabel('Payment Methods'),
+          SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _SkeletonChip(),
+                SizedBox(width: 10),
+                _SkeletonChip(),
+                SizedBox(width: 10),
+                _SkeletonChip(),
+              ],
+            ),
+          ),
+        ],
+      );
     }
     if (rows.isEmpty) {
       return Column(
@@ -1184,7 +1309,30 @@ class _TopSellingSection extends StatelessWidget {
     final data = insightsAsync.valueOrNull;
     final rows = data?.monthlyTopSellingItems ?? const [];
     if (insightsAsync.isLoading && rows.isEmpty) {
-      return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('Top Selling This Month'),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppShadows.card,
+            ),
+            child: const Column(
+              children: [
+                _SkeletonTopSellingRow(),
+                Divider(height: 1, thickness: 1, color: AppColors.border),
+                _SkeletonTopSellingRow(),
+                Divider(height: 1, thickness: 1, color: AppColors.border),
+                _SkeletonTopSellingRow(),
+              ],
+            ),
+          ),
+        ],
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1722,11 +1870,11 @@ class _DashboardLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 30,
             height: 30,
             child: CircularProgressIndicator(
@@ -1734,7 +1882,7 @@ class _DashboardLoading extends StatelessWidget {
               color: AppColors.forest,
             ),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Text(
             'Loading your dashboard…',
             style: TextStyle(

@@ -101,10 +101,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     const SizedBox(height: 22),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
+                      child: const LinearProgressIndicator(
                         minHeight: 4,
                         backgroundColor: AppColors.border,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.forest),
+                        valueColor: AlwaysStoppedAnimation(AppColors.forest),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -120,7 +120,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_outline,
+                        const Icon(Icons.lock_outline,
                             size: 14, color: AppColors.muted),
                         const SizedBox(width: 8),
                         Text(

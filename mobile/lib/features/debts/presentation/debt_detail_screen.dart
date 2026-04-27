@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
@@ -23,82 +24,56 @@ class DebtDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(receivableDetailProvider(receivableId));
     final detail = detailAsync.valueOrNull;
-    final statusColor =
-        detail == null ? Colors.white : _statusColor(detail.record.status);
 
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.hero),
-        child: Column(
-          children: [
-            PremiumPageHeader(
-              title: detail?.record.customerName ?? 'Debt Detail',
-              subtitle: detail == null
-                  ? 'Review balance, repayment history, and debt status.'
-                  : 'Track this customer ledger without leaving the debt workflow.',
-              leading: IconButton(
-                onPressed: () => context.pop(),
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-              badge: PremiumBadge(
-                label: detail == null
-                    ? 'Debt record'
-                    : _statusLabel(detail.record.status),
-                icon: Icons.receipt_long_rounded,
-                foreground: Colors.white,
-                background: statusColor.withValues(alpha: 0.18),
-              ),
-            ),
-            Expanded(
-              child: PremiumSurface(
-                child: detailAsync.when(
-                  loading: () => ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    children: const [
-                      PremiumPanel(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 32),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                      ),
-                    ],
-                  ),
-                  error: (error, _) => ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    children: [
-                      _DetailErrorView(
-                        message: _humanizeError(error),
-                        onRetry: () => ref.invalidate(
-                          receivableDetailProvider(receivableId),
-                        ),
-                      ),
-                    ],
-                  ),
-                  data: (detail) {
-                    if (detail == null) {
-                      return ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                        children: const [
-                          PremiumEmptyState(
-                            title: 'Debt record not found',
-                            message:
-                                'This receivable is no longer available in the active debt list.',
-                            icon: Icons.search_off_rounded,
-                          ),
-                        ],
-                      );
-                    }
-                    return _DetailBody(
-                      detail: detail,
-                      receivableId: receivableId,
-                    );
-                  },
-                ),
+    return MockupScreenScaffold(
+      title: detail?.record.customerName ?? 'Debt Detail',
+      subtitle: detail == null
+          ? 'Review balance, repayment history, and debt status'
+          : _statusLabel(detail.record.status),
+      onBack: () => context.pop(),
+      bottomNavSafeArea: true,
+      body: detailAsync.when(
+        loading: () => ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: const [
+            PremiumPanel(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Center(child: CircularProgressIndicator()),
               ),
             ),
           ],
         ),
+        error: (error, _) => ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            _DetailErrorView(
+              message: _humanizeError(error),
+              onRetry: () => ref.invalidate(
+                receivableDetailProvider(receivableId),
+              ),
+            ),
+          ],
+        ),
+        data: (detail) {
+          if (detail == null) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+              children: const [
+                PremiumEmptyState(
+                  title: 'Debt record not found',
+                  message:
+                      'This receivable is no longer available in the active debt list.',
+                  icon: Icons.search_off_rounded,
+                ),
+              ],
+            );
+          }
+          return _DetailBody(
+            detail: detail,
+            receivableId: receivableId,
+          );
+        },
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/settings_api.dart';
 
@@ -29,50 +30,31 @@ class StaffScreen extends ConsumerWidget {
     final members = staffAsync.valueOrNull ?? const <StaffMember>[];
     final activeCount = members.where((m) => m.isActive).length;
 
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
-        child: Column(
+    return MockupScreenScaffold(
+      title: 'Staff',
+      subtitle: '$activeCount active member${activeCount == 1 ? '' : 's'}',
+      onBack: () => context.pop(),
+      actions: [
+        MockupHeaderAction(
+          icon: Icons.person_add_rounded,
+          tooltip: 'Invite staff',
+          onTap: () => _showInviteSheet(context, ref),
+        ),
+      ],
+      bottomNavSafeArea: true,
+      body: RefreshIndicator(
+        color: AppColors.forest,
+        onRefresh: () async {
+          ref.invalidate(_staffListProvider);
+          ref.invalidate(_pendingInvitesProvider);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
           children: [
-            PremiumPageHeader(
-              leading: PremiumHeaderButton(
-                icon: Icons.arrow_back_rounded,
-                onTap: () => context.pop(),
-                tooltip: 'Back',
-              ),
-              title: 'Staff',
-              subtitle: 'Invite teammates and manage store access',
-              badge: PremiumBadge(
-                label: '$activeCount active',
-                foreground: AppColors.success,
-                background: AppColors.successSoft,
-              ),
-              trailing: PremiumHeaderButton(
-                icon: Icons.person_add_rounded,
-                onTap: () => _showInviteSheet(context, ref),
-                tooltip: 'Invite staff',
-              ),
-            ),
-            Expanded(
-              child: PremiumSurface(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(_staffListProvider);
-                    ref.invalidate(_pendingInvitesProvider);
-                  },
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                    children: [
-                      _PendingInvitesSection(ref: ref),
-                      const SizedBox(height: 16),
-                      _ActiveStaffSection(ref: ref),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            _PendingInvitesSection(ref: ref),
+            const SizedBox(height: 16),
+            _ActiveStaffSection(ref: ref),
           ],
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
 
@@ -46,64 +47,74 @@ class CustomerDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.hero),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _CustomerDetailHeader(
-                title: customer?.name ?? 'Customer',
-                outstandingMinor: outstandingMinor,
-                openCount: openCount,
-                phoneNumber: customer?.phoneNumber,
-                onBack: () => context.pop(),
-                onRefresh: () =>
-                    ref.invalidate(_customerDetailProvider(customerId)),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: AppRadii.heroRadius,
-                  ),
-                  child: Container(
-                    color: AppColors.canvas,
-                    child: detailAsync.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => _DetailError(
-                        message: e.toString(),
-                        onRetry: () =>
-                            ref.invalidate(_customerDetailProvider(customerId)),
-                      ),
-                      data: (data) {
-                        final customer = data.customer;
-                        if (customer == null) {
-                          return const Center(
-                            child: Text('Customer not found.'),
+      body: Stack(
+        children: [
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 280,
+            child: HeroBackdrop(),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _CustomerDetailHeader(
+                  title: customer?.name ?? 'Customer',
+                  outstandingMinor: outstandingMinor,
+                  openCount: openCount,
+                  phoneNumber: customer?.phoneNumber,
+                  onBack: () => context.pop(),
+                  onRefresh: () =>
+                      ref.invalidate(_customerDetailProvider(customerId)),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: AppRadii.heroRadius,
+                    ),
+                    child: Container(
+                      color: AppColors.canvas,
+                      child: detailAsync.when(
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => _DetailError(
+                          message: e.toString(),
+                          onRetry: () => ref.invalidate(
+                              _customerDetailProvider(customerId)),
+                        ),
+                        data: (data) {
+                          final customer = data.customer;
+                          if (customer == null) {
+                            return const Center(
+                              child: Text('Customer not found.'),
+                            );
+                          }
+                          return RefreshIndicator(
+                            color: AppColors.forest,
+                            onRefresh: () async => ref.invalidate(
+                                _customerDetailProvider(customerId)),
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                              children: [
+                                _CustomerInfoCard(customer: customer),
+                                const SizedBox(height: 18),
+                                _ReceivablesSection(
+                                    receivables: data.receivables),
+                              ],
+                            ),
                           );
-                        }
-                        return RefreshIndicator(
-                          onRefresh: () async => ref
-                              .invalidate(_customerDetailProvider(customerId)),
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                            children: [
-                              _CustomerInfoCard(customer: customer),
-                              const SizedBox(height: 18),
-                              _ReceivablesSection(
-                                  receivables: data.receivables),
-                            ],
-                          ),
-                        );
-                      },
+                        },
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

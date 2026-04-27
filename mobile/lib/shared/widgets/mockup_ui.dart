@@ -308,6 +308,7 @@ class MockupScreenScaffold extends StatelessWidget {
     this.heroHeight = 168,
     this.bottomNavSafeArea = false,
     this.backgroundAssetPath = 'assets/images/swirlLatte.png',
+    this.bottomBar,
     super.key,
   });
 
@@ -321,11 +322,16 @@ class MockupScreenScaffold extends StatelessWidget {
   final String? backgroundAssetPath;
   final Widget body;
 
+  /// Optional persistent footer (e.g. a primary "Save" button). Renders as the
+  /// Scaffold's `bottomNavigationBar` so it sticks above the keyboard / nav bar.
+  final Widget? bottomBar;
+
   @override
   Widget build(BuildContext context) {
     const sheetCurveLift = 28.0;
     return Scaffold(
       backgroundColor: AppColors.canvas,
+      bottomNavigationBar: bottomBar,
       body: Container(
         decoration: const BoxDecoration(color: AppColors.canvas),
         child: Stack(
@@ -397,7 +403,7 @@ class MockupScreenScaffold extends StatelessWidget {
                   top: false,
                   bottom: bottomNavSafeArea,
                   child: Padding(
-                    padding: EdgeInsets.only(top: sheetCurveLift + 6),
+                    padding: const EdgeInsets.only(top: sheetCurveLift + 6),
                     child: body,
                   ),
                 ),

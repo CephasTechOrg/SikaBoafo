@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -165,9 +163,6 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     });
   }
 
-  String get _otpTitle =>
-      _otpIntent == _OtpIntent.create ? 'Create account' : 'Recover access';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,13 +226,13 @@ class _EntryViewMockup extends StatelessWidget {
       color: AppColors.canvas,
       child: Column(
         children: [
-          Expanded(
+          const Expanded(
             flex: 6,
             child: MockupHeroHeader(
               waveHeight: 56,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   SizedBox(height: 8),
                   MockupAppMark(size: 92),
                 ],
@@ -285,7 +280,7 @@ class _EntryViewMockup extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.circle,
+                        const Icon(Icons.circle,
                             size: 6, color: AppColors.success),
                         const SizedBox(width: 8),
                         Text(

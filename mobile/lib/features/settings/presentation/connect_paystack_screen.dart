@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/settings_api.dart';
 
@@ -53,68 +54,53 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     final isConnected = connection?.isConnected ?? false;
     final activeModeState = _activeModeState(connection);
 
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
-        child: Column(
-          children: [
-            PremiumPageHeader(
-              leading: PremiumHeaderButton(
-                icon: Icons.arrow_back_rounded,
-                onTap: () => context.pop(),
-                tooltip: 'Back',
+    return MockupScreenScaffold(
+      title: 'Paystack',
+      subtitle: isConnected
+          ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
+          : 'Not connected — save credentials to start',
+      onBack: () => context.pop(),
+      bottomNavSafeArea: true,
+      body: connectionAsync.when(
+        loading: () => _buildLoadingSkeleton(),
+        error: (error, _) => _buildErrorPanel(error),
+        data: (_) => RefreshIndicator(
+          color: AppColors.forest,
+          onRefresh: () async {
+            ref.invalidate(paystackConnectionProvider);
+            await ref.read(paystackConnectionProvider.future);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+            children: [
+              _ConnectionPill(isConnected: isConnected),
+              const SizedBox(height: 14),
+              if (isConnected) ...[
+                _StatusRows(connection: connection!),
+                const SizedBox(height: 14),
+              ],
+              _CredentialsForm(
+                accountLabelCtrl: _accountLabelCtrl,
+                publicKeyCtrl: _publicKeyCtrl,
+                secretKeyCtrl: _secretKeyCtrl,
+                mode: _mode,
+                saving: _saving,
+                disconnecting: _disconnecting,
+                isConnected: isConnected,
+                activeModeState: activeModeState,
+                onModeChanged: (value) =>
+                    setState(() => _mode = value),
+                onSave: _saving ? null : _saveConnection,
+                onDisconnect:
+                    (isConnected && !_disconnecting && !_saving)
+                        ? _disconnectConnection
+                        : null,
               ),
-              title: 'Paystack',
-              subtitle: isConnected
-                  ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
-                  : 'Not connected — save credentials to start',
-              badge: _ConnectionPill(isConnected: isConnected),
-            ),
-            Expanded(
-              child: PremiumSurface(
-                child: connectionAsync.when(
-                  loading: () => _buildLoadingSkeleton(),
-                  error: (error, _) => _buildErrorPanel(error),
-                  data: (_) => RefreshIndicator(
-                    onRefresh: () async {
-                      ref.invalidate(paystackConnectionProvider);
-                      await ref.read(paystackConnectionProvider.future);
-                    },
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                      children: [
-                        if (isConnected) ...[
-                          _StatusRows(connection: connection!),
-                          const SizedBox(height: 14),
-                        ],
-                        _CredentialsForm(
-                          accountLabelCtrl: _accountLabelCtrl,
-                          publicKeyCtrl: _publicKeyCtrl,
-                          secretKeyCtrl: _secretKeyCtrl,
-                          mode: _mode,
-                          saving: _saving,
-                          disconnecting: _disconnecting,
-                          isConnected: isConnected,
-                          activeModeState: activeModeState,
-                          onModeChanged: (value) =>
-                              setState(() => _mode = value),
-                          onSave: _saving ? null : _saveConnection,
-                          onDisconnect:
-                              (isConnected && !_disconnecting && !_saving)
-                                  ? _disconnectConnection
-                                  : null,
-                        ),
-                        const SizedBox(height: 14),
-                        const _WebhookRow(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              const _WebhookRow(),
+            ],
+          ),
         ),
       ),
     );
