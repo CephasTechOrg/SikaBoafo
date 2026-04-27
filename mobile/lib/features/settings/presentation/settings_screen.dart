@@ -129,13 +129,18 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _toggleBiometric(BuildContext context, WidgetRef ref) async {
     final enabled = ref.read(biometricPrefProvider).valueOrNull ?? false;
     final bio = ref.read(biometricServiceProvider);
-    final supported = await bio.isSupported();
+    // Re-check real availability right before toggling.
+    final availability = await ref.read(_biometricAvailabilityProvider.future);
 
-    if (!supported) {
+    if (availability != BiometricAvailability.available) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Biometrics not available on this device.'),
+        SnackBar(
+          content: Text(
+            availability == BiometricAvailability.notEnrolled
+                ? 'No biometrics enrolled for apps. Enable Face/Fingerprint in phone settings first.'
+                : 'Biometrics not available on this device.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -154,7 +159,27 @@ class SettingsScreen extends ConsumerWidget {
       final ok = await bio.authenticate(
         reason: 'Enable biometric unlock for SikaBoafo.',
       );
-      if (!ok) return;
+      if (!ok) {
+        // If the device never showed a prompt, local_auth may consider the
+        // biometric not enrolled/supported. Refresh the availability and surface it.
+        ref.invalidate(_biometricAvailabilityProvider);
+        final after = await ref.read(_biometricAvailabilityProvider.future);
+        if (!context.mounted) return;
+        final msg = switch (after) {
+          BiometricAvailability.notEnrolled =>
+            'Biometrics are not enrolled for apps on this device. Enable Face/Fingerprint in phone settings.',
+          BiometricAvailability.notSupported =>
+            'Biometrics are not supported on this device.',
+          _ => 'Biometric authentication was cancelled or failed.',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
     }
 
     final persisted = await ref.read(biometricPrefProvider.notifier).setEnabled(next);
@@ -171,6 +196,9 @@ class SettingsScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+
+    // Keep the tile caption accurate after a toggle.
+    ref.invalidate(_biometricAvailabilityProvider);
   }
 
   @override
