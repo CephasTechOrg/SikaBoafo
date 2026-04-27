@@ -116,13 +116,13 @@ class _HomeDashboard extends ConsumerWidget {
       builder: (context, constraints) {
         final h = constraints.maxHeight;
         final heroHeight = (h * 0.40).clamp(280.0, 360.0);
-        const quickTileHeight = 78.0;
+        const quickTileHeight = 72.0;
         // How far the curved top of the white sheet pulls up into the hero
         // so the rounded corners are clearly visible against the green/swirl.
         const sheetCurveLift = 28.0;
         // Cards should straddle the new (lifted) flat top of the sheet —
         // ~50% on green / ~50% on white.
-        const quickOverlap = quickTileHeight * 0.50 + sheetCurveLift;
+        const quickOverlap = quickTileHeight * 0.48 + sheetCurveLift;
 
         return Container(
           decoration: const BoxDecoration(color: AppColors.canvas),
@@ -208,13 +208,6 @@ class _HomeDashboard extends ConsumerWidget {
                               overlayAsync: overlayAsync,
                               onNavigate: onNavigate,
                             ),
-                            const SizedBox(height: 18),
-                            _InsightBanner(summary: summaryAsync.valueOrNull),
-                            const SizedBox(height: 22),
-                            _MonthOverviewCard(
-                              insightsAsync: insightsAsync,
-                              overlayAsync: overlayAsync,
-                            ),
                             const SizedBox(height: 22),
                             _PaymentBreakdownStrip(
                               insightsAsync: insightsAsync,
@@ -299,12 +292,10 @@ class _Header extends ConsumerWidget {
     final syncSnapshot = syncAsync.valueOrNull;
     final syncing = syncSnapshot?.isSyncing ?? syncAsync.isLoading;
     final overlayMinor = overlay?.todayPendingSalesMinor ?? 0;
-    final overlayText =
-        overlayMinor > 0 ? minorToMoney(overlayMinor) : null;
+    final overlayText = overlayMinor > 0 ? minorToMoney(overlayMinor) : null;
     // Note: we currently only overlay sales in the header headline.
-    final displaySales = overlayText == null
-        ? sales
-        : _addMoneyStrings(sales, overlayText);
+    final displaySales =
+        overlayText == null ? sales : _addMoneyStrings(sales, overlayText);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -355,7 +346,8 @@ class _Header extends ConsumerWidget {
                       ref.read(syncStatusControllerProvider.notifier);
                   await controller.syncNow();
                   if (!context.mounted) return;
-                  final latest = ref.read(syncStatusControllerProvider).valueOrNull;
+                  final latest =
+                      ref.read(syncStatusControllerProvider).valueOrNull;
                   final reachable = latest?.backendReachable ?? false;
                   final failed = latest?.stats.failedCount ?? 0;
                   final pending = latest == null
@@ -456,7 +448,6 @@ class _Header extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 String _addMoneyStrings(String a, String b) {
@@ -718,27 +709,30 @@ class _QuickActions extends StatelessWidget {
             icon: Icons.shopping_cart_rounded,
             label: 'New Sale',
             backgroundColor: AppColors.navy,
+            accentColor: AppColors.navySoft,
             foregroundColor: Colors.white,
             onTap: () => onNavigate(1),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 10),
         Expanded(
           child: _QuickTile(
             icon: Icons.payments_rounded,
             label: 'Collect Debt',
-            backgroundColor: AppColors.forest,
+            backgroundColor: AppColors.forestDark,
+            accentColor: AppColors.forest,
             foregroundColor: Colors.white,
             onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 10),
         Expanded(
           child: _QuickTile(
             icon: Icons.inventory_2_rounded,
-            label: 'Add Stock',
-            backgroundColor: const Color(0xFFF2B713),
-            foregroundColor: Colors.black,
+            label: 'Stock',
+            backgroundColor: AppColors.forestNight,
+            accentColor: AppColors.navySoft,
+            foregroundColor: Colors.white,
             onTap: () => onNavigate(2),
           ),
         ),
@@ -752,6 +746,7 @@ class _QuickTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.backgroundColor,
+    required this.accentColor,
     required this.foregroundColor,
     required this.onTap,
   });
@@ -759,28 +754,35 @@ class _QuickTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color backgroundColor;
+  final Color accentColor;
   final Color foregroundColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
       elevation: 0,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 78,
+          height: 72,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [accentColor, backgroundColor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x1F000000),
-                blurRadius: 14,
-                offset: Offset(0, 8),
+                color: Color(0x180F172A),
+                blurRadius: 12,
+                offset: Offset(0, 6),
               ),
             ],
           ),
@@ -788,25 +790,27 @@ class _QuickTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: foregroundColor, size: 18),
+                child: Icon(icon, color: foregroundColor, size: 16),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Flexible(
                 child: Text(
                   label,
-                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: foregroundColor,
-                    height: 1.1,
+                    height: 1.05,
+                    letterSpacing: -0.1,
                   ),
                 ),
               ),
@@ -946,9 +950,8 @@ class _KpiStrip extends StatelessWidget {
     final overlay = overlayAsync.valueOrNull;
     final pendingProfitMinor = (overlay?.todayPendingSalesMinor ?? 0) -
         (overlay?.todayPendingExpensesMinor ?? 0);
-    final pendingProfit = pendingProfitMinor == 0
-        ? null
-        : minorToMoney(pendingProfitMinor);
+    final pendingProfit =
+        pendingProfitMinor == 0 ? null : minorToMoney(pendingProfitMinor);
     final profitDisplay = pendingProfit == null
         ? (s?.todayEstimatedProfit ?? '0.00')
         : _addMoneyStrings(s?.todayEstimatedProfit ?? '0.00', pendingProfit);
@@ -976,19 +979,18 @@ class _KpiStrip extends StatelessWidget {
             label: 'Outstanding',
             value: isLoading ? '—' : '\u20B5$debtDisplay',
             icon: Icons.account_balance_wallet_rounded,
-            tone: AppColors.gold,
-            toneSoft: AppColors.warningSoft,
-            onTap: () => onNavigate(3),
+            tone: AppColors.navySoft,
+            toneSoft: AppColors.infoSoft,
+            onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: _KpiTile(
             label: 'Low Stock',
-            value: isLoading
-                ? '—'
-                : '$lowStock item${lowStock == 1 ? '' : 's'}',
-            icon: Icons.inventory_2_rounded,
+            value:
+                isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
+            icon: Icons.error_outline_rounded,
             tone: AppColors.danger,
             toneSoft: AppColors.dangerSoft,
             onTap: () => onNavigate(2),
@@ -1029,7 +1031,15 @@ class _KpiTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            border: Border.all(color: AppColors.border),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.surface,
+                toneSoft.withValues(alpha: 0.9),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: tone.withValues(alpha: 0.12)),
             boxShadow: AppShadows.subtle,
           ),
           child: Column(
@@ -1039,25 +1049,25 @@ class _KpiTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: toneSoft,
+                  color: tone.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 16, color: tone),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.ink,
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
                   fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 label,
                 maxLines: 1,
@@ -1079,7 +1089,8 @@ class _KpiTile extends StatelessWidget {
 // ─── This Month Overview ──────────────────────────────────────────────────────
 
 class _MonthOverviewCard extends StatelessWidget {
-  const _MonthOverviewCard({required this.insightsAsync, required this.overlayAsync});
+  const _MonthOverviewCard(
+      {required this.insightsAsync, required this.overlayAsync});
 
   final AsyncValue<DashboardInsights> insightsAsync;
   final AsyncValue<LocalDashboardOverlay> overlayAsync;
@@ -1092,11 +1103,12 @@ class _MonthOverviewCard extends StatelessWidget {
     final addSales = overlay?.monthPendingSalesMinor ?? 0;
     final addExpenses = overlay?.monthPendingExpensesMinor ?? 0;
     final addProfit = addSales - addExpenses;
-    final salesText = _addMoneyStrings(month?.salesTotal ?? '0.00', minorToMoney(addSales));
-    final expensesText =
-        _addMoneyStrings(month?.expensesTotal ?? '0.00', minorToMoney(addExpenses));
-    final profitText =
-        _addMoneyStrings(month?.estimatedProfit ?? '0.00', minorToMoney(addProfit));
+    final salesText =
+        _addMoneyStrings(month?.salesTotal ?? '0.00', minorToMoney(addSales));
+    final expensesText = _addMoneyStrings(
+        month?.expensesTotal ?? '0.00', minorToMoney(addExpenses));
+    final profitText = _addMoneyStrings(
+        month?.estimatedProfit ?? '0.00', minorToMoney(addProfit));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1275,7 +1287,8 @@ class _PaymentBreakdownStrip extends StatelessWidget {
     final data = insightsAsync.valueOrNull;
     final rows = data?.monthlyPaymentBreakdown ?? const [];
     final overlay = overlayAsync.valueOrNull;
-    final pendingByMethod = overlay?.monthPendingPaymentMinorByMethod ?? const {};
+    final pendingByMethod =
+        overlay?.monthPendingPaymentMinorByMethod ?? const {};
     final merged = _mergePaymentBreakdown(rows, pendingByMethod);
     if (insightsAsync.isLoading && rows.isEmpty) {
       return const Column(
@@ -1366,8 +1379,7 @@ List<DashboardPaymentBreakdown> _mergePaymentBreakdown(
       );
       continue;
     }
-    final mergedMinor =
-        _moneyToMinorSafe(existing.totalAmount) + minor;
+    final mergedMinor = _moneyToMinorSafe(existing.totalAmount) + minor;
     byLabel[label] = DashboardPaymentBreakdown(
       paymentMethodLabel: existing.paymentMethodLabel,
       paymentMethodDisplay: existing.paymentMethodDisplay,
@@ -1377,8 +1389,8 @@ List<DashboardPaymentBreakdown> _mergePaymentBreakdown(
   }
 
   final list = byLabel.values.toList(growable: false);
-  list.sort((a, b) =>
-      _moneyToMinorSafe(b.totalAmount).compareTo(_moneyToMinorSafe(a.totalAmount)));
+  list.sort((a, b) => _moneyToMinorSafe(b.totalAmount)
+      .compareTo(_moneyToMinorSafe(a.totalAmount)));
   return list;
 }
 
@@ -1593,10 +1605,9 @@ class _TopSellingSection extends StatelessWidget {
 }
 
 List<DashboardTopSellingItem> _mergeTopSelling(
-  List<DashboardTopSellingItem> server,
-  List<LocalTopSellingOverlayRow> pending,
-  {int limit = 8}
-) {
+    List<DashboardTopSellingItem> server,
+    List<LocalTopSellingOverlayRow> pending,
+    {int limit = 8}) {
   final byId = <String, _TopAgg>{};
   for (final r in server) {
     byId[r.itemId] = _TopAgg(
@@ -2121,8 +2132,8 @@ class _ErrorView extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.forest,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 22, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
