@@ -11,6 +11,28 @@ import '../../dashboard/providers/dashboard_providers.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  Future<void> _sendTestNotification(
+    BuildContext context,
+    WidgetRef ref, {
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await ref.read(notificationsServiceProvider).showTestNotification(
+          id: id,
+          title: title,
+          body: body,
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Test notification sent.'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -124,6 +146,53 @@ class SettingsScreen extends ConsumerWidget {
             label: 'Paystack Payments',
             caption: 'Connect your Paystack account',
             onTap: () => context.push(AppRoute.paystack.path),
+          ),
+          const SizedBox(height: 24),
+          const _SectionLabel('Notifications'),
+          const SizedBox(height: 12),
+          _SettingsTile(
+            icon: Icons.point_of_sale_rounded,
+            iconBg: AppColors.successSoft,
+            iconColor: AppColors.success,
+            label: 'Test: Sale completed',
+            caption: 'Shows a sample “sale done” notification',
+            onTap: () => _sendTestNotification(
+              context,
+              ref,
+              id: 9101,
+              title: 'Sale recorded',
+              body: '₵ 120.00 received · Cash · 3 items',
+            ),
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.inventory_2_outlined,
+            iconBg: AppColors.warningSoft,
+            iconColor: AppColors.warning,
+            label: 'Test: Low stock',
+            caption: 'Shows a sample low stock alert',
+            onTap: () => _sendTestNotification(
+              context,
+              ref,
+              id: 9102,
+              title: 'Low stock alert',
+              body: 'Sugar (1 left) · Restock soon',
+            ),
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.verified_rounded,
+            iconBg: AppColors.infoSoft,
+            iconColor: AppColors.navy,
+            label: 'Test: Payment successful',
+            caption: 'Shows a sample payment success event',
+            onTap: () => _sendTestNotification(
+              context,
+              ref,
+              id: 9103,
+              title: 'Payment successful',
+              body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
+            ),
           ),
           const SizedBox(height: 24),
           const _SectionLabel('Account'),
