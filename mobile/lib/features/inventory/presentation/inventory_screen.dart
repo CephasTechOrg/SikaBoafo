@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/inventory_api.dart';
@@ -104,37 +105,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       backgroundColor: AppColors.canvas,
       body: Stack(
         children: [
-          Positioned(
+          const Positioned(
             left: 0,
             right: 0,
             top: 0,
             height: 230,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                const DecoratedBox(
-                  decoration: BoxDecoration(gradient: AppGradients.hero),
-                ),
-                Image.asset(
-                  'assets/images/swirlLatte.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.25),
-                        Colors.black.withValues(alpha: 0.05),
-                        Colors.transparent,
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            child: HeroBackdrop(),
           ),
           SafeArea(
             child: Column(

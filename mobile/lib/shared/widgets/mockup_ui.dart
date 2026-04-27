@@ -27,24 +27,27 @@ class MockupHeroHeader extends StatelessWidget {
           ),
           if (backgroundAssetPath != null)
             Positioned.fill(
-              child: Image.asset(
-                backgroundAssetPath!,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
+              child: Opacity(
+                opacity: 0.55,
+                child: Image.asset(
+                  backgroundAssetPath!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
               ),
             ),
-          // Keep text readable (matches mockup’s soft vignette)
-          const DecoratedBox(
+          // Keep text readable (matches mockup's soft vignette)
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0x42000000),
-                  Color(0x14000000),
-                  Color(0x00000000),
+                  Colors.black.withValues(alpha: 0.55),
+                  Colors.black.withValues(alpha: 0.20),
+                  Colors.transparent,
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0.0, 0.55, 1.0],
+                stops: const [0.0, 0.55, 1.0],
               ),
             ),
           ),
@@ -57,6 +60,69 @@ class MockupHeroHeader extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Reusable hero backdrop used behind every primary screen header.
+///
+/// Layers (bottom → top):
+///   1. Green brand gradient (`AppGradients.hero`)
+///   2. Swirl/latte texture at reduced opacity (so it tints the green
+///      instead of replacing it — keeps brand color, adds depth)
+///   3. Dark vignette that's strongest at the top so white headlines /
+///      sub-titles always have enough contrast against the texture.
+class HeroBackdrop extends StatelessWidget {
+  const HeroBackdrop({
+    super.key,
+    this.swirlAssetPath = 'assets/images/swirlLatte.png',
+    this.swirlOpacity = 0.55,
+    this.topShade = 0.60,
+    this.midShade = 0.20,
+  });
+
+  final String swirlAssetPath;
+
+  /// 0–1: how visible the swirl texture is (lower = more solid green).
+  final double swirlOpacity;
+
+  /// 0–1: alpha of the dark vignette at the very top of the hero.
+  final double topShade;
+
+  /// 0–1: alpha of the dark vignette around the middle of the hero.
+  final double midShade;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: AppGradients.hero),
+        ),
+        Opacity(
+          opacity: swirlOpacity,
+          child: Image.asset(
+            swirlAssetPath,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.black.withValues(alpha: topShade),
+                Colors.black.withValues(alpha: midShade),
+                Colors.transparent,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.55, 1.0],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -278,23 +344,26 @@ class MockupScreenScaffold extends StatelessWidget {
                   ),
                   if (backgroundAssetPath != null)
                     Positioned.fill(
-                      child: Image.asset(
-                        backgroundAssetPath!,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
+                      child: Opacity(
+                        opacity: 0.55,
+                        child: Image.asset(
+                          backgroundAssetPath!,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                        ),
                       ),
                     ),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Color(0x42000000),
-                          Color(0x16000000),
-                          Color(0x00000000),
+                          Colors.black.withValues(alpha: 0.55),
+                          Colors.black.withValues(alpha: 0.20),
+                          Colors.transparent,
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        stops: [0.0, 0.55, 1.0],
+                        stops: const [0.0, 0.55, 1.0],
                       ),
                     ),
                   ),

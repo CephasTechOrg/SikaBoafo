@@ -12,6 +12,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
@@ -105,36 +106,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: const BoxDecoration(color: AppColors.canvas),
         child: Column(
           children: [
-            // ── Mockup-style swirl header ─────────────────────────────────
             Stack(
               children: [
-                Positioned.fill(
-                  child: Container(
-                    decoration: const BoxDecoration(gradient: AppGradients.hero),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/swirlLatte.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withValues(alpha: 0.28),
-                          Colors.black.withValues(alpha: 0.06),
-                          Colors.transparent,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ),
+                const Positioned.fill(child: HeroBackdrop()),
                 SafeArea(
                   bottom: false,
                   child: Padding(

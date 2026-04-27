@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
@@ -142,30 +143,7 @@ class _HomeDashboard extends ConsumerWidget {
                   right: 0,
                   top: 0,
                   height: heroHeight,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(
-                        'assets/images/swirlLatte.png',
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      ),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0x3A000000),
-                              Color(0x1A000000),
-                              Color(0x00000000),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: [0.0, 0.55, 1.0],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: const HeroBackdrop(),
                 ),
 
                 // White sheet — pulled slightly up into the hero so the

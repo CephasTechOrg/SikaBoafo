@@ -6,6 +6,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/app_components.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
@@ -148,33 +149,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           children: [
             Stack(
               children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(gradient: AppGradients.hero),
-                  ),
-                ),
-                Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/swirlLatte.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withValues(alpha: 0.25),
-                          Colors.black.withValues(alpha: 0.05),
-                          Colors.transparent,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  ),
-                ),
+                const Positioned.fill(child: HeroBackdrop()),
                 SafeArea(
                   bottom: false,
                   child: Padding(

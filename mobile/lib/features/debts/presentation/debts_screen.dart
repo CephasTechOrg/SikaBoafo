@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
@@ -301,33 +302,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }) {
     return Stack(
       children: [
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(gradient: AppGradients.hero),
-          ),
-        ),
-        Positioned.fill(
-          child: Image.asset(
-            'assets/images/swirlLatte.png',
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-          ),
-        ),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.black.withValues(alpha: 0.25),
-                  Colors.black.withValues(alpha: 0.04),
-                  Colors.transparent,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-        ),
+        const Positioned.fill(child: HeroBackdrop()),
         SafeArea(
           bottom: false,
           child: Padding(
