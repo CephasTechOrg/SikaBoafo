@@ -28,12 +28,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Keep splash visible long enough to read + avoid a “flash” on fast devices.
     await Future<void>.delayed(_minSplashDuration);
     if (!mounted) return;
+    final router = GoRouter.of(context);
     final token = await ref.read(secureTokenStorageProvider).readAccessToken();
     if (!mounted) return;
-    context.go(
-      token != null && token.isNotEmpty
-          ? AppRoute.home.path
-          : AppRoute.auth.path,
+    final hasSession = token != null && token.isNotEmpty;
+    if (hasSession) {
+      final storage = ref.read(secureTokenStorageProvider);
+      final biometricEnabled = await storage.isBiometricEnabled();
+      if (biometricEnabled) {
+        final bio = ref.read(biometricServiceProvider);
+        final supported = await bio.isSupported();
+        if (!mounted) return;
+        if (supported) {
+          final ok = await bio.authenticate(
+            reason: 'Unlock SikaBoafo to continue.',
+          );
+          if (!mounted) return;
+          if (ok) {
+            await storage.writeLastBiometricAt(DateTime.now());
+          } else {
+            if (!mounted) return;
+            router.go(AppRoute.auth.path);
+            return;
+          }
+        }
+      }
+    }
+    router.go(
+      hasSession ? AppRoute.home.path : AppRoute.auth.path,
     );
   }
 

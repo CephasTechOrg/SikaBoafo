@@ -68,5 +68,7 @@
 		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Use Face ID to unlock SikaBoafo quickly.</string>
 	</dict>
 </plist>

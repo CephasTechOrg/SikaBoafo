@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'shared/providers/core_providers.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: BizTrackApp()));
+  final container = ProviderContainer();
+  await container.read(notificationsServiceProvider).init();
+  await container.read(notificationsServiceProvider).requestPermissionsIfNeeded();
+  runApp(UncontrolledProviderScope(container: container, child: const BizTrackApp()));
 }

@@ -42,11 +42,51 @@ class SettingsScreen extends ConsumerWidget {
     context.go(AppRoute.auth.path);
   }
 
+  Future<void> _toggleBiometric(BuildContext context, WidgetRef ref) async {
+    final storage = ref.read(secureTokenStorageProvider);
+    final enabled = await storage.isBiometricEnabled();
+    final bio = ref.read(biometricServiceProvider);
+    final supported = await bio.isSupported();
+
+    if (!supported) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Biometrics not available on this device.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final next = !enabled;
+    if (next) {
+      final ok = await bio.authenticate(
+        reason: 'Enable biometric unlock for SikaBoafo.',
+      );
+      if (!ok) return;
+    }
+
+    await storage.setBiometricEnabled(next);
+    ref.invalidate(_biometricEnabledProvider);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(next ? 'Biometric unlock enabled.' : 'Biometric unlock disabled.'),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ctxAsync = ref.watch(merchantContextProvider);
     final businessName = ctxAsync.valueOrNull?.businessName;
     final subtitle = businessName ?? 'Manage your account';
+    final biometricAsync =
+        ref.watch(_biometricEnabledProvider);
 
     return MockupScreenScaffold(
       title: 'Settings',
@@ -89,6 +129,17 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionLabel('Account'),
           const SizedBox(height: 12),
           _SettingsTile(
+            icon: Icons.fingerprint_rounded,
+            iconBg: AppColors.surfaceAlt,
+            iconColor: AppColors.ink,
+            label: 'Biometric unlock',
+            caption: biometricAsync.valueOrNull == true
+                ? 'Enabled — unlock with fingerprint/Face ID'
+                : 'Disabled',
+            onTap: () => _toggleBiometric(context, ref),
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
             icon: Icons.logout_rounded,
             iconBg: AppColors.dangerSoft,
             iconColor: AppColors.danger,
@@ -102,6 +153,10 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
+
+final _biometricEnabledProvider = FutureProvider<bool>((ref) async {
+  return ref.watch(secureTokenStorageProvider).isBiometricEnabled();
+});
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);

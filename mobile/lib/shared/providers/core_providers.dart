@@ -4,12 +4,22 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../core/services/api_client.dart';
+import '../../core/services/biometric_service.dart';
+import '../../core/services/notifications_service.dart';
 import '../../core/services/session_service.dart';
 import '../../core/services/secure_token_storage.dart';
 import '../../data/local/app_database.dart';
 
 final secureTokenStorageProvider = Provider<SecureTokenStorage>((ref) {
   return SecureTokenStorage();
+});
+
+final biometricServiceProvider = Provider<BiometricService>((ref) {
+  return BiometricService();
+});
+
+final notificationsServiceProvider = Provider<NotificationsService>((ref) {
+  return NotificationsService();
 });
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

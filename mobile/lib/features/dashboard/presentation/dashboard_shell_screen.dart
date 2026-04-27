@@ -285,6 +285,7 @@ class _Header extends ConsumerWidget {
     final sales = summary?.todaySalesTotal ?? '--';
     final syncAsync = ref.watch(syncStatusControllerProvider);
     final syncSnapshot = syncAsync.valueOrNull;
+    final syncing = syncSnapshot?.isSyncing ?? syncAsync.isLoading;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -328,6 +329,41 @@ class _Header extends ConsumerWidget {
                   ],
                 ),
               ),
+              _HeaderBtn(
+                icon: syncing ? Icons.sync_rounded : Icons.cloud_sync_outlined,
+                onTap: () async {
+                  final controller =
+                      ref.read(syncStatusControllerProvider.notifier);
+                  await controller.syncNow();
+                  if (!context.mounted) return;
+                  final latest = ref.read(syncStatusControllerProvider).valueOrNull;
+                  final reachable = latest?.backendReachable ?? false;
+                  final failed = latest?.stats.failedCount ?? 0;
+                  final pending = latest == null
+                      ? 0
+                      : latest.stats.pendingCount + latest.stats.sendingCount;
+
+                  final message = !reachable
+                      ? 'Offline — will sync when back online.'
+                      : failed > 0
+                          ? 'Sync completed with $failed failed item${failed == 1 ? '' : 's'}.'
+                          : pending > 0
+                              ? 'Sync in progress — $pending pending.'
+                              : 'All synced.';
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      behavior: SnackBarBehavior.floating,
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
               _HeaderBtn(
                 icon: Icons.notifications_outlined,
                 onTap: () => ScaffoldMessenger.of(context).showSnackBar(
