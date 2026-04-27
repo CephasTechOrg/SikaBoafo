@@ -121,19 +121,51 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _Header(
-                todayMinor: todayMinor,
-                monthMinor: monthMinor,
-                count: expenses.length,
-                categoryCount: catMinors.length,
-              ),
-              Expanded(
-                child: PremiumSurface(
+      body: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 220,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const DecoratedBox(
+                  decoration: BoxDecoration(gradient: AppGradients.hero),
+                ),
+                Image.asset(
+                  'assets/images/swirlLatte.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _Header(
+                  todayMinor: todayMinor,
+                  monthMinor: monthMinor,
+                  count: expenses.length,
+                  categoryCount: catMinors.length,
+                ),
+                Expanded(
+                  child: PremiumSurface(
                   child: RefreshIndicator(
                     onRefresh: () =>
                         ref.read(expensesControllerProvider.notifier).refresh(),
@@ -186,6 +218,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             ],
           ),
         ),
+        ],
       ),
     );
   }

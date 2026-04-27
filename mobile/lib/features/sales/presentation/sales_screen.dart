@@ -102,112 +102,141 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
+        decoration: const BoxDecoration(color: AppColors.canvas),
         child: Column(
           children: [
-            // ── Green gradient header ──────────────────────────────────────
-            Container(
-              decoration: const BoxDecoration(gradient: AppGradients.hero),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Sales',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Record new sales and follow today'
-                                  's cashflow',
-                                  style: TextStyle(
-                                    color: AppColors.heroSubtitle,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Today\'s Revenue',
-                                  style: TextStyle(
-                                    color: AppColors.heroSubtitle,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  _formatMinor(todayRevenueMinor, symbol: '₵'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'Constantia',
-                                    letterSpacing: -0.6,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          _SalesHeroChip(
-                            label: '${todaySales.length} txns',
-                            value: 'Today',
-                            tone: const Color(0xFF9AE7BF),
-                          ),
-                          const SizedBox(width: 8),
-                          _SalesHeroChip(
-                            label: _formatMinor(momoTotal, symbol: '₵'),
-                            value: 'MoMo',
-                            tone: AppColors.gold,
-                          ),
-                          const SizedBox(width: 8),
-                          _SalesHeroChip(
-                            label: _formatMinor(cashTotal, symbol: '₵'),
-                            value: 'Cash',
-                            tone: const Color(0xFF9AE7BF),
-                          ),
-                        ],
-                      ),
-                    ],
+            // ── Mockup-style swirl header ─────────────────────────────────
+            Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(gradient: AppGradients.hero),
                   ),
                 ),
-              ),
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/swirlLatte.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.black.withValues(alpha: 0.28),
+                          Colors.black.withValues(alpha: 0.06),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ),
+                SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Sales',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Record new sales and follow today'
+                                    's cashflow',
+                                    style: TextStyle(
+                                      color: AppColors.heroSubtitle,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Today\'s Revenue',
+                                    style: TextStyle(
+                                      color: AppColors.heroSubtitle,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _formatMinor(todayRevenueMinor, symbol: '₵'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'Constantia',
+                                      letterSpacing: -0.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            _SalesHeroChip(
+                              label: '${todaySales.length} txns',
+                              value: 'Today',
+                              tone: const Color(0xFF9AE7BF),
+                            ),
+                            const SizedBox(width: 8),
+                            _SalesHeroChip(
+                              label: _formatMinor(momoTotal, symbol: '₵'),
+                              value: 'MoMo',
+                              tone: AppColors.gold,
+                            ),
+                            const SizedBox(width: 8),
+                            _SalesHeroChip(
+                              label: _formatMinor(cashTotal, symbol: '₵'),
+                              value: 'Cash',
+                              tone: const Color(0xFF9AE7BF),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
             // ── Content area ──────────────────────────────────────────────

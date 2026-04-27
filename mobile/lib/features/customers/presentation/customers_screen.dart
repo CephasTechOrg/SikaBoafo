@@ -23,12 +23,44 @@ class CustomersScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.hero),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _CustomersHeader(
+      body: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 240,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const DecoratedBox(
+                  decoration: BoxDecoration(gradient: AppGradients.hero),
+                ),
+                Image.asset(
+                  'assets/images/swirlLatte.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _CustomersHeader(
                 customerCount: customers.length,
                 outstandingMinor: outstandingMinor,
                 clearedCount: clearedCount,
@@ -80,6 +112,7 @@ class CustomersScreen extends ConsumerWidget {
             ],
           ),
         ),
+        ],
       ),
     );
   }

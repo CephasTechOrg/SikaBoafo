@@ -102,19 +102,51 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _Header(
-                archivedCount: archivedItems.length,
-                lowStockCount: lowStockCount,
-                categoryCount: categories.length,
-                totalValueMinor: totalValueMinor,
-              ),
-              Expanded(
-                child: PremiumSurface(
+      body: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 230,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const DecoratedBox(
+                  decoration: BoxDecoration(gradient: AppGradients.hero),
+                ),
+                Image.asset(
+                  'assets/images/swirlLatte.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.black.withValues(alpha: 0.05),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _Header(
+                  archivedCount: archivedItems.length,
+                  lowStockCount: lowStockCount,
+                  categoryCount: categories.length,
+                  totalValueMinor: totalValueMinor,
+                ),
+                Expanded(
+                  child: PremiumSurface(
                   child: RefreshIndicator(
                     onRefresh: () => ref
                         .read(inventoryControllerProvider.notifier)
@@ -242,6 +274,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ],
           ),
         ),
+        ],
       ),
     );
   }

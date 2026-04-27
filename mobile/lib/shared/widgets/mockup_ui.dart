@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
@@ -225,6 +223,243 @@ class _WaveClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant _WaveClipper oldClipper) {
     return oldClipper.waveHeight != waveHeight;
+  }
+}
+
+/// Page scaffold matching the dashboard mockup language: a swirl/latte hero
+/// with a title bar at the top, then a white curved content sheet below.
+///
+/// Use this for top-level screens like Inventory, Expenses, Customers, etc.
+/// where you want a consistent look without rewriting every screen.
+class MockupScreenScaffold extends StatelessWidget {
+  const MockupScreenScaffold({
+    required this.title,
+    required this.body,
+    this.subtitle,
+    this.onBack,
+    this.actions,
+    this.heroExtra,
+    this.heroHeight = 168,
+    this.bottomNavSafeArea = false,
+    this.backgroundAssetPath = 'assets/images/swirlLatte.png',
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onBack;
+  final List<Widget>? actions;
+  final Widget? heroExtra;
+  final double heroHeight;
+  final bool bottomNavSafeArea;
+  final String? backgroundAssetPath;
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context) {
+    const sheetCurveLift = 28.0;
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: Container(
+        decoration: const BoxDecoration(color: AppColors.canvas),
+        child: Stack(
+          children: [
+            // Hero swirl
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: heroHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const DecoratedBox(
+                    decoration: BoxDecoration(gradient: AppGradients.hero),
+                  ),
+                  if (backgroundAssetPath != null)
+                    Positioned.fill(
+                      child: Image.asset(
+                        backgroundAssetPath!,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                      ),
+                    ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0x42000000),
+                          Color(0x16000000),
+                          Color(0x00000000),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: [0.0, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // White content sheet (lifted slightly so its rounded corners are
+            // visible against the hero swirl).
+            Positioned(
+              left: 0,
+              right: 0,
+              top: heroHeight - sheetCurveLift,
+              bottom: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.canvas,
+                  borderRadius: BorderRadius.vertical(
+                    top: AppRadii.heroRadius,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x1F0F172A),
+                      blurRadius: 28,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: SafeArea(
+                  top: false,
+                  bottom: bottomNavSafeArea,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: sheetCurveLift + 6),
+                    child: body,
+                  ),
+                ),
+              ),
+            ),
+
+            // Hero content (title + actions + extras)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: heroHeight,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    onBack != null ? 6 : 18,
+                    8,
+                    18,
+                    sheetCurveLift + 8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (onBack != null)
+                            IconButton(
+                              onPressed: onBack,
+                              icon: const Icon(Icons.arrow_back_rounded,
+                                  color: Colors.white),
+                              tooltip: 'Back',
+                            ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.2,
+                                      ),
+                                ),
+                                if (subtitle != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subtitle!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.78),
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.35,
+                                        ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (actions != null && actions!.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            for (final a in actions!) ...[
+                              a,
+                              const SizedBox(width: 6),
+                            ],
+                          ],
+                        ],
+                      ),
+                      if (heroExtra != null) ...[
+                        const Spacer(),
+                        heroExtra!,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact circular header action button that mirrors the dashboard mockup.
+class MockupHeaderAction extends StatelessWidget {
+  const MockupHeaderAction({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    super.key,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final btn = Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.white.withValues(alpha: 0.18),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      ),
+    );
+    if (tooltip == null) return btn;
+    return Tooltip(message: tooltip!, child: btn);
   }
 }
 

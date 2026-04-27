@@ -299,12 +299,39 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     required String paidThisMonth,
     required int customerCount,
   }) {
-    return Container(
-      decoration: const BoxDecoration(gradient: AppGradients.hero),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+    return Stack(
+      children: [
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: AppGradients.hero),
+          ),
+        ),
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/swirlLatte.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.25),
+                  Colors.black.withValues(alpha: 0.04),
+                  Colors.transparent,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -406,7 +433,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             ],
           ),
         ),
-      ),
+        ),
+      ],
     );
   }
 

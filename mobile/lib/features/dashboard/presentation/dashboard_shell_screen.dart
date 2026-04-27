@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/providers/sync_providers.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
@@ -108,6 +107,7 @@ class _HomeDashboard extends ConsumerWidget {
     final ctxAsync = ref.watch(merchantContextProvider);
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final activityAsync = ref.watch(dashboardRecentActivityProvider);
+    final insightsAsync = ref.watch(dashboardInsightsProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -124,15 +124,14 @@ class _HomeDashboard extends ConsumerWidget {
         return Container(
           decoration: const BoxDecoration(color: AppColors.canvas),
           child: ctxAsync.when(
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+            loading: () => const _DashboardLoading(),
             error: (e, _) => _ErrorView(
               message: humanizeDashboardError(e),
               onRetry: () {
                 ref.invalidate(merchantContextProvider);
                 ref.invalidate(dashboardSummaryProvider);
                 ref.invalidate(dashboardRecentActivityProvider);
+                ref.invalidate(dashboardInsightsProvider);
               },
             ),
             data: (mc) => Stack(
@@ -200,10 +199,12 @@ class _HomeDashboard extends ConsumerWidget {
                           ref.invalidate(merchantContextProvider);
                           ref.invalidate(dashboardSummaryProvider);
                           ref.invalidate(dashboardRecentActivityProvider);
+                          ref.invalidate(dashboardInsightsProvider);
                           await Future.wait([
                             ref.read(merchantContextProvider.future),
                             ref.read(dashboardSummaryProvider.future),
                             ref.read(dashboardRecentActivityProvider.future),
+                            ref.read(dashboardInsightsProvider.future),
                           ]);
                         },
                         child: ListView(
@@ -222,6 +223,20 @@ class _HomeDashboard extends ConsumerWidget {
                             40,
                           ),
                           children: [
+                            _KpiStrip(
+                              summaryAsync: summaryAsync,
+                              onNavigate: onNavigate,
+                            ),
+                            const SizedBox(height: 18),
+                            _InsightBanner(summary: summaryAsync.valueOrNull),
+                            const SizedBox(height: 22),
+                            _MonthOverviewCard(insightsAsync: insightsAsync),
+                            const SizedBox(height: 22),
+                            _PaymentBreakdownStrip(
+                                insightsAsync: insightsAsync),
+                            const SizedBox(height: 22),
+                            _TopSellingSection(insightsAsync: insightsAsync),
+                            const SizedBox(height: 22),
                             _RecentActivity(activityAsync: activityAsync),
                           ],
                         ),
@@ -285,17 +300,10 @@ class _Header extends ConsumerWidget {
   final VoidCallback onSettings;
   final ValueChanged<int> onNavigate;
 
-  String _firstName(String name) {
-    final word = name.trim().split(' ').first;
-    return word.isEmpty ? name : word;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = summaryAsync.valueOrNull;
-    final syncSnapshot = ref.watch(syncStatusControllerProvider).valueOrNull;
     final sales = summary?.todaySalesTotal ?? '--';
-    final _ = _syncHeadline(syncSnapshot); // keep compute for future use
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -390,26 +398,6 @@ class _Header extends ConsumerWidget {
     );
   }
 
-  (String, Color) _syncHeadline(SyncStatusSnapshot? snapshot) {
-    if (snapshot == null || snapshot.isSyncing) {
-      return ('Syncing', const Color(0xFF9FD2FF));
-    }
-    if (!snapshot.backendReachable) {
-      final pending = snapshot.stats.pendingCount;
-      return (
-        pending > 0 ? 'Offline $pending' : 'Offline',
-        const Color(0xFFF6A6A6)
-      );
-    }
-    if (snapshot.stats.failedCount > 0 || snapshot.stats.conflictCount > 0) {
-      return ('Needs retry', AppColors.gold);
-    }
-    if (snapshot.stats.pendingCount > 0 || snapshot.stats.sendingCount > 0) {
-      final pending = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
-      return ('Pending $pending', AppColors.gold);
-    }
-    return ('Online', const Color(0xFF8BE0B2));
-  }
 }
 
 class _HeroStatTile extends StatelessWidget {
@@ -766,6 +754,593 @@ class _InsightBanner extends StatelessWidget {
   }
 }
 
+// ─── KPI Strip ────────────────────────────────────────────────────────────────
+
+class _KpiStrip extends StatelessWidget {
+  const _KpiStrip({required this.summaryAsync, required this.onNavigate});
+
+  final AsyncValue<DashboardSummary> summaryAsync;
+  final ValueChanged<int> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = summaryAsync.valueOrNull;
+    final isLoading = summaryAsync.isLoading && s == null;
+    return Row(
+      children: [
+        Expanded(
+          child: _KpiTile(
+            label: "Today's Profit",
+            value: isLoading ? '—' : '\u20B5${s?.todayEstimatedProfit ?? '0.00'}',
+            icon: Icons.trending_up_rounded,
+            tone: AppColors.forest,
+            toneSoft: AppColors.successSoft,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _KpiTile(
+            label: 'Outstanding',
+            value:
+                isLoading ? '—' : '\u20B5${s?.debtOutstandingTotal ?? '0.00'}',
+            icon: Icons.account_balance_wallet_rounded,
+            tone: AppColors.gold,
+            toneSoft: AppColors.warningSoft,
+            onTap: () => onNavigate(3),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _KpiTile(
+            label: 'Low Stock',
+            value: isLoading ? '—' : '${s?.lowStockCount ?? 0} item${(s?.lowStockCount ?? 0) == 1 ? '' : 's'}',
+            icon: Icons.inventory_2_rounded,
+            tone: AppColors.danger,
+            toneSoft: AppColors.dangerSoft,
+            onTap: () => onNavigate(2),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiTile extends StatelessWidget {
+  const _KpiTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.tone,
+    required this.toneSoft,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color tone;
+  final Color toneSoft;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: toneSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 16, color: tone),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── This Month Overview ──────────────────────────────────────────────────────
+
+class _MonthOverviewCard extends StatelessWidget {
+  const _MonthOverviewCard({required this.insightsAsync});
+
+  final AsyncValue<DashboardInsights> insightsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = insightsAsync.valueOrNull;
+    final month = data?.month;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('This Month'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.navy, AppColors.navyMuted],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            boxShadow: AppShadows.elevated,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.16)),
+                    ),
+                    child: const Icon(Icons.insights_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Performance',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.62),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const Text(
+                          'Month-to-date snapshot',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MonthStat(
+                      label: 'Sales',
+                      value: '\u20B5${month?.salesTotal ?? '0.00'}',
+                      tone: const Color(0xFF8BE0B2),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 36,
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                  Expanded(
+                    child: _MonthStat(
+                      label: 'Expenses',
+                      value: '\u20B5${month?.expensesTotal ?? '0.00'}',
+                      tone: const Color(0xFFF6A6A6),
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 36,
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                  Expanded(
+                    child: _MonthStat(
+                      label: 'Profit',
+                      value: '\u20B5${month?.estimatedProfit ?? '0.00'}',
+                      tone: const Color(0xFFFFD37A),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthStat extends StatelessWidget {
+  const _MonthStat({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: tone,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.2,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Payment Breakdown Strip ──────────────────────────────────────────────────
+
+class _PaymentBreakdownStrip extends StatelessWidget {
+  const _PaymentBreakdownStrip({required this.insightsAsync});
+
+  final AsyncValue<DashboardInsights> insightsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = insightsAsync.valueOrNull;
+    final rows = data?.monthlyPaymentBreakdown ?? const [];
+    if (insightsAsync.isLoading && rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (rows.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionLabel('Payment Methods'),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text(
+              'No payments recorded yet this month.',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionLabel('Payment Methods'),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                _PaymentChip(row: rows[i]),
+                if (i != rows.length - 1) const SizedBox(width: 10),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaymentChip extends StatelessWidget {
+  const _PaymentChip({required this.row});
+
+  final DashboardPaymentBreakdown row;
+
+  IconData get _icon {
+    switch (row.paymentMethodLabel) {
+      case 'cash':
+        return Icons.payments_rounded;
+      case 'mobile_money':
+        return Icons.phone_iphone_rounded;
+      case 'card':
+        return Icons.credit_card_rounded;
+      case 'bank':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.attach_money_rounded;
+    }
+  }
+
+  Color get _tone {
+    switch (row.paymentMethodLabel) {
+      case 'cash':
+        return AppColors.forest;
+      case 'mobile_money':
+        return AppColors.navy;
+      case 'card':
+        return AppColors.gold;
+      case 'bank':
+        return AppColors.info;
+      default:
+        return AppColors.muted;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _tone.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(_icon, color: _tone, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                row.paymentMethodDisplay,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '\u20B5${row.totalAmount}',
+                style: const TextStyle(
+                  color: AppColors.ink,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.2,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Top Selling Items ────────────────────────────────────────────────────────
+
+class _TopSellingSection extends StatelessWidget {
+  const _TopSellingSection({required this.insightsAsync});
+
+  final AsyncValue<DashboardInsights> insightsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = insightsAsync.valueOrNull;
+    final rows = data?.monthlyTopSellingItems ?? const [];
+    if (insightsAsync.isLoading && rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: _SectionLabel('Top Selling This Month')),
+            if (rows.isNotEmpty)
+              Text(
+                '${rows.length} item${rows.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (rows.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text(
+              'No sales yet this month — start a sale to see your bestsellers here.',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppShadows.card,
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i != 0)
+                    const Divider(
+                        height: 1, thickness: 1, color: AppColors.border),
+                  _TopSellingRow(rank: i + 1, row: rows[i]),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TopSellingRow extends StatelessWidget {
+  const _TopSellingRow({required this.rank, required this.row});
+
+  final int rank;
+  final DashboardTopSellingItem row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '#$rank',
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  row.itemName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${row.quantitySold} sold',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '\u20B5${row.salesTotal}',
+            style: const TextStyle(
+              color: AppColors.forest,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Recent Activity ──────────────────────────────────────────────────────────
 
 class _RecentActivity extends ConsumerWidget {
@@ -1095,37 +1670,103 @@ class _ErrorView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.dangerSoft,
+                borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(Icons.cloud_off_outlined,
-                  size: 28, color: Colors.white),
+              child: const Icon(
+                Icons.cloud_off_outlined,
+                size: 30,
+                color: AppColors.danger,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
+            const Text(
+              'Could not reach the server',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
+                color: AppColors.muted,
+                fontSize: 13.5,
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
             FilledButton.icon(
               onPressed: onRetry,
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.forest,
+                backgroundColor: AppColors.forest,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 22, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Retry'),
+              label: const Text(
+                'Try again',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'If your server is on a free hosting tier, the first request can\n'
+              'take 30–60 seconds while it wakes up.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 11.5,
+                height: 1.5,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DashboardLoading extends StatelessWidget {
+  const _DashboardLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 30,
+            height: 30,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.6,
+              color: AppColors.forest,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Loading your dashboard…',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
