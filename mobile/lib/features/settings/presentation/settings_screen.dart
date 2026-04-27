@@ -7,6 +7,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
+import '../providers/biometric_pref_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -104,8 +105,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _toggleBiometric(BuildContext context, WidgetRef ref) async {
-    final storage = ref.read(secureTokenStorageProvider);
-    final enabled = await storage.isBiometricEnabled();
+    final enabled = ref.read(biometricPrefProvider).valueOrNull ?? false;
     final bio = ref.read(biometricServiceProvider);
     final supported = await bio.isSupported();
 
@@ -135,15 +135,15 @@ class SettingsScreen extends ConsumerWidget {
       if (!ok) return;
     }
 
-    await storage.setBiometricEnabled(next);
-    ref.invalidate(_biometricEnabledProvider);
-    // Force a re-read immediately so the tile subtitle updates
-    // before the user leaves/reopens this screen.
-    await ref.read(_biometricEnabledProvider.future);
+    final persisted = await ref.read(biometricPrefProvider.notifier).setEnabled(next);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(next ? 'Biometric unlock enabled.' : 'Biometric unlock disabled.'),
+        content: Text(
+          persisted == next
+              ? (next ? 'Biometric unlock enabled.' : 'Biometric unlock disabled.')
+              : 'Saved, but could not verify the setting. Please try again.',
+        ),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -156,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
     final ctxAsync = ref.watch(merchantContextProvider);
     final businessName = ctxAsync.valueOrNull?.businessName;
     final subtitle = businessName ?? 'Manage your account';
-    final biometricAsync = ref.watch(_biometricEnabledProvider);
+    final biometricAsync = ref.watch(biometricPrefProvider);
 
     return MockupScreenScaffold(
       title: 'Settings',
@@ -272,10 +272,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 }
-
-final _biometricEnabledProvider = FutureProvider<bool>((ref) async {
-  return ref.watch(secureTokenStorageProvider).isBiometricEnabled();
-});
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);

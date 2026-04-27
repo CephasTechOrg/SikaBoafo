@@ -433,7 +433,7 @@ class _Header extends StatelessWidget {
                         fontSize: 12.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     DataFreshnessLabel(
                       kvKey: KvCacheRepository.kInventoryTs,
                       color: AppColors.heroSubtitle,
