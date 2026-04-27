@@ -6,7 +6,6 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
-import '../../dashboard/presentation/business_settings_sheet.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -43,17 +42,6 @@ class SettingsScreen extends ConsumerWidget {
     context.go(AppRoute.auth.path);
   }
 
-  void _openBusinessSettings(BuildContext context, WidgetRef ref) {
-    final mc = ref.read(merchantContextProvider).valueOrNull;
-    if (mc == null) return;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BusinessSettingsSheet(initialContext: mc),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ctxAsync = ref.watch(merchantContextProvider);
@@ -77,7 +65,7 @@ class SettingsScreen extends ConsumerWidget {
             iconColor: AppColors.navy,
             label: 'Business Profile',
             caption: 'Edit name, type and store details',
-            onTap: () => _openBusinessSettings(context, ref),
+            onTap: () => context.push(AppRoute.businessProfile.path),
           ),
           const SizedBox(height: 10),
           _SettingsTile(

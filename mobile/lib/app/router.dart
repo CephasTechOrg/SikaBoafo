@@ -11,6 +11,7 @@ import '../features/customers/presentation/customers_screen.dart';
 import '../features/debts/presentation/debt_detail_screen.dart';
 import '../features/debts/presentation/receive_repayment_screen.dart';
 import '../features/settings/presentation/connect_paystack_screen.dart';
+import '../features/settings/presentation/business_profile_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/settings/presentation/staff_screen.dart';
 
@@ -21,6 +22,7 @@ enum AppRoute {
   setPin('/set-pin'),
   home('/home'),
   settings('/settings'),
+  businessProfile('/settings/business-profile'),
   staff('/settings/staff'),
   paystack('/settings/payments/paystack'),
   customers('/customers'),
@@ -64,6 +66,10 @@ GoRouter createAppRouter() {
       GoRoute(
         path: AppRoute.settings.path,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.businessProfile.path,
+        builder: (context, state) => const BusinessProfileScreen(),
       ),
       GoRoute(
         path: AppRoute.staff.path,
