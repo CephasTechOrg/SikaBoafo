@@ -33,5 +33,6 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     unit: Mapped[str | None] = mapped_column(String(32), nullable=True)
     low_stock_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
 
     store: Mapped[Store] = relationship("Store", back_populates="items", lazy="joined")

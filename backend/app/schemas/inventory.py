@@ -66,14 +66,17 @@ class StockAdjustIn(BaseModel):
 
 class SyncItemUpdateIn(ItemUpdateIn):
     item_id: UUID
+    version: int | None = None
 
 
 class SyncStockInIn(StockInIn):
     item_id: UUID
+    balance_version: int | None = None
 
 
 class SyncStockAdjustIn(StockAdjustIn):
     item_id: UUID
+    balance_version: int | None = None
 
 
 class InventoryItemOut(BaseModel):
@@ -87,6 +90,7 @@ class InventoryItemOut(BaseModel):
     low_stock_threshold: int | None
     is_active: bool
     quantity_on_hand: int
+    version: int = 1
 
 
 class InventoryMutationOut(BaseModel):

@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
@@ -366,6 +367,7 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
   }
 
   SyncQueueRepository get syncQueue => SyncQueueRepository(this);
+  KvCacheRepository get kv => KvCacheRepository(this);
 
   /// Stable device id for idempotent sync (stored in [local_meta]).
   Future<String> getOrCreateDeviceId() async {
