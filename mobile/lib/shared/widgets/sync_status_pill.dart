@@ -205,6 +205,18 @@ class SyncStatusPill extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    if ((snapshot?.deadEntries.isNotEmpty ?? false)) ...[
+                      const SizedBox(height: 16),
+                      Text('Discarded',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 10),
+                      ...snapshot!.deadEntries.map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _DeadRow(entry: entry),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     Row(
                       children: [
@@ -302,13 +314,18 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _FailedRow extends StatelessWidget {
+class _FailedRow extends ConsumerWidget {
   const _FailedRow({required this.entry});
 
   final SyncQueueEntry entry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(syncStatusControllerProvider.notifier);
+    final syncAsync = ref.watch(syncStatusControllerProvider);
+    final busy = syncAsync.isLoading;
+    final attempts = entry.attempts;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -343,6 +360,99 @@ class _FailedRow extends StatelessWidget {
                   : AppColors.danger,
               fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                '$attempts attempt${attempts == 1 ? '' : 's'}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.grey),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => controller.retryFailed(queueId: entry.id),
+                child: const Text('Retry'),
+              ),
+              const SizedBox(width: 4),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => controller.moveToDeadLetter(queueId: entry.id),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                ),
+                child: const Text('Discard'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeadRow extends ConsumerWidget {
+  const _DeadRow({required this.entry});
+
+  final SyncQueueEntry entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(syncStatusControllerProvider.notifier);
+    final syncAsync = ref.watch(syncStatusControllerProvider);
+    final busy = syncAsync.isLoading;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${entry.entityType}:${entry.operation}',
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (entry.lastError != null && entry.lastError!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              entry.lastError!,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.grey),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text(
+                '${entry.attempts} attempt${entry.attempts == 1 ? '' : 's'}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Colors.grey),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => controller.reviveEntry(queueId: entry.id),
+                child: const Text('Restore'),
+              ),
+            ],
           ),
         ],
       ),
