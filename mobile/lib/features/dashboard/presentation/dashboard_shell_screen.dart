@@ -824,112 +824,6 @@ class _QuickTile extends StatelessWidget {
 
 // ─── Business Insight Banner ──────────────────────────────────────────────────
 
-class _InsightBanner extends StatelessWidget {
-  const _InsightBanner({required this.summary});
-
-  final DashboardSummary? summary;
-
-  ({String title, String body, IconData icon, Color iconBg, Color iconColor})
-      _insight() {
-    final s = summary;
-    if (s == null) {
-      return (
-        title: 'Loading insights…',
-        body: 'Fetching your business data.',
-        icon: Icons.insights_rounded,
-        iconBg: const Color(0xFFEAF0FF),
-        iconColor: AppColors.info,
-      );
-    }
-    if (s.lowStockCount > 0) {
-      final n = s.lowStockCount;
-      return (
-        title: '$n item${n == 1 ? '' : 's'} running low on stock',
-        body: 'Restock soon to avoid missed sales opportunities.',
-        icon: Icons.inventory_2_rounded,
-        iconBg: const Color(0xFFFFF3CD),
-        iconColor: AppColors.warning,
-      );
-    }
-    final debtIsZero =
-        s.debtOutstandingTotal == '0.00' || s.debtOutstandingTotal == '0';
-    if (!debtIsZero) {
-      return (
-        title: 'GHS ${s.debtOutstandingTotal} outstanding',
-        body: 'Follow up with customers to collect unpaid balances.',
-        icon: Icons.people_rounded,
-        iconBg: const Color(0xFFFFF8E1),
-        iconColor: AppColors.gold,
-      );
-    }
-    return (
-      title: 'All caught up today',
-      body: 'No low stock or outstanding debts — great work!',
-      icon: Icons.check_circle_rounded,
-      iconBg: const Color(0xFFE8F5E9),
-      iconColor: AppColors.success,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tip = _insight();
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFDFEFF), Color(0xFFF6F8FC)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: tip.iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(tip.icon, size: 20, color: tip.iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tip.title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.ink,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    tip.body,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.muted,
-                          height: 1.45,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── KPI Strip ────────────────────────────────────────────────────────────────
 
 class _KpiStrip extends StatelessWidget {
@@ -1088,6 +982,7 @@ class _KpiTile extends StatelessWidget {
 
 // ─── This Month Overview ──────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _MonthOverviewCard extends StatelessWidget {
   const _MonthOverviewCard(
       {required this.insightsAsync, required this.overlayAsync});
@@ -1224,6 +1119,7 @@ class _MonthOverviewCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _MonthStat extends StatelessWidget {
   const _MonthStat({
     required this.label,
