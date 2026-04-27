@@ -116,6 +116,7 @@ class InventoryRepository {
             'is_active': item.isActive ? 1 : 0,
             'quantity_on_hand': item.quantityOnHand,
             'image_asset': existingImage,
+            'server_version': item.version,
             'created_at': now,
             'updated_at': now,
           },
@@ -263,7 +264,10 @@ class InventoryRepository {
       if (!isActive && current.isActive && current.quantityOnHand > 0) {
         throw ArgumentError(archiveRequiresZeroStockMessage);
       }
-      final payload = <String, Object?>{'item_id': itemId};
+      final payload = <String, Object?>{
+        'item_id': itemId,
+        if (current.serverVersion != null) 'version': current.serverVersion,
+      };
       final updates = <String, Object?>{'updated_at': now};
 
       if (cleanName != current.name) {
