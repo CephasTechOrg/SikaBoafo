@@ -166,6 +166,7 @@ class SyncService:
             except (
                 InventoryItemNotFoundError,
                 InvalidInventoryAdjustmentError,
+                OptimisticLockError,
                 CustomerNotFoundError,
                 ReceivableNotFoundError,
                 InvalidRepaymentError,
