@@ -11,6 +11,40 @@ import '../../dashboard/providers/dashboard_providers.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  Future<bool?> _confirmBiometricToggle(
+    BuildContext context, {
+    required bool enable,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        actionsAlignment: MainAxisAlignment.end,
+        title: Text(enable ? 'Enable biometric unlock?' : 'Disable biometric unlock?'),
+        content: Text(
+          enable
+              ? 'You will be able to unlock SikaBoafo with fingerprint/Face ID on this device.'
+              : 'You will need to enter your phone number and PIN next time you sign in.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(92, 44),
+            ),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(92, 44),
+            ),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendTestNotification(
     BuildContext context,
     WidgetRef ref, {
@@ -37,6 +71,7 @@ class SettingsScreen extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsAlignment: MainAxisAlignment.end,
         title: const Text('Sign out?'),
         content: const Text(
           'You will need to enter your phone number and PIN again to log back in.',
@@ -44,12 +79,16 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(92, 44),
+            ),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
+              minimumSize: const Size(92, 44),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Sign out'),
@@ -82,6 +121,13 @@ class SettingsScreen extends ConsumerWidget {
     }
 
     final next = !enabled;
+
+    if (context.mounted) {
+      final ok = await _confirmBiometricToggle(context, enable: next);
+      if (ok != true) return;
+    }
+    if (!context.mounted) return;
+
     if (next) {
       final ok = await bio.authenticate(
         reason: 'Enable biometric unlock for SikaBoafo.',
@@ -91,6 +137,9 @@ class SettingsScreen extends ConsumerWidget {
 
     await storage.setBiometricEnabled(next);
     ref.invalidate(_biometricEnabledProvider);
+    // Force a re-read immediately so the tile subtitle updates
+    // before the user leaves/reopens this screen.
+    await ref.read(_biometricEnabledProvider.future);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -107,8 +156,7 @@ class SettingsScreen extends ConsumerWidget {
     final ctxAsync = ref.watch(merchantContextProvider);
     final businessName = ctxAsync.valueOrNull?.businessName;
     final subtitle = businessName ?? 'Manage your account';
-    final biometricAsync =
-        ref.watch(_biometricEnabledProvider);
+    final biometricAsync = ref.watch(_biometricEnabledProvider);
 
     return MockupScreenScaffold(
       title: 'Settings',
@@ -202,9 +250,11 @@ class SettingsScreen extends ConsumerWidget {
             iconBg: AppColors.surfaceAlt,
             iconColor: AppColors.ink,
             label: 'Biometric unlock',
-            caption: biometricAsync.valueOrNull == true
-                ? 'Enabled — unlock with fingerprint/Face ID'
-                : 'Disabled',
+            caption: biometricAsync.isLoading
+                ? 'Checking…'
+                : (biometricAsync.valueOrNull == true
+                    ? 'Enabled — unlock with fingerprint/Face ID'
+                    : 'Disabled'),
             onTap: () => _toggleBiometric(context, ref),
           ),
           const SizedBox(height: 10),
