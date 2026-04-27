@@ -12,6 +12,7 @@ class InventoryItemDto {
     this.category,
     this.lowStockThreshold,
     this.isActive = true,
+    this.version = 1,
   });
 
   final String itemId;
@@ -22,6 +23,7 @@ class InventoryItemDto {
   final int? lowStockThreshold;
   final bool isActive;
   final int quantityOnHand;
+  final int version;
 
   factory InventoryItemDto.fromJson(Map<String, dynamic> json) {
     return InventoryItemDto(
@@ -33,6 +35,7 @@ class InventoryItemDto {
       lowStockThreshold: json['low_stock_threshold'] as int?,
       isActive: (json['is_active'] ?? true) as bool,
       quantityOnHand: (json['quantity_on_hand'] ?? 0) as int,
+      version: (json['version'] as int?) ?? 1,
     );
   }
 }
