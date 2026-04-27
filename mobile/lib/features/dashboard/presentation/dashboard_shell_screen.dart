@@ -110,6 +110,7 @@ class _HomeDashboard extends ConsumerWidget {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final activityAsync = ref.watch(dashboardRecentActivityProvider);
     final insightsAsync = ref.watch(dashboardInsightsProvider);
+    final overlayAsync = ref.watch(localDashboardOverlayProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -204,6 +205,7 @@ class _HomeDashboard extends ConsumerWidget {
                           children: [
                             _KpiStrip(
                               summaryAsync: summaryAsync,
+                              overlayAsync: overlayAsync,
                               onNavigate: onNavigate,
                             ),
                             const SizedBox(height: 18),
@@ -283,9 +285,18 @@ class _Header extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = summaryAsync.valueOrNull;
     final sales = summary?.todaySalesTotal ?? '--';
+    final overlayAsync = ref.watch(localDashboardOverlayProvider);
+    final overlay = overlayAsync.valueOrNull;
     final syncAsync = ref.watch(syncStatusControllerProvider);
     final syncSnapshot = syncAsync.valueOrNull;
     final syncing = syncSnapshot?.isSyncing ?? syncAsync.isLoading;
+    final overlayMinor = overlay?.todayPendingSalesMinor ?? 0;
+    final overlayText =
+        overlayMinor > 0 ? minorToMoney(overlayMinor) : null;
+    // Note: we currently only overlay sales in the header headline.
+    final displaySales = overlayText == null
+        ? sales
+        : _addMoneyStrings(sales, overlayText);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -386,7 +397,7 @@ class _Header extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '\u20B5$sales',
+            '\u20B5$displaySales',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 40,
@@ -396,6 +407,18 @@ class _Header extends ConsumerWidget {
               height: 1,
             ),
           ),
+          if (overlayText != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Includes \u20B5$overlayText offline',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -426,6 +449,26 @@ class _Header extends ConsumerWidget {
     );
   }
 
+}
+
+String _addMoneyStrings(String a, String b) {
+  final ma = _moneyToMinorSafe(a);
+  final mb = _moneyToMinorSafe(b);
+  return minorToMoney(ma + mb);
+}
+
+int _moneyToMinorSafe(String value) {
+  final raw = value.trim();
+  final match = RegExp(r'^-?\d+(\.\d{1,2})?$').firstMatch(raw);
+  if (match == null) return 0;
+  final negative = raw.startsWith('-');
+  final normalized = negative ? raw.substring(1) : raw;
+  final parts = normalized.split('.');
+  final major = int.tryParse(parts[0]) ?? 0;
+  final decimal = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
+  final minor = int.tryParse(decimal) ?? 0;
+  final total = (major * 100) + minor;
+  return negative ? -total : total;
 }
 
 class _HeaderBtn extends StatelessWidget {
@@ -878,21 +921,42 @@ class _InsightBanner extends StatelessWidget {
 // ─── KPI Strip ────────────────────────────────────────────────────────────────
 
 class _KpiStrip extends StatelessWidget {
-  const _KpiStrip({required this.summaryAsync, required this.onNavigate});
+  const _KpiStrip({
+    required this.summaryAsync,
+    required this.overlayAsync,
+    required this.onNavigate,
+  });
 
   final AsyncValue<DashboardSummary> summaryAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
   final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context) {
     final s = summaryAsync.valueOrNull;
     final isLoading = summaryAsync.isLoading && s == null;
+    final overlay = overlayAsync.valueOrNull;
+    final pendingProfitMinor = (overlay?.todayPendingSalesMinor ?? 0) -
+        (overlay?.todayPendingExpensesMinor ?? 0);
+    final pendingProfit = pendingProfitMinor == 0
+        ? null
+        : minorToMoney(pendingProfitMinor);
+    final profitDisplay = pendingProfit == null
+        ? (s?.todayEstimatedProfit ?? '0.00')
+        : _addMoneyStrings(s?.todayEstimatedProfit ?? '0.00', pendingProfit);
+
+    final debtDisplayMinor = overlay?.debtOutstandingMinorLocal;
+    final debtDisplay = debtDisplayMinor == null
+        ? (s?.debtOutstandingTotal ?? '0.00')
+        : minorToMoney(debtDisplayMinor);
+
+    final lowStock = overlay?.lowStockCountLocal ?? s?.lowStockCount ?? 0;
     return Row(
       children: [
         Expanded(
           child: _KpiTile(
             label: "Today's Profit",
-            value: isLoading ? '—' : '\u20B5${s?.todayEstimatedProfit ?? '0.00'}',
+            value: isLoading ? '—' : '\u20B5$profitDisplay',
             icon: Icons.trending_up_rounded,
             tone: AppColors.forest,
             toneSoft: AppColors.successSoft,
@@ -902,8 +966,7 @@ class _KpiStrip extends StatelessWidget {
         Expanded(
           child: _KpiTile(
             label: 'Outstanding',
-            value:
-                isLoading ? '—' : '\u20B5${s?.debtOutstandingTotal ?? '0.00'}',
+            value: isLoading ? '—' : '\u20B5$debtDisplay',
             icon: Icons.account_balance_wallet_rounded,
             tone: AppColors.gold,
             toneSoft: AppColors.warningSoft,
@@ -914,7 +977,9 @@ class _KpiStrip extends StatelessWidget {
         Expanded(
           child: _KpiTile(
             label: 'Low Stock',
-            value: isLoading ? '—' : '${s?.lowStockCount ?? 0} item${(s?.lowStockCount ?? 0) == 1 ? '' : 's'}',
+            value: isLoading
+                ? '—'
+                : '$lowStock item${lowStock == 1 ? '' : 's'}',
             icon: Icons.inventory_2_rounded,
             tone: AppColors.danger,
             toneSoft: AppColors.dangerSoft,
