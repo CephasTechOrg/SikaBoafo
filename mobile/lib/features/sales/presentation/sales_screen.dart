@@ -12,7 +12,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
@@ -119,11 +122,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
+                                  const Text(
                                     'Sales',
                                     style: TextStyle(
                                       color: Colors.white,
@@ -132,8 +135,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       letterSpacing: -0.2,
                                     ),
                                   ),
-                                  SizedBox(height: 4),
-                                  Text(
+                                  const SizedBox(height: 4),
+                                  const Text(
                                     'Record new sales and follow today'
                                     's cashflow',
                                     style: TextStyle(
@@ -141,6 +144,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
                                     ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  DataFreshnessLabel(
+                                    kvKey: KvCacheRepository.kSalesTs,
+                                    color: AppColors.heroSubtitle,
                                   ),
                                 ],
                               ),
@@ -211,6 +219,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
                 ),
               ],
+            ),
+
+            const StaleBanner(
+              screenKey: 'sales',
+              kvKey: KvCacheRepository.kSalesTs,
             ),
 
             // ── Content area ──────────────────────────────────────────────
