@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../data/sync/sync_queue_runner.dart';
 import 'inventory_api.dart';
 
@@ -124,6 +125,8 @@ class InventoryRepository {
         );
       }
     });
+    await _appDb.kv.putTimestamp(
+        KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
   Future<void> createItemLocal({
