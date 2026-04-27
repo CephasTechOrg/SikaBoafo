@@ -262,6 +262,16 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     }
   }
 
+  Future<void> _upgradeInventorySchemaV13(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(items_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('server_version')) {
+      await db.execute(
+        'ALTER TABLE items_local ADD COLUMN server_version INTEGER',
+      );
+    }
+  }
+
   Future<void> _upgradeSalesSchemaV6(Database db) async {
     final columns = await db.rawQuery('PRAGMA table_info(sales_local)');
     final names = columns
