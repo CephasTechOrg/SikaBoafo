@@ -42,6 +42,8 @@ class SyncRefreshService {
         );
       }
     });
+    await _appDb.kv.putTimestamp(
+        KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
   Future<void> refreshDebtSnapshot() async {
@@ -52,6 +54,7 @@ class SyncRefreshService {
 
     await db.transaction((tx) async {
       for (final customer in customers) {
+
         final existing = await tx.query(
           'customers_local',
           columns: ['local_operation_id', 'source_device_id', 'created_at'],
