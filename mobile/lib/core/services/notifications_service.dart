@@ -54,5 +54,22 @@ class NotificationsService {
     const details = NotificationDetails(android: androidDetails);
     await _plugin.show(2001, title, body, details);
   }
+
+  Future<void> showTestNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'test_events',
+      'Test events',
+      channelDescription: 'Test notifications (sales, low stock, payments)',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: AppColors.forest,
+    );
+    const details = NotificationDetails(android: androidDetails);
+    await _plugin.show(id, title, body, details);
+  }
 }
 

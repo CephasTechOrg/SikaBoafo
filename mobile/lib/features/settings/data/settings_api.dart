@@ -1,4 +1,9 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+
 import '../../../core/services/api_client.dart';
+import '../../../data/local/kv_cache_repository.dart';
 
 class StaffMember {
   const StaffMember({
@@ -113,32 +118,73 @@ class PaystackModeState {
 }
 
 class SettingsApi {
-  SettingsApi(this._apiClient);
+  SettingsApi(this._apiClient, {KvCacheRepository? cache}) : _cache = cache;
 
   final ApiClient _apiClient;
+  final KvCacheRepository? _cache;
+
+  static const _cacheStaffListKey = 'settings.staff.list.v1';
+  static const _cacheStaffInvitesKey = 'settings.staff.invites.v1';
+  static const _cachePaystackConnectionKey = 'settings.paystack.connection.v1';
 
   Future<List<StaffMember>> listStaff() async {
-    final response = await _apiClient.dio.get<dynamic>('/staff');
-    final body = response.data;
-    if (body is! List) {
-      throw const FormatException('Unexpected staff list payload.');
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/staff');
+      final body = response.data;
+      if (body is! List) {
+        throw const FormatException('Unexpected staff list payload.');
+      }
+      final encoded = jsonEncode(body);
+      await _cache?.put(_cacheStaffListKey, encoded);
+      return body
+          .cast<Map<String, dynamic>>()
+          .map(StaffMember.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheStaffListKey);
+        if (cached != null) {
+          final decoded = jsonDecode(cached);
+          if (decoded is List) {
+            return decoded
+                .cast<Map<String, dynamic>>()
+                .map(StaffMember.fromJson)
+                .toList(growable: false);
+          }
+        }
+      }
+      rethrow;
     }
-    return body
-        .cast<Map<String, dynamic>>()
-        .map(StaffMember.fromJson)
-        .toList(growable: false);
   }
 
   Future<List<StaffInvite>> listPendingInvites() async {
-    final response = await _apiClient.dio.get<dynamic>('/staff/invites');
-    final body = response.data;
-    if (body is! List) {
-      throw const FormatException('Unexpected invites payload.');
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/staff/invites');
+      final body = response.data;
+      if (body is! List) {
+        throw const FormatException('Unexpected invites payload.');
+      }
+      final encoded = jsonEncode(body);
+      await _cache?.put(_cacheStaffInvitesKey, encoded);
+      return body
+          .cast<Map<String, dynamic>>()
+          .map(StaffInvite.fromJson)
+          .toList(growable: false);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cacheStaffInvitesKey);
+        if (cached != null) {
+          final decoded = jsonDecode(cached);
+          if (decoded is List) {
+            return decoded
+                .cast<Map<String, dynamic>>()
+                .map(StaffInvite.fromJson)
+                .toList(growable: false);
+          }
+        }
+      }
+      rethrow;
     }
-    return body
-        .cast<Map<String, dynamic>>()
-        .map(StaffInvite.fromJson)
-        .toList(growable: false);
   }
 
   Future<StaffInvite> inviteStaff({
@@ -182,13 +228,28 @@ class SettingsApi {
   }
 
   Future<PaystackConnectionSettings> fetchPaystackConnection() async {
-    final response =
-        await _apiClient.dio.get<dynamic>('/payments/paystack/connection');
-    final body = response.data;
-    if (body is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected paystack connection payload.');
+    try {
+      final response =
+          await _apiClient.dio.get<dynamic>('/payments/paystack/connection');
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected paystack connection payload.');
+      }
+      final encoded = jsonEncode(body);
+      await _cache?.put(_cachePaystackConnectionKey, encoded);
+      return PaystackConnectionSettings.fromJson(body);
+    } on DioException catch (e) {
+      if (_isOfflineish(e)) {
+        final cached = await _cache?.get(_cachePaystackConnectionKey);
+        if (cached != null) {
+          final decoded = jsonDecode(cached);
+          if (decoded is Map<String, dynamic>) {
+            return PaystackConnectionSettings.fromJson(decoded);
+          }
+        }
+      }
+      rethrow;
     }
-    return PaystackConnectionSettings.fromJson(body);
   }
 
   Future<PaystackConnectionSettings> savePaystackConnection({
@@ -224,5 +285,13 @@ class SettingsApi {
       throw const FormatException('Unexpected paystack connection payload.');
     }
     return PaystackConnectionSettings.fromJson(body);
+  }
+
+  bool _isOfflineish(DioException e) {
+    if (e.type == DioExceptionType.connectionError) return true;
+    if (e.type == DioExceptionType.connectionTimeout) return true;
+    if (e.type == DioExceptionType.receiveTimeout) return true;
+    if (e.type == DioExceptionType.sendTimeout) return true;
+    return false;
   }
 }

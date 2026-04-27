@@ -8,10 +8,14 @@ import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../../data/local/kv_cache_repository.dart';
 import '../data/settings_api.dart';
 
 final paystackSettingsApiProvider = Provider<SettingsApi>(
-  (ref) => SettingsApi(ref.watch(apiClientProvider)),
+  (ref) => SettingsApi(
+    ref.watch(apiClientProvider),
+    cache: KvCacheRepository(ref.watch(appDatabaseProvider)),
+  ),
 );
 
 final paystackConnectionProvider = FutureProvider<PaystackConnectionSettings>(
