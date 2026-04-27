@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 12;
+const _schemaVersion = 13;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -68,6 +68,9 @@ class AppDatabase {
         }
         if (oldVersion < 12) {
           await _createCacheSchema(db);
+        }
+        if (oldVersion < 13) {
+          await _upgradeInventorySchemaV13(db);
         }
       },
     );
