@@ -19,6 +19,7 @@ class SyncStatusSnapshot {
     required this.isSyncing,
     required this.stats,
     required this.failedEntries,
+    required this.deadEntries,
     this.lastError,
     this.lastSyncedAt,
   });
@@ -27,6 +28,7 @@ class SyncStatusSnapshot {
   final bool isSyncing;
   final SyncQueueStats stats;
   final List<SyncQueueEntry> failedEntries;
+  final List<SyncQueueEntry> deadEntries;
   final String? lastError;
   final DateTime? lastSyncedAt;
 
@@ -70,7 +72,8 @@ final syncStatusControllerProvider =
 
 class SyncStatusController
     extends AutoDisposeAsyncNotifier<SyncStatusSnapshot> {
-  static const _pollingInterval = Duration(seconds: 20);
+  static const _minInterval = Duration(seconds: 20);
+  static const _maxInterval = Duration(minutes: 5);
 
   AppDatabase get _appDb => ref.read(appDatabaseProvider);
   ApiClient get _apiClient => ref.read(apiClientProvider);
@@ -78,13 +81,15 @@ class SyncStatusController
 
   Timer? _pollTimer;
   bool _busy = false;
+  int _consecutiveFailures = 0;
   String? _lastError;
   DateTime? _lastSyncedAt;
 
   @override
   Future<SyncStatusSnapshot> build() async {
-    _startPolling();
+    _scheduleNextPoll();
     ref.onDispose(() => _pollTimer?.cancel());
+    unawaited(_maybePruneApplied());
     return _refreshInternal(attemptSync: true);
   }
 
@@ -98,6 +103,8 @@ class SyncStatusController
   }
 
   Future<void> syncNow() async {
+    _consecutiveFailures = 0;
+    _scheduleNextPoll();
     await refreshStatus(attemptSync: true);
   }
 
@@ -106,10 +113,25 @@ class SyncStatusController
     await refreshStatus(attemptSync: true);
   }
 
-  void _startPolling() {
+  Future<void> moveToDeadLetter({required int queueId}) async {
+    await _appDb.syncQueue.markDead(queueId, 'Manually discarded by user.');
+    await refreshStatus();
+  }
+
+  Future<void> reviveEntry({required int queueId}) async {
+    await _appDb.syncQueue.reviveFromDead(queueId);
+    await refreshStatus(attemptSync: true);
+  }
+
+  void _scheduleNextPoll() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollingInterval, (_) {
-      unawaited(refreshStatus(attemptSync: true));
+    final delaySecs = _consecutiveFailures == 0
+        ? _minInterval.inSeconds
+        : (_minInterval.inSeconds * (1 << _consecutiveFailures))
+              .clamp(0, _maxInterval.inSeconds);
+    _pollTimer = Timer(Duration(seconds: delaySecs), () async {
+      await refreshStatus(attemptSync: true);
+      _scheduleNextPoll();
     });
   }
 
@@ -136,21 +158,26 @@ class SyncStatusController
         final result = await _runner.run();
         if (result.failed > 0) {
           _lastError = 'Some operations need retry.';
+          _consecutiveFailures++;
         } else if (result.conflicts > 0) {
           _lastError = 'Server state changed. Local snapshot was refreshed.';
+          _consecutiveFailures++;
         } else {
           _lastError = null;
+          _consecutiveFailures = 0;
           if (result.applied > 0) {
             _lastSyncedAt = DateTime.now();
           }
         }
       } else if (attemptSync && !reachable) {
         _lastError = 'Backend unreachable.';
+        _consecutiveFailures++;
       }
 
       return _readSnapshot(backendReachable: reachable);
     } catch (error) {
       _lastError = _humanizeError(error);
+      _consecutiveFailures++;
       return _readSnapshot(backendReachable: false);
     } finally {
       _busy = false;
@@ -163,11 +190,13 @@ class SyncStatusController
   }) async {
     final stats = await _appDb.syncQueue.stats();
     final failedEntries = await _appDb.syncQueue.failedRows();
+    final deadEntries = await _appDb.syncQueue.deadRows();
     return SyncStatusSnapshot(
       backendReachable: backendReachable ?? false,
       isSyncing: isSyncing || stats.sendingCount > 0,
       stats: stats,
       failedEntries: failedEntries,
+      deadEntries: deadEntries,
       lastError: _lastError,
       lastSyncedAt: _lastSyncedAt,
     );
@@ -193,5 +222,19 @@ class SyncStatusController
     return message.startsWith('Exception: ')
         ? message.substring('Exception: '.length)
         : message;
+  }
+
+  Future<void> _maybePruneApplied() async {
+    try {
+      final kv = _appDb.kv;
+      const pruneKey = 'sq_pruned_date';
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final last = await kv.get(pruneKey);
+      if (last == '"$today"') return;
+      await _appDb.syncQueue.pruneOldApplied();
+      await kv.put(pruneKey, '"$today"');
+    } catch (_) {
+      // Never let cleanup failures block the UI boot path.
+    }
   }
 }

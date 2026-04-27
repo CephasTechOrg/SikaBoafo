@@ -5,10 +5,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 12;
+const _schemaVersion = 13;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -67,6 +68,9 @@ class AppDatabase {
         }
         if (oldVersion < 12) {
           await _createCacheSchema(db);
+        }
+        if (oldVersion < 13) {
+          await _upgradeInventorySchemaV13(db);
         }
       },
     );
@@ -258,6 +262,16 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     }
   }
 
+  Future<void> _upgradeInventorySchemaV13(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(items_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('server_version')) {
+      await db.execute(
+        'ALTER TABLE items_local ADD COLUMN server_version INTEGER',
+      );
+    }
+  }
+
   Future<void> _upgradeSalesSchemaV6(Database db) async {
     final columns = await db.rawQuery('PRAGMA table_info(sales_local)');
     final names = columns
@@ -366,6 +380,7 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
   }
 
   SyncQueueRepository get syncQueue => SyncQueueRepository(this);
+  KvCacheRepository get kv => KvCacheRepository(this);
 
   /// Stable device id for idempotent sync (stored in [local_meta]).
   Future<String> getOrCreateDeviceId() async {

@@ -9,6 +9,7 @@ class SyncQueueStats {
     required this.failedCount,
     required this.conflictCount,
     required this.appliedCount,
+    this.deadCount = 0,
   });
 
   final int pendingCount;
@@ -16,6 +17,7 @@ class SyncQueueStats {
   final int failedCount;
   final int conflictCount;
   final int appliedCount;
+  final int deadCount;
 
   int get actionableCount => pendingCount + failedCount;
   int get issueCount => failedCount + conflictCount;
@@ -28,6 +30,7 @@ class SyncQueueEntry {
     required this.operation,
     required this.status,
     required this.createdAtMillis,
+    required this.attempts,
     this.entityId,
     this.lastError,
   });
@@ -37,6 +40,7 @@ class SyncQueueEntry {
   final String operation;
   final String status;
   final int createdAtMillis;
+  final int attempts;
   final String? entityId;
   final String? lastError;
 
@@ -47,6 +51,7 @@ class SyncQueueEntry {
       operation: (row['operation'] ?? '') as String,
       status: (row['status'] ?? '') as String,
       createdAtMillis: (row['created_at'] as int? ?? 0),
+      attempts: (row['attempts'] as int? ?? 0),
       entityId: row['entity_id'] as String?,
       lastError: row['last_error'] as String?,
     );
@@ -64,6 +69,9 @@ class SyncQueueRepository {
   static const failed = 'failed';
   static const conflict = 'conflict';
   static const applied = 'applied';
+  static const dead = 'dead';
+
+  static const maxAttempts = 10;
 
   Future<int> enqueue({
     required String entityType,
@@ -148,6 +156,26 @@ WHERE id = ?
     );
   }
 
+  Future<void> markDead(int id, String reason) async {
+    final db = await _appDb.database;
+    await db.update(
+      'sync_queue',
+      {'status': dead, 'last_error': reason},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> reviveFromDead(int id) async {
+    final db = await _appDb.database;
+    await db.update(
+      'sync_queue',
+      {'status': pending, 'last_error': null},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, dead],
+    );
+  }
+
   Future<SyncQueueStats> stats() async {
     final db = await _appDb.database;
     final rows = await db.rawQuery('''
@@ -160,6 +188,7 @@ GROUP BY status
     int failedCount = 0;
     int conflictCount = 0;
     int appliedCount = 0;
+    int deadCount = 0;
     for (final row in rows) {
       final status = (row['status'] ?? '') as String;
       final total = (row['total'] as int? ?? 0);
@@ -179,6 +208,9 @@ GROUP BY status
         case applied:
           appliedCount = total;
           break;
+        case dead:
+          deadCount = total;
+          break;
       }
     }
     return SyncQueueStats(
@@ -187,6 +219,7 @@ GROUP BY status
       failedCount: failedCount,
       conflictCount: conflictCount,
       appliedCount: appliedCount,
+      deadCount: deadCount,
     );
   }
 
@@ -196,6 +229,18 @@ GROUP BY status
       'sync_queue',
       where: 'status IN (?, ?)',
       whereArgs: [failed, conflict],
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(SyncQueueEntry.fromRow).toList(growable: false);
+  }
+
+  Future<List<SyncQueueEntry>> deadRows({int limit = 20}) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'sync_queue',
+      where: 'status = ?',
+      whereArgs: [dead],
       orderBy: 'created_at DESC',
       limit: limit,
     );
@@ -218,6 +263,20 @@ GROUP BY status
       {'status': pending, 'last_error': null},
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  /// Deletes [applied] rows older than [maxAgeDays] days. Never touches
+  /// failed, conflict, or dead rows.
+  Future<int> pruneOldApplied({int maxAgeDays = 30}) async {
+    final db = await _appDb.database;
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: maxAgeDays))
+        .millisecondsSinceEpoch;
+    return db.delete(
+      'sync_queue',
+      where: 'status = ? AND created_at < ?',
+      whereArgs: [applied, cutoff],
     );
   }
 }

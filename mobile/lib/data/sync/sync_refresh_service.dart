@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../local/app_database.dart';
+import '../local/kv_cache_repository.dart';
 import '../../features/debts/data/debts_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
 
@@ -41,6 +42,8 @@ class SyncRefreshService {
         );
       }
     });
+    await _appDb.kv.putTimestamp(
+        KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
   Future<void> refreshDebtSnapshot() async {
@@ -82,6 +85,8 @@ class SyncRefreshService {
         );
       }
     });
+    await _appDb.kv
+        .putTimestamp(KvCacheRepository.kDebtsTs, DateTime.now().toUtc());
   }
 
   Future<void> _upsertCustomer({

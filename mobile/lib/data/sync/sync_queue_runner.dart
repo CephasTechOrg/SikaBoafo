@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 import '../local/app_database.dart';
+import '../local/sync_queue_repository.dart';
 import '../remote/sync_api.dart';
 import 'sync_refresh_service.dart';
 
@@ -89,14 +90,35 @@ class SyncQueueRunner {
         continue;
       }
 
+      // Move rows that have exhausted retries to the dead-letter bucket before
+      // attempting any network call.
+      final liveRows = <Map<String, Object?>>[];
       for (final row in rows) {
+        final attempts = (row['attempts'] as int? ?? 0);
+        if (attempts >= SyncQueueRepository.maxAttempts) {
+          final queueId = row['id'] as int;
+          final opId = (row['local_operation_id'] ?? '') as String;
+          await _appDb.syncQueue.markDead(
+            queueId,
+            'Exceeded ${SyncQueueRepository.maxAttempts} retry attempts.',
+          );
+          if (opId.isNotEmpty) statusByOperationId[opId] = 'dead';
+          failed += 1;
+        } else {
+          liveRows.add(row);
+        }
+      }
+
+      if (liveRows.isEmpty) continue;
+
+      for (final row in liveRows) {
         await _appDb.syncQueue.markSending(row['id'] as int);
       }
 
       try {
         final queueIdByOpId = <String, int>{};
         final entityTypeByQueueId = <int, String>{};
-        final operations = rows.map((row) {
+        final operations = liveRows.map((row) {
           final opId = (row['local_operation_id'] ?? '') as String;
           final queueId = row['id'] as int;
           queueIdByOpId[opId] = queueId;
@@ -152,7 +174,7 @@ class SyncQueueRunner {
           failed += 1;
         }
       } on DioException catch (e) {
-        for (final row in rows) {
+        for (final row in liveRows) {
           final queueId = row['id'] as int;
           final opId = (row['local_operation_id'] ?? '') as String;
           await _appDb.syncQueue.markFailed(
@@ -163,7 +185,7 @@ class SyncQueueRunner {
           failed += 1;
         }
       } on FormatException catch (e) {
-        for (final row in rows) {
+        for (final row in liveRows) {
           final queueId = row['id'] as int;
           final opId = (row['local_operation_id'] ?? '') as String;
           await _appDb.syncQueue.markFailed(queueId, e.message);

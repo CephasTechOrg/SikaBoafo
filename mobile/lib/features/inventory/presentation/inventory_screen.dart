@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
@@ -430,6 +432,11 @@ class _Header extends StatelessWidget {
                         color: AppColors.heroSubtitle,
                         fontSize: 12.5,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    DataFreshnessLabel(
+                      kvKey: KvCacheRepository.kInventoryTs,
+                      color: AppColors.heroSubtitle,
                     ),
                   ],
                 ),

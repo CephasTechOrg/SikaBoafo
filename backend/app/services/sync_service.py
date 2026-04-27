@@ -42,6 +42,7 @@ from app.services.inventory_service import (
     InventoryItemNotFoundError,
     InventoryService,
     MerchantContextMissingError,
+    OptimisticLockError,
 )
 from app.services.receivables_service import (
     CustomerNotFoundError,
@@ -165,6 +166,7 @@ class SyncService:
             except (
                 InventoryItemNotFoundError,
                 InvalidInventoryAdjustmentError,
+                OptimisticLockError,
                 CustomerNotFoundError,
                 ReceivableNotFoundError,
                 InvalidRepaymentError,
@@ -224,13 +226,16 @@ class SyncService:
 
         if entity_type == "item" and action_type == "update":
             payload = SyncItemUpdateIn.model_validate(operation.payload)
-            update_payload = ItemUpdateIn.model_validate(payload.model_dump(exclude={"item_id"}))
+            update_payload = ItemUpdateIn.model_validate(
+                payload.model_dump(exclude={"item_id", "version"})
+            )
             item = inventory_service.update_item(
                 user_id=user_id,
                 item_id=payload.item_id,
                 payload=update_payload,
                 source_device_id=device_id,
                 local_operation_id=operation.local_operation_id,
+                version=payload.version,
                 commit=False,
             )
             return item.item_id
@@ -242,6 +247,7 @@ class SyncService:
                 item_id=payload.item_id,
                 quantity=payload.quantity,
                 reason=payload.reason,
+                balance_version=payload.balance_version,
                 commit=False,
             )
             return mutation.item.item_id
@@ -253,6 +259,7 @@ class SyncService:
                 item_id=payload.item_id,
                 quantity_delta=payload.quantity_delta,
                 reason=payload.reason,
+                balance_version=payload.balance_version,
                 commit=False,
             )
             return mutation.item.item_id

@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../data/sync/sync_queue_runner.dart';
 import 'inventory_api.dart';
 
@@ -21,6 +22,7 @@ class LocalInventoryItem {
     this.lowStockThreshold,
     this.isActive = true,
     this.imageAsset,
+    this.serverVersion,
   });
 
   final String id;
@@ -32,6 +34,9 @@ class LocalInventoryItem {
   final bool isActive;
   final int quantityOnHand;
   final String? imageAsset;
+  /// Version counter from the server, used for optimistic locking. Null means
+  /// this row has not yet been synced from the server.
+  final int? serverVersion;
 
   factory LocalInventoryItem.fromRow(Map<String, Object?> row) {
     return LocalInventoryItem(
@@ -44,6 +49,7 @@ class LocalInventoryItem {
       isActive: (row['is_active'] as int? ?? 1) == 1,
       quantityOnHand: (row['quantity_on_hand'] as int? ?? 0),
       imageAsset: row['image_asset'] as String?,
+      serverVersion: row['server_version'] as int?,
     );
   }
 }
@@ -111,6 +117,7 @@ class InventoryRepository {
             'is_active': item.isActive ? 1 : 0,
             'quantity_on_hand': item.quantityOnHand,
             'image_asset': existingImage,
+            'server_version': item.version,
             'created_at': now,
             'updated_at': now,
           },
@@ -118,6 +125,8 @@ class InventoryRepository {
         );
       }
     });
+    await _appDb.kv.putTimestamp(
+        KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
   Future<void> createItemLocal({
@@ -258,7 +267,10 @@ class InventoryRepository {
       if (!isActive && current.isActive && current.quantityOnHand > 0) {
         throw ArgumentError(archiveRequiresZeroStockMessage);
       }
-      final payload = <String, Object?>{'item_id': itemId};
+      final payload = <String, Object?>{
+        'item_id': itemId,
+        if (current.serverVersion != null) 'version': current.serverVersion,
+      };
       final updates = <String, Object?>{'updated_at': now};
 
       if (cleanName != current.name) {
@@ -389,7 +401,16 @@ class InventoryRepository {
     final movementId = _uuid.v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((tx) async {
-      final current = await _itemQuantity(tx: tx, itemId: itemId);
+      final itemRows = await tx.query(
+        'items_local',
+        columns: ['quantity_on_hand', 'server_version'],
+        where: 'id = ?',
+        whereArgs: [itemId],
+        limit: 1,
+      );
+      if (itemRows.isEmpty) throw ArgumentError('Item not found.');
+      final current = (itemRows.first['quantity_on_hand'] as int? ?? 0);
+      final serverVersion = itemRows.first['server_version'] as int?;
       final next = current + quantity;
       await tx.update(
         'items_local',
@@ -418,6 +439,7 @@ class InventoryRepository {
             'item_id': itemId,
             'quantity': quantity,
             'reason': _cleanOptional(reason),
+            if (serverVersion != null) 'balance_version': serverVersion,
           }..removeWhere((_, value) => value == null),
         ),
         sourceDeviceId: sourceDeviceId,
@@ -441,7 +463,16 @@ class InventoryRepository {
     final movementId = _uuid.v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((tx) async {
-      final current = await _itemQuantity(tx: tx, itemId: itemId);
+      final itemRows = await tx.query(
+        'items_local',
+        columns: ['quantity_on_hand', 'server_version'],
+        where: 'id = ?',
+        whereArgs: [itemId],
+        limit: 1,
+      );
+      if (itemRows.isEmpty) throw ArgumentError('Item not found.');
+      final current = (itemRows.first['quantity_on_hand'] as int? ?? 0);
+      final serverVersion = itemRows.first['server_version'] as int?;
       final next = current + quantityDelta;
       if (next < 0) {
         throw ArgumentError('Adjustment would make stock negative.');
@@ -473,6 +504,7 @@ class InventoryRepository {
             'item_id': itemId,
             'quantity_delta': quantityDelta,
             'reason': _cleanOptional(reason),
+            if (serverVersion != null) 'balance_version': serverVersion,
           }..removeWhere((_, value) => value == null),
         ),
         sourceDeviceId: sourceDeviceId,
@@ -485,23 +517,6 @@ class InventoryRepository {
   Future<SyncRunSummary> syncPendingQueue({int limit = 100}) async {
     final result = await _syncQueueRunner.run(limit: limit);
     return SyncRunSummary(applied: result.applied, failed: result.failed);
-  }
-
-  Future<int> _itemQuantity({
-    required Transaction tx,
-    required String itemId,
-  }) async {
-    final rows = await tx.query(
-      'items_local',
-      columns: ['quantity_on_hand'],
-      where: 'id = ?',
-      whereArgs: [itemId],
-      limit: 1,
-    );
-    if (rows.isEmpty) {
-      throw ArgumentError('Item not found.');
-    }
-    return (rows.first['quantity_on_hand'] as int? ?? 0);
   }
 
   String? _cleanOptional(String? value) {

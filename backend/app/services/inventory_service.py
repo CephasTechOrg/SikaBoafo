@@ -37,6 +37,10 @@ class InvalidItemArchiveError(Exception):
     """Item archive request would break inventory invariants."""
 
 
+class OptimisticLockError(Exception):
+    """Version mismatch: another write occurred since this device last read the entity."""
+
+
 @dataclass(slots=True)
 class InventoryItemSnapshot:
     item_id: UUID
@@ -49,6 +53,7 @@ class InventoryItemSnapshot:
     low_stock_threshold: int | None
     is_active: bool
     quantity_on_hand: int
+    version: int = 1
 
 
 @dataclass(slots=True)
@@ -125,11 +130,18 @@ class InventoryService:
         payload: ItemUpdateIn,
         source_device_id: str | None = None,
         local_operation_id: str | None = None,
+        version: int | None = None,
         commit: bool = True,
     ) -> InventoryItemSnapshot:
         store = self._get_default_store_for_user(user_id=user_id)
         item = self._get_item_for_store(store_id=store.id, item_id=item_id)
         balance = self._get_or_create_balance(item_id=item.id)
+        if version is not None and version != item.version:
+            msg = (
+                f"Item was modified by another device "
+                f"(expected v{version}, found v{item.version})."
+            )
+            raise OptimisticLockError(msg)
         if payload.name is not None:
             item.name = payload.name.strip()
         if payload.default_price is not None:
@@ -157,6 +169,7 @@ class InventoryService:
             item.source_device_id = source_device_id
         if local_operation_id is not None:
             item.local_operation_id = local_operation_id
+        item.version = item.version + 1
 
         log_audit(
             db=self.db,
@@ -176,12 +189,20 @@ class InventoryService:
         item_id: UUID,
         quantity: int,
         reason: str | None = None,
+        balance_version: int | None = None,
         commit: bool = True,
     ) -> InventoryMutationSnapshot:
         store = self._get_default_store_for_user(user_id=user_id)
         item = self._get_item_for_store(store_id=store.id, item_id=item_id)
         balance = self._get_or_create_balance(item_id=item.id)
+        if balance_version is not None and balance_version != balance.version:
+            msg = (
+                f"Stock balance was modified by another device "
+                f"(expected v{balance_version}, found v{balance.version})."
+            )
+            raise OptimisticLockError(msg)
         balance.quantity_on_hand += quantity
+        balance.version = balance.version + 1
 
         movement = InventoryMovement(
             item_id=item.id,
@@ -215,17 +236,25 @@ class InventoryService:
         item_id: UUID,
         quantity_delta: int,
         reason: str | None = None,
+        balance_version: int | None = None,
         commit: bool = True,
     ) -> InventoryMutationSnapshot:
         store = self._get_default_store_for_user(user_id=user_id)
         item = self._get_item_for_store(store_id=store.id, item_id=item_id)
         balance = self._get_or_create_balance(item_id=item.id)
+        if balance_version is not None and balance_version != balance.version:
+            msg = (
+                f"Stock balance was modified by another device "
+                f"(expected v{balance_version}, found v{balance.version})."
+            )
+            raise OptimisticLockError(msg)
 
         updated_quantity = balance.quantity_on_hand + quantity_delta
         if updated_quantity < 0:
             msg = "Stock adjustment would make quantity negative."
             raise InvalidInventoryAdjustmentError(msg)
         balance.quantity_on_hand = updated_quantity
+        balance.version = balance.version + 1
 
         movement = InventoryMovement(
             item_id=item.id,
@@ -306,6 +335,7 @@ class InventoryService:
             low_stock_threshold=item.low_stock_threshold,
             is_active=item.is_active,
             quantity_on_hand=int(quantity_on_hand or 0),
+            version=item.version,
         )
 
     @staticmethod

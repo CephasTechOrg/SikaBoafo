@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -32,7 +34,17 @@ class ApiClient {
         onRequest: (options, handler) async {
           final skipAuthHeader = options.extra[_skipAuthHeaderExtra] == true;
           if (!skipAuthHeader) {
-            final token = await _tokenStorage.readAccessToken();
+            var token = await _tokenStorage.readAccessToken();
+            // Proactively refresh if the token is expired or expiring within
+            // the next 2 minutes, rather than waiting for a 401 response.
+            if (token != null &&
+                token.isNotEmpty &&
+                isTokenExpiredOrExpiringSoon(token)) {
+              final refreshed = await _refreshIfNeeded();
+              if (refreshed) {
+                token = await _tokenStorage.readAccessToken();
+              }
+            }
             if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
@@ -115,6 +127,37 @@ class ApiClient {
       if (identical(_refreshFuture, future)) {
         _refreshFuture = null;
       }
+    }
+  }
+
+  /// Public wrapper so callers (e.g. SyncStatusController) can trigger a
+  /// proactive refresh without making a full network request.
+  Future<bool> refreshIfNeeded() => _refreshIfNeeded();
+
+  /// Returns true if [token] is expired or will expire within [bufferSeconds].
+  /// Decodes the JWT payload via base64 — never throws, treats any parse
+  /// failure as "treat as expired".
+  static bool isTokenExpiredOrExpiringSoon(
+    String token, {
+    int bufferSeconds = 120,
+  }) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final padded =
+          parts[1].padRight(parts[1].length + (-parts[1].length % 4), '=');
+      final payload =
+          jsonDecode(utf8.decode(base64Url.decode(padded)));
+      if (payload is! Map<String, dynamic>) return true;
+      final exp = payload['exp'];
+      if (exp is! int) return true;
+      final expiresAt =
+          DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+      return DateTime.now()
+          .toUtc()
+          .isAfter(expiresAt.subtract(Duration(seconds: bufferSeconds)));
+    } catch (_) {
+      return true;
     }
   }
 
