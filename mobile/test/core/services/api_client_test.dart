@@ -60,6 +60,7 @@ class _Always401Adapter implements HttpClientAdapter {
 class _RefreshSuccessAdapter implements HttpClientAdapter {
   int summaryCalls = 0;
   int refreshCalls = 0;
+  String? refreshedAccessToken;
 
   @override
   void close({bool force = false}) {}
@@ -74,8 +75,10 @@ class _RefreshSuccessAdapter implements HttpClientAdapter {
       refreshCalls += 1;
       final payload = options.data as Map<String, dynamic>? ?? const {};
       if (payload['refresh_token'] == 'valid-refresh') {
+        refreshedAccessToken =
+            _jwtWithExp(DateTime.now().toUtc().add(const Duration(hours: 1)));
         return ResponseBody.fromString(
-          '{"access_token":"new-access","refresh_token":"new-refresh"}',
+          '{"access_token":"$refreshedAccessToken","refresh_token":"new-refresh"}',
           200,
           headers: {
             Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -95,7 +98,7 @@ class _RefreshSuccessAdapter implements HttpClientAdapter {
     if (options.path == '/reports/summary') {
       summaryCalls += 1;
       final authHeader = options.headers['Authorization'];
-      if (authHeader == 'Bearer new-access') {
+      if (authHeader == 'Bearer $refreshedAccessToken') {
         return ResponseBody.fromString(
           '{"status":"ok"}',
           200,
@@ -183,7 +186,7 @@ void main() {
     expect(adapter.summaryCalls, 2);
     expect(adapter.refreshCalls, 1);
     expect(storage.cleared, isFalse);
-    expect(storage.accessToken, 'new-access');
+    expect(storage.accessToken, adapter.refreshedAccessToken);
     expect(storage.refreshToken, 'new-refresh');
     expect(unauthorizedCalls, 0);
   });
@@ -208,7 +211,7 @@ void main() {
     expect(adapter.summaryCalls, 1);
     expect(adapter.refreshCalls, 1);
     expect(storage.cleared, isFalse);
-    expect(storage.accessToken, 'new-access');
+    expect(storage.accessToken, adapter.refreshedAccessToken);
     expect(storage.refreshToken, 'new-refresh');
   });
 

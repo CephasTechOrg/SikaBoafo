@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,16 +19,22 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
   static const _minSplashDuration = Duration(milliseconds: 3000);
+  Timer? _splashTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _goNext());
+    _splashTimer = Timer(_minSplashDuration, _goNext);
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _goNext() async {
     // Keep splash visible long enough to read + avoid a “flash” on fast devices.
-    await Future<void>.delayed(_minSplashDuration);
     if (!mounted) return;
     final router = GoRouter.of(context);
     final storage = ref.read(secureTokenStorageProvider);

@@ -298,7 +298,7 @@ void main() {
       container.read(appRouterProvider).go(AppRoute.debts.path);
       await tester.pump();
 
-      expect(find.text('Preparing your workspace…'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();

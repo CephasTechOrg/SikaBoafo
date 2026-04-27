@@ -681,7 +681,7 @@ class _WebhookRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Webhook URL',
                   style: TextStyle(
                     fontSize: 11,
@@ -689,18 +689,18 @@ class _WebhookRow extends StatelessWidget {
                     color: AppColors.ink,
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
                   webhookUrl,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: AppColors.navy,
                     fontFamily: 'monospace',
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
+                const SizedBox(height: 2),
+                const Text(
                   'Paste this in Paystack Dashboard → Settings → Webhook URL',
                   style: TextStyle(
                     fontSize: 10.5,
