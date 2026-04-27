@@ -57,6 +57,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
 
   Future<void> _applySession(AuthSession session,
       {required bool forceSetPin}) async {
+    final returnTo = sanitizeReturnTo(
+      GoRouterState.of(context).uri.queryParameters['returnTo'],
+    );
     await ref.read(sessionServiceProvider).applyAuthenticatedSession(
           userId: session.userId,
           merchantId: session.merchantId,
@@ -65,11 +68,11 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
         );
     if (!mounted) return;
     if (session.onboardingRequired) {
-      context.go(AppRoute.onboarding.path);
+      context.go(buildRouteLocation(AppRoute.onboarding, returnTo: returnTo));
     } else if (forceSetPin || !session.pinSet) {
-      context.go(AppRoute.setPin.path);
+      context.go(buildRouteLocation(AppRoute.setPin, returnTo: returnTo));
     } else {
-      context.go(AppRoute.home.path);
+      context.go(resolveReturnToOrHome(returnTo));
     }
   }
 
@@ -146,10 +149,15 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
         reason: 'Sign in to SikaBoafo.',
       );
       if (!ok) return;
-      await ref.read(secureTokenStorageProvider).writeLastBiometricAt(DateTime.now());
+      final storage = ref.read(secureTokenStorageProvider);
+      final returnTo = sanitizeReturnTo(
+        GoRouterState.of(context).uri.queryParameters['returnTo'],
+      );
+      await storage.writeLastBiometricAt(DateTime.now());
+      await storage.markSessionGateComplete(DateTime.now());
       if (!mounted) return;
       // Tokens are already in secure storage; protected requests will refresh if needed.
-      context.go(AppRoute.home.path);
+      context.go(resolveReturnToOrHome(returnTo));
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = 'Biometric sign in failed. Please try PIN instead.');

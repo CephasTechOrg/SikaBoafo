@@ -45,9 +45,12 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen> {
       _error = null;
     });
     try {
+      final returnTo = sanitizeReturnTo(
+        GoRouterState.of(context).uri.queryParameters['returnTo'],
+      );
       await ref.read(authApiProvider).setPin(pin);
       if (!mounted) return;
-      context.go(AppRoute.home.path);
+      context.go(resolveReturnToOrHome(returnTo));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = humanizeDioError(e));

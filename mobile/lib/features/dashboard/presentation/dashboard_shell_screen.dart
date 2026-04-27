@@ -729,7 +729,7 @@ class _QuickActions extends StatelessWidget {
             label: 'Collect Debt',
             backgroundColor: AppColors.forest,
             foregroundColor: Colors.white,
-            onTap: () => onNavigate(3),
+            onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
         const SizedBox(width: 14),

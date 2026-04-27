@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
@@ -46,8 +47,7 @@ String _minorToMoneyLocal(int v) {
 // ── Screen ─────────────────────────────────────────────────────────────────
 
 class DebtsScreen extends ConsumerStatefulWidget {
-  const DebtsScreen({super.key, this.onNavigate});
-  final ValueChanged<int>? onNavigate;
+  const DebtsScreen({super.key});
 
   @override
   ConsumerState<DebtsScreen> createState() => _DebtsScreenState();
@@ -191,7 +191,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                               _showCreateDebt = false;
                             }
                           }),
-                          onViewReports: () => widget.onNavigate?.call(5),
+                          onViewReports: () => context.push(AppRoute.reports.path),
                         ),
                         const SizedBox(height: 22),
 
@@ -206,7 +206,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                               () => _showCreateDebt = !_showCreateDebt),
                           onToggleRecordPayment: () => setState(
                               () => _showRecordPayment = !_showRecordPayment),
-                          onViewReports: () => widget.onNavigate?.call(5),
+                          onViewReports: () => context.push(AppRoute.reports.path),
                           addCustomerForm: _AddCustomerForm(
                             nameCtrl: _nameCtrl,
                             phoneCtrl: _phoneCtrl,

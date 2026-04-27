@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 
+import '../../../app/env/app_config.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
@@ -661,11 +662,9 @@ class _ModeTab extends StatelessWidget {
 class _WebhookRow extends StatelessWidget {
   const _WebhookRow();
 
-  static const _webhookUrl =
-      'https://biztrackgh-api.onrender.com/api/v1/webhooks/paystack';
-
   @override
   Widget build(BuildContext context) {
+    final webhookUrl = AppConfig.apiV1('/webhooks/paystack').toString();
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -692,7 +691,7 @@ class _WebhookRow extends StatelessWidget {
                 ),
                 SizedBox(height: 3),
                 Text(
-                  _webhookUrl,
+                  webhookUrl,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -717,7 +716,7 @@ class _WebhookRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: InkWell(
               onTap: () {
-                Clipboard.setData(const ClipboardData(text: _webhookUrl));
+                Clipboard.setData(ClipboardData(text: webhookUrl));
                 ScaffoldMessenger.of(
                   // ignore: use_build_context_synchronously
                   // The context is valid here since this is a tap handler

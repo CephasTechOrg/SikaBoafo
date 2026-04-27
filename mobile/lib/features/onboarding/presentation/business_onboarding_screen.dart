@@ -44,6 +44,9 @@ class _BusinessOnboardingScreenState
       _error = null;
     });
     try {
+      final returnTo = sanitizeReturnTo(
+        GoRouterState.of(context).uri.queryParameters['returnTo'],
+      );
       final result = await ref.read(authApiProvider).completeOnboarding(
             businessName: businessName,
             businessType: _businessTypeCtrl.text.trim(),
@@ -53,7 +56,7 @@ class _BusinessOnboardingScreenState
           .read(sessionServiceProvider)
           .bindMerchantToCurrentSession(result.merchantId);
       if (!mounted) return;
-      context.go(AppRoute.setPin.path);
+      context.go(buildRouteLocation(AppRoute.setPin, returnTo: returnTo));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = humanizeDioError(e));

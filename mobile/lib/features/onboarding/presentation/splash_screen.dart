@@ -29,11 +29,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     await Future<void>.delayed(_minSplashDuration);
     if (!mounted) return;
     final router = GoRouter.of(context);
-    final token = await ref.read(secureTokenStorageProvider).readAccessToken();
-    if (!mounted) return;
-    final hasSession = token != null && token.isNotEmpty;
+    final storage = ref.read(secureTokenStorageProvider);
+    final returnTo = sanitizeReturnTo(
+      GoRouterState.of(context).uri.queryParameters['returnTo'],
+    );
+    final hasSession = await storage.hasPersistedSession();
     if (hasSession) {
-      final storage = ref.read(secureTokenStorageProvider);
       final biometricEnabled = await storage.isBiometricEnabled();
       if (biometricEnabled) {
         final bio = ref.read(biometricServiceProvider);
@@ -46,16 +47,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           if (!mounted) return;
           if (ok) {
             await storage.writeLastBiometricAt(DateTime.now());
+            await storage.markSessionGateComplete(DateTime.now());
           } else {
             if (!mounted) return;
-            router.go(AppRoute.auth.path);
+            await storage.clearSessionGate();
+            router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
             return;
           }
+        } else {
+          await storage.clearSessionGate();
+          router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
+          return;
         }
       }
+      await storage.markSessionGateComplete(DateTime.now());
     }
     router.go(
-      hasSession ? AppRoute.home.path : AppRoute.auth.path,
+      hasSession
+          ? resolveReturnToOrHome(returnTo)
+          : buildRouteLocation(AppRoute.auth, returnTo: returnTo),
     );
   }
 

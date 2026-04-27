@@ -4,9 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/mockup_ui.dart';
-import '../../debts/presentation/debts_screen.dart';
 import '../../expenses/presentation/expenses_screen.dart';
-import 'reports_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -40,11 +38,7 @@ class MoreScreen extends StatelessWidget {
             iconColor: AppColors.forest,
             title: 'Debts',
             subtitle: 'Receivables and repayments',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => DebtsScreen(onNavigate: (_) {}),
-              ),
-            ),
+            onTap: () => context.push(AppRoute.debts.path),
           ),
           const SizedBox(height: 12),
           _MoreTile(
@@ -64,9 +58,7 @@ class MoreScreen extends StatelessWidget {
             iconColor: AppColors.navy,
             title: 'Reports',
             subtitle: 'Insights across sales and stock',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ReportsScreen()),
-            ),
+            onTap: () => context.push(AppRoute.reports.path),
           ),
           const SizedBox(height: 22),
           const _SectionLabel('Account'),
