@@ -21,6 +21,7 @@ class LocalInventoryItem {
     this.lowStockThreshold,
     this.isActive = true,
     this.imageAsset,
+    this.serverVersion,
   });
 
   final String id;
@@ -32,6 +33,9 @@ class LocalInventoryItem {
   final bool isActive;
   final int quantityOnHand;
   final String? imageAsset;
+  /// Version counter from the server, used for optimistic locking. Null means
+  /// this row has not yet been synced from the server.
+  final int? serverVersion;
 
   factory LocalInventoryItem.fromRow(Map<String, Object?> row) {
     return LocalInventoryItem(
@@ -44,6 +48,7 @@ class LocalInventoryItem {
       isActive: (row['is_active'] as int? ?? 1) == 1,
       quantityOnHand: (row['quantity_on_hand'] as int? ?? 0),
       imageAsset: row['image_asset'] as String?,
+      serverVersion: row['server_version'] as int?,
     );
   }
 }
