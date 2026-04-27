@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
@@ -54,6 +56,7 @@ class InventoryController
     }
     try {
       await _repo.refreshFromServer();
+      ref.invalidate(freshnessTsProvider(KvCacheRepository.kInventoryTs));
     } catch (_) {
       // Ignore network errors during refresh to keep local data visible.
     }
