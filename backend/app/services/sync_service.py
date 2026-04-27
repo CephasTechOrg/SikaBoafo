@@ -42,6 +42,7 @@ from app.services.inventory_service import (
     InventoryItemNotFoundError,
     InventoryService,
     MerchantContextMissingError,
+    OptimisticLockError,
 )
 from app.services.receivables_service import (
     CustomerNotFoundError,
