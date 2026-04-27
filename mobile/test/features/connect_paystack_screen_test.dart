@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:biztrack_gh/app/env/app_config.dart';
 import 'package:biztrack_gh/core/services/api_client.dart';
 import 'package:biztrack_gh/core/services/secure_token_storage.dart';
 import 'package:biztrack_gh/features/settings/data/settings_api.dart';
@@ -117,6 +118,10 @@ void main() {
 
     expect(find.text('Not Connected'), findsWidgets);
     expect(find.text('Save & Verify'), findsOneWidget);
+    expect(
+      find.text(AppConfig.apiV1('/webhooks/paystack').toString()),
+      findsOneWidget,
+    );
   });
 
   testWidgets('requires secret key for unconfigured selected mode',
