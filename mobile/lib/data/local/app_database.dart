@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS kv_cache (
   key TEXT PRIMARY KEY NOT NULL,
   value_json TEXT NOT NULL,
   updated_at INTEGER NOT NULL
-:)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_kv_cache_updated_at ON kv_cache (updated_at DESC)',
