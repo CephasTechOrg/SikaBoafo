@@ -144,15 +144,15 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
       _error = null;
     });
     try {
+      final returnTo = sanitizeReturnTo(
+        GoRouterState.of(context).uri.queryParameters['returnTo'],
+      );
       final bio = ref.read(biometricServiceProvider);
       final ok = await bio.authenticate(
         reason: 'Sign in to SikaBoafo.',
       );
       if (!ok) return;
       final storage = ref.read(secureTokenStorageProvider);
-      final returnTo = sanitizeReturnTo(
-        GoRouterState.of(context).uri.queryParameters['returnTo'],
-      );
       await storage.writeLastBiometricAt(DateTime.now());
       await storage.markSessionGateComplete(DateTime.now());
       if (!mounted) return;

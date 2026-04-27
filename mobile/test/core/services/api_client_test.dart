@@ -116,6 +116,20 @@ class _RefreshSuccessAdapter implements HttpClientAdapter {
   }
 }
 
+String _jwtWithExp(DateTime expiresAtUtc) {
+  String encodePart(Map<String, Object> value) {
+    return base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  }
+
+  return [
+    encodePart(<String, Object>{'alg': 'HS256', 'typ': 'JWT'}),
+    encodePart(<String, Object>{
+      'exp': expiresAtUtc.toUtc().millisecondsSinceEpoch ~/ 1000,
+    }),
+    'signature',
+  ].join('.');
+}
+
 void main() {
   test(
       '401 on protected endpoint clears session and triggers unauthorized callback once when refresh is unavailable',
@@ -146,7 +160,7 @@ void main() {
 
   test('401 on protected endpoint refreshes tokens and retries once', () async {
     final storage = _FakeSecureTokenStorage()
-      ..accessToken = 'expired-access'
+      ..accessToken = _jwtWithExp(DateTime.now().toUtc().add(const Duration(hours: 1)))
       ..refreshToken = 'valid-refresh';
     var unauthorizedCalls = 0;
 
@@ -171,6 +185,30 @@ void main() {
     expect(storage.accessToken, 'new-access');
     expect(storage.refreshToken, 'new-refresh');
     expect(unauthorizedCalls, 0);
+  });
+
+  test('expired token refreshes before the protected request is sent', () async {
+    final storage = _FakeSecureTokenStorage()
+      ..accessToken = 'expired-access'
+      ..refreshToken = 'valid-refresh';
+
+    final adapter = _RefreshSuccessAdapter();
+    final dio = Dio();
+    dio.httpClientAdapter = adapter;
+
+    final apiClient = ApiClient(
+      tokenStorage: storage,
+      dio: dio,
+    );
+
+    final response = await apiClient.dio.get<dynamic>('/reports/summary');
+
+    expect(response.statusCode, 200);
+    expect(adapter.summaryCalls, 1);
+    expect(adapter.refreshCalls, 1);
+    expect(storage.cleared, isFalse);
+    expect(storage.accessToken, 'new-access');
+    expect(storage.refreshToken, 'new-refresh');
   });
 
   test(

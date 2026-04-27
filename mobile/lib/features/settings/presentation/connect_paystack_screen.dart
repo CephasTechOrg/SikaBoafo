@@ -677,7 +677,7 @@ class _WebhookRow extends StatelessWidget {
         children: [
           const Icon(Icons.webhook_rounded, color: AppColors.warning, size: 18),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
