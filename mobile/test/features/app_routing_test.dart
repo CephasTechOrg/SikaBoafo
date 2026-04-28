@@ -6,6 +6,7 @@ import 'package:biztrack_gh/app/app.dart';
 import 'package:biztrack_gh/app/router.dart';
 import 'package:biztrack_gh/core/services/biometric_service.dart';
 import 'package:biztrack_gh/core/services/secure_token_storage.dart';
+import 'package:biztrack_gh/data/local/app_database.dart';
 import 'package:biztrack_gh/data/local/sync_queue_repository.dart';
 import 'package:biztrack_gh/features/dashboard/data/dashboard_api.dart';
 import 'package:biztrack_gh/features/dashboard/providers/dashboard_providers.dart';
@@ -106,6 +107,11 @@ class _FakeBiometricService extends BiometricService {
 
   @override
   Future<bool> authenticate({required String reason}) async => authenticateResult;
+}
+
+class _FakeAppDatabase extends AppDatabase {
+  @override
+  Future<String?> getActiveMerchantId() async => 'merchant-1';
 }
 
 class _FakeDebtsController extends DebtsController {
@@ -258,6 +264,7 @@ Future<void> _pumpApp(
     ProviderScope(
       overrides: [
         secureTokenStorageProvider.overrideWithValue(storage),
+        appDatabaseProvider.overrideWithValue(_FakeAppDatabase()),
         biometricServiceProvider.overrideWithValue(
           biometricService ??
               _FakeBiometricService(supported: true, authenticateResult: true),
