@@ -414,20 +414,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       const SizedBox(height: 18),
                                       if (_activeTab ==
                                           _SalesViewTab.newSale) ...[
-                                        _SaleDraftPanel(
-                                          itemCount: itemCount,
-                                          totalAmount: _formatMajor(
-                                            totalAmount,
-                                            symbol: 'GHS ',
-                                          ),
-                                          noteController: _noteCtrl,
-                                          noteValue: _noteCtrl.text.trim(),
-                                          showNote: _showNote,
-                                          onToggleNote: () => setState(
-                                            () => _showNote = !_showNote,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
                                         _SalesSearchBar(
                                           controller: _searchCtrl,
                                           hasQuery: _searchQuery.isNotEmpty,
