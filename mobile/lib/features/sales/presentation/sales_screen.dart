@@ -95,12 +95,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       0,
       (sum, sale) => sum + _parseTotal(sale.totalAmount),
     );
-    final momoTotal = todaySales
-        .where((sale) => sale.paymentMethodLabel == 'mobile_money')
-        .fold<int>(0, (sum, sale) => sum + _parseTotal(sale.totalAmount));
-    final cashTotal = todaySales
-        .where((sale) => sale.paymentMethodLabel == 'cash')
-        .fold<int>(0, (sum, sale) => sum + _parseTotal(sale.totalAmount));
+    final cashTotalMinor = todaySales
+        .where((s) => s.paymentMethodLabel == 'cash')
+        .fold<int>(0, (sum, s) => sum + _parseTotal(s.totalAmount));
+    final momoTotalMinor = todaySales
+        .where((s) => s.paymentMethodLabel == 'mobile_money')
+        .fold<int>(0, (sum, s) => sum + _parseTotal(s.totalAmount));
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -114,150 +114,192 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
+                      // Layer 1 — deep anchor: very dark at bottom-left,
+                      // rich forest green toward top-right
                       const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Color(0xFF052715),
-                              Color(0xFF0A4F24),
-                              Color(0xFF0F6230),
+                              Color(0xFF020F06),
+                              Color(0xFF063318),
+                              Color(0xFF0B5228),
+                              Color(0xFF116438),
                             ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            stops: [0.0, 0.32, 0.66, 1.0],
+                            begin: Alignment.bottomLeft,
+                            end: Alignment.topRight,
                           ),
                         ),
                       ),
+                      // Layer 2 — vivid emerald bloom, top-right quadrant
                       DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: RadialGradient(
-                            center: const Alignment(0.55, -0.12),
-                            radius: 1.05,
+                            center: const Alignment(0.68, -0.72),
+                            radius: 0.92,
                             colors: [
-                              Colors.white.withValues(alpha: 0.08),
+                              const Color(0xFF27A84E).withValues(alpha: 0.56),
+                              const Color(0xFF1A7A38).withValues(alpha: 0.22),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 0.45, 1.0],
+                          ),
+                        ),
+                      ),
+                      // Layer 3 — secondary warm glow, center
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(-0.10, 0.0),
+                            radius: 1.2,
+                            colors: [
+                              const Color(0xFF0D6030).withValues(alpha: 0.35),
                               Colors.transparent,
                             ],
                             stops: const [0.0, 1.0],
                           ),
                         ),
                       ),
+                      // Layer 4 — deep shadow vignette at all edges
                       DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF021109).withValues(alpha: 0.22),
-                              const Color(0xFF052715).withValues(alpha: 0.08),
+                              const Color(0xFF010A04).withValues(alpha: 0.72),
                               Colors.transparent,
+                              const Color(0xFF010A04).withValues(alpha: 0.30),
                             ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: const [0.0, 0.54, 1.0],
+                            stops: const [0.0, 0.50, 1.0],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
                           ),
                         ),
                       ),
+                      // Layer 5 — top-edge sheen for premium depth
+                      const Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        height: 1.5,
+                        child: ColoredBox(color: Color(0x22FFFFFF)),
+                      ),
                     ],
+                  ),
+                ),
+                Positioned(
+                  right: -10,
+                  bottom: -8,
+                  child: Opacity(
+                    opacity: 0.42,
+                    child: Image.asset(
+                      'assets/images/sales.png',
+                      width: 185,
+                      height: 185,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Sales',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 21,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Record new sales and follow today\'s cashflow',
-                                    style: TextStyle(
-                                      color: AppColors.heroSubtitle,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  DataFreshnessLabel(
-                                    kvKey: KvCacheRepository.kSalesTs,
-                                    color: AppColors.heroSubtitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 14),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 9,
-                              ),
+                              width: 34,
+                              height: 34,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(14),
+                                color: Colors.white.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.14),
+                                  color: Colors.white.withValues(alpha: 0.18),
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Today\'s Revenue',
-                                    style: TextStyle(
-                                      color: AppColors.heroSubtitle,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    _formatMinor(todayRevenueMinor,
-                                        symbol: '₵'),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      fontFamily: 'Constantia',
-                                      letterSpacing: -0.6,
-                                    ),
-                                  ),
-                                ],
+                              child: const Icon(
+                                Icons.point_of_sale_rounded,
+                                color: Colors.white,
+                                size: 17,
                               ),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Sales',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                DataFreshnessLabel(
+                                  kvKey: KvCacheRepository.kSalesTs,
+                                  color: AppColors.heroSubtitle,
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "TODAY'S REVENUE",
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _formatMinor(todayRevenueMinor,
+                                    symbol: '₵'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Constantia',
+                                  letterSpacing: -0.8,
+                                  height: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _SalesHeroChip(
-                              label: '${todaySales.length} txns',
-                              value: 'Today',
-                              tone: const Color(0xFF9AE7BF),
+                            _HeroStatChip(
+                              icon: Icons.receipt_long_rounded,
+                              value: '${todaySales.length}',
+                              label: 'txns today',
                             ),
-                            _SalesHeroChip(
-                              label: _formatMinor(momoTotal, symbol: '₵'),
-                              value: 'MoMo',
-                              tone: AppColors.gold,
+                            const SizedBox(width: 8),
+                            _HeroStatChip(
+                              icon: Icons.payments_rounded,
+                              value: _formatMinor(cashTotalMinor,
+                                  symbol: '₵'),
+                              label: 'Cash',
                             ),
-                            _SalesHeroChip(
-                              label: _formatMinor(cashTotal, symbol: '₵'),
-                              value: 'Cash',
-                              tone: const Color(0xFF9AE7BF),
+                            const SizedBox(width: 8),
+                            _HeroStatChip(
+                              icon: Icons.phone_android_rounded,
+                              value: _formatMinor(momoTotalMinor,
+                                  symbol: '₵'),
+                              label: 'MoMo',
                             ),
                           ],
                         ),
@@ -1422,6 +1464,60 @@ class _SalesHeroChip extends StatelessWidget {
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStatChip extends StatelessWidget {
+  const _HeroStatChip({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white.withValues(alpha: 0.65), size: 14),
+          const SizedBox(width: 7),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ],
       ),
