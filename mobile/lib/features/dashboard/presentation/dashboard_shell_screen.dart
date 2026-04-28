@@ -947,7 +947,7 @@ class _KpiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadii.sm),
       elevation: 0,
       child: InkWell(
@@ -957,9 +957,15 @@ class _KpiTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
+            gradient: backgroundGradient,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x140F172A),
+                blurRadius: 12,
+                offset: Offset(0, 5),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -968,22 +974,22 @@ class _KpiTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: toneSoft,
+                  color: iconBackgroundColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 16, color: tone),
+                child: Icon(icon, size: 16, color: iconColor),
               ),
               const SizedBox(height: 12),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.ink,
+                style: TextStyle(
+                  color: valueColor,
                   fontSize: 13.5,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(height: 4),
@@ -991,8 +997,8 @@ class _KpiTile extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.muted,
+                style: TextStyle(
+                  color: labelColor,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
