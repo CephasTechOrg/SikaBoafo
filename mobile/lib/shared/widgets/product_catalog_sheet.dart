@@ -311,17 +311,19 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            const SizedBox(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.dangerSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.cloud_off_rounded,
-                color: AppColors.danger,
-                size: 26,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  color: AppColors.danger,
+                  size: 26,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -366,17 +368,19 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            const SizedBox(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.successSoft,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.search_off_rounded,
-                color: AppColors.forest,
-                size: 26,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.successSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.search_off_rounded,
+                  color: AppColors.forest,
+                  size: 26,
+                ),
               ),
             ),
             const SizedBox(height: 16),
