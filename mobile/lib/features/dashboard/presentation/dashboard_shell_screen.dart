@@ -117,13 +117,11 @@ class _HomeDashboard extends ConsumerWidget {
       builder: (context, constraints) {
         final h = constraints.maxHeight;
         final heroHeight = (h * 0.40).clamp(280.0, 360.0);
-        const quickTileHeight = 72.0;
         // How far the curved top of the white sheet pulls up into the hero
         // so the rounded corners are clearly visible against the green/swirl.
         const sheetCurveLift = 28.0;
         // Cards should straddle the new (lifted) flat top of the sheet —
         // ~50% on green / ~50% on white.
-        const quickOverlap = quickTileHeight * 0.48 + sheetCurveLift;
 
         return Container(
           decoration: const BoxDecoration(color: AppColors.canvas),
@@ -195,20 +193,17 @@ class _HomeDashboard extends ConsumerWidget {
                         },
                         child: ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          // Leave room for the portion of the cards that
-                          // overhangs into the white sheet (cards sit
-                          // `quickOverlap` above the original seam, so the
-                          // amount poking into the sheet is the rest of the
-                          // card height, plus the lift we applied above).
                           padding: const EdgeInsets.fromLTRB(
                             20,
-                            (quickTileHeight - quickOverlap) +
-                                sheetCurveLift +
-                                24,
+                            28,
                             20,
                             40,
                           ),
                           children: [
+                            const _SectionLabel('Quick Actions'),
+                            const SizedBox(height: 14),
+                            _QuickActions(onNavigate: onNavigate),
+                            const SizedBox(height: 18),
                             _KpiStrip(
                               summaryAsync: summaryAsync,
                               overlayAsync: overlayAsync,
@@ -248,17 +243,6 @@ class _HomeDashboard extends ConsumerWidget {
                   ),
                 ),
 
-                // Quick actions: straddle the hero / white-sheet seam.
-                // The seam is at `heroHeight`; we lift the cards up by
-                // `quickOverlap` so the top portion overlaps the hero and the
-                // remainder sits on top of the white sheet.
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  top: heroHeight - quickOverlap,
-                  height: quickTileHeight,
-                  child: _QuickActions(onNavigate: onNavigate),
-                ),
               ],
             ),
           ),
@@ -679,33 +663,42 @@ class _QuickActions extends StatelessWidget {
       children: [
         Expanded(
           child: _QuickTile(
-            icon: Icons.shopping_cart_rounded,
+            icon: Icons.add_rounded,
             label: 'New Sale',
-            backgroundColor: const Color(0xFF0B4023),
-            accentColor: const Color(0xFF166137),
+            backgroundColor: const Color(0xFF0F622F),
+            accentColor: const Color(0xFF1A7C43),
             foregroundColor: Colors.white,
+            iconColor: Colors.white,
+            iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
+            borderColor: Colors.transparent,
             onTap: () => onNavigate(1),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: _QuickTile(
-            icon: Icons.payments_rounded,
+            icon: Icons.payments_outlined,
             label: 'Collect Debt',
-            backgroundColor: const Color(0xFF0B4023),
-            accentColor: const Color(0xFF166137),
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.surface,
+            accentColor: const Color(0xFFFDFEFE),
+            foregroundColor: AppColors.ink,
+            iconColor: AppColors.forest,
+            iconBackgroundColor: AppColors.successSoft,
+            borderColor: AppColors.border,
             onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: _QuickTile(
-            icon: Icons.inventory_2_rounded,
-            label: 'Stock',
-            backgroundColor: const Color(0xFFB8880E),
-            accentColor: const Color(0xFFD3A32A),
+            icon: Icons.inventory_2_outlined,
+            label: 'Add Stock',
+            backgroundColor: AppColors.surface,
+            accentColor: const Color(0xFFFFFEFB),
             foregroundColor: AppColors.ink,
+            iconColor: const Color(0xFFC58C02),
+            iconBackgroundColor: AppColors.warningSoft,
+            borderColor: AppColors.border,
             onTap: () => onNavigate(2),
           ),
         ),
@@ -721,6 +714,9 @@ class _QuickTile extends StatelessWidget {
     required this.backgroundColor,
     required this.accentColor,
     required this.foregroundColor,
+    required this.iconColor,
+    required this.iconBackgroundColor,
+    required this.borderColor,
     required this.onTap,
   });
 
@@ -729,6 +725,9 @@ class _QuickTile extends StatelessWidget {
   final Color backgroundColor;
   final Color accentColor;
   final Color foregroundColor;
+  final Color iconColor;
+  final Color iconBackgroundColor;
+  final Color borderColor;
   final VoidCallback onTap;
 
   @override
@@ -741,48 +740,48 @@ class _QuickTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 72,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          height: 86,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(
               colors: [accentColor, backgroundColor],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: borderColor),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x180F172A),
-                blurRadius: 12,
+                color: Color(0x120F172A),
+                blurRadius: 18,
                 offset: Offset(0, 6),
               ),
             ],
           ),
-          child: Column(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
+                  color: iconBackgroundColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: foregroundColor, size: 16),
+                child: Icon(icon, color: iconColor, size: 20),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(width: 12),
               Flexible(
                 child: Text(
                   label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
+                  textAlign: TextAlign.left,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                     color: foregroundColor,
-                    height: 1.05,
+                    height: 1.1,
                     letterSpacing: -0.1,
                   ),
                 ),
@@ -829,38 +828,58 @@ class _KpiStrip extends StatelessWidget {
         : minorToMoney(debtDisplayMinor);
 
     final lowStock = overlay?.lowStockCountLocal ?? s?.lowStockCount ?? 0;
-    return Row(
+    final transactionCount = overlay?.todayPendingSalesCount ?? 0;
+
+    return Column(
       children: [
-        Expanded(
-          child: _KpiTile(
-            label: "Today's Profit",
-            value: isLoading ? '—' : '\u20B5$profitDisplay',
-            icon: Icons.trending_up_rounded,
-            tone: AppColors.forest,
-            toneSoft: AppColors.successSoft,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _KpiTile(
+                label: "Today's Profit",
+                value: isLoading ? '—' : '\u20B5$profitDisplay',
+                icon: Icons.trending_up_rounded,
+                tone: AppColors.forest,
+                toneSoft: AppColors.successSoft,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _KpiTile(
+                label: 'Outstanding',
+                value: isLoading ? '—' : '\u20B5$debtDisplay',
+                icon: Icons.account_balance_wallet_outlined,
+                tone: const Color(0xFF4A5BB6),
+                toneSoft: const Color(0xFFEEF0FF),
+                onTap: () => context.push(AppRoute.debts.path),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _KpiTile(
-            label: 'Outstanding',
-            value: isLoading ? '—' : '\u20B5$debtDisplay',
-            icon: Icons.account_balance_wallet_rounded,
-            tone: AppColors.navySoft,
-            toneSoft: AppColors.infoSoft,
-            onTap: () => context.push(AppRoute.debts.path),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _KpiTile(
-            label: 'Low Stock',
-            value:
-                isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
-            icon: Icons.error_outline_rounded,
-            tone: AppColors.danger,
-            toneSoft: AppColors.dangerSoft,
-            onTap: () => onNavigate(2),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _KpiTile(
+                label: 'Low Stock',
+                value:
+                    isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
+                icon: Icons.error_outline_rounded,
+                tone: AppColors.danger,
+                toneSoft: AppColors.dangerSoft,
+                onTap: () => onNavigate(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _KpiTile(
+                label: 'Transactions',
+                value: isLoading ? '—' : '$transactionCount',
+                icon: Icons.receipt_long_outlined,
+                tone: const Color(0xFFC58C02),
+                toneSoft: AppColors.warningSoft,
+              ),
+            ),
           ),
         ),
       ],
@@ -895,47 +914,62 @@ class _KpiTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.sm),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          constraints: const BoxConstraints(minHeight: 132),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderRadius: BorderRadius.circular(22),
             color: AppColors.surface,
             border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F172A),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   color: toneSoft,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(icon, size: 16, color: tone),
+                child: Icon(icon, size: 30, color: tone),
               ),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.ink,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1188,10 +1222,11 @@ class _TopSellingSection extends StatelessWidget {
             if (merged.isNotEmpty)
               Text(
                 '${merged.length} item${merged.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: const TextStyle(
+                  color: AppColors.forest,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
           ],
         ),
@@ -1218,9 +1253,15 @@ class _TopSellingSection extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppColors.border),
-              boxShadow: AppShadows.card,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x120F172A),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -1317,27 +1358,27 @@ class _TopSellingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 52,
+            height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.successSoft,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
               '#$rank',
               style: const TextStyle(
-                color: AppColors.navy,
-                fontSize: 12,
+                color: AppColors.forest,
+                fontSize: 16,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,8 +1389,8 @@ class _TopSellingRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.ink,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                     height: 1.25,
                   ),
                 ),
@@ -1358,7 +1399,7 @@ class _TopSellingRow extends StatelessWidget {
                   '${row.quantitySold} sold',
                   style: const TextStyle(
                     color: AppColors.muted,
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1370,8 +1411,8 @@ class _TopSellingRow extends StatelessWidget {
             '\u20B5${row.salesTotal}',
             style: const TextStyle(
               color: AppColors.forest,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
               letterSpacing: -0.2,
               fontFeatures: [FontFeature.tabularFigures()],
             ),
