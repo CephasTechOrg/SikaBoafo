@@ -277,16 +277,7 @@ class _EntryViewMockup extends StatelessWidget {
         children: [
           const Expanded(
             flex: 6,
-            child: MockupHeroHeader(
-              waveHeight: 56,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(height: 8),
-                  MockupAppMark(size: 92),
-                ],
-              ),
-            ),
+            child: _AuthHeroImage(),
           ),
           Expanded(
             flex: 7,
@@ -701,6 +692,87 @@ class _OtpVerifyView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AuthHeroImage extends StatelessWidget {
+  const _AuthHeroImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: _AuthWaveClipper(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/businesswoman.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+          // Dark gradient only at the top so the logo stays readable
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xAA000000), Colors.transparent],
+                begin: Alignment.topCenter,
+                end: Alignment(0, 0.55),
+              ),
+            ),
+          ),
+          const SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  const MockupAppMark(
+                    size: 32,
+                    assetPath: 'assets/images/logo.png',
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'SikaBoafo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    const h = 56.0;
+    final path = Path()..lineTo(0, size.height - h);
+    path.quadraticBezierTo(
+      size.width * 0.22,
+      size.height - h * 1.4,
+      size.width * 0.5,
+      size.height - h * 0.9,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.78,
+      size.height - h * 0.35,
+      size.width,
+      size.height - h * 0.85,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
 class _InlineError extends StatelessWidget {
