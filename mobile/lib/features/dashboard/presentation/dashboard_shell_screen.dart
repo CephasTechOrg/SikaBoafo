@@ -65,7 +65,18 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
           top: false,
           child: NavigationBar(
             selectedIndex: _index,
-            onDestinationSelected: (v) => setState(() => _index = v),
+            onDestinationSelected: (v) {
+                if (v == 0 && _index != 0) {
+                  // Returning to dashboard — bust the cache so fresh data is
+                  // shown immediately (e.g. after recording a sale on another tab).
+                  ref.read(dashboardApiProvider).clearDashboardCache();
+                  ref.invalidate(dashboardSummaryProvider);
+                  ref.invalidate(dashboardRecentActivityProvider);
+                  ref.invalidate(dashboardInsightsProvider);
+                  ref.invalidate(localDashboardOverlayProvider);
+                }
+                setState(() => _index = v);
+              },
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
@@ -150,7 +161,7 @@ class _HomeDashboard extends ConsumerWidget {
                     topShade: 0.72,
                     midShade: 0.40,
                     shadeColor: Color(0xFF04170A),
-                    tintColor: Color(0xFF0F6A31),
+                    tintColor: Color(0xFF0A4F24),
                     tintOpacity: 0.34,
                   ),
                 ),
@@ -183,10 +194,14 @@ class _HomeDashboard extends ConsumerWidget {
                       child: RefreshIndicator(
                         color: AppColors.forest,
                         onRefresh: () async {
+                          await ref
+                              .read(dashboardApiProvider)
+                              .clearDashboardCache();
                           ref.invalidate(merchantContextProvider);
                           ref.invalidate(dashboardSummaryProvider);
                           ref.invalidate(dashboardRecentActivityProvider);
                           ref.invalidate(dashboardInsightsProvider);
+                          ref.invalidate(localDashboardOverlayProvider);
                           await Future.wait([
                             ref.read(merchantContextProvider.future),
                             ref.read(dashboardSummaryProvider.future),
@@ -726,8 +741,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.add_rounded,
             label: 'New Sale',
-            backgroundColor: const Color(0xFF1E8050),
-            accentColor: const Color(0xFF23945E),
+            backgroundColor: const Color(0xFF155236),
+            accentColor: const Color(0xFF1B6E4C),
             foregroundColor: Colors.white,
             iconColor: Colors.white,
             iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
@@ -943,19 +958,24 @@ class _WideKpiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
+      height: 104,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E8050), Color(0xFF23945E)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          colors: [
+            Color(0xFF0E3622),
+            Color(0xFF155236),
+            Color(0xFF1B6E4C),
+          ],
+          stops: [0.0, 0.48, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x281D7A4E),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+            color: Color(0x32155236),
+            blurRadius: 20,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -963,60 +983,74 @@ class _WideKpiTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // Coins — large, bleeding off bottom-right edge
           Positioned(
-            right: -16,
-            bottom: -12,
+            right: -20,
+            bottom: -16,
             child: Opacity(
-              opacity: 0.50,
+              opacity: 0.45,
               child: Image.asset(
                 'assets/images/coins.png',
-                width: 130,
-                height: 130,
+                width: 158,
+                height: 158,
                 fit: BoxFit.contain,
               ),
             ),
           ),
+          // Subtle top-edge sheen for depth
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 1.5,
+            child: ColoredBox(
+              color: Color(0x26FFFFFF),
+            ),
+          ),
+          // Content
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.20)),
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
                   ),
                   child: Icon(icon, size: 22, color: Colors.white),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        label,
+                        label.toUpperCase(),
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.72),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
+                          color: Colors.white.withValues(alpha: 0.60),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
                         value,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 26,
+                          fontSize: 28,
                           fontWeight: FontWeight.w900,
+                          fontFamily: 'Constantia',
                           letterSpacing: -0.5,
                           fontFeatures: [FontFeature.tabularFigures()],
-                          height: 1.1,
+                          height: 1.0,
                         ),
                       ),
                     ],

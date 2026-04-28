@@ -37,6 +37,7 @@ def get_summary(
         today_gross_profit=summary.today_gross_profit,
         debt_outstanding_total=summary.debt_outstanding_total,
         low_stock_count=summary.low_stock_count,
+        yesterday_sales_total=summary.yesterday_sales_total,
     )
 
 

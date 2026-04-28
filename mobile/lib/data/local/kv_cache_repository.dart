@@ -46,5 +46,25 @@ class KvCacheRepository {
     if (rows.isEmpty) return null;
     return rows.first['value_json'] as String?;
   }
+
+  Future<String?> getIfFresh(String key, {required Duration maxAge}) async {
+    final db = await _appDb.database;
+    final cutoff =
+        DateTime.now().millisecondsSinceEpoch - maxAge.inMilliseconds;
+    final rows = await db.query(
+      'kv_cache',
+      columns: ['value_json'],
+      where: 'key = ? AND updated_at >= ?',
+      whereArgs: [key, cutoff],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['value_json'] as String?;
+  }
+
+  Future<void> delete(String key) async {
+    final db = await _appDb.database;
+    await db.delete('kv_cache', where: 'key = ?', whereArgs: [key]);
+  }
 }
 

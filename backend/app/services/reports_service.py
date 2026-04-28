@@ -39,6 +39,7 @@ class ReportSummarySnapshot:
     today_gross_profit: Decimal
     debt_outstanding_total: Decimal
     low_stock_count: int
+    yesterday_sales_total: Decimal = Decimal("0.00")
 
 
 @dataclass(slots=True)
@@ -123,6 +124,16 @@ class ReportsService:
         debt_total = self._sum_debt_outstanding(store_id=store.id)
         low_stock_count = self._count_low_stock(store_id=store.id)
 
+        yesterday_start_utc, yesterday_end_utc = self._today_utc_window(
+            now_utc=now_utc - timedelta(days=1),
+            timezone_name=store.timezone,
+        )
+        yesterday_sales_total = self._sum_sales(
+            store_id=store.id,
+            start_utc=yesterday_start_utc,
+            end_utc=yesterday_end_utc,
+        )
+
         return ReportSummarySnapshot(
             timezone=store.timezone,
             period_start_utc=period_start_utc,
@@ -133,6 +144,7 @@ class ReportsService:
             today_gross_profit=gross_profit,
             debt_outstanding_total=debt_total,
             low_stock_count=low_stock_count,
+            yesterday_sales_total=yesterday_sales_total,
         )
 
     def list_recent_activity_for_user(

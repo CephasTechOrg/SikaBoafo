@@ -19,6 +19,7 @@ class ReportSummaryOut(BaseModel):
     today_gross_profit: Decimal = Decimal("0.00")
     debt_outstanding_total: Decimal
     low_stock_count: int
+    yesterday_sales_total: Decimal = Decimal("0.00")
 
 
 class ReportActivityOut(BaseModel):

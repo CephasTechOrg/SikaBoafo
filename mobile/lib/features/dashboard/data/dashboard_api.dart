@@ -45,8 +45,22 @@ class DashboardApi {
   static const _cacheInsightsKey = 'dashboard.insights';
   static const _cacheRecentActivityKey = 'dashboard.recent_activity';
 
+  static const _summaryTtl = Duration(minutes: 5);
+  static const _activityTtl = Duration(minutes: 5);
+  static const _insightsTtl = Duration(minutes: 30);
+  static const _contextTtl = Duration(hours: 1);
+
+  Future<void> clearDashboardCache() async {
+    await Future.wait([
+      _cache?.delete(_cacheSummaryKey) ?? Future.value(),
+      _cache?.delete(_cacheRecentActivityKey) ?? Future.value(),
+      _cache?.delete(_cacheInsightsKey) ?? Future.value(),
+    ]);
+  }
+
   Future<MerchantContext> fetchContext() async {
-    final cached = await _cache?.get(_cacheContextKey);
+    final cached =
+        await _cache?.getIfFresh(_cacheContextKey, maxAge: _contextTtl);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
       if (body != null) return MerchantContext.fromJson(body);
@@ -66,7 +80,8 @@ class DashboardApi {
   }
 
   Future<DashboardSummary> fetchSummary() async {
-    final cached = await _cache?.get(_cacheSummaryKey);
+    final cached =
+        await _cache?.getIfFresh(_cacheSummaryKey, maxAge: _summaryTtl);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
       if (body != null) return DashboardSummary.fromJson(body);
@@ -85,7 +100,8 @@ class DashboardApi {
   }
 
   Future<List<DashboardActivity>> fetchRecentActivity({int limit = 8}) async {
-    final cached = await _cache?.get(_cacheRecentActivityKey);
+    final cached =
+        await _cache?.getIfFresh(_cacheRecentActivityKey, maxAge: _activityTtl);
     if (cached != null) {
       final body = _tryDecodeList(cached);
       if (body != null) {
@@ -115,7 +131,8 @@ class DashboardApi {
   }
 
   Future<DashboardInsights> fetchInsights({int topN = 5}) async {
-    final cached = await _cache?.get(_cacheInsightsKey);
+    final cached =
+        await _cache?.getIfFresh(_cacheInsightsKey, maxAge: _insightsTtl);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
       if (body != null) return DashboardInsights.fromJson(body);

@@ -14,7 +14,6 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
-import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
@@ -111,11 +110,57 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           children: [
             Stack(
               children: [
-                const Positioned.fill(child: HeroBackdrop()),
+                Positioned.fill(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFF052715),
+                              Color(0xFF0A4F24),
+                              Color(0xFF0F6230),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(0.55, -0.12),
+                            radius: 1.05,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.08),
+                              Colors.transparent,
+                            ],
+                            stops: const [0.0, 1.0],
+                          ),
+                        ),
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF021109).withValues(alpha: 0.22),
+                              const Color(0xFF052715).withValues(alpha: 0.08),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const [0.0, 0.54, 1.0],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -130,18 +175,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     'Sales',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 22,
+                                      fontSize: 21,
                                       fontWeight: FontWeight.w900,
                                       letterSpacing: -0.2,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    'Record new sales and follow today'
-                                    's cashflow',
+                                    'Record new sales and follow today\'s cashflow',
                                     style: TextStyle(
                                       color: AppColors.heroSubtitle,
-                                      fontSize: 12.5,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -156,12 +200,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             const SizedBox(width: 14),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
+                                horizontal: 12,
+                                vertical: 9,
+                              ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.white.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.18),
+                                  color: Colors.white.withValues(alpha: 0.14),
                                 ),
                               ),
                               child: Column(
@@ -172,16 +218,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     'Today\'s Revenue',
                                     style: TextStyle(
                                       color: AppColors.heroSubtitle,
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    _formatMinor(todayRevenueMinor, symbol: '₵'),
+                                    _formatMinor(todayRevenueMinor,
+                                        symbol: '₵'),
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 20,
+                                      fontSize: 18,
                                       fontWeight: FontWeight.w800,
                                       fontFamily: 'Constantia',
                                       letterSpacing: -0.6,
@@ -192,21 +239,21 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        Row(
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             _SalesHeroChip(
                               label: '${todaySales.length} txns',
                               value: 'Today',
                               tone: const Color(0xFF9AE7BF),
                             ),
-                            const SizedBox(width: 8),
                             _SalesHeroChip(
                               label: _formatMinor(momoTotal, symbol: '₵'),
                               value: 'MoMo',
                               tone: AppColors.gold,
                             ),
-                            const SizedBox(width: 8),
                             _SalesHeroChip(
                               label: _formatMinor(cashTotal, symbol: '₵'),
                               value: 'Cash',
@@ -231,11 +278,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               child: Container(
                 decoration: const BoxDecoration(
                   color: AppColors.canvas,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: ClipRRect(
                   borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(28)),
+                      const BorderRadius.vertical(top: Radius.circular(24)),
                   child: inventoryAsync.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
@@ -1347,36 +1394,36 @@ class _SalesHeroChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: tone,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
+    return Container(
+      constraints: const BoxConstraints(minWidth: 88),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.56),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.56),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: tone,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
