@@ -39,7 +39,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final router = GoRouter.of(context);
     final storage = ref.read(secureTokenStorageProvider);
     final returnTo = sanitizeReturnTo(
-      GoRouterState.of(context).uri.queryParameters['returnTo'],
+      router.routeInformationProvider.value.uri.queryParameters['returnTo'],
     );
     final hasSession = await storage.hasPersistedSession();
     if (hasSession) {

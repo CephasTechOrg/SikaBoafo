@@ -127,6 +127,10 @@ class AuthApi {
     }
     return OnboardingResult.fromJson(body);
   }
+
+  Future<void> deleteAccount() async {
+    await _apiClient.dio.delete<dynamic>('/auth/account');
+  }
 }
 
 String humanizeDioError(Object error) {

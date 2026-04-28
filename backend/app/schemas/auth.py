@@ -83,3 +83,8 @@ class OnboardingOut(BaseModel):
     business_name: str
     business_type: str | None
     onboarding_completed: bool = True
+
+
+class AccountDeleteOut(BaseModel):
+    status: str = "deleted"
+    detail: str = "Account deleted."

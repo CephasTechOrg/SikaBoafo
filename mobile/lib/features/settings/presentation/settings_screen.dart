@@ -7,6 +7,8 @@ import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
+import '../../auth/data/auth_api.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../providers/biometric_pref_provider.dart';
 import '../../../core/services/biometric_service.dart';
 
@@ -120,6 +122,79 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     if (confirm != true) return;
+    if (!context.mounted) return;
+    await ref.read(sessionServiceProvider).signOut();
+    if (!context.mounted) return;
+    context.go(AppRoute.auth.path);
+  }
+
+  Future<bool?> _confirmDeleteAccount(BuildContext context) {
+    final ctrl = TextEditingController();
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        actionsAlignment: MainAxisAlignment.end,
+        title: const Text('Delete account?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This will permanently delete your account access on this device. '
+              'You will be signed out immediately.\n\n'
+              'Type DELETE to confirm.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirmation',
+                hintText: 'DELETE',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(minimumSize: const Size(92, 44)),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final ok = ctrl.text.trim().toUpperCase() == 'DELETE';
+              Navigator.of(ctx).pop(ok);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(92, 44),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ).whenComplete(ctrl.dispose);
+  }
+
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final ok = await _confirmDeleteAccount(context);
+    if (ok != true) return;
+    if (!context.mounted) return;
+    try {
+      await ref.read(authApiProvider).deleteAccount();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Delete failed: ${humanizeDioError(e)}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (!context.mounted) return;
     await ref.read(sessionServiceProvider).signOut();
     if (!context.mounted) return;
@@ -332,6 +407,16 @@ class SettingsScreen extends ConsumerWidget {
             caption: 'End this session on this device',
             isDestructive: true,
             onTap: () => _signOut(context, ref),
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.delete_forever_rounded,
+            iconBg: AppColors.dangerSoft,
+            iconColor: AppColors.danger,
+            label: 'Delete account',
+            caption: 'Permanently delete your account access',
+            isDestructive: true,
+            onTap: () => _deleteAccount(context, ref),
           ),
         ],
       ),
