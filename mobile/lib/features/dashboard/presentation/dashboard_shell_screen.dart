@@ -672,7 +672,7 @@ class _QuickActions extends StatelessWidget {
             iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
             borderColor: Colors.transparent,
             onTap: () => onNavigate(1),
-          ],
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -880,7 +880,7 @@ class _KpiStrip extends StatelessWidget {
                 toneSoft: AppColors.warningSoft,
               ),
             ),
-          ),
+          ],
         ),
       ],
     );
