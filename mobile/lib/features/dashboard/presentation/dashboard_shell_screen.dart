@@ -739,10 +739,10 @@ class _QuickTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          height: 74,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(14),
             gradient: LinearGradient(
               colors: [accentColor, backgroundColor],
               begin: Alignment.topLeft,
@@ -752,8 +752,8 @@ class _QuickTile extends StatelessWidget {
             boxShadow: const [
               BoxShadow(
                 color: Color(0x120F172A),
-                blurRadius: 14,
-                offset: Offset(0, 5),
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -761,15 +761,15 @@ class _QuickTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: iconBackgroundColor,
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(7),
                 ),
-                child: Icon(icon, color: iconColor, size: 17),
+                child: Icon(icon, color: iconColor, size: 15),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
                   label,
@@ -777,7 +777,7 @@ class _QuickTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11.8,
+                    fontSize: 10.8,
                     fontWeight: FontWeight.w800,
                     color: foregroundColor,
                     height: 1.1,
@@ -914,17 +914,17 @@ class _KpiTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.sm),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 112),
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          constraints: const BoxConstraints(minHeight: 96),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             color: AppColors.surface,
             border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x120F172A),
-                blurRadius: 16,
-                offset: Offset(0, 6),
+                blurRadius: 12,
+                offset: Offset(0, 4),
               ),
             ],
           ),
@@ -932,15 +932,15 @@ class _KpiTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 54,
-                height: 54,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: toneSoft,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, size: 25, color: tone),
+                child: Icon(icon, size: 21, color: tone),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -952,20 +952,20 @@ class _KpiTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.ink,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.ink,
-                        fontSize: 18.5,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.35,
+                        letterSpacing: -0.2,
                         fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -1254,13 +1254,13 @@ class _TopSellingSection extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x120F172A),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -1359,27 +1359,27 @@ class _TopSellingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.successSoft,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(11),
             ),
             child: Text(
               '#$rank',
               style: const TextStyle(
                 color: AppColors.forest,
-                fontSize: 14,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1390,7 +1390,7 @@ class _TopSellingRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.ink,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     height: 1.25,
                   ),
@@ -1400,19 +1400,19 @@ class _TopSellingRow extends StatelessWidget {
                   '${row.quantitySold} sold',
                   style: const TextStyle(
                     color: AppColors.muted,
-                    fontSize: 11.5,
+                    fontSize: 10.8,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Text(
             '\u20B5${row.salesTotal}',
             style: const TextStyle(
               color: AppColors.forest,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.2,
               fontFeatures: [FontFeature.tabularFigures()],
@@ -1468,20 +1468,20 @@ class _RecentActivity extends ConsumerWidget {
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x120F172A),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
                   child: Row(
                     children: [
                       const Expanded(child: _SectionLabel('Recent Activity')),
@@ -1497,7 +1497,7 @@ class _RecentActivity extends ConsumerWidget {
                           'View All',
                           style: TextStyle(
                             color: AppColors.forest,
-                            fontSize: 12.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1658,20 +1658,20 @@ class _ActivityRow extends StatelessWidget {
         : data.detail;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: v.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: imageAsset != null
                 ? Padding(
-                    padding: const EdgeInsets.all(5),
+                    padding: const EdgeInsets.all(4),
                     child: ClipOval(
                       child: Image.asset(
                         imageAsset!,
@@ -1680,9 +1680,9 @@ class _ActivityRow extends StatelessWidget {
                       ),
                     ),
                   )
-                : Icon(v.icon, color: v.color, size: 21),
+                : Icon(v.icon, color: v.color, size: 18),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1694,25 +1694,25 @@ class _ActivityRow extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.ink,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
+                    fontSize: 13,
                     height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   detailText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.muted,
-                    fontSize: 11.5,
+                    fontSize: 10.8,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -1721,17 +1721,17 @@ class _ActivityRow extends StatelessWidget {
                 style: TextStyle(
                   color: isIncome ? AppColors.success : AppColors.danger,
                   fontWeight: FontWeight.w900,
-                  fontSize: 14,
+                  fontSize: 13,
                   letterSpacing: -0.2,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 timeStr,
                 style: const TextStyle(
                   color: AppColors.muted,
-                  fontSize: 11.5,
+                  fontSize: 10.8,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1780,20 +1780,20 @@ class _ActivitySkeleton extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
+            padding: EdgeInsets.fromLTRB(14, 14, 14, 4),
             child: Row(
               children: [
                 Expanded(child: _SkeletonBox(width: 140, height: 20)),
@@ -1803,28 +1803,28 @@ class _ActivitySkeleton extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
             child: Row(
               children: [
-                _shimmer(46, 46, radius: 23),
-                const SizedBox(width: 14),
+                _shimmer(40, 40, radius: 20),
+                const SizedBox(width: 12),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _SkeletonBox(width: 98, height: 14),
-                      SizedBox(height: 6),
-                      _SkeletonBox(width: 80, height: 11),
+                      _SkeletonBox(width: 90, height: 13),
+                      SizedBox(height: 5),
+                      _SkeletonBox(width: 74, height: 10),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _SkeletonBox(width: 70, height: 14),
-                    SizedBox(height: 6),
-                    _SkeletonBox(width: 88, height: 11),
+                    _SkeletonBox(width: 62, height: 13),
+                    SizedBox(height: 5),
+                    _SkeletonBox(width: 80, height: 10),
                   ],
                 ),
               ],
@@ -1851,24 +1851,24 @@ class _ActivityEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 6),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 40,
+            height: 40,
             decoration: const BoxDecoration(
               color: AppColors.successSoft,
               shape: BoxShape.circle,
@@ -1876,16 +1876,16 @@ class _ActivityEmpty extends StatelessWidget {
             child: const Icon(
               Icons.receipt_long_outlined,
               color: AppColors.forest,
-              size: 20,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           const Expanded(
             child: Text(
               'No recent activity yet.\nRecord a sale to get started.',
               style: TextStyle(
                 color: AppColors.muted,
-                fontSize: 12.5,
+                fontSize: 11.8,
                 height: 1.45,
                 fontWeight: FontWeight.w500,
               ),
