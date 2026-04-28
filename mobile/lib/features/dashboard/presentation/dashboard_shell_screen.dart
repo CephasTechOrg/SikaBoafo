@@ -868,15 +868,8 @@ class _KpiStrip extends StatelessWidget {
             label: "Today's Profit",
             value: isLoading ? '—' : '\u20B5$profitDisplay',
             icon: Icons.trending_up_rounded,
-            backgroundGradient: const LinearGradient(
-              colors: [Color(0xFF03451F), Color(0xFF0F622F)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            valueColor: Colors.white,
-            labelColor: const Color(0xD8FFFFFF),
-            iconColor: Colors.white,
-            iconBackgroundColor: const Color(0x26FFFFFF),
+            tone: AppColors.forest,
+            toneSoft: AppColors.successSoft,
           ),
         ),
         const SizedBox(width: 10),
@@ -885,15 +878,8 @@ class _KpiStrip extends StatelessWidget {
             label: 'Outstanding',
             value: isLoading ? '—' : '\u20B5$debtDisplay',
             icon: Icons.account_balance_wallet_rounded,
-            backgroundGradient: const LinearGradient(
-              colors: [Color(0xFF03451F), Color(0xFF0F622F)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            valueColor: Colors.white,
-            labelColor: const Color(0xD8FFFFFF),
-            iconColor: Colors.white,
-            iconBackgroundColor: const Color(0x26FFFFFF),
+            tone: AppColors.navySoft,
+            toneSoft: AppColors.infoSoft,
             onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
@@ -904,15 +890,8 @@ class _KpiStrip extends StatelessWidget {
             value:
                 isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
             icon: Icons.error_outline_rounded,
-            backgroundGradient: const LinearGradient(
-              colors: [Color(0xFFF3B041), Color(0xFFECA635)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            valueColor: AppColors.ink,
-            labelColor: AppColors.inkSoft,
-            iconColor: AppColors.ink,
-            iconBackgroundColor: const Color(0x14000000),
+            tone: AppColors.danger,
+            toneSoft: AppColors.dangerSoft,
             onTap: () => onNavigate(2),
           ),
         ),
@@ -926,28 +905,22 @@ class _KpiTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    required this.backgroundGradient,
-    required this.valueColor,
-    required this.labelColor,
-    required this.iconColor,
-    required this.iconBackgroundColor,
+    required this.tone,
+    required this.toneSoft,
     this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
-  final LinearGradient backgroundGradient;
-  final Color valueColor;
-  final Color labelColor;
-  final Color iconColor;
-  final Color iconBackgroundColor;
+  final Color tone;
+  final Color toneSoft;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadii.sm),
       elevation: 0,
       child: InkWell(
@@ -957,15 +930,9 @@ class _KpiTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.sm),
-            gradient: backgroundGradient,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 12,
-                offset: Offset(0, 5),
-              ),
-            ],
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.subtle,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -974,22 +941,22 @@ class _KpiTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: iconBackgroundColor,
+                  color: toneSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 16, color: iconColor),
+                child: Icon(icon, size: 16, color: tone),
               ),
               const SizedBox(height: 12),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: valueColor,
+                style: const TextStyle(
+                  color: AppColors.ink,
                   fontSize: 13.5,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(height: 4),
@@ -997,8 +964,8 @@ class _KpiTile extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: labelColor,
+                style: const TextStyle(
+                  color: AppColors.muted,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
