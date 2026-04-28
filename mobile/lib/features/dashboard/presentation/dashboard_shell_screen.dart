@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1425,10 +1426,9 @@ class _RecentActivity extends ConsumerWidget {
     final pending = ref.watch(localPendingActivityProvider).valueOrNull ??
         const <LocalPendingActivityRow>[];
     final inventory = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
-    // Build a lookup: itemId → imageAsset
     final imageByItemId = <String, String?>{
       for (final item in inventory)
-        if (item.imageAsset != null) item.id: item.imageAsset,
+        if (item.imageUrl != null) item.id: item.imageUrl,
     };
 
     final mergedRows = <DashboardActivity>[
@@ -1494,7 +1494,7 @@ class _RecentActivity extends ConsumerWidget {
                         height: 1, thickness: 1, color: AppColors.border),
                   _ActivityRow(
                     data: displayRows[i],
-                    imageAsset: displayRows[i].itemId != null
+                    imageUrl: displayRows[i].itemId != null
                         ? imageByItemId[displayRows[i].itemId]
                         : null,
                   ),
@@ -1508,9 +1508,9 @@ class _RecentActivity extends ConsumerWidget {
 }
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.data, this.imageAsset});
+  const _ActivityRow({required this.data, this.imageUrl});
   final DashboardActivity data;
-  final String? imageAsset;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -1537,14 +1537,16 @@ class _ActivityRow extends StatelessWidget {
               color: v.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: imageAsset != null
+            child: imageUrl != null
                 ? Padding(
                     padding: const EdgeInsets.all(4),
                     child: ClipOval(
-                      child: Image.asset(
-                        imageAsset!,
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl!,
                         fit: BoxFit.cover,
                         filterQuality: FilterQuality.medium,
+                        errorWidget: (_, __, ___) =>
+                            Icon(v.icon, color: v.color, size: 18),
                       ),
                     ),
                   )

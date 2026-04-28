@@ -2231,7 +2231,7 @@ class _ItemCard extends StatelessWidget {
             Align(
               alignment: Alignment.center,
               child: ItemImage(
-                imageAsset: item.imageAsset,
+                imageUrl: item.imageUrl,
                 size: 58,
                 fallbackIcon: Icons.inventory_2_outlined,
                 borderRadius: BorderRadius.circular(18),

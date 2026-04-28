@@ -17,6 +17,7 @@ class ItemCreateIn(BaseModel):
     sku: str | None = Field(default=None, max_length=128)
     category: str | None = Field(default=None, max_length=128)
     low_stock_threshold: int | None = Field(default=None, ge=0)
+    image_url: str | None = None
 
 
 class ItemUpdateIn(BaseModel):
@@ -28,6 +29,7 @@ class ItemUpdateIn(BaseModel):
     category: str | None = Field(default=None, max_length=128)
     low_stock_threshold: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
+    image_url: str | None = None
 
     @model_validator(mode="after")
     def validate_has_changes(self) -> ItemUpdateIn:
@@ -40,6 +42,7 @@ class ItemUpdateIn(BaseModel):
             and self.category is None
             and self.low_stock_threshold is None
             and self.is_active is None
+            and self.image_url is None
         ):
             msg = "At least one field must be provided."
             raise ValueError(msg)
@@ -91,6 +94,7 @@ class InventoryItemOut(BaseModel):
     is_active: bool
     quantity_on_hand: int
     version: int = 1
+    image_url: str | None = None
 
 
 class InventoryMutationOut(BaseModel):

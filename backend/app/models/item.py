@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,5 +34,6 @@ class Item(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     low_stock_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     store: Mapped[Store] = relationship("Store", back_populates="items", lazy="joined")
