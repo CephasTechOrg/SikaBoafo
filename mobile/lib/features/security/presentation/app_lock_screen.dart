@@ -78,7 +78,9 @@ class _AppLockScreenState extends ConsumerState<AppLockScreen> {
       await storage.writeLastBiometricAt(DateTime.now());
       await storage.markSessionGateComplete(DateTime.now());
       if (!mounted) return;
-      context.go(resolveReturnToOrHome(widget.returnTo));
+      final fallback = await storage.readLastProtectedRoute();
+      if (!mounted) return;
+      context.go(resolveReturnToOrHome(widget.returnTo ?? fallback));
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = 'Unable to unlock. Please try again.');

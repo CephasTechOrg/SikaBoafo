@@ -63,6 +63,15 @@ class _BizTrackAppState extends ConsumerState<BizTrackApp>
 
   void _handleBackgrounded() {
     // Clear the session gate so protected routes redirect to splash.
+    final router = ref.read(appRouterProvider);
+    final currentUri = router.routeInformationProvider.value.uri;
+    if (_isProtectedPath(currentUri.path)) {
+      unawaited(
+        ref.read(secureTokenStorageProvider).writeLastProtectedRoute(
+              currentUri.toString(),
+            ),
+      );
+    }
     unawaited(ref.read(secureTokenStorageProvider).clearSessionGate());
   }
 
