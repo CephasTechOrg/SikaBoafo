@@ -1231,6 +1231,255 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     );
   }
 
+  Future<void> _showReviewSaleSheet({
+    required List<LocalInventoryItem> items,
+    required int itemCount,
+    required String totalAmount,
+  }) async {
+    final itemById = {for (final item in items) item.id: item};
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final selectedQties = Map<String, int>.from(_qtyByItemId);
+            final selectedOverrides =
+                Map<String, String>.from(_priceOverrideByItemId);
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: AppShadows.elevated,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.borderStrong,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Review sale',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$itemCount ${itemCount == 1 ? 'item' : 'items'} · ${_formatMajor(totalAmount, symbol: '₵')}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        // Selected items list
+                        ...selectedQties.entries.map((entry) {
+                          final item = itemById[entry.key];
+                          if (item == null) return const SizedBox.shrink();
+                          final qty = entry.value;
+                          final price = selectedOverrides[entry.key] ??
+                              item.defaultPrice;
+                          final lineTotalMinor =
+                              int.parse(price) * qty;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: AppColors.border),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.name,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.ink,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${_formatMinor(int.parse(price), symbol: '')} × $qty',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.muted,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            _formatMinor(lineTotalMinor,
+                                                symbol: '₵'),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.ink,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          SizedBox(
+                                            height: 28,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () {
+                                                setSheetState(() {
+                                                  selectedQties
+                                                      .remove(entry.key);
+                                                  selectedOverrides
+                                                      .remove(entry.key);
+                                                  setState(() {
+                                                    _qtyByItemId
+                                                        .remove(entry.key);
+                                                    _priceOverrideByItemId
+                                                        .remove(entry.key);
+                                                  });
+                                                });
+                                              },
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 14,
+                                              ),
+                                              label: const Text('Remove',
+                                                  style: TextStyle(
+                                                      fontSize: 11)),
+                                              style: OutlinedButton.styleFrom(
+                                                padding: const EdgeInsets
+                                                    .symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4),
+                                                foregroundColor:
+                                                    AppColors.forest,
+                                                side: const BorderSide(
+                                                    color: AppColors.forest),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 18),
+                        // Note field
+                        const Text(
+                          'Sale notes (optional)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: TextField(
+                            controller: _noteCtrl,
+                            maxLines: 2,
+                            maxLength: 500,
+                            decoration: const InputDecoration(
+                              hintText: 'Add a note for this sale…',
+                              contentPadding: EdgeInsets.all(12),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              counterStyle: TextStyle(fontSize: 9),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () =>
+                                    Navigator.of(sheetContext).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(48),
+                                  side: const BorderSide(
+                                      color: AppColors.forest),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('Keep editing'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(sheetContext).pop(),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.forest,
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text('Continue checkout'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     final ctrl = TextEditingController(
         text: _priceOverrideByItemId[item.id] ?? item.defaultPrice);
