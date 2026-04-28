@@ -1454,57 +1454,62 @@ class _RecentActivity extends ConsumerWidget {
         ),
       ...rows,
     ];
+    final displayRows = mergedRows.take(1).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Expanded(child: _SectionLabel('Recent Activity')),
-            TextButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Activity list coming soon'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              ),
-              child: Text(
-                'VIEW ALL',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
-                    ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         if (activityAsync.isLoading && rows.isEmpty && pending.isEmpty)
           _ActivitySkeleton()
-        else if (mergedRows.isEmpty)
+        else if (displayRows.isEmpty)
           _ActivityEmpty()
         else
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadii.md),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppColors.border),
-              boxShadow: AppShadows.card,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x120F172A),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
-            child: ListView.separated(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: mergedRows.length,
-              separatorBuilder: (_, __) => const Divider(
-                  height: 1, thickness: 1, color: AppColors.border),
-              itemBuilder: (_, i) => _ActivityRow(
-                data: mergedRows[i],
-                imageAsset: mergedRows[i].itemId != null
-                    ? imageByItemId[mergedRows[i].itemId]
-                    : null,
-              ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+                  child: Row(
+                    children: [
+                      const Expanded(child: _SectionLabel('Recent Activity')),
+                      TextButton(
+                        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Activity list coming soon'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        ),
+                        child: const Text(
+                          'View All',
+                          style: TextStyle(
+                            color: AppColors.forest,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _ActivityRow(
+                  data: displayRows.first,
+                  imageAsset: displayRows.first.itemId != null
+                      ? imageByItemId[displayRows.first.itemId]
+                      : null,
+                ),
+              ],
             ),
           ),
       ],
