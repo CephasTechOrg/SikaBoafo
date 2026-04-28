@@ -1,4 +1,6 @@
 import 'package:local_auth/local_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 enum BiometricAvailability {
   available,
@@ -51,7 +53,17 @@ class BiometricService {
           stickyAuth: true,
         ),
       );
-    } catch (_) {
+    } on PlatformException catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Biometric auth PlatformException: ${e.code} ${e.message}');
+        debugPrintStack(stackTrace: st);
+      }
+      return false;
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Biometric auth error: $e');
+        debugPrintStack(stackTrace: st);
+      }
       return false;
     }
   }

@@ -16,6 +16,7 @@ import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
@@ -110,51 +111,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           children: [
             Stack(
               children: [
-                Positioned.fill(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFF052715),
-                              Color(0xFF0A4F24),
-                              Color(0xFF0F6230),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(0.55, -0.12),
-                            radius: 1.05,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.08),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 1.0],
-                          ),
-                        ),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF021109).withValues(alpha: 0.22),
-                              const Color(0xFF052715).withValues(alpha: 0.08),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: const [0.0, 0.54, 1.0],
-                          ),
-                        ),
-                      ),
-                    ],
+                const Positioned.fill(
+                  child: HeroBackdrop(
+                    shadeColor: Color(0xFF04170A),
+                    tintColor: Color(0xFF0A4F24),
+                    tintOpacity: 0.28,
+                    topShade: 0.68,
+                    midShade: 0.34,
                   ),
                 ),
                 SafeArea(

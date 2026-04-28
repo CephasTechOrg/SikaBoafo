@@ -142,58 +142,59 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 ),
                 Expanded(
                   child: PremiumSurface(
-                  child: RefreshIndicator(
-                    onRefresh: () =>
-                        ref.read(expensesControllerProvider.notifier).refresh(),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                      children: [
-                        const SizedBox(height: 4),
-                        if (catMinors.isNotEmpty) ...[
-                          _CategoryBreakdownCard(catMinors: catMinors),
-                          const SizedBox(height: 16),
-                        ],
-                        _LogExpenseCard(
-                          expanded: _showForm,
-                          category: _category,
-                          amountCtrl: _amountCtrl,
-                          noteCtrl: _noteCtrl,
-                          isLoading: expensesAsync.isLoading,
-                          onToggle: () =>
-                              setState(() => _showForm = !_showForm),
-                          onCategoryChanged: (c) =>
-                              setState(() => _category = c),
-                          onSave: _saveExpense,
-                        ),
-                        const SizedBox(height: 22),
-                        const Row(
-                          children: [
-                            Text(
-                              'Expense History',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: AppColors.ink,
-                              ),
-                            ),
+                    child: RefreshIndicator(
+                      onRefresh: () => ref
+                          .read(expensesControllerProvider.notifier)
+                          .refresh(),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                        children: [
+                          const SizedBox(height: 4),
+                          if (catMinors.isNotEmpty) ...[
+                            _CategoryBreakdownCard(catMinors: catMinors),
+                            const SizedBox(height: 16),
                           ],
-                        ),
-                        const SizedBox(height: 10),
-                        if (expensesAsync.isLoading && expenses.isEmpty)
-                          const _LoadingCard()
-                        else if (expenses.isEmpty)
-                          const _EmptyCard()
-                        else
-                          ...expenses.map(_buildExpenseTile),
-                      ],
+                          _LogExpenseCard(
+                            expanded: _showForm,
+                            category: _category,
+                            amountCtrl: _amountCtrl,
+                            noteCtrl: _noteCtrl,
+                            isLoading: expensesAsync.isLoading,
+                            onToggle: () =>
+                                setState(() => _showForm = !_showForm),
+                            onCategoryChanged: (c) =>
+                                setState(() => _category = c),
+                            onSave: _saveExpense,
+                          ),
+                          const SizedBox(height: 22),
+                          const Row(
+                            children: [
+                              Text(
+                                'Expense History',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          if (expensesAsync.isLoading && expenses.isEmpty)
+                            const _LoadingCard()
+                          else if (expenses.isEmpty)
+                            const _EmptyCard()
+                          else
+                            ...expenses.map(_buildExpenseTile),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ],
       ),
     );
@@ -218,15 +219,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -589,15 +585,10 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,15 +640,10 @@ class _CategoryBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,7 +654,7 @@ class _CategoryBreakdownCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.mint,
+                  color: AppColors.successSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.pie_chart_rounded,
@@ -811,7 +797,7 @@ class _LogExpenseCard extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.mint,
+                      color: AppColors.successSoft,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.add_rounded,
@@ -929,7 +915,7 @@ class _CategoryPicker extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSel
                   ? meta.color.withValues(alpha: 0.14)
-                  : const Color(0xFFF6F7F9),
+                  : AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSel ? meta.color : Colors.transparent,
@@ -990,7 +976,7 @@ class _EField extends StatelessWidget {
         hintText: hint,
         prefixIcon: Icon(prefixIcon, size: 18),
         filled: true,
-        fillColor: const Color(0xFFF6F7F9),
+        fillColor: AppColors.surfaceAlt,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -1046,7 +1032,7 @@ class _EmptyCard extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: AppColors.mint,
+              color: AppColors.successSoft,
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(Icons.receipt_long_outlined,
