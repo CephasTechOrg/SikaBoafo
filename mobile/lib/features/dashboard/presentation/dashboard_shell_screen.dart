@@ -147,9 +147,9 @@ class _HomeDashboard extends ConsumerWidget {
                   height: heroHeight,
                   child: const HeroBackdrop(
                     swirlAssetPath: 'assets/images/flag.png',
-                    swirlOpacity: 0.64,
-                    topShade: 0.72,
-                    midShade: 0.34,
+                    swirlOpacity: 0.82,
+                    topShade: 0.48,
+                    midShade: 0.16,
                   ),
                 ),
 
@@ -868,8 +868,15 @@ class _KpiStrip extends StatelessWidget {
             label: "Today's Profit",
             value: isLoading ? '—' : '\u20B5$profitDisplay',
             icon: Icons.trending_up_rounded,
-            tone: AppColors.forest,
-            toneSoft: AppColors.successSoft,
+            backgroundGradient: const LinearGradient(
+              colors: [Color(0xFF03451F), Color(0xFF0F622F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            valueColor: Colors.white,
+            labelColor: Color(0xD8FFFFFF),
+            iconColor: Colors.white,
+            iconBackgroundColor: Color(0x26FFFFFF),
           ),
         ),
         const SizedBox(width: 10),
@@ -878,8 +885,15 @@ class _KpiStrip extends StatelessWidget {
             label: 'Outstanding',
             value: isLoading ? '—' : '\u20B5$debtDisplay',
             icon: Icons.account_balance_wallet_rounded,
-            tone: AppColors.navySoft,
-            toneSoft: AppColors.infoSoft,
+            backgroundGradient: const LinearGradient(
+              colors: [Color(0xFF03451F), Color(0xFF0F622F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            valueColor: Colors.white,
+            labelColor: Color(0xD8FFFFFF),
+            iconColor: Colors.white,
+            iconBackgroundColor: Color(0x26FFFFFF),
             onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
@@ -890,8 +904,15 @@ class _KpiStrip extends StatelessWidget {
             value:
                 isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
             icon: Icons.error_outline_rounded,
-            tone: AppColors.danger,
-            toneSoft: AppColors.dangerSoft,
+            backgroundGradient: const LinearGradient(
+              colors: [Color(0xFFF3B041), Color(0xFFECA635)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            valueColor: AppColors.ink,
+            labelColor: AppColors.inkSoft,
+            iconColor: AppColors.ink,
+            iconBackgroundColor: Color(0x14000000),
             onTap: () => onNavigate(2),
           ),
         ),
@@ -905,16 +926,22 @@ class _KpiTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    required this.tone,
-    required this.toneSoft,
+    required this.backgroundGradient,
+    required this.valueColor,
+    required this.labelColor,
+    required this.iconColor,
+    required this.iconBackgroundColor,
     this.onTap,
   });
 
   final String label;
   final String value;
   final IconData icon;
-  final Color tone;
-  final Color toneSoft;
+  final LinearGradient backgroundGradient;
+  final Color valueColor;
+  final Color labelColor;
+  final Color iconColor;
+  final Color iconBackgroundColor;
   final VoidCallback? onTap;
 
   @override
