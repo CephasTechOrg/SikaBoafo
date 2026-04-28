@@ -79,6 +79,9 @@ class HeroBackdrop extends StatelessWidget {
     this.swirlOpacity = 0.55,
     this.topShade = 0.60,
     this.midShade = 0.20,
+    this.shadeColor = Colors.black,
+    this.tintColor = Colors.transparent,
+    this.tintOpacity = 0,
   });
 
   final String swirlAssetPath;
@@ -91,6 +94,15 @@ class HeroBackdrop extends StatelessWidget {
 
   /// 0–1: alpha of the dark vignette around the middle of the hero.
   final double midShade;
+
+  /// Base tint used for the hero vignette.
+  final Color shadeColor;
+
+  /// Color wash laid across the hero to shift the overall mood.
+  final Color tintColor;
+
+  /// 0-1: opacity of the color wash laid across the hero.
+  final double tintOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -108,12 +120,19 @@ class HeroBackdrop extends StatelessWidget {
             alignment: Alignment.topCenter,
           ),
         ),
+        if (tintOpacity > 0)
+          Opacity(
+            opacity: tintOpacity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: tintColor),
+            ),
+          ),
         DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Colors.black.withValues(alpha: topShade),
-                Colors.black.withValues(alpha: midShade),
+                shadeColor.withValues(alpha: topShade),
+                shadeColor.withValues(alpha: midShade),
                 Colors.transparent,
               ],
               begin: Alignment.topCenter,
@@ -243,7 +262,8 @@ class OtpCodeInputRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.sm),
           borderSide: const BorderSide(color: AppColors.forest, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       ),
       onChanged: (v) {
         final digits = v.replaceAll(RegExp(r'\D+'), '');
@@ -537,4 +557,3 @@ class MockupHeaderAction extends StatelessWidget {
     return Tooltip(message: tooltip!, child: btn);
   }
 }
-

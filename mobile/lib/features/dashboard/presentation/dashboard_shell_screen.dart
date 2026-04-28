@@ -146,9 +146,12 @@ class _HomeDashboard extends ConsumerWidget {
                   height: heroHeight,
                   child: const HeroBackdrop(
                     swirlAssetPath: 'assets/images/flag.png',
-                    swirlOpacity: 0.82,
-                    topShade: 0.58,
-                    midShade: 0.26,
+                    swirlOpacity: 0.76,
+                    topShade: 0.72,
+                    midShade: 0.40,
+                    shadeColor: Color(0xFF04170A),
+                    tintColor: Color(0xFF0F6A31),
+                    tintOpacity: 0.18,
                   ),
                 ),
 
@@ -737,12 +740,12 @@ class _QuickTile extends StatelessWidget {
       elevation: 0,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          height: 62,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             gradient: LinearGradient(
               colors: [accentColor, backgroundColor],
               begin: Alignment.topLeft,
@@ -761,15 +764,15 @@ class _QuickTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 decoration: BoxDecoration(
                   color: iconBackgroundColor,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                child: Icon(icon, color: iconColor, size: 14),
+                child: Icon(icon, color: iconColor, size: 13),
               ),
-              const SizedBox(width: 7),
+              const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   label,
@@ -777,7 +780,7 @@ class _QuickTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10.3,
+                    fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: foregroundColor,
                     height: 1.1,
@@ -914,10 +917,10 @@ class _KpiTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.sm),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 92),
-          padding: const EdgeInsets.fromLTRB(11, 11, 11, 11),
+          constraints: const BoxConstraints(minHeight: 86),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             color: AppColors.surface,
             border: Border.all(color: AppColors.border),
             boxShadow: const [
@@ -932,15 +935,15 @@ class _KpiTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: toneSoft,
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 20, color: tone),
+                child: Icon(icon, size: 18, color: tone),
               ),
-              const SizedBox(width: 9),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -952,18 +955,18 @@ class _KpiTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.ink,
-                        fontSize: 11.6,
+                        fontSize: 11.2,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.ink,
-                        fontSize: 16,
+                        fontSize: 15.2,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.2,
                         fontFeatures: [FontFeature.tabularFigures()],

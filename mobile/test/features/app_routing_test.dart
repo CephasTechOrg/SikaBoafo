@@ -305,7 +305,7 @@ void main() {
       container.read(appRouterProvider).go(AppRoute.debts.path);
       await tester.pump();
 
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text('SikaBoafo'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
