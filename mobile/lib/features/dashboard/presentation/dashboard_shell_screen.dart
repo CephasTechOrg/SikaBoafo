@@ -8,6 +8,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/widgets/sync_status_pill.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import '../data/dashboard_api.dart';
 import '../providers/dashboard_providers.dart';
@@ -339,7 +340,12 @@ class _Header extends ConsumerWidget {
                     ),
                     if (syncSnapshot != null) ...[
                       const SizedBox(width: 8),
-                      Flexible(child: _SyncPill(snapshot: syncSnapshot)),
+                      Flexible(
+                        child: GestureDetector(
+                          onTap: () => showSyncDetailsSheet(context, ref),
+                          child: _SyncPill(snapshot: syncSnapshot),
+                        ),
+                      ),
                     ],
                   ],
                 ),

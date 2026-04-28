@@ -5,114 +5,11 @@ import '../../app/theme/app_theme.dart';
 import '../../data/local/sync_queue_repository.dart';
 import '../providers/sync_providers.dart';
 
-class SyncStatusPill extends ConsumerWidget {
-  const SyncStatusPill({super.key});
+/// Opens the sync detail bottom sheet. Call from any widget with a [WidgetRef].
+Future<void> showSyncDetailsSheet(BuildContext context, WidgetRef ref) =>
+    _showSyncDetails(context, ref);
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final syncAsync = ref.watch(syncStatusControllerProvider);
-    final snapshot = syncAsync.valueOrNull;
-    final visual = _statusVisual(snapshot);
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: () => _showSyncDetails(context, ref),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: visual.background,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: visual.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            syncAsync.isLoading && snapshot == null
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Icon(visual.icon, size: 16, color: Colors.white),
-            const SizedBox(width: 6),
-            Text(
-              visual.label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  _SyncVisual _statusVisual(SyncStatusSnapshot? snapshot) {
-    if (snapshot == null) {
-      return const _SyncVisual(
-        label: 'Checking',
-        icon: Icons.sync_rounded,
-        background: Color(0x296AA8E8),
-        border: Color(0x556AA8E8),
-      );
-    }
-
-    if (snapshot.isSyncing) {
-      return const _SyncVisual(
-        label: 'Syncing',
-        icon: Icons.sync_rounded,
-        background: Color(0x296AA8E8),
-        border: Color(0x556AA8E8),
-      );
-    }
-    if (snapshot.stats.conflictCount > 0) {
-      return _SyncVisual(
-        label: 'Conflict ${snapshot.stats.conflictCount}',
-        icon: Icons.warning_amber_rounded,
-        background: AppColors.warning.withValues(alpha: 0.2),
-        border: AppColors.warning.withValues(alpha: 0.4),
-      );
-    }
-    if (snapshot.stats.failedCount > 0) {
-      return _SyncVisual(
-        label: 'Retry ${snapshot.stats.failedCount}',
-        icon: Icons.error_outline_rounded,
-        background: AppColors.danger.withValues(alpha: 0.2),
-        border: AppColors.danger.withValues(alpha: 0.4),
-      );
-    }
-    if (!snapshot.backendReachable) {
-      final pending = snapshot.stats.pendingCount;
-      return _SyncVisual(
-        label: pending > 0 ? 'Offline $pending' : 'Offline',
-        icon: Icons.cloud_off_rounded,
-        background: Colors.white.withValues(alpha: 0.16),
-        border: Colors.white.withValues(alpha: 0.2),
-      );
-    }
-    if (snapshot.stats.pendingCount > 0 || snapshot.stats.sendingCount > 0) {
-      final pending = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
-      return _SyncVisual(
-        label: 'Pending $pending',
-        icon: Icons.schedule_send_rounded,
-        background: AppColors.gold.withValues(alpha: 0.2),
-        border: AppColors.gold.withValues(alpha: 0.4),
-      );
-    }
-    return _SyncVisual(
-      label: 'Synced',
-      icon: Icons.cloud_done_rounded,
-      background: AppColors.success.withValues(alpha: 0.2),
-      border: AppColors.success.withValues(alpha: 0.4),
-    );
-  }
-
-  Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
+Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -251,29 +148,14 @@ class SyncStatusPill extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  String _formatTimestamp(DateTime value) {
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '${value.year}-$month-$day $hour:$minute';
-  }
 }
 
-class _SyncVisual {
-  const _SyncVisual({
-    required this.label,
-    required this.icon,
-    required this.background,
-    required this.border,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color background;
-  final Color border;
+String _formatTimestamp(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '${value.year}-$month-$day $hour:$minute';
 }
 
 class _MetricCard extends StatelessWidget {
