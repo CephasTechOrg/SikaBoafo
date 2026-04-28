@@ -53,7 +53,7 @@ void main() {
       );
     });
 
-    test('handles multiple dots — only strips last extension', () {
+    test('treats dots in basename as word separators', () {
       expect(
         SupabaseStorageService.labelFromFilename('peak.milk.jpg'),
         'Peak Milk',

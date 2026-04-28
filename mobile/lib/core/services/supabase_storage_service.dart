@@ -82,7 +82,7 @@ class SupabaseStorageService implements StorageService {
   static String labelFromFilename(String filename) {
     final noExt = filename.replaceAll(RegExp(r'\.[^.]+$'), '');
     return noExt
-        .replaceAll(RegExp(r'[_\-]+'), ' ')
+        .replaceAll(RegExp(r'[_\-\.]+'), ' ')
         .split(' ')
         .where((w) => w.isNotEmpty)
         .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())

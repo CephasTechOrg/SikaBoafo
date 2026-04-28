@@ -81,17 +81,9 @@ void main() {
       addTearDown(container.dispose);
 
       expect(
-        () => container.read(officialProductsProvider.future),
-        // The future itself throws, we check the provider is in error state.
-        returnsNormally,
+        container.read(officialProductsProvider.future),
+        throwsA(isA<Exception>()),
       );
-
-      final asyncValue = await container.read(officialProductsProvider.future).then(
-            (v) => AsyncData<List<StorageProduct>>(v),
-            onError: (e, s) => AsyncError<List<StorageProduct>>(e, s),
-          );
-
-      expect(asyncValue, isA<AsyncError<List<StorageProduct>>>());
     });
 
     test('returns empty list when catalog has no products', () async {
