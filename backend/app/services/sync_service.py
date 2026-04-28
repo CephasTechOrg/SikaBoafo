@@ -33,8 +33,14 @@ from app.schemas.receivable import (
     SyncReceivableCreateIn,
     SyncReceivablePaymentCreateIn,
 )
-from app.schemas.sale import SaleCreateIn, SyncSaleCreateIn
-from app.schemas.sale import SaleUpdateIn, SaleVoidIn, SyncSaleUpdateIn, SyncSaleVoidIn
+from app.schemas.sale import (
+    SaleCreateIn,
+    SaleUpdateIn,
+    SaleVoidIn,
+    SyncSaleCreateIn,
+    SyncSaleUpdateIn,
+    SyncSaleVoidIn,
+)
 from app.schemas.sync import SyncOperationIn
 from app.services.expense_service import ExpenseContextMissingError, ExpenseService
 from app.services.inventory_service import (
@@ -57,8 +63,8 @@ from app.services.sales_service import (
     SaleContextMissingError,
     SaleItemNotFoundError,
     SaleNotFoundError,
-    SaleUpdateScopeError,
     SalesService,
+    SaleUpdateScopeError,
 )
 
 

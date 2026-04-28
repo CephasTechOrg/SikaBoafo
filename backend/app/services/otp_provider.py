@@ -198,13 +198,17 @@ class ArkeselOtpProvider:
     def _generate_code(self) -> str:
         length = self.settings.arkesel_otp_length
         otp_type = self.settings.arkesel_otp_type.strip().lower()
-        alphabet = string.digits if otp_type == "numeric" else string.ascii_uppercase + string.digits
+        alphabet = (
+            string.digits
+            if otp_type == "numeric"
+            else string.ascii_uppercase + string.digits
+        )
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def _hash_code(self, *, phone_number: str, code: str) -> str:
         digest = hmac.new(
-            self.settings.secret_key.encode("utf-8"),
-            f"{phone_number}:{code}".encode("utf-8"),
+            self.settings.secret_key.encode(),
+            f"{phone_number}:{code}".encode(),
             hashlib.sha256,
         ).hexdigest()
         return digest

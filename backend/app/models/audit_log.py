@@ -11,11 +11,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-# JSONB on PostgreSQL, plain JSON on SQLite (tests)
-_JSONB_OR_JSON = JSONB().with_variant(sa.JSON(), "sqlite")
-
 from app.db.base import Base
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+# JSONB on PostgreSQL, plain JSON on SQLite (tests)
+_JSONB_OR_JSON = JSONB().with_variant(sa.JSON(), "sqlite")
 
 
 class AuditLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):

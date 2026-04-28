@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from uuid import UUID
-
 from datetime import datetime
+from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -14,9 +12,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.constants import PAYMENT_PROVIDER_PAYSTACK, PAYSTACK_MODE_TEST
 from app.db.base import Base
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
-
-if TYPE_CHECKING:
-    from app.models.merchant import Merchant
 
 
 class PaymentProviderConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -49,8 +44,14 @@ class PaymentProviderConnection(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     live_secret_key_encrypted: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     test_secret_key_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
     live_secret_key_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
-    test_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    live_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    test_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    live_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     is_connected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     def get_public_key(self, *, mode: str) -> str | None:

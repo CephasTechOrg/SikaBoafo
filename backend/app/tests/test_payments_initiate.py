@@ -40,7 +40,11 @@ from app.models.store import Store
 from app.models.user import User
 
 
-def _configure_env(*, app_env: str = "local", test_secret: str | None = None) -> dict[str, str | None]:
+def _configure_env(
+    *,
+    app_env: str = "local",
+    test_secret: str | None = None,
+) -> dict[str, str | None]:
     original = {
         "APP_ENV": os.environ.get("APP_ENV"),
         "PAYMENT_CONFIG_ENCRYPTION_KEY": os.environ.get("PAYMENT_CONFIG_ENCRYPTION_KEY"),

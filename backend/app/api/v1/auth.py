@@ -18,9 +18,9 @@ from app.schemas.auth import (
     OtpRequestOut,
     OtpVerifyIn,
     PinLoginIn,
-    RefreshTokenIn,
     PinSetIn,
     PinSetOut,
+    RefreshTokenIn,
     UserSessionOut,
 )
 from app.services.auth_service import (

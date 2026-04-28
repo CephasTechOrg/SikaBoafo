@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -338,7 +338,7 @@ class ReceivablesService:
         return self._to_receivable_snapshot(receivable=receivable)
 
     def _generate_invoice_number(self, *, store_id: UUID) -> str:
-        year = datetime.now(tz=timezone.utc).year
+        year = datetime.now(tz=UTC).year
         prefix = f"INV-{year}-"
         count = self.db.scalar(
             select(func.count())
