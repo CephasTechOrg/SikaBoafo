@@ -13,6 +13,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
+import '../../dashboard/data/dashboard_api.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
@@ -58,6 +60,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   Widget build(BuildContext context) {
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
+    final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
+    final dashboardOverlayAsync = ref.watch(localDashboardOverlayProvider);
     final allItems =
         (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
             .where((item) => item.isActive)
@@ -80,6 +84,28 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ((_qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems)
           .add(item);
     }
+
+    final topSellingRows = _mergeTopSelling(
+      dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems ?? const [],
+      dashboardOverlayAsync.valueOrNull?.monthPendingTopSelling ?? const [],
+      limit: 3,
+    );
+    
+    // Build set of top-selling item IDs to filter from available list.
+    final topSellingIds = <String>{
+      for (final row in topSellingRows) row.itemId,
+    };
+    
+    // Filter top-selling items from unselected for separate "Quick Add" section.
+    final quickAddItems = unselectedItems
+        .where((item) => topSellingIds.contains(item.id))
+        .toList(growable: false);
+    final regularUnselectedItems = unselectedItems
+        .where((item) => !topSellingIds.contains(item.id))
+        .toList(growable: false);
+    
+    // Sort regular items by name.
+    regularUnselectedItems.sort((a, b) => a.name.compareTo(b.name));
 
     final itemCount = _qtyByItemId.values.fold(0, (a, b) => a + b);
     final totalAmount = _calculateTotal(allItems);
@@ -258,7 +284,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 6),
                           Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -287,7 +313,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -321,7 +347,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             ),
             Expanded(
               child: Transform.translate(
-                offset: const Offset(0, -20),
+                offset: const Offset(0, -8),
                 child: Column(
                   children: [
                     const StaleBanner(
@@ -492,7 +518,37 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                             const SizedBox(height: 18),
                                           ],
-                                          if (unselectedItems.isNotEmpty) ...[
+                                          // Quick Add: Top 3 selling items.
+                                          if (quickAddItems.isNotEmpty) ...[
+                                            _SectionLabel(
+                                              label: 'Quick Add',
+                                            ),
+                                            const SizedBox(height: 10),
+                                            _ItemGrid(
+                                              children: quickAddItems
+                                                  .map(
+                                                    (item) => _ItemCard(
+                                                      item: item,
+                                                      qty: 0,
+                                                      priceOverride: null,
+                                                      isSelected: false,
+                                                      onMinus: () {},
+                                                      onPlus: () => setState(
+                                                        () => _incrementQty(
+                                                          item,
+                                                        ),
+                                                      ),
+                                                      onPriceTap: () =>
+                                                          _showPriceOverrideDialog(
+                                                        item,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(growable: false),
+                                            ),
+                                            const SizedBox(height: 18),
+                                          ],
+                                          if (regularUnselectedItems.isNotEmpty) ...[
                                             _SectionLabel(
                                               label: selectedItems.isNotEmpty
                                                   ? 'Add more products'
@@ -500,7 +556,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                             const SizedBox(height: 10),
                                             _ItemGrid(
-                                              children: unselectedItems
+                                              children: regularUnselectedItems
                                                   .map(
                                                     (item) => _ItemCard(
                                                       item: item,
@@ -1469,6 +1525,89 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       _ => 'Cash',
     };
   }
+
+  List<DashboardTopSellingItem> _mergeTopSelling(
+    List<DashboardTopSellingItem> server,
+    List<LocalTopSellingOverlayRow> pending, {
+    int limit = 3,
+  }) {
+    final byId = <String, _TopAgg>{};
+    for (final row in server) {
+      byId[row.itemId] = _TopAgg(
+        itemId: row.itemId,
+        itemName: row.itemName,
+        qty: row.quantitySold,
+        totalMinor: _moneyToMinorSafe(row.salesTotal),
+      );
+    }
+    for (final row in pending) {
+      final existing = byId[row.itemId];
+      if (existing == null) {
+        byId[row.itemId] = _TopAgg(
+          itemId: row.itemId,
+          itemName: row.itemName,
+          qty: row.quantitySold,
+          totalMinor: row.salesTotalMinor,
+        );
+      } else {
+        byId[row.itemId] = existing.copyWith(
+          qty: existing.qty + row.quantitySold,
+          totalMinor: existing.totalMinor + row.salesTotalMinor,
+        );
+      }
+    }
+
+    final list = byId.values.toList(growable: false);
+    list.sort((a, b) {
+      final byQty = b.qty.compareTo(a.qty);
+      if (byQty != 0) return byQty;
+      return b.totalMinor.compareTo(a.totalMinor);
+    });
+
+    return list
+        .take(limit)
+        .map(
+          (row) => DashboardTopSellingItem(
+            itemId: row.itemId,
+            itemName: row.itemName,
+            quantitySold: row.qty,
+            salesTotal: minorToMoney(row.totalMinor),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  int _moneyToMinorSafe(String value) {
+    final raw = value.trim();
+    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
+    if (match == null) return 0;
+    final parts = raw.split('.');
+    final major = int.tryParse(parts[0]) ?? 0;
+    final decimals =
+        parts.length == 2 ? (parts[1].padRight(2, '0')) : '00';
+    return (major * 100) + (int.tryParse(decimals) ?? 0);
+  }
+}
+
+class _TopAgg {
+  const _TopAgg({
+    required this.itemId,
+    required this.itemName,
+    required this.qty,
+    required this.totalMinor,
+  });
+
+  final String itemId;
+  final String itemName;
+  final int qty;
+  final int totalMinor;
+
+  _TopAgg copyWith({int? qty, int? totalMinor}) => _TopAgg(
+        itemId: itemId,
+        itemName: itemName,
+        qty: qty ?? this.qty,
+        totalMinor: totalMinor ?? this.totalMinor,
+      );
 }
 
 // ── Payment card ────────────────────────────────────────────────────────────

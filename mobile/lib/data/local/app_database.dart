@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 13;
+const _schemaVersion = 14;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -71,6 +71,9 @@ class AppDatabase {
         }
         if (oldVersion < 13) {
           await _upgradeInventorySchemaV13(db);
+        }
+        if (oldVersion < 14) {
+          await _upgradeInventorySchemaV14(db);
         }
       },
     );
@@ -135,6 +138,8 @@ CREATE TABLE IF NOT EXISTS items_local (
   is_active INTEGER NOT NULL DEFAULT 1,
   quantity_on_hand INTEGER NOT NULL DEFAULT 0,
   image_asset TEXT,
+  image_url TEXT,
+  server_version INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )
@@ -268,6 +273,16 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     if (!names.contains('server_version')) {
       await db.execute(
         'ALTER TABLE items_local ADD COLUMN server_version INTEGER',
+      );
+    }
+  }
+
+  Future<void> _upgradeInventorySchemaV14(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(items_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('image_url')) {
+      await db.execute(
+        'ALTER TABLE items_local ADD COLUMN image_url TEXT',
       );
     }
   }

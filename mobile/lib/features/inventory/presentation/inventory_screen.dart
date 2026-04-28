@@ -49,7 +49,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   bool _showArchived = false;
   String _searchQuery = '';
   String? _filterCategory;
-  String? _newItemImage;
+  String? _newItemUrl;
 
   @override
   void dispose() {
@@ -148,12 +148,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           thresholdCtrl: _thresholdCtrl,
                           qtyCtrl: _qtyCtrl,
                           isLoading: itemsAsync.isLoading,
-                          selectedImage: _newItemImage,
+                          selectedImage: _newItemUrl,
                           onToggle: () =>
                               setState(() => _showForm = !_showForm),
                           onSave: _saveItem,
                           onImageChanged: (v) =>
-                              setState(() => _newItemImage = v),
+                              setState(() => _newItemUrl = v),
                         ),
                         const SizedBox(height: 20),
 
@@ -286,7 +286,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 : _categoryCtrl.text.trim(),
             lowStockThreshold: int.tryParse(_thresholdCtrl.text.trim()),
             initialQuantity: initialQty ?? 0,
-            imageAsset: _newItemImage,
+            imageUrl: _newItemUrl,
           );
       _nameCtrl.clear();
       _priceCtrl.clear();
@@ -297,7 +297,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       if (!mounted) return;
       setState(() {
         _showForm = false;
-        _newItemImage = null;
+        _newItemUrl = null;
       });
       _msg('Item added to inventory.');
     } catch (error) {
@@ -1106,7 +1106,7 @@ class _ItemCard extends StatelessWidget {
               children: [
                 // Product image â€” always neutral background, image contained
                 ItemImage(
-                  imageAsset: item.imageAsset,
+                  imageUrl: item.imageUrl,
                   size: 56,
                   fallbackIcon: Icons.inventory_2_outlined,
                 ),
@@ -1402,7 +1402,7 @@ class _EditSheetState extends State<_EditSheet> {
   late final TextEditingController _skuCtrl;
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _thresholdCtrl;
-  late String? _imageAsset;
+  late String? _imageUrl;
   bool _saving = false;
 
   @override
@@ -1414,7 +1414,7 @@ class _EditSheetState extends State<_EditSheet> {
     _categoryCtrl = TextEditingController(text: widget.item.category ?? '');
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
-    _imageAsset = widget.item.imageAsset;
+    _imageUrl = widget.item.imageUrl;
   }
 
   @override

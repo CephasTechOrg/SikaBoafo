@@ -71,7 +71,7 @@ class InventoryController
     String? category,
     int? lowStockThreshold,
     int initialQuantity = 0,
-    String? imageAsset,
+    String? imageUrl,
   }) async {
     await _repo.createItemLocal(
       name: name,
@@ -80,7 +80,7 @@ class InventoryController
       category: category,
       lowStockThreshold: lowStockThreshold,
       initialQuantity: initialQuantity,
-      imageAsset: imageAsset,
+      imageUrl: imageUrl,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -95,8 +95,8 @@ class InventoryController
     String? category,
     int? lowStockThreshold,
     required bool isActive,
-    String? imageAsset,
-    bool imageAssetChanged = false,
+    String? imageUrl,
+    bool imageUrlChanged = false,
   }) async {
     await _repo.updateItemLocal(
       itemId: itemId,
@@ -106,8 +106,8 @@ class InventoryController
       category: category,
       lowStockThreshold: lowStockThreshold,
       isActive: isActive,
-      imageAsset: imageAsset,
-      imageAssetChanged: imageAssetChanged,
+      imageUrl: imageUrl,
+      imageUrlChanged: imageUrlChanged,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
