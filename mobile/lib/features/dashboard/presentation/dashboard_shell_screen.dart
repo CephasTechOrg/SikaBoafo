@@ -146,12 +146,12 @@ class _HomeDashboard extends ConsumerWidget {
                   height: heroHeight,
                   child: const HeroBackdrop(
                     swirlAssetPath: 'assets/images/flag.png',
-                    swirlOpacity: 0.76,
+                    swirlOpacity: 0.72,
                     topShade: 0.72,
                     midShade: 0.40,
                     shadeColor: Color(0xFF04170A),
                     tintColor: Color(0xFF0F6A31),
-                    tintOpacity: 0.24,
+                    tintOpacity: 0.34,
                   ),
                 ),
 
@@ -211,11 +211,6 @@ class _HomeDashboard extends ConsumerWidget {
                               summaryAsync: summaryAsync,
                               overlayAsync: overlayAsync,
                               onNavigate: onNavigate,
-                            ),
-                            const SizedBox(height: 18),
-                            _MonthOverviewCard(
-                              insightsAsync: insightsAsync,
-                              overlayAsync: overlayAsync,
                             ),
                             const SizedBox(height: 18),
                             _TopSellingSection(
@@ -1047,193 +1042,6 @@ class _KpiTile extends StatelessWidget {
   }
 }
 
-// ─── This Month Overview ──────────────────────────────────────────────────────
-
-class _MonthOverviewCard extends StatelessWidget {
-  const _MonthOverviewCard(
-      {required this.insightsAsync, required this.overlayAsync});
-
-  final AsyncValue<DashboardInsights> insightsAsync;
-  final AsyncValue<LocalDashboardOverlay> overlayAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    final data = insightsAsync.valueOrNull;
-    final month = data?.month;
-    final overlay = overlayAsync.valueOrNull;
-    final addSales = overlay?.monthPendingSalesMinor ?? 0;
-    final addExpenses = overlay?.monthPendingExpensesMinor ?? 0;
-    final addProfit = addSales - addExpenses;
-    final salesText =
-        _addMoneyStrings(month?.salesTotal ?? '0.00', minorToMoney(addSales));
-    final expensesText = _addMoneyStrings(
-        month?.expensesTotal ?? '0.00', minorToMoney(addExpenses));
-    final profitText = _addMoneyStrings(
-        month?.estimatedProfit ?? '0.00', minorToMoney(addProfit));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SectionLabel('This Month'),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.navy, AppColors.navyMuted],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            boxShadow: AppShadows.elevated,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.16)),
-                    ),
-                    child: const Icon(Icons.insights_rounded,
-                        color: Colors.white, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Performance',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.62),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
-                        const Text(
-                          'Month-to-date snapshot',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MonthStat(
-                      label: 'Sales',
-                      value: '\u20B5$salesText',
-                      tone: const Color(0xFF8BE0B2),
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 36,
-                    color: Colors.white.withValues(alpha: 0.10),
-                  ),
-                  Expanded(
-                    child: _MonthStat(
-                      label: 'Expenses',
-                      value: '\u20B5$expensesText',
-                      tone: const Color(0xFFF6A6A6),
-                    ),
-                  ),
-                  Container(
-                    width: 1,
-                    height: 36,
-                    color: Colors.white.withValues(alpha: 0.10),
-                  ),
-                  Expanded(
-                    child: _MonthStat(
-                      label: 'Profit',
-                      value: '\u20B5$profitText',
-                      tone: const Color(0xFFFFD37A),
-                    ),
-                  ),
-                ],
-              ),
-              if (addSales != 0 || addExpenses != 0) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Includes offline entries not yet synced.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MonthStat extends StatelessWidget {
-  const _MonthStat({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Column(
-        children: [
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: tone,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.2,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Payment Breakdown Strip ──────────────────────────────────────────────────
-
 // ─── Top Selling Items ────────────────────────────────────────────────────────
 
 class _TopSellingSection extends StatelessWidget {
@@ -1520,7 +1328,7 @@ class _RecentActivity extends ConsumerWidget {
         ),
       ...rows,
     ];
-    final displayRows = mergedRows.take(3).toList(growable: false);
+    final displayRows = mergedRows.take(5).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1580,126 +1388,6 @@ class _RecentActivity extends ConsumerWidget {
           ),
       ],
     );
-  }
-}
-
-// ignore: unused_element
-class _LegacyActivityRow extends StatelessWidget {
-  const _LegacyActivityRow({required this.data, required this.imageAsset});
-  final DashboardActivity data;
-  final String? imageAsset;
-
-  @override
-  Widget build(BuildContext context) {
-    final v = _visual(data.activityType);
-    final timeStr = _relativeTime(data.createdAt);
-    final isIncome =
-        data.activityType == 'sale' || data.activityType == 'repayment';
-    final amountStr = '${isIncome ? '+' : '−'}\u20B5${data.amount}';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Row(
-        children: [
-          // Left: product image or type icon
-          ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: imageAsset != null
-                ? Image.asset(
-                    imageAsset!,
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    width: 44,
-                    height: 44,
-                    color: v.color.withValues(alpha: 0.10),
-                    child: Icon(v.icon, color: v.color, size: 22),
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data.title,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    height: 1.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${data.detail}  ·  $timeStr',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                amountStr,
-                style: TextStyle(
-                  color: isIncome ? AppColors.success : AppColors.danger,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  letterSpacing: -0.2,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Completed',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.mutedSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  _ActivityVisual _visual(String type) => switch (type) {
-        'repayment' => const _ActivityVisual(
-            icon: Icons.payments_rounded,
-            color: AppColors.success,
-          ),
-        'expense' => const _ActivityVisual(
-            icon: Icons.receipt_long_rounded,
-            color: AppColors.warning,
-          ),
-        _ => const _ActivityVisual(
-            icon: Icons.shopping_basket_rounded,
-            color: AppColors.forest,
-          ),
-      };
-
-  String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('MMM d').format(dt);
   }
 }
 
