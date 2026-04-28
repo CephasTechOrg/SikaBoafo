@@ -89,106 +89,149 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FA),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 6,
-            child: MockupHeroHeader(
-              waveHeight: 56,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.88, end: 1),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOutCubic,
-                    builder: (_, value, child) =>
-                        Transform.scale(scale: value, child: child),
-                    child: const MockupAppMark(
-                      size: 96,
-                      assetPath: 'assets/images/logo.png',
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'SikaBoafo',
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.hero),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ── Centred brand mark ──────────────────────────────────────
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.82, end: 1),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, value, child) =>
+                            Transform.scale(scale: value, child: child),
+                        child: const MockupAppMark(
+                          size: 88,
+                          assetPath: 'assets/images/logo.png',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'SikaBoafo',
+                        style: TextStyle(
                           color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
                           fontFamily: 'Constantia',
                         ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 5,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
-                child: Column(
-                  children: [
-                    Text(
-                      'Preparing your workspace…',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w800,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Synchronizing your merchant ledger and\ninsights.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.muted,
-                            height: 1.45,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 22),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: const LinearProgressIndicator(
-                        minHeight: 4,
-                        backgroundColor: AppColors.border,
-                        valueColor: AlwaysStoppedAnimation(AppColors.forest),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'SECURE CONNECTION ESTABLISHED',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.forest,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                          ),
-                    ),
-                    const Spacer(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Business made simple',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.60),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Bottom: loading dots + lock badge ───────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _PulsingDots(),
+                    const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.lock_outline,
-                            size: 14, color: AppColors.muted),
-                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.lock_rounded,
+                          size: 12,
+                          color: Colors.white.withValues(alpha: 0.40),
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          'End-to-end Encrypted',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.muted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          'End-to-end encrypted',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.40),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.3,
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+class _PulsingDots extends StatefulWidget {
+  const _PulsingDots();
+
+  @override
+  State<_PulsingDots> createState() => _PulsingDotsState();
+}
+
+class _PulsingDotsState extends State<_PulsingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        final start = i / 3;
+        final end = (i + 1) / 3;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (_, __) {
+              final t = ((_ctrl.value - start) / (end - start)).clamp(0.0, 1.0);
+              final opacity = (0.35 + 0.65 * (1 - (t * 2 - 1).abs()))
+                  .clamp(0.35, 1.0);
+              return Opacity(
+                opacity: opacity,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      }),
     );
   }
 }
