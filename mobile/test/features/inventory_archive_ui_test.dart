@@ -221,7 +221,7 @@ class _FakeInventoryController extends InventoryController {
       category: item.category,
       lowStockThreshold: item.lowStockThreshold,
       isActive: isActive,
-      imageAsset: item.imageAsset,
+      imageUrl: item.imageUrl,
     );
   }
 }
