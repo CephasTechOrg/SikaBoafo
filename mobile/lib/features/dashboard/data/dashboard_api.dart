@@ -198,6 +198,7 @@ class DashboardSummary {
     required this.debtOutstandingTotal,
     required this.lowStockCount,
     required this.timezone,
+    this.yesterdaySalesTotal = '0.00',
   });
 
   final String todaySalesTotal;
@@ -207,6 +208,7 @@ class DashboardSummary {
   final String debtOutstandingTotal;
   final int lowStockCount;
   final String timezone;
+  final String yesterdaySalesTotal;
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
     return DashboardSummary(
@@ -217,6 +219,7 @@ class DashboardSummary {
       debtOutstandingTotal: '${json['debt_outstanding_total'] ?? '0.00'}',
       lowStockCount: (json['low_stock_count'] ?? 0) as int,
       timezone: (json['timezone'] ?? 'Africa/Accra') as String,
+      yesterdaySalesTotal: '${json['yesterday_sales_total'] ?? '0.00'}',
     );
   }
 }

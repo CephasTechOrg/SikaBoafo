@@ -213,6 +213,11 @@ class _HomeDashboard extends ConsumerWidget {
                               onNavigate: onNavigate,
                             ),
                             const SizedBox(height: 18),
+                            _MonthOverviewCard(
+                              insightsAsync: insightsAsync,
+                              overlayAsync: overlayAsync,
+                            ),
+                            const SizedBox(height: 18),
                             _TopSellingSection(
                               insightsAsync: insightsAsync,
                               overlayAsync: overlayAsync,
@@ -280,9 +285,11 @@ class _Header extends ConsumerWidget {
     final syncing = syncSnapshot?.isSyncing ?? syncAsync.isLoading;
     final overlayMinor = overlay?.todayPendingSalesMinor ?? 0;
     final overlayText = overlayMinor > 0 ? minorToMoney(overlayMinor) : null;
-    // Note: we currently only overlay sales in the header headline.
     final displaySales =
         overlayText == null ? sales : _addMoneyStrings(sales, overlayText);
+    final trend = summary != null
+        ? _trendBadge(displaySales, summary.yesterdaySalesTotal)
+        : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
@@ -291,32 +298,58 @@ class _Header extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 30,
-                height: 30,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
+                  color: Colors.white.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withValues(alpha: 0.25),
                   ),
                 ),
-                child: const Icon(Icons.person_rounded,
-                    color: Colors.white, size: 18),
+                child: Center(
+                  child: Text(
+                    _initials(mc.businessName),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        'SikaBoafo',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.1,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _greeting(),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.62),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.1,
+                            ),
+                          ),
+                          Text(
+                            mc.businessName,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.1,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (syncSnapshot != null) ...[
@@ -411,31 +444,38 @@ class _Header extends ConsumerWidget {
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          if (trend != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    trend.startsWith('-')
+                        ? Icons.trending_down_rounded
+                        : Icons.trending_up_rounded,
+                    size: 14,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    trend,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.trending_up_rounded,
-                    size: 14, color: Colors.white.withValues(alpha: 0.9)),
-                const SizedBox(width: 6),
-                Text(
-                  '+12% from yesterday',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
-                      ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -460,6 +500,30 @@ int _moneyToMinorSafe(String value) {
   final minor = int.tryParse(decimal) ?? 0;
   final total = (major * 100) + minor;
   return negative ? -total : total;
+}
+
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty || parts.first.isEmpty) return '?';
+  if (parts.length == 1) return parts.first[0].toUpperCase();
+  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+}
+
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+String? _trendBadge(String today, String yesterday) {
+  final todayMinor = _moneyToMinorSafe(today);
+  final yesterdayMinor = _moneyToMinorSafe(yesterday);
+  if (yesterdayMinor == 0) return null;
+  final diff = todayMinor - yesterdayMinor;
+  final pct = (diff / yesterdayMinor * 100).round();
+  final sign = pct >= 0 ? '+' : '';
+  return '$sign$pct% from yesterday';
 }
 
 class _HeaderBtn extends StatelessWidget {
@@ -667,8 +731,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.add_rounded,
             label: 'New Sale',
-            backgroundColor: const Color(0xFF0F622F),
-            accentColor: const Color(0xFF1A7C43),
+            backgroundColor: AppColors.forestDark,
+            accentColor: AppColors.forest,
             foregroundColor: Colors.white,
             iconColor: Colors.white,
             iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
@@ -985,7 +1049,6 @@ class _KpiTile extends StatelessWidget {
 
 // ─── This Month Overview ──────────────────────────────────────────────────────
 
-// ignore: unused_element
 class _MonthOverviewCard extends StatelessWidget {
   const _MonthOverviewCard(
       {required this.insightsAsync, required this.overlayAsync});
@@ -1122,7 +1185,6 @@ class _MonthOverviewCard extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
 class _MonthStat extends StatelessWidget {
   const _MonthStat({
     required this.label,
@@ -1458,7 +1520,7 @@ class _RecentActivity extends ConsumerWidget {
         ),
       ...rows,
     ];
-    final displayRows = mergedRows.take(1).toList(growable: false);
+    final displayRows = mergedRows.take(3).toList(growable: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1489,13 +1551,7 @@ class _RecentActivity extends ConsumerWidget {
                     children: [
                       const Expanded(child: _SectionLabel('Recent Activity')),
                       TextButton(
-                        onPressed: () =>
-                            ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Activity list coming soon'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        ),
+                        onPressed: () => context.push(AppRoute.reports.path),
                         child: const Text(
                           'View All',
                           style: TextStyle(
@@ -1508,12 +1564,17 @@ class _RecentActivity extends ConsumerWidget {
                     ],
                   ),
                 ),
-                _ActivityRow(
-                  data: displayRows.first,
-                  imageAsset: displayRows.first.itemId != null
-                      ? imageByItemId[displayRows.first.itemId]
-                      : null,
-                ),
+                for (var i = 0; i < displayRows.length; i++) ...[
+                  if (i != 0)
+                    const Divider(
+                        height: 1, thickness: 1, color: AppColors.border),
+                  _ActivityRow(
+                    data: displayRows[i],
+                    imageAsset: displayRows[i].itemId != null
+                        ? imageByItemId[displayRows[i].itemId]
+                        : null,
+                  ),
+                ],
               ],
             ),
           ),
