@@ -889,37 +889,27 @@ class _KpiStrip extends StatelessWidget {
         : minorToMoney(debtDisplayMinor);
 
     final lowStock = overlay?.lowStockCountLocal ?? s?.lowStockCount ?? 0;
-    final transactionCount = overlay?.todayPendingSalesCount ?? 0;
-
     return Column(
       children: [
+        _WideKpiTile(
+          label: "Today's Profit",
+          value: isLoading ? '—' : '₵$profitDisplay',
+          icon: Icons.trending_up_rounded,
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
               child: _KpiTile(
-                label: "Today's Profit",
-                value: isLoading ? '—' : '\u20B5$profitDisplay',
-                icon: Icons.trending_up_rounded,
-                tone: AppColors.forest,
-                toneSoft: AppColors.successSoft,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _KpiTile(
                 label: 'Outstanding',
-                value: isLoading ? '—' : '\u20B5$debtDisplay',
+                value: isLoading ? '—' : '₵$debtDisplay',
                 icon: Icons.account_balance_wallet_outlined,
                 tone: const Color(0xFF4A5BB6),
                 toneSoft: const Color(0xFFEEF0FF),
                 onTap: () => context.push(AppRoute.debts.path),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
+            const SizedBox(width: 10),
             Expanded(
               child: _KpiTile(
                 label: 'Low Stock',
@@ -930,16 +920,6 @@ class _KpiStrip extends StatelessWidget {
                 tone: AppColors.danger,
                 toneSoft: AppColors.dangerSoft,
                 onTap: () => onNavigate(2),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _KpiTile(
-                label: 'Transactions',
-                value: isLoading ? '—' : '$transactionCount',
-                icon: Icons.receipt_long_outlined,
-                tone: const Color(0xFFC58C02),
-                toneSoft: AppColors.warningSoft,
               ),
             ),
           ],
