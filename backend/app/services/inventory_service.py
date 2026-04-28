@@ -53,6 +53,7 @@ class InventoryItemSnapshot:
     low_stock_threshold: int | None
     is_active: bool
     quantity_on_hand: int
+    image_url: str | None = None
     version: int = 1
 
 
@@ -100,6 +101,7 @@ class InventoryService:
             category=self._clean_optional(payload.category),
             low_stock_threshold=payload.low_stock_threshold,
             is_active=True,
+            image_url=payload.image_url,
             source_device_id=source_device_id,
             local_operation_id=local_operation_id,
         )
@@ -165,6 +167,8 @@ class InventoryService:
                 msg = "Adjust stock to 0 before archiving this item."
                 raise InvalidItemArchiveError(msg)
             item.is_active = payload.is_active
+        if payload.image_url is not None:
+            item.image_url = payload.image_url
         if source_device_id is not None:
             item.source_device_id = source_device_id
         if local_operation_id is not None:
@@ -335,6 +339,7 @@ class InventoryService:
             low_stock_threshold=item.low_stock_threshold,
             is_active=item.is_active,
             quantity_on_hand=int(quantity_on_hand or 0),
+            image_url=item.image_url,
             version=item.version,
         )
 
