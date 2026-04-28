@@ -212,7 +212,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   SafeArea(
                     bottom: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+                      padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -258,7 +258,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -287,7 +287,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -321,7 +321,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             ),
             Expanded(
               child: Transform.translate(
-                offset: const Offset(0, -16),
+                offset: const Offset(0, -20),
                 child: Column(
                   children: [
                     const StaleBanner(
