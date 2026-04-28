@@ -420,41 +420,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             totalAmount,
                                             symbol: 'GHS ',
                                           ),
+                                          noteController: _noteCtrl,
                                           noteValue: _noteCtrl.text.trim(),
                                           showNote: _showNote,
                                           onToggleNote: () => setState(
                                             () => _showNote = !_showNote,
                                           ),
                                         ),
-                                        if (_showNote) ...[
-                                          const SizedBox(height: 8),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              border: Border.all(
-                                                color: AppColors.border,
-                                              ),
-                                            ),
-                                            child: TextField(
-                                              controller: _noteCtrl,
-                                              maxLines: 2,
-                                              maxLength: 500,
-                                              decoration: const InputDecoration(
-                                                hintText: 'Note for this sale…',
-                                                contentPadding:
-                                                    EdgeInsets.all(14),
-                                                border: InputBorder.none,
-                                                enabledBorder: InputBorder.none,
-                                                focusedBorder: InputBorder.none,
-                                                counterStyle: TextStyle(
-                                                  fontSize: 10,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
                                         const SizedBox(height: 20),
                                         _SalesSearchBar(
                                           controller: _searchCtrl,
@@ -1718,6 +1690,7 @@ class _SaleDraftPanel extends StatelessWidget {
   const _SaleDraftPanel({
     required this.itemCount,
     required this.totalAmount,
+    required this.noteController,
     required this.noteValue,
     required this.showNote,
     required this.onToggleNote,
@@ -1725,6 +1698,7 @@ class _SaleDraftPanel extends StatelessWidget {
 
   final int itemCount;
   final String totalAmount;
+  final TextEditingController noteController;
   final String noteValue;
   final bool showNote;
   final VoidCallback onToggleNote;
@@ -1739,9 +1713,9 @@ class _SaleDraftPanel extends StatelessWidget {
           const PremiumSectionHeading(
             title: 'Sale draft',
             caption:
-                'Build the cart first. Payment method is chosen once at checkout.',
+                'Keep the cart summary visible while you browse. Notes stay collapsed until needed.',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1758,20 +1732,14 @@ class _SaleDraftPanel extends StatelessWidget {
                 label: 'Current total',
                 value: totalAmount,
               ),
-              _DraftMetric(
-                icon: Icons.sticky_note_2_rounded,
-                iconColor: AppColors.warning,
-                label: hasNote ? 'Note added' : 'Sale note',
-                value: hasNote ? 'Ready' : 'Optional',
-              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           InkWell(
             onTap: onToggleNote,
             borderRadius: BorderRadius.circular(14),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               decoration: BoxDecoration(
                 color: AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(14),
@@ -1802,7 +1770,7 @@ class _SaleDraftPanel extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    hasNote ? 'Attached' : 'Optional',
+                    hasNote ? 'Attached' : 'Collapsed',
                     style: const TextStyle(
                       color: AppColors.muted,
                       fontSize: 12,
@@ -1813,6 +1781,31 @@ class _SaleDraftPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (showNote) ...[
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: TextField(
+                controller: noteController,
+                maxLines: 2,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                  hintText: 'Add a note for this sale…',
+                  contentPadding: EdgeInsets.all(14),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  counterStyle: TextStyle(
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

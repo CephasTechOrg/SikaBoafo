@@ -141,6 +141,7 @@ def _to_item_out(s: InventoryItemSnapshot) -> InventoryItemOut:
         low_stock_threshold=s.low_stock_threshold,
         is_active=s.is_active,
         quantity_on_hand=s.quantity_on_hand,
+        image_url=s.image_url,
         version=s.version,
     )
 
