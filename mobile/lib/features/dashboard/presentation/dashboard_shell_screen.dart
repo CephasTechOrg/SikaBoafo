@@ -672,7 +672,7 @@ class _QuickActions extends StatelessWidget {
             iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
             borderColor: Colors.transparent,
             onTap: () => onNavigate(1),
-          ),
+          ],
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1518,8 +1518,8 @@ class _RecentActivity extends ConsumerWidget {
   }
 }
 
-class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.data, this.imageAsset});
+class _LegacyActivityRow extends StatelessWidget {
+  const _LegacyActivityRow({required this.data, this.imageAsset});
   final DashboardActivity data;
   final String? imageAsset;
 
@@ -1637,6 +1637,133 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.data, this.imageAsset});
+  final DashboardActivity data;
+  final String? imageAsset;
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _visual(data.activityType);
+    final timeStr = _activityTimeLabel(data.createdAt);
+    final isIncome =
+        data.activityType == 'sale' || data.activityType == 'repayment';
+    final amountStr = '${isIncome ? '+' : '-'}\u20B5${data.amount}';
+    final detailText = data.detail.isEmpty
+        ? (data.itemName?.trim().isNotEmpty == true ? data.itemName! : 'Activity')
+        : data.detail;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: v.color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: imageAsset != null
+                ? Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: ClipOval(
+                      child: Image.asset(
+                        imageAsset!,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                    ),
+                  )
+                : Icon(v.icon, color: v.color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  detailText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                amountStr,
+                style: TextStyle(
+                  color: isIncome ? AppColors.success : AppColors.danger,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                timeStr,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  _ActivityVisual _visual(String type) => switch (type) {
+        'repayment' => const _ActivityVisual(
+            icon: Icons.payments_rounded,
+            color: AppColors.success,
+          ),
+        'expense' => const _ActivityVisual(
+            icon: Icons.receipt_long_rounded,
+            color: AppColors.warning,
+          ),
+        _ => const _ActivityVisual(
+            icon: Icons.shopping_basket_rounded,
+            color: AppColors.forest,
+          ),
+      };
+
+  String _activityTimeLabel(DateTime dt) {
+    final now = DateTime.now();
+    final isSameDay =
+        now.year == dt.year && now.month == dt.month && now.day == dt.day;
+    if (isSameDay) {
+      return 'Today, ${DateFormat('h:mm a').format(dt)}';
+    }
+    return DateFormat('MMM d, h:mm a').format(dt);
+  }
+}
+
 class _ActivityVisual {
   const _ActivityVisual({required this.icon, required this.color});
   final IconData icon;
@@ -1649,39 +1776,57 @@ class _ActivitySkeleton extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
-        children: List.generate(
-          3,
-          (i) => Column(
-            children: [
-              if (i != 0) const Divider(height: 1, color: AppColors.border),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 18, 18, 8),
+            child: Row(
+              children: [
+                Expanded(child: _SkeletonBox(width: 140, height: 20)),
+                SizedBox(width: 12),
+                _SkeletonBox(width: 58, height: 16),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Row(
+              children: [
+                _shimmer(52, 52, radius: 26),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SkeletonBox(width: 104, height: 15),
+                      SizedBox(height: 8),
+                      _SkeletonBox(width: 86, height: 12),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _shimmer(44, 44, radius: 11),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _shimmer(120, 13),
-                          const SizedBox(height: 6),
-                          _shimmer(80, 11),
-                        ],
-                      ),
-                    ),
-                    _shimmer(70, 13),
+                    _SkeletonBox(width: 76, height: 15),
+                    SizedBox(height: 8),
+                    _SkeletonBox(width: 94, height: 12),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1702,25 +1847,35 @@ class _ActivityEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.successSoft,
+              shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.receipt_long_outlined,
-                color: AppColors.muted, size: 20),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              color: AppColors.forest,
+              size: 22,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           const Expanded(
             child: Text(
               'No recent activity yet.\nRecord a sale to get started.',
@@ -1728,6 +1883,7 @@ class _ActivityEmpty extends StatelessWidget {
                 color: AppColors.muted,
                 fontSize: 13,
                 height: 1.45,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
