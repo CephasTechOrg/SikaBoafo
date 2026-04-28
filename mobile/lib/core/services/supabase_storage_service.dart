@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/env/app_config.dart';
@@ -16,12 +15,22 @@ class StorageProduct {
   final String publicUrl;
 }
 
-class SupabaseStorageService {
+/// Contract implemented by [SupabaseStorageService] and fakes used in tests.
+abstract class StorageService {
+  Future<List<StorageProduct>> listOfficialProducts();
+  Future<String> uploadUserImage({
+    required String userId,
+    required Uint8List bytes,
+    required String filename,
+  });
+}
+
+class SupabaseStorageService implements StorageService {
   SupabaseStorageService() : _client = Supabase.instance.client;
 
   final SupabaseClient _client;
 
-  /// Lists all files under [AppConfig.supabaseProductsFolder] in the bucket.
+  @override
   Future<List<StorageProduct>> listOfficialProducts() async {
     final files = await _client.storage
         .from(AppConfig.supabaseBucket)
@@ -29,7 +38,6 @@ class SupabaseStorageService {
 
     final products = <StorageProduct>[];
     for (final file in files) {
-      // Skip folder placeholder files.
       if (file.name == '.emptyFolderPlaceholder' ||
           file.name.startsWith('.')) {
         continue;
@@ -43,14 +51,14 @@ class SupabaseStorageService {
 
       products.add(StorageProduct(
         name: file.name,
-        label: _labelFromFilename(file.name),
+        label: labelFromFilename(file.name),
         publicUrl: url,
       ));
     }
     return products;
   }
 
-  /// Uploads [bytes] to UserUploads/{userId}/{filename} and returns the public URL.
+  @override
   Future<String> uploadUserImage({
     required String userId,
     required Uint8List bytes,
@@ -68,8 +76,10 @@ class SupabaseStorageService {
         .getPublicUrl(storagePath);
   }
 
-  String _labelFromFilename(String filename) {
-    // Strip extension, replace separators with spaces, title-case.
+  /// Converts a storage filename to a display label.
+  /// Exposed for testing.
+  @visibleForTesting
+  static String labelFromFilename(String filename) {
     final noExt = filename.replaceAll(RegExp(r'\.[^.]+$'), '');
     return noExt
         .replaceAll(RegExp(r'[_\-]+'), ' ')

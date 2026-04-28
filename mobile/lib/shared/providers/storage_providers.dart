@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/supabase_storage_service.dart';
 
-final supabaseStorageServiceProvider = Provider<SupabaseStorageService>((ref) {
+final supabaseStorageServiceProvider = Provider<StorageService>((ref) {
   return SupabaseStorageService();
 });
 
