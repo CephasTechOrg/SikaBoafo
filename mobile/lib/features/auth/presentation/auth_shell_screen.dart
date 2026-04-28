@@ -56,7 +56,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
           refreshToken: session.refreshToken,
         );
     if (!mounted) return;
-    if (session.onboardingRequired) {
+    // Backend may not reliably send `onboarding_required` for brand new accounts.
+    // Treat “new user” or “no merchant yet” as needing onboarding.
+    if (session.onboardingRequired || session.isNewUser || session.merchantId == null) {
       context.go(buildRouteLocation(AppRoute.onboarding, returnTo: returnTo));
     } else if (forceSetPin || !session.pinSet) {
       context.go(buildRouteLocation(AppRoute.setPin, returnTo: returnTo));
