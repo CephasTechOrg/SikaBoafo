@@ -1297,7 +1297,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           final qty = entry.value;
                           final price =
                               selectedOverrides[entry.key] ?? item.defaultPrice;
-                          final priceMinor = (double.parse(price) * 100).toInt();
+                          final priceMinor =
+                              (double.parse(price) * 100).toInt();
                           final lineTotalMinor = priceMinor * qty;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
