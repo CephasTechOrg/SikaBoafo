@@ -5,7 +5,8 @@
       "Bash(python3 -)",
       "Bash(flutter analyze *)",
       "Bash(python3 \"C:/Users/USER/Desktop/replace_sales.py\")",
-      "Bash(flutter pub *)"
+      "Bash(flutter pub *)",
+      "Bash(python -m alembic upgrade head)"
     ],
     "additionalDirectories": [
       "C:\\Users\\USER\\Desktop"
