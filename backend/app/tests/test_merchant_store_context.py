@@ -35,7 +35,14 @@ class _FakeDb:
             )
             if owner_user_id is not None:
                 return self.merchants_by_owner.get(owner_user_id)
-            merchant_id = next((value for key, value in params.items() if key.startswith("id_")), None)
+            merchant_id = next(
+                (
+                    value
+                    for key, value in params.items()
+                    if key.startswith("id_")
+                ),
+                None,
+            )
             return self.merchants_by_id.get(merchant_id)
         if table == "stores":
             merchant_id = next(

@@ -18,6 +18,11 @@ class OtpCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     code_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
     delivery_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
     delivery_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)

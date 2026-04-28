@@ -120,7 +120,7 @@ def test_insights_period_boundary_excludes_prev_month_sale() -> None:
     as_of_utc = datetime(2026, 4, 16, 12, 0, 0, tzinfo=UTC)
     try:
         store = _get_store(sl, user.id)
-        item_id = _seed_item(sl, store_id=store.id)
+        _seed_item(sl, store_id=store.id)
 
         with sl() as db:
             # One second before April 1 midnight — must be excluded from month.

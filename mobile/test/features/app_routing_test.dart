@@ -25,6 +25,7 @@ class _MemorySecureTokenStorage extends SecureTokenStorage {
   bool biometricEnabled = false;
   DateTime? lastBiometricAt;
   DateTime? sessionGateCompletedAt;
+  String? lastProtectedRoute;
 
   @override
   Future<void> writeAccessToken(String? value) async {
@@ -83,7 +84,16 @@ class _MemorySecureTokenStorage extends SecureTokenStorage {
     refreshToken = null;
     lastBiometricAt = null;
     sessionGateCompletedAt = null;
+    lastProtectedRoute = null;
   }
+
+  @override
+  Future<void> writeLastProtectedRoute(String? value) async {
+    lastProtectedRoute = value;
+  }
+
+  @override
+  Future<String?> readLastProtectedRoute() async => lastProtectedRoute;
 }
 
 class _FakeBiometricService extends BiometricService {

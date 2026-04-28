@@ -11,15 +11,16 @@ from app.api.deps import get_current_user, get_db
 from app.core.config import Settings, get_settings
 from app.models.user import User
 from app.schemas.auth import (
+    AccountDeleteOut,
     OnboardingIn,
     OnboardingOut,
     OtpRequestIn,
     OtpRequestOut,
     OtpVerifyIn,
     PinLoginIn,
-    RefreshTokenIn,
     PinSetIn,
     PinSetOut,
+    RefreshTokenIn,
     UserSessionOut,
 )
 from app.services.auth_service import (
@@ -172,3 +173,24 @@ def complete_onboarding(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
+
+
+@router.delete("/account", response_model=AccountDeleteOut)
+def delete_account(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AccountDeleteOut:
+    # Soft-delete: deactivate and anonymize PII while preserving referential integrity.
+    if not current_user.is_active:
+        return AccountDeleteOut()
+
+    current_user.is_active = False
+    current_user.pin_hash = None
+    current_user.full_name = None
+    current_user.email = None
+    # Keep within `users.phone_number` length (32) and unique.
+    # UUID hex is 32 chars; we prefix with "deleted:" and trim to fit.
+    current_user.phone_number = f"deleted:{current_user.id.hex}"[:32]
+    db.add(current_user)
+    db.commit()
+    return AccountDeleteOut()

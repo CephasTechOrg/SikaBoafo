@@ -10,16 +10,22 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
-from app.schemas.sale import SaleCreateIn, SaleLineOut, SaleOut, SaleUpdateIn, SaleVoidIn
+from app.schemas.sale import (
+    SaleCreateIn,
+    SaleLineOut,
+    SaleOut,
+    SaleUpdateIn,
+    SaleVoidIn,
+)
 from app.services.sales_service import (
     InsufficientStockError,
     SaleAlreadyVoidedError,
     SaleContextMissingError,
-    SaleNotFoundError,
     SaleItemNotFoundError,
+    SaleNotFoundError,
     SaleSnapshot,
-    SaleUpdateScopeError,
     SalesService,
+    SaleUpdateScopeError,
 )
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -126,9 +132,15 @@ def update_sale(
     except SaleAlreadyVoidedError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except SaleUpdateScopeError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except InsufficientStockError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     return _to_sale_out(sale)
 
 

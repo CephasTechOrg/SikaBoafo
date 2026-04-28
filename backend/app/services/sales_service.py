@@ -161,7 +161,9 @@ class SalesService:
                 quantity=line.quantity,
                 unit_price=unit_price,
                 line_total=line_total,
-                cost_price_snapshot=self._money(cost_snapshot) if cost_snapshot is not None else None,
+                cost_price_snapshot=(
+                    self._money(cost_snapshot) if cost_snapshot is not None else None
+                ),
             )
             self.db.add(sale_line)
             self.db.flush()

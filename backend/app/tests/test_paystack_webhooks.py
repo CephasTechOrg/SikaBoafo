@@ -44,7 +44,11 @@ from app.models.store import Store
 from app.models.user import User
 
 
-def _configure_env(*, app_env: str = "local", fallback_secret: str | None = None) -> dict[str, str | None]:
+def _configure_env(
+    *,
+    app_env: str = "local",
+    fallback_secret: str | None = None,
+) -> dict[str, str | None]:
     original = {
         "APP_ENV": os.environ.get("APP_ENV"),
         "PAYMENT_CONFIG_ENCRYPTION_KEY": os.environ.get("PAYMENT_CONFIG_ENCRYPTION_KEY"),
@@ -468,7 +472,10 @@ def test_paystack_webhook_invalid_signature_is_rejected() -> None:
         response = client.post(
             "/api/v1/webhooks/paystack",
             content=body,
-            headers={"x-paystack-signature": "invalid-signature", "content-type": "application/json"},
+            headers={
+                "x-paystack-signature": "invalid-signature",
+                "content-type": "application/json",
+            },
         )
         assert response.status_code == 401
     finally:
@@ -542,7 +549,11 @@ def test_paystack_webhook_settles_receivable_even_after_newer_link_is_generated(
     client, session_local, reference = _build_sqlite_receivable_stack()
     replacement_reference = "PSK_REF_WEBHOOK_NEWER_456"
     with session_local() as db:
-        receivable = db.scalar(select(Receivable).where(Receivable.payment_provider_reference == reference))
+        receivable = db.scalar(
+            select(Receivable).where(
+                Receivable.payment_provider_reference == reference,
+            )
+        )
         assert receivable is not None
         receivable.payment_provider_reference = replacement_reference
         receivable.payment_link = "https://checkout.paystack.com/newer-link"

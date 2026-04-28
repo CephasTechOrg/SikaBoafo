@@ -12,6 +12,7 @@ class SecureTokenStorage {
   static const _biometricEnabledKey = 'biometric_enabled';
   static const _lastBiometricAtKey = 'last_biometric_at_iso';
   static const _sessionGateCompletedAtKey = 'session_gate_completed_at_iso';
+  static const _lastProtectedRouteKey = 'last_protected_route';
 
   Future<void> writeAccessToken(String? value) async {
     if (value == null || value.isEmpty) {
@@ -88,10 +89,26 @@ class SecureTokenStorage {
     await _storage.delete(key: _sessionGateCompletedAtKey);
   }
 
+  Future<void> writeLastProtectedRoute(String? value) async {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      await _storage.delete(key: _lastProtectedRouteKey);
+      return;
+    }
+    await _storage.write(key: _lastProtectedRouteKey, value: trimmed);
+  }
+
+  Future<String?> readLastProtectedRoute() async {
+    final v = await _storage.read(key: _lastProtectedRouteKey);
+    final trimmed = v?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
   Future<void> clearSession() async {
     await _storage.delete(key: _accessKey);
     await _storage.delete(key: _refreshKey);
     await _storage.delete(key: _lastBiometricAtKey);
     await _storage.delete(key: _sessionGateCompletedAtKey);
+    await _storage.delete(key: _lastProtectedRouteKey);
   }
 }

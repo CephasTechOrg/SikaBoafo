@@ -13,17 +13,6 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Fake keys constructed via concatenation so the literal prefix never appears
-# as a complete token — breaks secret-scanner pattern matching on sk_test_/sk_live_.
-_P_TEST = "sk_" + "test_"
-_P_LIVE = "sk_" + "live_"
-_P_PUB  = "pk_" + "test_"
-_K_TEST = _P_TEST + "fake_key_not_real_123456"   # 32 chars, not a real secret
-_K_LIVE = _P_LIVE + "fake_key_not_real_123456"   # 32 chars
-_K_PUB  = _P_PUB  + "fake_key_not_real_123456"   # 32 chars (used as bad secret)
-_K_ORIG = _P_TEST + "original_fake_not_real_12"  # 32 chars
-_K_BAD  = _P_TEST + "bad_fake_key_not_real_12x"  # 32 chars
-
 from app.api.deps import get_current_user, get_db
 from app.core.config import get_settings
 from app.core.constants import USER_ROLE_MERCHANT_OWNER
@@ -34,6 +23,17 @@ from app.models.merchant import Merchant
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.store import Store
 from app.models.user import User
+
+# Fake keys constructed via concatenation so the literal prefix never appears
+# as a complete token — breaks secret-scanner pattern matching on sk_test_/sk_live_.
+_P_TEST = "sk_" + "test_"
+_P_LIVE = "sk_" + "live_"
+_P_PUB  = "pk_" + "test_"
+_K_TEST = _P_TEST + "fake_key_not_real_123456"   # 32 chars, not a real secret
+_K_LIVE = _P_LIVE + "fake_key_not_real_123456"   # 32 chars
+_K_PUB  = _P_PUB  + "fake_key_not_real_123456"   # 32 chars (used as bad secret)
+_K_ORIG = _P_TEST + "original_fake_not_real_12"  # 32 chars
+_K_BAD  = _P_TEST + "bad_fake_key_not_real_12x"  # 32 chars
 
 
 def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User]:

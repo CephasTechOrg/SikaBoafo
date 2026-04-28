@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import UTC
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -278,7 +279,7 @@ def test_sync_apply_receivable_flow_is_idempotent() -> None:
 
 def test_invoice_number_auto_generated() -> None:
     client, _, _ = _build_sqlite_test_stack()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     try:
         customer_resp = client.post(
@@ -294,7 +295,7 @@ def test_invoice_number_auto_generated() -> None:
         )
         assert debt_resp.status_code == 201
         debt = debt_resp.json()
-        year = datetime.now(tz=timezone.utc).year
+        year = datetime.now(tz=UTC).year
         assert debt["invoice_number"] == f"INV-{year}-0001"
 
         debt2_resp = client.post(

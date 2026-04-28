@@ -16,6 +16,7 @@ import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';

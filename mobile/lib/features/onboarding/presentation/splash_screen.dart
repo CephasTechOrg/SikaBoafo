@@ -39,8 +39,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final router = GoRouter.of(context);
     final storage = ref.read(secureTokenStorageProvider);
     final returnTo = sanitizeReturnTo(
-      GoRouterState.of(context).uri.queryParameters['returnTo'],
+      router.routeInformationProvider.value.uri.queryParameters['returnTo'],
     );
+    final lastProtected = sanitizeReturnTo(await storage.readLastProtectedRoute());
+    final preferredReturnTo = returnTo ?? lastProtected;
     final hasSession = await storage.hasPersistedSession();
     if (hasSession) {
       final biometricEnabled = await storage.isBiometricEnabled();
@@ -48,30 +50,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         final bio = ref.read(biometricServiceProvider);
         final supported = await bio.isSupported();
         if (!mounted) return;
-        if (supported) {
-          final ok = await bio.authenticate(
-            reason: 'Unlock SikaBoafo to continue.',
-          );
-          if (!mounted) return;
-          if (ok) {
-            await storage.writeLastBiometricAt(DateTime.now());
-            await storage.markSessionGateComplete(DateTime.now());
-          } else {
-            if (!mounted) return;
-            await storage.clearSessionGate();
-            router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
-            return;
-          }
-        } else {
+        if (!supported) {
           await storage.clearSessionGate();
-          router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
+          router.go(buildRouteLocation(AppRoute.auth, returnTo: preferredReturnTo));
           return;
         }
+        await storage.clearSessionGate();
+        router.go(buildRouteLocation(AppRoute.lock, returnTo: preferredReturnTo));
+        return;
       }
       await storage.markSessionGateComplete(DateTime.now());
     }
     if (!hasSession) {
-      router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
+      router.go(buildRouteLocation(AppRoute.auth, returnTo: preferredReturnTo));
       return;
     }
     // A session exists but onboarding may be incomplete (tokens written before
@@ -82,7 +73,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (merchantId == null) {
       router.go(AppRoute.onboarding.path);
     } else {
-      router.go(resolveReturnToOrHome(returnTo));
+      router.go(resolveReturnToOrHome(preferredReturnTo));
     }
   }
 

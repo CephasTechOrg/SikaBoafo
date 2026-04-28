@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.core.constants import USER_ROLE_MERCHANT_OWNER
+from app.core.crypto import CryptoConfigError
 from app.models.user import User
 from app.schemas.payment import (
     PaymentInitiateIn,
@@ -26,7 +27,6 @@ from app.services.payment_service import (
     PaystackConnectionMissingError,
     PaystackSecretKeyMissingError,
 )
-from app.core.crypto import CryptoConfigError
 from app.services.payment_settings_service import (
     PaymentSettingsContextError,
     PaymentSettingsService,
