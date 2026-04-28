@@ -1329,7 +1329,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              '${_formatMinor(int.parse(price), symbol: '')} × $qty',
+                                              'Qty: $qty',
                                               style: const TextStyle(
                                                 fontSize: 11,
                                                 color: AppColors.muted,
@@ -1451,8 +1451,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: FilledButton(
-                                onPressed: () =>
-                                    Navigator.of(sheetContext).pop(),
+                                onPressed: () async {
+                                  Navigator.of(sheetContext).pop();
+                                  if (!mounted) return;
+                                  await _showCheckoutSheet(
+                                    items: items,
+                                    itemCount: _qtyByItemId.values.fold(0, (a, b) => a + b),
+                                    totalAmount: _calculateTotal(items),
+                                    isBusy: false,
+                                  );
+                                },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.forest,
                                   minimumSize: const Size.fromHeight(48),
@@ -1460,7 +1468,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: const Text('Continue checkout'),
+                                child: const Text('Proceed to checkout'),
                               ),
                             ),
                           ],
@@ -2152,17 +2160,24 @@ class _SalesSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PremiumPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 14, color: AppColors.ink),
+        style: const TextStyle(fontSize: 13, color: AppColors.ink),
         decoration: InputDecoration(
-          hintText: 'Search products by name',
+          hintText: 'Search products',
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
           prefixIcon: const Icon(
             Icons.search_rounded,
-            size: 18,
+            size: 16,
             color: AppColors.muted,
           ),
           suffixIcon: hasQuery
@@ -2170,9 +2185,11 @@ class _SalesSearchBar extends StatelessWidget {
                   onPressed: onClear,
                   icon: const Icon(
                     Icons.close_rounded,
-                    size: 18,
+                    size: 16,
                     color: AppColors.muted,
                   ),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
                 )
               : null,
           border: InputBorder.none,
@@ -2447,41 +2464,26 @@ class _ItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    item.category ?? 'Stock item',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+            if (item.quantityOnHand <= 5)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.dangerSoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Low',
+                    style: TextStyle(
+                      color: AppColors.danger,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (item.quantityOnHand <= 5)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.dangerSoft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'Low',
-                      style: TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
+              ),
+            const SizedBox(height: 10),
             Align(
               alignment: Alignment.center,
               child: ItemImage(
