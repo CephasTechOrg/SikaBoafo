@@ -1456,7 +1456,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                   if (!mounted) return;
                                   await _showCheckoutSheet(
                                     items: items,
-                                    itemCount: _qtyByItemId.values.fold(0, (a, b) => a + b),
+                                    itemCount: _qtyByItemId.values
+                                        .fold(0, (a, b) => a + b),
                                     totalAmount: _calculateTotal(items),
                                     isBusy: false,
                                   );
@@ -2468,7 +2469,8 @@ class _ItemCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.dangerSoft,
                     borderRadius: BorderRadius.circular(999),
