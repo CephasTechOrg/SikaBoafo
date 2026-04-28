@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../data/local/app_database.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 
@@ -70,11 +71,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       }
       await storage.markSessionGateComplete(DateTime.now());
     }
-    router.go(
-      hasSession
-          ? resolveReturnToOrHome(returnTo)
-          : buildRouteLocation(AppRoute.auth, returnTo: returnTo),
-    );
+    if (!hasSession) {
+      router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
+      return;
+    }
+    // A session exists but onboarding may be incomplete (tokens written before
+    // the business profile is saved). Route to onboarding if no merchant yet.
+    final merchantId =
+        await ref.read(appDatabaseProvider).getActiveMerchantId();
+    if (!mounted) return;
+    if (merchantId == null) {
+      router.go(AppRoute.onboarding.path);
+    } else {
+      router.go(resolveReturnToOrHome(returnTo));
+    }
   }
 
   @override

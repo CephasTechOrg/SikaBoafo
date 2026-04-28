@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/local/app_database.dart';
 import '../shared/providers/core_providers.dart';
 import '../features/auth/presentation/auth_shell_screen.dart';
 import '../features/auth/presentation/set_pin_screen.dart';
@@ -88,14 +89,21 @@ Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
   final storage = ref.read(secureTokenStorageProvider);
   final hasSession = await storage.hasPersistedSession();
   final gateComplete = await storage.hasCompletedSessionGate();
-  if (hasSession && gateComplete) {
-    return null;
+  if (!hasSession || !gateComplete) {
+    return buildRouteLocation(
+      AppRoute.splash,
+      returnTo: state.uri.toString(),
+    );
   }
 
-  return buildRouteLocation(
-    AppRoute.splash,
-    returnTo: state.uri.toString(),
-  );
+  // Session exists but onboarding may be incomplete (tokens were written before
+  // the merchant profile was created). Redirect to onboarding if needed.
+  final merchantId = await ref.read(appDatabaseProvider).getActiveMerchantId();
+  if (merchantId == null) {
+    return AppRoute.onboarding.path;
+  }
+
+  return null;
 }
 
 GoRouter createAppRouter(Ref ref) {

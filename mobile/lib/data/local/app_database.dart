@@ -398,6 +398,12 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
     return id;
   }
 
+  /// Returns the active merchant ID, or null if onboarding is not yet complete.
+  Future<String?> getActiveMerchantId() async {
+    final db = await database;
+    return _readMeta(db, _activeMerchantIdMetaKey);
+  }
+
   /// Reset local business data when a different account signs in on this device.
   Future<void> prepareForSession({
     required String userId,
