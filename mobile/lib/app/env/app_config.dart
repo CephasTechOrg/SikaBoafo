@@ -16,7 +16,7 @@ class AppConfig {
 
   // Supabase — only the public anon key is used on the client.
   // Pass at build time: --dart-define=SUPABASE_ANON_KEY=<key>
-  static const String supabaseUrl = 'https://eeexkzdlptrlqtgqdnfm.supabase.co';
+  static const String supabaseUrl = 'https://wrmicvmjlofprdvptsrq.supabase.co';
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
     defaultValue: '',
