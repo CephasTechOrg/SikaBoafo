@@ -163,7 +163,10 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Catalog'));
-      await tester.pumpAndSettle();
+      // Pump through sheet open animation + FutureProvider resolution.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Product Catalog'), findsOneWidget);
     });
@@ -194,10 +197,13 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Catalog'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
 
       await tester.tap(find.text('Coca Cola'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(selectedUrl, equals(productUrl));
     });
@@ -215,7 +221,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Upload photo'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Choose from gallery'), findsOneWidget);
       expect(find.text('Take a photo'), findsOneWidget);
