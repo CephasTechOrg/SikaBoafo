@@ -46,6 +46,11 @@ class DashboardApi {
   static const _cacheRecentActivityKey = 'dashboard.recent_activity';
 
   Future<MerchantContext> fetchContext() async {
+    final cached = await _cache?.get(_cacheContextKey);
+    if (cached != null) {
+      final body = _tryDecodeMap(cached);
+      if (body != null) return MerchantContext.fromJson(body);
+    }
     try {
       final response =
           await _apiClient.dio.get<dynamic>('/merchants/me/context');
@@ -55,21 +60,17 @@ class DashboardApi {
       }
       await _cache?.put(_cacheContextKey, jsonEncode(body));
       return MerchantContext.fromJson(body);
-    } on DioException catch (e) {
-      if (_isOfflineish(e)) {
-        final cached = await _cache?.get(_cacheContextKey);
-        if (cached != null) {
-          final body = jsonDecode(cached);
-          if (body is Map<String, dynamic>) {
-            return MerchantContext.fromJson(body);
-          }
-        }
-      }
+    } on DioException {
       rethrow;
     }
   }
 
   Future<DashboardSummary> fetchSummary() async {
+    final cached = await _cache?.get(_cacheSummaryKey);
+    if (cached != null) {
+      final body = _tryDecodeMap(cached);
+      if (body != null) return DashboardSummary.fromJson(body);
+    }
     try {
       final response = await _apiClient.dio.get<dynamic>('/reports/summary');
       final body = response.data;
@@ -78,21 +79,22 @@ class DashboardApi {
       }
       await _cache?.put(_cacheSummaryKey, jsonEncode(body));
       return DashboardSummary.fromJson(body);
-    } on DioException catch (e) {
-      if (_isOfflineish(e)) {
-        final cached = await _cache?.get(_cacheSummaryKey);
-        if (cached != null) {
-          final body = jsonDecode(cached);
-          if (body is Map<String, dynamic>) {
-            return DashboardSummary.fromJson(body);
-          }
-        }
-      }
+    } on DioException {
       rethrow;
     }
   }
 
   Future<List<DashboardActivity>> fetchRecentActivity({int limit = 8}) async {
+    final cached = await _cache?.get(_cacheRecentActivityKey);
+    if (cached != null) {
+      final body = _tryDecodeList(cached);
+      if (body != null) {
+        return body
+            .whereType<Map<String, dynamic>>()
+            .map(DashboardActivity.fromJson)
+            .toList(growable: false);
+      }
+    }
     try {
       final response = await _apiClient.dio.get<dynamic>(
         '/reports/recent-activity',
@@ -107,24 +109,17 @@ class DashboardApi {
           .whereType<Map<String, dynamic>>()
           .map(DashboardActivity.fromJson)
           .toList(growable: false);
-    } on DioException catch (e) {
-      if (_isOfflineish(e)) {
-        final cached = await _cache?.get(_cacheRecentActivityKey);
-        if (cached != null) {
-          final body = jsonDecode(cached);
-          if (body is List) {
-            return body
-                .whereType<Map<String, dynamic>>()
-                .map(DashboardActivity.fromJson)
-                .toList(growable: false);
-          }
-        }
-      }
+    } on DioException {
       rethrow;
     }
   }
 
   Future<DashboardInsights> fetchInsights({int topN = 5}) async {
+    final cached = await _cache?.get(_cacheInsightsKey);
+    if (cached != null) {
+      final body = _tryDecodeMap(cached);
+      if (body != null) return DashboardInsights.fromJson(body);
+    }
     try {
       final response = await _apiClient.dio.get<dynamic>(
         '/reports/insights',
@@ -136,17 +131,26 @@ class DashboardApi {
       }
       await _cache?.put(_cacheInsightsKey, jsonEncode(body));
       return DashboardInsights.fromJson(body);
-    } on DioException catch (e) {
-      if (_isOfflineish(e)) {
-        final cached = await _cache?.get(_cacheInsightsKey);
-        if (cached != null) {
-          final body = jsonDecode(cached);
-          if (body is Map<String, dynamic>) {
-            return DashboardInsights.fromJson(body);
-          }
-        }
-      }
+    } on DioException {
       rethrow;
+    }
+  }
+
+  Map<String, dynamic>? _tryDecodeMap(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List? _tryDecodeList(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is List ? decoded : null;
+    } catch (_) {
+      return null;
     }
   }
 
