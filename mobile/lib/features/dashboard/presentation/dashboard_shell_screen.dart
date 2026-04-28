@@ -713,8 +713,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.shopping_cart_rounded,
             label: 'New Sale',
-            backgroundColor: const Color(0xFF0F622F),
-            accentColor: const Color(0xFF03451F),
+            backgroundColor: const Color(0xFF033019),
+            accentColor: const Color(0xFF033019),
             foregroundColor: Colors.white,
             onTap: () => onNavigate(1),
           ),
@@ -724,8 +724,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.payments_rounded,
             label: 'Collect Debt',
-            backgroundColor: AppColors.forestDark,
-            accentColor: AppColors.forest,
+            backgroundColor: const Color(0xFF033019),
+            accentColor: const Color(0xFF033019),
             foregroundColor: Colors.white,
             onTap: () => context.push(AppRoute.debts.path),
           ),
@@ -735,8 +735,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.inventory_2_rounded,
             label: 'Stock',
-            backgroundColor: const Color(0xFFECA635),
-            accentColor: const Color(0xFFF3B041),
+            backgroundColor: const Color(0xFFA97C07),
+            accentColor: const Color(0xFFA97C07),
             foregroundColor: AppColors.ink,
             onTap: () => onNavigate(2),
           ),
