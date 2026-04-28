@@ -1297,10 +1297,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           final item = itemById[entry.key];
                           if (item == null) return const SizedBox.shrink();
                           final qty = entry.value;
-                          final price = selectedOverrides[entry.key] ??
-                              item.defaultPrice;
-                          final lineTotalMinor =
-                              int.parse(price) * qty;
+                          final price =
+                              selectedOverrides[entry.key] ?? item.defaultPrice;
+                          final lineTotalMinor = int.parse(price) * qty;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Container(
@@ -1378,13 +1377,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                 size: 14,
                                               ),
                                               label: const Text('Remove',
-                                                  style: TextStyle(
-                                                      fontSize: 11)),
+                                                  style:
+                                                      TextStyle(fontSize: 11)),
                                               style: OutlinedButton.styleFrom(
-                                                padding: const EdgeInsets
-                                                    .symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
                                                 foregroundColor:
                                                     AppColors.forest,
                                                 side: const BorderSide(
@@ -1442,8 +1441,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     Navigator.of(sheetContext).pop(),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size.fromHeight(48),
-                                  side: const BorderSide(
-                                      color: AppColors.forest),
+                                  side:
+                                      const BorderSide(color: AppColors.forest),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
