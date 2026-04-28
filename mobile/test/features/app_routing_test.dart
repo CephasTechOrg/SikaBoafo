@@ -320,7 +320,8 @@ void main() {
         tester.element(find.byType(BizTrackApp)),
       );
       container.read(appRouterProvider).go(AppRoute.reports.path);
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('Reports'), findsWidgets);
       expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
@@ -363,10 +364,12 @@ void main() {
       tester.element(find.byType(BizTrackApp)),
     );
     container.read(appRouterProvider).go(AppRoute.home.path);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     await tester.tap(find.text('Collect Debt'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Debts'), findsWidgets);
     expect(find.text('Recent Debts'), findsOneWidget);
@@ -382,10 +385,12 @@ void main() {
       tester.element(find.byType(BizTrackApp)),
     );
     container.read(appRouterProvider).go(AppRoute.debts.path);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     await tester.tap(find.text('Reports').first);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Reports'), findsWidgets);
     expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);

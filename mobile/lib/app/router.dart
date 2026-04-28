@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../data/local/app_database.dart';
 import '../shared/providers/core_providers.dart';
 import '../features/auth/presentation/auth_shell_screen.dart';
 import '../features/auth/presentation/set_pin_screen.dart';
