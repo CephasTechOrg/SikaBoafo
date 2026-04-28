@@ -10,13 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
-    STAFF_INVITE_STATUS_ACCEPTED,
     STAFF_INVITE_STATUS_PENDING,
     USER_ROLE_MERCHANT_OWNER,
 )
 from app.models.merchant import Merchant
 from app.models.staff_invite import StaffInvite
-from app.models.store import Store
 from app.models.user import User
 from app.schemas.staff import InviteStaffIn, StaffInviteOut, StaffMemberOut, UpdateRoleIn
 from app.services.phone_number import normalize_phone_number

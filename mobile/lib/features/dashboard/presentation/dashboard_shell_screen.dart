@@ -148,8 +148,8 @@ class _HomeDashboard extends ConsumerWidget {
                   child: const HeroBackdrop(
                     swirlAssetPath: 'assets/images/flag.png',
                     swirlOpacity: 0.82,
-                    topShade: 0.48,
-                    midShade: 0.16,
+                    topShade: 0.54,
+                    midShade: 0.22,
                   ),
                 ),
 

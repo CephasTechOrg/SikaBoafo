@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_role
+from app.api.deps import get_db, require_role
 from app.core.constants import USER_ROLE_MERCHANT_OWNER
 from app.models.user import User
 from app.schemas.staff import InviteStaffIn, StaffInviteOut, StaffMemberOut, UpdateRoleIn

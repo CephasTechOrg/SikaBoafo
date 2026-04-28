@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from urllib import parse
 
 from sqlalchemy import create_engine, select
