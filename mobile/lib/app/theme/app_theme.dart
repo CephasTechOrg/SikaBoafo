@@ -82,6 +82,13 @@ abstract final class AppGradients {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  /// Primary CTA gradient (dashboard-style green).
+  static const LinearGradient primaryCta = LinearGradient(
+    colors: [AppColors.forestDark, AppColors.forest, Color(0xFF2AAE6A)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 abstract final class AppShadows {

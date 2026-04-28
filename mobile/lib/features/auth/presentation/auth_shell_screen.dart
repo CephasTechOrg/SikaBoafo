@@ -14,9 +14,6 @@ final _biometricQuickSignInAvailableProvider = FutureProvider<bool>((ref) async 
   final storage = ref.watch(secureTokenStorageProvider);
   final enabled = await storage.isBiometricEnabled();
   if (!enabled) return false;
-  // Only useful if we still have a session to unlock.
-  final refresh = await storage.readRefreshToken();
-  if (refresh == null || refresh.isEmpty) return false;
   final bio = ref.watch(biometricServiceProvider);
   return bio.isSupported();
 });
@@ -153,6 +150,15 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
       );
       if (!ok) return;
       final storage = ref.read(secureTokenStorageProvider);
+      final refresh = await storage.readRefreshToken();
+      if (refresh == null || refresh.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _error =
+              'No saved session yet. Sign in once with phone + PIN, then you can use biometrics next time.';
+        });
+        return;
+      }
       await storage.writeLastBiometricAt(DateTime.now());
       await storage.markSessionGateComplete(DateTime.now());
       if (!mounted) return;

@@ -225,23 +225,25 @@ class AppButton extends StatelessWidget {
             ],
           );
 
+    final radius = BorderRadius.circular(AppRadii.sm);
     final btn = Material(
-      color: colors.background,
-      borderRadius: BorderRadius.circular(AppRadii.sm),
+      color: Colors.transparent,
+      borderRadius: radius,
       child: InkWell(
         onTap: disabled ? null : onPressed,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: Container(
+        borderRadius: radius,
+        child: Ink(
           height: _height,
           padding: _padding,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            border: colors.border != null
-                ? Border.all(color: colors.border!)
+            color: colors.background,
+            gradient: (!disabled && variant == AppButtonVariant.primary)
+                ? AppGradients.primaryCta
                 : null,
+            borderRadius: radius,
+            border: colors.border != null ? Border.all(color: colors.border!) : null,
           ),
-          alignment: Alignment.center,
-          child: content,
+          child: Align(alignment: Alignment.center, child: content),
         ),
       ),
     );
