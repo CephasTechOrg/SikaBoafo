@@ -121,10 +121,34 @@ class HeroBackdrop extends StatelessWidget {
           ),
         ),
         if (tintOpacity > 0)
-          Opacity(
-            opacity: tintOpacity,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: tintColor),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  tintColor.withValues(alpha: tintOpacity),
+                  tintColor.withValues(alpha: tintOpacity * 0.78),
+                  tintColor.withValues(alpha: tintOpacity * 0.22),
+                  Colors.transparent,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: const [0.0, 0.34, 0.72, 1.0],
+              ),
+            ),
+          ),
+        if (tintOpacity > 0)
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.52, -0.24),
+                radius: 1.0,
+                colors: [
+                  tintColor.withValues(alpha: tintOpacity * 0.95),
+                  tintColor.withValues(alpha: tintOpacity * 0.36),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.42, 1.0],
+              ),
             ),
           ),
         DecoratedBox(

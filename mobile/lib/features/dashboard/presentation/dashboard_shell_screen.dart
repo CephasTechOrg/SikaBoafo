@@ -151,7 +151,7 @@ class _HomeDashboard extends ConsumerWidget {
                     midShade: 0.40,
                     shadeColor: Color(0xFF04170A),
                     tintColor: Color(0xFF0F6A31),
-                    tintOpacity: 0.23,
+                    tintOpacity: 0.20,
                   ),
                 ),
 
