@@ -674,7 +674,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               label: 'Cash',
                               icon: Icons.payments_rounded,
                               selected: selectedMethod == 'cash',
-                              accent: AppColors.navy,
+                              accent: AppColors.forest,
                               onTap: () => setSheetState(
                                 () => selectedMethod = 'cash',
                               ),
@@ -698,7 +698,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               label: 'Bank',
                               icon: Icons.account_balance_rounded,
                               selected: selectedMethod == 'bank_transfer',
-                              accent: AppColors.navySoft,
+                              accent: const Color(0xFF2563A8),
                               onTap: () => setSheetState(
                                 () => selectedMethod = 'bank_transfer',
                               ),
@@ -720,7 +720,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             );
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.navy,
+                            backgroundColor: AppColors.forest,
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(52),
                             shape: RoundedRectangleBorder(
@@ -752,9 +752,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           icon: const Icon(Icons.link_rounded, size: 18),
                           label: const Text('Send Paystack Payment Link'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.navy,
+                            foregroundColor: AppColors.forest,
                             minimumSize: const Size.fromHeight(50),
-                            side: const BorderSide(color: AppColors.navy),
+                            side: const BorderSide(color: AppColors.forest),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -825,14 +825,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               decoration: BoxDecoration(
                 color: sale.isVoided
                     ? AppColors.dangerSoft
-                    : AppColors.navy.withValues(alpha: 0.10),
+                    : AppColors.forest.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 sale.isVoided
                     ? Icons.block_rounded
                     : Icons.receipt_long_rounded,
-                color: sale.isVoided ? AppColors.danger : AppColors.navy,
+                color: sale.isVoided ? AppColors.danger : AppColors.forest,
                 size: 20,
               ),
             ),
@@ -1560,7 +1560,7 @@ class _SaleDraftPanel extends StatelessWidget {
             children: [
               _DraftMetric(
                 icon: Icons.shopping_bag_rounded,
-                iconColor: AppColors.navy,
+                iconColor: AppColors.forest,
                 label: 'Items selected',
                 value: '$itemCount',
               ),
@@ -1862,7 +1862,7 @@ class _SalesTabPill extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.navy : Colors.transparent,
+          color: selected ? AppColors.forest : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -1995,7 +1995,7 @@ class _ItemCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isSelected ? AppColors.navy : AppColors.border,
+          color: isSelected ? AppColors.forest : AppColors.border,
           width: isSelected ? 1.5 : 1,
         ),
         boxShadow: isSelected ? AppShadows.card : AppShadows.subtle,
@@ -2067,7 +2067,7 @@ class _ItemCard extends StatelessWidget {
               child: Text(
                 hasOverride ? '₵$displayPrice custom' : '₵$displayPrice',
                 style: TextStyle(
-                  color: hasOverride ? AppColors.warning : AppColors.navy,
+                  color: hasOverride ? AppColors.warning : AppColors.forest,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                 ),
@@ -2094,7 +2094,7 @@ class _ItemCard extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color:
-                    isSelected ? const Color(0xFFEFF3FA) : AppColors.surfaceAlt,
+                    isSelected ? const Color(0xFFF0FAF3) : AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -2156,14 +2156,14 @@ class _CircleQtyBtn extends StatelessWidget {
           shape: BoxShape.circle,
           color: Colors.white,
           border: Border.all(
-            color: enabled ? AppColors.navy : const Color(0xFFDDDDDD),
+            color: enabled ? AppColors.forest : const Color(0xFFDDDDDD),
             width: 1.2,
           ),
         ),
         child: Icon(
           icon,
           size: 16,
-          color: enabled ? AppColors.navy : AppColors.muted,
+          color: enabled ? AppColors.forest : AppColors.muted,
         ),
       ),
     );
@@ -2193,7 +2193,14 @@ class _BottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FC),
+        gradient: hasItems
+            ? const LinearGradient(
+                colors: [Color(0xFF0A3D1A), Color(0xFF155236)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              )
+            : null,
+        color: hasItems ? null : const Color(0xFFF8F9FC),
         boxShadow: AppShadows.elevated,
       ),
       child: SafeArea(
@@ -2206,16 +2213,18 @@ class _BottomBar extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.08),
+                  color: hasItems
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : AppColors.forest.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    const Center(
+                    Center(
                       child: Icon(
                         Icons.shopping_cart_outlined,
-                        color: AppColors.navy,
+                        color: hasItems ? Colors.white : AppColors.forest,
                         size: 20,
                       ),
                     ),
@@ -2252,25 +2261,28 @@ class _BottomBar extends StatelessWidget {
                 children: [
                   Text(
                     itemCount == 0 ? 'Cart is empty' : 'Ready to checkout',
-                    style: const TextStyle(
-                      color: AppColors.ink,
+                    style: TextStyle(
+                      color: hasItems ? Colors.white : AppColors.ink,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     '₵$totalAmount',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+                      fontFamily: 'Constantia',
+                      color: hasItems ? Colors.white : AppColors.ink,
                       letterSpacing: -0.3,
                     ),
                   ),
                   Text(
-                    hasItems ? 'Payment selected at checkout' : paymentMethod,
-                    style: const TextStyle(
-                      color: AppColors.muted,
+                    hasItems ? 'Payment at checkout' : paymentMethod,
+                    style: TextStyle(
+                      color: hasItems
+                          ? Colors.white.withValues(alpha: 0.65)
+                          : AppColors.muted,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2286,8 +2298,10 @@ class _BottomBar extends StatelessWidget {
                   iconAlignment: IconAlignment.end,
                   label: Text(isBusy ? 'Saving...' : 'Checkout'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.navy,
-                    foregroundColor: Colors.white,
+                    backgroundColor:
+                        hasItems ? Colors.white : AppColors.forest,
+                    foregroundColor:
+                        hasItems ? AppColors.forest : Colors.white,
                     disabledBackgroundColor: const Color(0xFFCCCCCC),
                     minimumSize: Size.zero,
                     padding: const EdgeInsets.symmetric(
@@ -2444,7 +2458,7 @@ class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
                   size: 210,
                   eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color: AppColors.navy,
+                    color: AppColors.forest,
                   ),
                   dataModuleStyle: const QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
@@ -2509,7 +2523,7 @@ class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
                           : const Icon(Icons.refresh_rounded, size: 16),
                       label: const Text('Check Now'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.navy,
+                        backgroundColor: AppColors.forest,
                         minimumSize: const Size.fromHeight(46),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
