@@ -188,7 +188,9 @@ def delete_account(
     current_user.pin_hash = None
     current_user.full_name = None
     current_user.email = None
-    current_user.phone_number = f"deleted:{current_user.id}"
+    # Keep within `users.phone_number` length (32) and unique.
+    # UUID hex is 32 chars; we prefix with "deleted:" and trim to fit.
+    current_user.phone_number = f"deleted:{current_user.id.hex}"[:32]
     db.add(current_user)
     db.commit()
     return AccountDeleteOut()
