@@ -140,8 +140,8 @@ class HeroBackdrop extends StatelessWidget {
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: const Alignment(-0.52, -0.24),
-                radius: 1.0,
+                center: const Alignment(-0.18, -0.16),
+                radius: 0.86,
                 colors: [
                   tintColor.withValues(alpha: tintOpacity * 0.95),
                   tintColor.withValues(alpha: tintOpacity * 0.36),
