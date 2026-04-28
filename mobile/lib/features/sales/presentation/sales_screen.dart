@@ -118,479 +118,507 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(28)),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Stack(
-                        fit: StackFit.expand,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Layer 1 — deep anchor: very dark at bottom-left,
+                        // rich forest green toward top-right
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFF020F06),
+                                Color(0xFF063318),
+                                Color(0xFF0B5228),
+                                Color(0xFF116438),
+                              ],
+                              stops: [0.0, 0.32, 0.66, 1.0],
+                              begin: Alignment.bottomLeft,
+                              end: Alignment.topRight,
+                            ),
+                          ),
+                        ),
+                        // Layer 2 — vivid emerald bloom, top-right quadrant
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(0.68, -0.72),
+                              radius: 0.92,
+                              colors: [
+                                const Color(0xFF27A84E).withValues(alpha: 0.56),
+                                const Color(0xFF1A7A38).withValues(alpha: 0.22),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.45, 1.0],
+                            ),
+                          ),
+                        ),
+                        // Layer 3 — secondary warm glow, center
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(-0.10, 0.0),
+                              radius: 1.2,
+                              colors: [
+                                const Color(0xFF0D6030).withValues(alpha: 0.35),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 1.0],
+                            ),
+                          ),
+                        ),
+                        // Layer 4 — deep shadow vignette at all edges
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF010A04).withValues(alpha: 0.72),
+                                Colors.transparent,
+                                const Color(0xFF010A04).withValues(alpha: 0.30),
+                              ],
+                              stops: const [0.0, 0.50, 1.0],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                            ),
+                          ),
+                        ),
+                        // Layer 5 — top-edge sheen for premium depth
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 0,
+                          height: 1.5,
+                          child: ColoredBox(color: Color(0x22FFFFFF)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    right: -10,
+                    bottom: -8,
+                    child: Opacity(
+                      opacity: 0.42,
+                      child: Image.asset(
+                        'assets/images/sales.png',
+                        width: 185,
+                        height: 185,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Layer 1 — deep anchor: very dark at bottom-left,
-                          // rich forest green toward top-right
-                          const DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFF020F06),
-                                  Color(0xFF063318),
-                                  Color(0xFF0B5228),
-                                  Color(0xFF116438),
-                                ],
-                                stops: [0.0, 0.32, 0.66, 1.0],
-                                begin: Alignment.bottomLeft,
-                                end: Alignment.topRight,
+                          Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.point_of_sale_rounded,
+                                  color: Colors.white,
+                                  size: 17,
+                                ),
                               ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Sales',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.2,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  DataFreshnessLabel(
+                                    kvKey: KvCacheRepository.kSalesTs,
+                                    color: AppColors.heroSubtitle,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "TODAY'S REVENUE",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _formatMinor(todayRevenueMinor, symbol: '₵'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.w900,
+                                    fontFamily: 'Constantia',
+                                    letterSpacing: -0.8,
+                                    height: 1,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          // Layer 2 — vivid emerald bloom, top-right quadrant
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                center: const Alignment(0.68, -0.72),
-                                radius: 0.92,
-                                colors: [
-                                  const Color(0xFF27A84E)
-                                      .withValues(alpha: 0.56),
-                                  const Color(0xFF1A7A38)
-                                      .withValues(alpha: 0.22),
-                                  Colors.transparent,
-                                ],
-                                stops: const [0.0, 0.45, 1.0],
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _HeroStatChip(
+                                icon: Icons.receipt_long_rounded,
+                                value: '${todaySales.length}',
+                                label: 'txns today',
                               ),
-                            ),
-                          ),
-                          // Layer 3 — secondary warm glow, center
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                center: const Alignment(-0.10, 0.0),
-                                radius: 1.2,
-                                colors: [
-                                  const Color(0xFF0D6030)
-                                      .withValues(alpha: 0.35),
-                                  Colors.transparent,
-                                ],
-                                stops: const [0.0, 1.0],
+                              const SizedBox(width: 8),
+                              _HeroStatChip(
+                                icon: Icons.payments_rounded,
+                                value:
+                                    _formatMinor(cashTotalMinor, symbol: '₵'),
+                                label: 'Cash',
                               ),
-                            ),
-                          ),
-                          // Layer 4 — deep shadow vignette at all edges
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFF010A04)
-                                      .withValues(alpha: 0.72),
-                                  Colors.transparent,
-                                  const Color(0xFF010A04)
-                                      .withValues(alpha: 0.30),
-                                ],
-                                stops: const [0.0, 0.50, 1.0],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
+                              const SizedBox(width: 8),
+                              _HeroStatChip(
+                                icon: Icons.phone_android_rounded,
+                                value:
+                                    _formatMinor(momoTotalMinor, symbol: '₵'),
+                                label: 'MoMo',
                               ),
-                            ),
-                          ),
-                          // Layer 5 — top-edge sheen for premium depth
-                          const Positioned(
-                            left: 0,
-                            right: 0,
-                            top: 0,
-                            height: 1.5,
-                            child: ColoredBox(color: Color(0x22FFFFFF)),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                    Positioned(
-                      right: -10,
-                      bottom: -8,
-                      child: Opacity(
-                        opacity: 0.42,
-                        child: Image.asset(
-                          'assets/images/sales.png',
-                          width: 185,
-                          height: 185,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Transform.translate(
+                offset: const Offset(0, -16),
+                child: Column(
+                  children: [
+                    const StaleBanner(
+                      screenKey: 'sales',
+                      kvKey: KvCacheRepository.kSalesTs,
                     ),
-                    SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.18),
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.point_of_sale_rounded,
-                                    color: Colors.white,
-                                    size: 17,
-                                  ),
+                    Expanded(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: AppColors.canvas,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(28),
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(28),
+                          ),
+                          child: inventoryAsync.when(
+                            loading: () => const Center(
+                                child: CircularProgressIndicator()),
+                            error: (error, _) => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  humanizeInventoryError(error),
+                                  textAlign: TextAlign.center,
                                 ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      'Sales',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -0.2,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    DataFreshnessLabel(
-                                      kvKey: KvCacheRepository.kSalesTs,
-                                      color: AppColors.heroSubtitle,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "TODAY'S REVENUE",
-                                    style: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.65),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _formatMinor(todayRevenueMinor,
-                                        symbol: '₵'),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.w900,
-                                      fontFamily: 'Constantia',
-                                      letterSpacing: -0.8,
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            data: (_) => Stack(
                               children: [
-                                _HeroStatChip(
-                                  icon: Icons.receipt_long_rounded,
-                                  value: '${todaySales.length}',
-                                  label: 'txns today',
+                                RefreshIndicator(
+                                  onRefresh: () async {
+                                    await Future.wait([
+                                      ref
+                                          .read(inventoryControllerProvider
+                                              .notifier)
+                                          .refresh(),
+                                      ref
+                                          .read(
+                                              salesControllerProvider.notifier)
+                                          .refresh(includeVoided: _showVoided),
+                                    ]);
+                                  },
+                                  child: ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: EdgeInsets.fromLTRB(
+                                      16,
+                                      18,
+                                      16,
+                                      _activeTab == _SalesViewTab.newSale
+                                          ? 108
+                                          : 24,
+                                    ),
+                                    children: [
+                                      _SalesTabBar(
+                                        activeTab: _activeTab,
+                                        onChanged: (tab) => setState(
+                                          () => _activeTab = tab,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      if (_activeTab ==
+                                          _SalesViewTab.newSale) ...[
+                                        _SaleDraftPanel(
+                                          itemCount: itemCount,
+                                          totalAmount: _formatMajor(
+                                            totalAmount,
+                                            symbol: 'GHS ',
+                                          ),
+                                          noteValue: _noteCtrl.text.trim(),
+                                          showNote: _showNote,
+                                          onToggleNote: () => setState(
+                                            () => _showNote = !_showNote,
+                                          ),
+                                        ),
+                                        if (_showNote) ...[
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              border: Border.all(
+                                                color: AppColors.border,
+                                              ),
+                                            ),
+                                            child: TextField(
+                                              controller: _noteCtrl,
+                                              maxLines: 2,
+                                              maxLength: 500,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Note for this sale…',
+                                                contentPadding:
+                                                    EdgeInsets.all(14),
+                                                border: InputBorder.none,
+                                                enabledBorder: InputBorder.none,
+                                                focusedBorder: InputBorder.none,
+                                                counterStyle: TextStyle(
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 20),
+                                        _SalesSearchBar(
+                                          controller: _searchCtrl,
+                                          hasQuery: _searchQuery.isNotEmpty,
+                                          onChanged: (v) => setState(
+                                            () => _searchQuery = v.trim(),
+                                          ),
+                                          onClear: () {
+                                            _searchCtrl.clear();
+                                            setState(() => _searchQuery = '');
+                                          },
+                                        ),
+                                        const SizedBox(height: 14),
+                                        _ProductsHeader(
+                                          selectedCount: selectedItems.length,
+                                          totalCount: allItems.length,
+                                        ),
+                                        const SizedBox(height: 14),
+                                        if (allItems.isEmpty)
+                                          const _EmptyCard(
+                                            icon: Icons.inventory_2_outlined,
+                                            message:
+                                                'No inventory items. Add stock in Inventory first.',
+                                          )
+                                        else ...[
+                                          if (selectedItems.isNotEmpty) ...[
+                                            _SectionLabel(
+                                              label:
+                                                  'In cart (${selectedItems.length})',
+                                            ),
+                                            const SizedBox(height: 10),
+                                            _ItemGrid(
+                                              children: selectedItems
+                                                  .map(
+                                                    (item) => _ItemCard(
+                                                      item: item,
+                                                      qty: _qtyByItemId[
+                                                              item.id] ??
+                                                          0,
+                                                      priceOverride:
+                                                          _priceOverrideByItemId[
+                                                              item.id],
+                                                      isSelected: true,
+                                                      onMinus: () => setState(
+                                                        () => _decrementQty(
+                                                          item.id,
+                                                        ),
+                                                      ),
+                                                      onPlus: () => setState(
+                                                        () => _incrementQty(
+                                                          item,
+                                                        ),
+                                                      ),
+                                                      onPriceTap: () =>
+                                                          _showPriceOverrideDialog(
+                                                        item,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(growable: false),
+                                            ),
+                                            const SizedBox(height: 18),
+                                          ],
+                                          if (unselectedItems.isNotEmpty) ...[
+                                            _SectionLabel(
+                                              label: selectedItems.isNotEmpty
+                                                  ? 'Add more products'
+                                                  : 'Available products',
+                                            ),
+                                            const SizedBox(height: 10),
+                                            _ItemGrid(
+                                              children: unselectedItems
+                                                  .map(
+                                                    (item) => _ItemCard(
+                                                      item: item,
+                                                      qty: 0,
+                                                      priceOverride: null,
+                                                      isSelected: false,
+                                                      onMinus: () {},
+                                                      onPlus: () => setState(
+                                                        () => _incrementQty(
+                                                          item,
+                                                        ),
+                                                      ),
+                                                      onPriceTap: () =>
+                                                          _showPriceOverrideDialog(
+                                                        item,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(growable: false),
+                                            ),
+                                          ],
+                                          if (filtered.isEmpty &&
+                                              _searchQuery.isNotEmpty)
+                                            _EmptyCard(
+                                              icon: Icons.search_off_rounded,
+                                              message:
+                                                  'No items match "$_searchQuery".',
+                                            ),
+                                        ],
+                                        const SizedBox(height: 24),
+                                      ],
+                                      if (_activeTab ==
+                                          _SalesViewTab.history) ...[
+                                        Row(
+                                          children: [
+                                            Text(
+                                              'Recent Transactions',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium,
+                                            ),
+                                            const Spacer(),
+                                            FilterChip(
+                                              label: const Text('Show voided'),
+                                              selected: _showVoided,
+                                              onSelected: isBusy
+                                                  ? null
+                                                  : (value) async {
+                                                      setState(() =>
+                                                          _showVoided = value);
+                                                      await ref
+                                                          .read(
+                                                            salesControllerProvider
+                                                                .notifier,
+                                                          )
+                                                          .refresh(
+                                                            includeVoided:
+                                                                value,
+                                                          );
+                                                    },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        if (salesAsync.isLoading &&
+                                            recentSales.isEmpty)
+                                          const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 20,
+                                            ),
+                                            child: Center(
+                                              child:
+                                                  CircularProgressIndicator(),
+                                            ),
+                                          )
+                                        else if (historySales.isEmpty)
+                                          _EmptyCard(
+                                            icon: Icons.receipt_long_outlined,
+                                            message: _showVoided
+                                                ? 'No sales found yet.'
+                                                : 'No sales yet. Record your first sale above.',
+                                          )
+                                        else
+                                          ...historySales
+                                              .take(12)
+                                              .map(_buildRecentSaleTile),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                _HeroStatChip(
-                                  icon: Icons.payments_rounded,
-                                  value:
-                                      _formatMinor(cashTotalMinor, symbol: '₵'),
-                                  label: 'Cash',
-                                ),
-                                const SizedBox(width: 8),
-                                _HeroStatChip(
-                                  icon: Icons.phone_android_rounded,
-                                  value:
-                                      _formatMinor(momoTotalMinor, symbol: '₵'),
-                                  label: 'MoMo',
-                                ),
+                                if (_activeTab == _SalesViewTab.newSale)
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    child: _BottomBar(
+                                      itemCount: itemCount,
+                                      totalAmount: totalAmount,
+                                      paymentMethod: _paymentLabel(
+                                        _paymentMethod,
+                                      ),
+                                      hasItems: hasItems,
+                                      isBusy: isBusy,
+                                      onConfirm: () => _showCheckoutSheet(
+                                        items: allItems,
+                                        itemCount: itemCount,
+                                        totalAmount: totalAmount,
+                                        isBusy: isBusy,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-
-            const StaleBanner(
-              screenKey: 'sales',
-              kvKey: KvCacheRepository.kSalesTs,
-            ),
-
-            // ── Content area ──────────────────────────────────────────────
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.canvas,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: inventoryAsync.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, _) => Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          humanizeInventoryError(error),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    data: (_) => Stack(
-                      children: [
-                        RefreshIndicator(
-                          onRefresh: () async {
-                            await Future.wait([
-                              ref
-                                  .read(inventoryControllerProvider.notifier)
-                                  .refresh(),
-                              ref
-                                  .read(salesControllerProvider.notifier)
-                                  .refresh(includeVoided: _showVoided),
-                            ]);
-                          },
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(
-                              16,
-                              18,
-                              16,
-                              _activeTab == _SalesViewTab.newSale ? 108 : 24,
-                            ),
-                            children: [
-                              _SalesTabBar(
-                                activeTab: _activeTab,
-                                onChanged: (tab) =>
-                                    setState(() => _activeTab = tab),
-                              ),
-                              const SizedBox(height: 18),
-                              if (_activeTab == _SalesViewTab.newSale) ...[
-                                _SaleDraftPanel(
-                                  itemCount: itemCount,
-                                  totalAmount: _formatMajor(
-                                    totalAmount,
-                                    symbol: 'GHS ',
-                                  ),
-                                  noteValue: _noteCtrl.text.trim(),
-                                  showNote: _showNote,
-                                  onToggleNote: () =>
-                                      setState(() => _showNote = !_showNote),
-                                ),
-                                if (_showNote) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(18),
-                                      border:
-                                          Border.all(color: AppColors.border),
-                                    ),
-                                    child: TextField(
-                                      controller: _noteCtrl,
-                                      maxLines: 2,
-                                      maxLength: 500,
-                                      decoration: const InputDecoration(
-                                        hintText: 'Note for this sale…',
-                                        contentPadding: EdgeInsets.all(14),
-                                        border: InputBorder.none,
-                                        enabledBorder: InputBorder.none,
-                                        focusedBorder: InputBorder.none,
-                                        counterStyle: TextStyle(fontSize: 10),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 20),
-
-                                _SalesSearchBar(
-                                  controller: _searchCtrl,
-                                  hasQuery: _searchQuery.isNotEmpty,
-                                  onChanged: (v) =>
-                                      setState(() => _searchQuery = v.trim()),
-                                  onClear: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                ),
-                                const SizedBox(height: 14),
-                                _ProductsHeader(
-                                  selectedCount: selectedItems.length,
-                                  totalCount: allItems.length,
-                                ),
-                                const SizedBox(height: 14),
-
-                                // Item list
-                                if (allItems.isEmpty)
-                                  const _EmptyCard(
-                                    icon: Icons.inventory_2_outlined,
-                                    message:
-                                        'No inventory items. Add stock in Inventory first.',
-                                  )
-                                else ...[
-                                  if (selectedItems.isNotEmpty) ...[
-                                    _SectionLabel(
-                                      label:
-                                          'In cart (${selectedItems.length})',
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _ItemGrid(
-                                      children: selectedItems
-                                          .map(
-                                            (item) => _ItemCard(
-                                              item: item,
-                                              qty: _qtyByItemId[item.id] ?? 0,
-                                              priceOverride:
-                                                  _priceOverrideByItemId[
-                                                      item.id],
-                                              isSelected: true,
-                                              onMinus: () => setState(
-                                                () => _decrementQty(item.id),
-                                              ),
-                                              onPlus: () => setState(
-                                                () => _incrementQty(item),
-                                              ),
-                                              onPriceTap: () =>
-                                                  _showPriceOverrideDialog(
-                                                      item),
-                                            ),
-                                          )
-                                          .toList(growable: false),
-                                    ),
-                                    const SizedBox(height: 18),
-                                  ],
-                                  if (unselectedItems.isNotEmpty) ...[
-                                    _SectionLabel(
-                                      label: selectedItems.isNotEmpty
-                                          ? 'Add more products'
-                                          : 'Available products',
-                                    ),
-                                    const SizedBox(height: 10),
-                                    _ItemGrid(
-                                      children: unselectedItems
-                                          .map(
-                                            (item) => _ItemCard(
-                                              item: item,
-                                              qty: 0,
-                                              priceOverride: null,
-                                              isSelected: false,
-                                              onMinus: () {},
-                                              onPlus: () => setState(
-                                                () => _incrementQty(item),
-                                              ),
-                                              onPriceTap: () =>
-                                                  _showPriceOverrideDialog(
-                                                      item),
-                                            ),
-                                          )
-                                          .toList(growable: false),
-                                    ),
-                                  ],
-                                  if (filtered.isEmpty &&
-                                      _searchQuery.isNotEmpty)
-                                    _EmptyCard(
-                                      icon: Icons.search_off_rounded,
-                                      message:
-                                          'No items match "$_searchQuery".',
-                                    ),
-                                ],
-                                const SizedBox(height: 24),
-                              ],
-                              if (_activeTab == _SalesViewTab.history) ...[
-                                Row(
-                                  children: [
-                                    Text(
-                                      'Recent Transactions',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
-                                    ),
-                                    const Spacer(),
-                                    FilterChip(
-                                      label: const Text('Show voided'),
-                                      selected: _showVoided,
-                                      onSelected: isBusy
-                                          ? null
-                                          : (value) async {
-                                              setState(
-                                                  () => _showVoided = value);
-                                              await ref
-                                                  .read(salesControllerProvider
-                                                      .notifier)
-                                                  .refresh(
-                                                      includeVoided: value);
-                                            },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                if (salesAsync.isLoading && recentSales.isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 20),
-                                    child: Center(
-                                        child: CircularProgressIndicator()),
-                                  )
-                                else if (historySales.isEmpty)
-                                  _EmptyCard(
-                                    icon: Icons.receipt_long_outlined,
-                                    message: _showVoided
-                                        ? 'No sales found yet.'
-                                        : 'No sales yet. Record your first sale above.',
-                                  )
-                                else
-                                  ...historySales
-                                      .take(12)
-                                      .map(_buildRecentSaleTile),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        // ── Persistent bottom action bar ────────────────
-                        if (_activeTab == _SalesViewTab.newSale)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: _BottomBar(
-                              itemCount: itemCount,
-                              totalAmount: totalAmount,
-                              paymentMethod: _paymentLabel(_paymentMethod),
-                              hasItems: hasItems,
-                              isBusy: isBusy,
-                              onConfirm: () => _showCheckoutSheet(
-                                items: allItems,
-                                itemCount: itemCount,
-                                totalAmount: totalAmount,
-                                isBusy: isBusy,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ),
