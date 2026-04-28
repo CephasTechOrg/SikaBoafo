@@ -10,14 +10,6 @@ import '../../../shared/widgets/mockup_ui.dart';
 import '../data/auth_api.dart';
 import '../providers/auth_providers.dart';
 
-final _biometricQuickSignInAvailableProvider = FutureProvider<bool>((ref) async {
-  final storage = ref.watch(secureTokenStorageProvider);
-  final enabled = await storage.isBiometricEnabled();
-  if (!enabled) return false;
-  final bio = ref.watch(biometricServiceProvider);
-  return bio.isSupported();
-});
-
 /// Phone + PIN for daily sign-in; SMS OTP for create account and recovery.
 class AuthShellScreen extends ConsumerStatefulWidget {
   const AuthShellScreen({super.key});
@@ -135,43 +127,6 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     }
   }
 
-  Future<void> _loginWithBiometrics() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final returnTo = sanitizeReturnTo(
-        GoRouterState.of(context).uri.queryParameters['returnTo'],
-      );
-      final bio = ref.read(biometricServiceProvider);
-      final ok = await bio.authenticate(
-        reason: 'Sign in to SikaBoafo.',
-      );
-      if (!ok) return;
-      final storage = ref.read(secureTokenStorageProvider);
-      final refresh = await storage.readRefreshToken();
-      if (refresh == null || refresh.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          _error =
-              'No saved session yet. Sign in once with phone + PIN, then you can use biometrics next time.';
-        });
-        return;
-      }
-      await storage.writeLastBiometricAt(DateTime.now());
-      await storage.markSessionGateComplete(DateTime.now());
-      if (!mounted) return;
-      // Tokens are already in secure storage; protected requests will refresh if needed.
-      context.go(resolveReturnToOrHome(returnTo));
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _error = 'Biometric sign in failed. Please try PIN instead.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   void _goPinSignIn() {
     setState(() {
       _step = _AuthFlowStep.pinSignIn;
@@ -213,9 +168,6 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final biometricAvailable =
-        ref.watch(_biometricQuickSignInAvailableProvider).valueOrNull == true;
-
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: AnimatedSwitcher(
@@ -238,10 +190,6 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
               onTogglePin: () => setState(() => _pinObscured = !_pinObscured),
               onSubmit: _loading ? null : _loginWithPin,
               onCreateAccount: _loading ? null : _goOtpCreate,
-              showBiometricSignIn: biometricAvailable,
-              onBiometricSignIn: (_loading || !biometricAvailable)
-                  ? null
-                  : _loginWithBiometrics,
             ),
           _AuthFlowStep.otpVerify => _OtpVerifyView(
               phoneCtrl: _phoneCtrl,
@@ -362,8 +310,6 @@ class _PinSignInView extends StatelessWidget {
     required this.onTogglePin,
     required this.onSubmit,
     required this.onCreateAccount,
-    required this.showBiometricSignIn,
-    required this.onBiometricSignIn,
   });
 
   final TextEditingController phoneCtrl;
@@ -376,8 +322,6 @@ class _PinSignInView extends StatelessWidget {
   final VoidCallback onTogglePin;
   final VoidCallback? onSubmit;
   final VoidCallback? onCreateAccount;
-  final bool showBiometricSignIn;
-  final VoidCallback? onBiometricSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -489,20 +433,6 @@ class _PinSignInView extends StatelessWidget {
                           onPressed: onSubmit,
                           loading: loading,
                         ),
-                        if (showBiometricSignIn) ...[
-                          const SizedBox(height: 10),
-                          OutlinedButton.icon(
-                            onPressed: onBiometricSignIn,
-                            icon: const Icon(Icons.fingerprint_rounded),
-                            label: const Text('Sign in with biometrics'),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          ),
-                        ],
                         const SizedBox(height: 14),
                         Center(
                           child: Text(

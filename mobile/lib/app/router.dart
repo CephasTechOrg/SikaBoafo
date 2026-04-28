@@ -9,6 +9,7 @@ import '../features/dashboard/presentation/dashboard_shell_screen.dart';
 import '../features/dashboard/presentation/reports_screen.dart';
 import '../features/onboarding/presentation/business_onboarding_screen.dart';
 import '../features/onboarding/presentation/splash_screen.dart';
+import '../features/security/presentation/app_lock_screen.dart';
 import '../features/customers/presentation/customer_detail_screen.dart';
 import '../features/customers/presentation/customers_screen.dart';
 import '../features/debts/presentation/debt_detail_screen.dart';
@@ -21,6 +22,7 @@ import '../features/settings/presentation/staff_screen.dart';
 
 enum AppRoute {
   splash('/'),
+  lock('/lock'),
   auth('/auth'),
   onboarding('/onboarding'),
   setPin('/set-pin'),
@@ -88,9 +90,15 @@ Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
   final storage = ref.read(secureTokenStorageProvider);
   final hasSession = await storage.hasPersistedSession();
   final gateComplete = await storage.hasCompletedSessionGate();
-  if (!hasSession || !gateComplete) {
+  if (!hasSession) {
     return buildRouteLocation(
       AppRoute.splash,
+      returnTo: state.uri.toString(),
+    );
+  }
+  if (!gateComplete) {
+    return buildRouteLocation(
+      AppRoute.lock,
       returnTo: state.uri.toString(),
     );
   }
@@ -114,6 +122,13 @@ GoRouter createAppRouter(Ref ref) {
       GoRoute(
         path: AppRoute.splash.path,
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.lock.path,
+        builder: (context, state) {
+          final returnTo = sanitizeReturnTo(state.uri.queryParameters[_returnToKey]);
+          return AppLockScreen(returnTo: returnTo);
+        },
       ),
       GoRoute(
         path: AppRoute.auth.path,

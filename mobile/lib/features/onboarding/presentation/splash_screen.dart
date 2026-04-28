@@ -48,25 +48,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         final bio = ref.read(biometricServiceProvider);
         final supported = await bio.isSupported();
         if (!mounted) return;
-        if (supported) {
-          final ok = await bio.authenticate(
-            reason: 'Unlock SikaBoafo to continue.',
-          );
-          if (!mounted) return;
-          if (ok) {
-            await storage.writeLastBiometricAt(DateTime.now());
-            await storage.markSessionGateComplete(DateTime.now());
-          } else {
-            if (!mounted) return;
-            await storage.clearSessionGate();
-            router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
-            return;
-          }
-        } else {
+        if (!supported) {
           await storage.clearSessionGate();
           router.go(buildRouteLocation(AppRoute.auth, returnTo: returnTo));
           return;
         }
+        await storage.clearSessionGate();
+        router.go(buildRouteLocation(AppRoute.lock, returnTo: returnTo));
+        return;
       }
       await storage.markSessionGateComplete(DateTime.now());
     }
