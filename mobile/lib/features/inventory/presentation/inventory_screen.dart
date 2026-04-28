@@ -1529,8 +1529,8 @@ class _EditSheetState extends State<_EditSheet> {
                 : _categoryCtrl.text.trim(),
             lowStockThreshold: threshold,
             isActive: widget.item.isActive,
-            imageAsset: _imageAsset,
-            imageAssetChanged: _imageAsset != widget.item.imageAsset,
+            imageUrl: _imageUrl,
+            imageUrlChanged: _imageUrl != widget.item.imageUrl,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
