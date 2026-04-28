@@ -154,14 +154,6 @@ class DashboardApi {
     }
   }
 
-  bool _isOfflineish(DioException e) {
-    return e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout ||
-        e.type == DioExceptionType.unknown;
-  }
-
   Future<void> updateMerchantProfile({
     required String businessName,
     String? businessType,
