@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import 'product_catalog_sheet.dart';
+
 /// Phase A stub — replaced with Supabase catalog browser in Phase B.
 /// Accepts a Supabase public URL as [selected] and calls [onChanged] with
 /// a new URL when the user picks a product.
@@ -67,12 +69,10 @@ class ProductImagePicker extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Product catalog coming in the next update.'),
-                    duration: Duration(seconds: 2),
-                  ),
-                ),
+                onPressed: () async {
+                  final url = await showProductCatalogSheet(context);
+                  if (url != null) onChanged(url);
+                },
                 icon: const Icon(Icons.grid_view_rounded, size: 18),
                 label: const Text('Choose from catalog'),
                 style: OutlinedButton.styleFrom(
