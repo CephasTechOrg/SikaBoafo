@@ -90,12 +90,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       dashboardOverlayAsync.valueOrNull?.monthPendingTopSelling ?? const [],
       limit: 3,
     );
-    
+
     // Build set of top-selling item IDs to filter from available list.
     final topSellingIds = <String>{
       for (final row in topSellingRows) row.itemId,
     };
-    
+
     // Filter top-selling items from unselected for separate "Quick Add" section.
     final quickAddItems = unselectedItems
         .where((item) => topSellingIds.contains(item.id))
@@ -103,7 +103,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final regularUnselectedItems = unselectedItems
         .where((item) => !topSellingIds.contains(item.id))
         .toList(growable: false);
-    
+
     // Sort regular items by name.
     regularUnselectedItems.sort((a, b) => a.name.compareTo(b.name));
 
@@ -548,7 +548,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                             const SizedBox(height: 18),
                                           ],
-                                          if (regularUnselectedItems.isNotEmpty) ...[
+                                          if (regularUnselectedItems
+                                              .isNotEmpty) ...[
                                             _SectionLabel(
                                               label: selectedItems.isNotEmpty
                                                   ? 'Add more products'
@@ -1583,8 +1584,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     if (match == null) return 0;
     final parts = raw.split('.');
     final major = int.tryParse(parts[0]) ?? 0;
-    final decimals =
-        parts.length == 2 ? (parts[1].padRight(2, '0')) : '00';
+    final decimals = parts.length == 2 ? (parts[1].padRight(2, '0')) : '00';
     return (major * 100) + (int.tryParse(decimals) ?? 0);
   }
 }

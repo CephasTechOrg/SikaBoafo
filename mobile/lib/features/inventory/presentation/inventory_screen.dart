@@ -1480,8 +1480,8 @@ class _EditSheetState extends State<_EditSheet> {
           ),
           const SizedBox(height: 12),
           ProductImagePicker(
-            selected: _imageAsset,
-            onChanged: (v) => setState(() => _imageAsset = v),
+            selected: _imageUrl,
+            onChanged: (v) => setState(() => _imageUrl = v),
           ),
           const SizedBox(height: 12),
           Container(
