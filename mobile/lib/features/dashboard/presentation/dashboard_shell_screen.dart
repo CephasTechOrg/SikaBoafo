@@ -1187,6 +1187,7 @@ class _TopSellingSection extends StatelessWidget {
     final overlay = overlayAsync.valueOrNull;
     final pending = overlay?.monthPendingTopSelling ?? const [];
     final merged = _mergeTopSelling(rows, pending, limit: 8);
+    final displayRows = merged.take(3).toList(growable: false);
     if (insightsAsync.isLoading && rows.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1219,9 +1220,9 @@ class _TopSellingSection extends StatelessWidget {
         Row(
           children: [
             const Expanded(child: _SectionLabel('Top Selling This Month')),
-            if (merged.isNotEmpty)
+            if (displayRows.isNotEmpty)
               Text(
-                '${merged.length} item${merged.length == 1 ? '' : 's'}',
+                '${displayRows.length} item${displayRows.length == 1 ? '' : 's'}',
                 style: const TextStyle(
                   color: AppColors.forest,
                   fontSize: 13,
@@ -1231,7 +1232,7 @@ class _TopSellingSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (merged.isEmpty)
+        if (displayRows.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -1265,11 +1266,11 @@ class _TopSellingSection extends StatelessWidget {
             ),
             child: Column(
               children: [
-                for (var i = 0; i < merged.length; i++) ...[
+                for (var i = 0; i < displayRows.length; i++) ...[
                   if (i != 0)
                     const Divider(
                         height: 1, thickness: 1, color: AppColors.border),
-                  _TopSellingRow(rank: i + 1, row: merged[i]),
+                  _TopSellingRow(rank: i + 1, row: displayRows[i]),
                 ],
               ],
             ),
