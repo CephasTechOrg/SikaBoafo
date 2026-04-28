@@ -5,6 +5,9 @@
       "Bash(python3 -)",
       "Bash(flutter analyze *)",
       "Bash(python3 \"C:/Users/USER/Desktop/replace_sales.py\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\USER\\Desktop"
     ]
   }
 }
