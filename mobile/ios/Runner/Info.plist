@@ -70,5 +70,9 @@
 		<false/>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Use Face ID to unlock SikaBoafo quickly.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Take a photo to use as your product image.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Choose a photo from your library to use as your product image.</string>
 	</dict>
 </plist>

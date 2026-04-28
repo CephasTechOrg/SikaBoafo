@@ -413,6 +413,12 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
     return id;
   }
 
+  /// Returns the active user ID for the current session.
+  Future<String?> getActiveUserId() async {
+    final db = await database;
+    return _readMeta(db, _activeUserIdMetaKey);
+  }
+
   /// Returns the active merchant ID, or null if onboarding is not yet complete.
   Future<String?> getActiveMerchantId() async {
     final db = await database;
