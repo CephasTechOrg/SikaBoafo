@@ -1,3 +1,6 @@
+# Secrets
+.env.dart_define
+
 # Miscellaneous
 *.class
 *.log

@@ -9,7 +9,8 @@
       "Bash(python -m alembic upgrade head)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\USER\\Desktop"
+      "C:\\Users\\USER\\Desktop",
+      "c:\\Users\\USER\\Desktop\\PROJECTS\\BizTrackGh\\mobile"
     ]
   }
 }
