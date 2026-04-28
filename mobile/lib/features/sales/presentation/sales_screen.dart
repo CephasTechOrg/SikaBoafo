@@ -108,206 +108,228 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: const BoxDecoration(color: AppColors.canvas),
         child: Column(
           children: [
-            Stack(
-              children: [
-                Positioned.fill(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Layer 1 — deep anchor: very dark at bottom-left,
-                      // rich forest green toward top-right
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFF020F06),
-                              Color(0xFF063318),
-                              Color(0xFF0B5228),
-                              Color(0xFF116438),
-                            ],
-                            stops: [0.0, 0.32, 0.66, 1.0],
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                          ),
-                        ),
-                      ),
-                      // Layer 2 — vivid emerald bloom, top-right quadrant
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(0.68, -0.72),
-                            radius: 0.92,
-                            colors: [
-                              const Color(0xFF27A84E).withValues(alpha: 0.56),
-                              const Color(0xFF1A7A38).withValues(alpha: 0.22),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 0.45, 1.0],
-                          ),
-                        ),
-                      ),
-                      // Layer 3 — secondary warm glow, center
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(-0.10, 0.0),
-                            radius: 1.2,
-                            colors: [
-                              const Color(0xFF0D6030).withValues(alpha: 0.35),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 1.0],
-                          ),
-                        ),
-                      ),
-                      // Layer 4 — deep shadow vignette at all edges
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF010A04).withValues(alpha: 0.72),
-                              Colors.transparent,
-                              const Color(0xFF010A04).withValues(alpha: 0.30),
-                            ],
-                            stops: const [0.0, 0.50, 1.0],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                      ),
-                      // Layer 5 — top-edge sheen for premium depth
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        height: 1.5,
-                        child: ColoredBox(color: Color(0x22FFFFFF)),
-                      ),
-                    ],
+            Container(
+              decoration: const BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1A0F172A),
+                    blurRadius: 24,
+                    offset: Offset(0, 8),
                   ),
-                ),
-                Positioned(
-                  right: -10,
-                  bottom: -8,
-                  child: Opacity(
-                    opacity: 0.42,
-                    child: Image.asset(
-                      'assets/images/sales.png',
-                      width: 185,
-                      height: 185,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.point_of_sale_rounded,
-                                color: Colors.white,
-                                size: 17,
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(28)),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Layer 1 — deep anchor: very dark at bottom-left,
+                          // rich forest green toward top-right
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFF020F06),
+                                  Color(0xFF063318),
+                                  Color(0xFF0B5228),
+                                  Color(0xFF116438),
+                                ],
+                                stops: [0.0, 0.32, 0.66, 1.0],
+                                begin: Alignment.bottomLeft,
+                                end: Alignment.topRight,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
+                          ),
+                          // Layer 2 — vivid emerald bloom, top-right quadrant
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(0.68, -0.72),
+                                radius: 0.92,
+                                colors: [
+                                  const Color(0xFF27A84E)
+                                      .withValues(alpha: 0.56),
+                                  const Color(0xFF1A7A38)
+                                      .withValues(alpha: 0.22),
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 0.45, 1.0],
+                              ),
+                            ),
+                          ),
+                          // Layer 3 — secondary warm glow, center
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(-0.10, 0.0),
+                                radius: 1.2,
+                                colors: [
+                                  const Color(0xFF0D6030)
+                                      .withValues(alpha: 0.35),
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 1.0],
+                              ),
+                            ),
+                          ),
+                          // Layer 4 — deep shadow vignette at all edges
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF010A04)
+                                      .withValues(alpha: 0.72),
+                                  Colors.transparent,
+                                  const Color(0xFF010A04)
+                                      .withValues(alpha: 0.30),
+                                ],
+                                stops: const [0.0, 0.50, 1.0],
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                              ),
+                            ),
+                          ),
+                          // Layer 5 — top-edge sheen for premium depth
+                          const Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            height: 1.5,
+                            child: ColoredBox(color: Color(0x22FFFFFF)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      right: -10,
+                      bottom: -8,
+                      child: Opacity(
+                        opacity: 0.42,
+                        child: Image.asset(
+                          'assets/images/sales.png',
+                          width: 185,
+                          height: 185,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                const Text(
-                                  'Sales',
-                                  style: TextStyle(
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.point_of_sale_rounded,
                                     color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                    height: 1.1,
+                                    size: 17,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                DataFreshnessLabel(
-                                  kvKey: KvCacheRepository.kSalesTs,
-                                  color: AppColors.heroSubtitle,
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'Sales',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.2,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    DataFreshnessLabel(
+                                      kvKey: KvCacheRepository.kSalesTs,
+                                      color: AppColors.heroSubtitle,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "TODAY'S REVENUE",
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.65),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _formatMinor(todayRevenueMinor,
+                                        symbol: '₵'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily: 'Constantia',
+                                      letterSpacing: -0.8,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _HeroStatChip(
+                                  icon: Icons.receipt_long_rounded,
+                                  value: '${todaySales.length}',
+                                  label: 'txns today',
+                                ),
+                                const SizedBox(width: 8),
+                                _HeroStatChip(
+                                  icon: Icons.payments_rounded,
+                                  value:
+                                      _formatMinor(cashTotalMinor, symbol: '₵'),
+                                  label: 'Cash',
+                                ),
+                                const SizedBox(width: 8),
+                                _HeroStatChip(
+                                  icon: Icons.phone_android_rounded,
+                                  value:
+                                      _formatMinor(momoTotalMinor, symbol: '₵'),
+                                  label: 'MoMo',
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "TODAY'S REVENUE",
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.65),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _formatMinor(todayRevenueMinor,
-                                    symbol: '₵'),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'Constantia',
-                                  letterSpacing: -0.8,
-                                  height: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _HeroStatChip(
-                              icon: Icons.receipt_long_rounded,
-                              value: '${todaySales.length}',
-                              label: 'txns today',
-                            ),
-                            const SizedBox(width: 8),
-                            _HeroStatChip(
-                              icon: Icons.payments_rounded,
-                              value: _formatMinor(cashTotalMinor,
-                                  symbol: '₵'),
-                              label: 'Cash',
-                            ),
-                            const SizedBox(width: 8),
-                            _HeroStatChip(
-                              icon: Icons.phone_android_rounded,
-                              value: _formatMinor(momoTotalMinor,
-                                  symbol: '₵'),
-                              label: 'MoMo',
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
 
             const StaleBanner(
@@ -2297,10 +2319,8 @@ class _BottomBar extends StatelessWidget {
                   iconAlignment: IconAlignment.end,
                   label: Text(isBusy ? 'Saving...' : 'Checkout'),
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        hasItems ? Colors.white : AppColors.forest,
-                    foregroundColor:
-                        hasItems ? AppColors.forest : Colors.white,
+                    backgroundColor: hasItems ? Colors.white : AppColors.forest,
+                    foregroundColor: hasItems ? AppColors.forest : Colors.white,
                     disabledBackgroundColor: const Color(0xFFCCCCCC),
                     minimumSize: Size.zero,
                     padding: const EdgeInsets.symmetric(
