@@ -725,12 +725,12 @@ class _AuthHeroImage extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  const MockupAppMark(
+                  MockupAppMark(
                     size: 32,
                     assetPath: 'assets/images/logo.png',
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
+                  SizedBox(width: 10),
+                  Text(
                     'SikaBoafo',
                     style: TextStyle(
                       color: Colors.white,
