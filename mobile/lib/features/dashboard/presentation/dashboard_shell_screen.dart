@@ -242,7 +242,6 @@ class _HomeDashboard extends ConsumerWidget {
                     ),
                   ),
                 ),
-
               ],
             ),
           ),
@@ -862,8 +861,9 @@ class _KpiStrip extends StatelessWidget {
             Expanded(
               child: _KpiTile(
                 label: 'Low Stock',
-                value:
-                    isLoading ? '—' : '$lowStock item${lowStock == 1 ? '' : 's'}',
+                value: isLoading
+                    ? '—'
+                    : '$lowStock item${lowStock == 1 ? '' : 's'}',
                 icon: Icons.error_outline_rounded,
                 tone: AppColors.danger,
                 toneSoft: AppColors.dangerSoft,
@@ -1486,7 +1486,8 @@ class _RecentActivity extends ConsumerWidget {
                     children: [
                       const Expanded(child: _SectionLabel('Recent Activity')),
                       TextButton(
-                        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                        onPressed: () =>
+                            ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Activity list coming soon'),
                             behavior: SnackBarBehavior.floating,
@@ -1650,7 +1651,9 @@ class _ActivityRow extends StatelessWidget {
         data.activityType == 'sale' || data.activityType == 'repayment';
     final amountStr = '${isIncome ? '+' : '-'}\u20B5${data.amount}';
     final detailText = data.detail.isEmpty
-        ? (data.itemName?.trim().isNotEmpty == true ? data.itemName! : 'Activity')
+        ? (data.itemName?.trim().isNotEmpty == true
+            ? data.itemName!
+            : 'Activity')
         : data.detail;
 
     return Padding(
