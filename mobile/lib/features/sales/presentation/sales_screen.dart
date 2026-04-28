@@ -47,7 +47,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   String _searchQuery = '';
   _SalesViewTab _activeTab = _SalesViewTab.newSale;
   bool _showVoided = false;
-  bool _showNote = false;
 
   @override
   void dispose() {
@@ -1189,7 +1188,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       _qtyByItemId.clear();
       _priceOverrideByItemId.clear();
       _searchQuery = '';
-      _showNote = false;
     });
     _noteCtrl.clear();
     _searchCtrl.clear();
