@@ -726,8 +726,8 @@ class _QuickActions extends StatelessWidget {
           child: _QuickTile(
             icon: Icons.add_rounded,
             label: 'New Sale',
-            backgroundColor: AppColors.forestDark,
-            accentColor: AppColors.forest,
+            backgroundColor: const Color(0xFF1E8050),
+            accentColor: const Color(0xFF23945E),
             foregroundColor: Colors.white,
             iconColor: Colors.white,
             iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
@@ -947,7 +947,7 @@ class _WideKpiTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         gradient: const LinearGradient(
-          colors: [AppColors.forestDark, AppColors.forest],
+          colors: [Color(0xFF1E8050), Color(0xFF23945E)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -967,7 +967,7 @@ class _WideKpiTile extends StatelessWidget {
             right: -16,
             bottom: -12,
             child: Opacity(
-              opacity: 0.18,
+              opacity: 0.50,
               child: Image.asset(
                 'assets/images/coins.png',
                 width: 130,
