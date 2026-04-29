@@ -336,19 +336,6 @@ class _ErrorState extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            if (detail != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                detail!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.muted,
-                  height: 1.4,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: onRetry,
