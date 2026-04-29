@@ -2167,8 +2167,8 @@ class _ItemGrid extends StatelessWidget {
         // Keep two cards per row on standard mobile widths.
         final useSingleColumn = constraints.maxWidth < 300;
         final cardExtent = useSingleColumn
-            ? 242.0
-            : (constraints.maxWidth < 360 ? 278.0 : 262.0);
+            ? 210.0
+            : (constraints.maxWidth < 360 ? 238.0 : 224.0);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -2222,18 +2222,18 @@ class _ItemCard extends StatelessWidget {
         boxShadow: isSelected ? AppShadows.card : AppShadows.subtle,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 22,
+              height: 18,
               child: item.quantityOnHand <= 5
                   ? Align(
                       alignment: Alignment.centerRight,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: AppColors.dangerSoft,
                           borderRadius: BorderRadius.circular(999),
@@ -2250,58 +2250,67 @@ class _ItemCard extends StatelessWidget {
                     )
                   : const SizedBox.shrink(),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.center,
               child: ItemImage(
                 imageUrl: item.imageUrl,
-                size: 58,
+                size: 50,
                 fallbackIcon: Icons.inventory_2_outlined,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               item.name,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 14.5,
+                fontSize: 13,
                 color: AppColors.ink,
-                height: 1.25,
+                height: 1.2,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: onPriceTap,
-              child: Text(
-                hasOverride ? '₵$displayPrice custom' : '₵$displayPrice',
-                style: TextStyle(
-                  color: hasOverride ? AppColors.warning : AppColors.forest,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
+            const SizedBox(height: 5),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onPriceTap,
+                    child: Text(
+                      hasOverride ? '₵$displayPrice ✎' : '₵$displayPrice',
+                      style: TextStyle(
+                        color: hasOverride ? AppColors.warning : AppColors.forest,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: stockTone.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'Stock: ${item.quantityOnHand}',
-                style: TextStyle(
-                  color: stockTone,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: stockTone.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${item.quantityOnHand}',
+                    style: TextStyle(
+                      color: stockTone,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             const Spacer(),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(
                 color:
