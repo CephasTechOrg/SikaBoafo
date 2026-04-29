@@ -257,11 +257,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Column(
+                              const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Sales',
                                     style: TextStyle(
                                       color: Colors.white,
@@ -271,7 +271,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       height: 1.1,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  SizedBox(height: 2),
                                   DataFreshnessLabel(
                                     kvKey: KvCacheRepository.kSalesTs,
                                     color: AppColors.heroSubtitle,
@@ -474,7 +474,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           ],
                                           // Quick Add: Top 3 selling items.
                                           if (quickAddItems.isNotEmpty) ...[
-                                            _SectionLabel(
+                                            const _SectionLabel(
                                               label: 'Quick Add',
                                             ),
                                             const SizedBox(height: 10),
