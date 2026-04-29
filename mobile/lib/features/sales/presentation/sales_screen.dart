@@ -1400,11 +1400,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           ),
                         )
                       else
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 20),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
                           child: Row(
-                            children: const [
+                            children: [
                               Icon(Icons.shopping_cart_outlined,
                                   color: AppColors.muted, size: 20),
                               SizedBox(width: 10),
