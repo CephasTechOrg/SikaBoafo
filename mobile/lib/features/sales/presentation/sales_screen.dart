@@ -394,7 +394,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         const AlwaysScrollableScrollPhysics(),
                                     padding: EdgeInsets.fromLTRB(
                                       16,
-                                      18,
+                                      14,
                                       16,
                                       _activeTab == _SalesViewTab.newSale
                                           ? 108
@@ -407,7 +407,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           () => _activeTab = tab,
                                         ),
                                       ),
-                                      const SizedBox(height: 18),
+                                      const SizedBox(height: 10),
                                       if (_activeTab ==
                                           _SalesViewTab.newSale) ...[
                                         _SalesSearchBar(
@@ -421,12 +421,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             setState(() => _searchQuery = '');
                                           },
                                         ),
-                                        const SizedBox(height: 14),
+                                        const SizedBox(height: 8),
                                         _ProductsHeader(
                                           selectedCount: selectedItems.length,
                                           totalCount: allItems.length,
                                         ),
-                                        const SizedBox(height: 14),
+                                        const SizedBox(height: 5),
                                         if (allItems.isEmpty)
                                           const _EmptyCard(
                                             icon: Icons.inventory_2_outlined,
@@ -439,7 +439,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                               label:
                                                   'In cart (${selectedItems.length})',
                                             ),
-                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 7),
                                             _ItemGrid(
                                               children: selectedItems
                                                   .map(
@@ -470,14 +470,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   )
                                                   .toList(growable: false),
                                             ),
-                                            const SizedBox(height: 18),
+                                            const SizedBox(height: 12),
                                           ],
                                           // Quick Add: Top 3 selling items.
                                           if (quickAddItems.isNotEmpty) ...[
                                             const _SectionLabel(
                                               label: 'Quick Add',
                                             ),
-                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 7),
                                             _ItemGrid(
                                               children: quickAddItems
                                                   .map(
@@ -500,7 +500,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   )
                                                   .toList(growable: false),
                                             ),
-                                            const SizedBox(height: 18),
+                                            const SizedBox(height: 12),
                                           ],
                                           if (regularUnselectedItems
                                               .isNotEmpty) ...[
@@ -509,7 +509,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   ? 'Add more products'
                                                   : 'Available products',
                                             ),
-                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 7),
                                             _ItemGrid(
                                               children: regularUnselectedItems
                                                   .map(
@@ -758,6 +758,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                               icon: Icons.account_balance_rounded,
                               selected: selectedMethod == 'bank_transfer',
                               accent: const Color(0xFF2563A8),
+                              comingSoon: true,
                               onTap: () => setSheetState(
                                 () => selectedMethod = 'bank_transfer',
                               ),
@@ -766,64 +767,116 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          onPressed: () async {
-                            Navigator.of(sheetContext).pop();
-                            if (!mounted) return;
-                            setState(() => _paymentMethod = selectedMethod);
-                            await _recordSale(
-                              items: items,
-                              paymentMethodLabel: selectedMethod,
-                            );
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.forest,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                      // Cash — direct confirmation only
+                      if (selectedMethod == 'cash') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              Navigator.of(sheetContext).pop();
+                              if (!mounted) return;
+                              setState(() => _paymentMethod = selectedMethod);
+                              final ok = await _recordSale(
+                                items: items,
+                                paymentMethodLabel: selectedMethod,
+                              );
+                              if (!mounted || !ok) return;
+                              await showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                isDismissible: false,
+                                enableDrag: false,
+                                builder: (_) => _SaleSuccessSheet(
+                                  amount: totalAmount,
+                                  method: 'cash',
+                                ),
+                              );
+                            },
+                            icon: const Icon(
+                                Icons.check_circle_rounded,
+                                size: 18),
+                            label: Text(
+                                'Confirm — ${_formatMajor(totalAmount, symbol: '₵')}'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.forest,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
+                        ),
+                      ]
+                      // MoMo — Paystack QR/link only
+                      else if (selectedMethod == 'mobile_money') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              Navigator.of(sheetContext).pop();
+                              if (!mounted) return;
+                              setState(() => _paymentMethod = selectedMethod);
+                              await _recordSaleWithPaystackLink(
+                                items: items,
+                                paymentMethodLabel: selectedMethod,
+                              );
+                            },
+                            icon: const Icon(Icons.qr_code_rounded, size: 18),
+                            label: Text(
+                                'Pay via MoMo — ${_formatMajor(totalAmount, symbol: '₵')}'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.gold,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]
+                      // Bank — coming soon
+                      else if (selectedMethod == 'bank_transfer') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: null,
+                            icon: const Icon(Icons.schedule_rounded, size: 18),
+                            label: const Text('Bank Transfer — Coming Soon'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Center(
                           child: Text(
-                            'Pay ${_formatMajor(totalAmount, symbol: '₵')}',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            Navigator.of(sheetContext).pop();
-                            if (!mounted) return;
-                            setState(() => _paymentMethod = selectedMethod);
-                            await _recordSaleWithPaystackLink(
-                              items: items,
-                              paymentMethodLabel: selectedMethod,
-                            );
-                          },
-                          icon: const Icon(Icons.link_rounded, size: 18),
-                          label: const Text('Send Paystack Payment Link'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.forest,
-                            minimumSize: const Size.fromHeight(50),
-                            side: const BorderSide(color: AppColors.forest),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                            'Bank transfer will be available in a future update.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
                             ),
                           ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 10),
                       SizedBox(
                         width: double.infinity,
@@ -1012,7 +1065,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  Future<void> _recordSale({
+  Future<bool> _recordSale({
     required List<LocalInventoryItem> items,
     String? paymentMethodLabel,
   }) async {
@@ -1021,7 +1074,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select at least one item quantity.')),
       );
-      return;
+      return false;
     }
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     try {
@@ -1030,17 +1083,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             lines: lines,
             note: note,
           );
-      if (!mounted) return;
+      if (!mounted) return false;
       ref.invalidate(inventoryControllerProvider);
       _resetDraftAfterSale();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sale recorded.')),
-      );
+      return true;
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(humanizeInventoryError(error))),
       );
+      return false;
     }
   }
 
@@ -1192,7 +1244,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       backgroundColor: Colors.transparent,
       isDismissible: false,
       enableDrag: false,
-      builder: (_) => _PaymentSuccessSheet(amount: amount, currency: currency),
+      builder: (_) => _SaleSuccessSheet(amount: amount, method: 'mobile_money'),
     );
   }
 
@@ -1981,7 +2033,7 @@ class _SalesSearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
@@ -1994,6 +2046,10 @@ class _SalesSearchBar extends StatelessWidget {
             Icons.search_rounded,
             size: 16,
             color: AppColors.muted,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 0,
           ),
           suffixIcon: hasQuery
               ? IconButton(
@@ -2041,21 +2097,12 @@ class _ProductsHeader extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 3),
-              Text(
-                'Keep the cart compact and confirm only when it looks right.',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
             ],
           ),
         ),
         const SizedBox(width: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color:
                 selectedCount > 0 ? AppColors.infoSoft : AppColors.surfaceAlt,
@@ -2160,6 +2207,7 @@ class _CheckoutMethodButton extends StatelessWidget {
     required this.selected,
     required this.accent,
     required this.onTap,
+    this.comingSoon = false,
   });
 
   final String label;
@@ -2167,6 +2215,7 @@ class _CheckoutMethodButton extends StatelessWidget {
   final bool selected;
   final Color accent;
   final VoidCallback onTap;
+  final bool comingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -2174,7 +2223,7 @@ class _CheckoutMethodButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? accent : AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(16),
@@ -2189,7 +2238,7 @@ class _CheckoutMethodButton extends StatelessWidget {
               size: 22,
               color: selected ? Colors.white : accent,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               label,
               textAlign: TextAlign.center,
@@ -2199,6 +2248,26 @@ class _CheckoutMethodButton extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (comingSoon) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (selected ? Colors.white : AppColors.muted)
+                      .withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Soon',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : AppColors.muted,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -2303,14 +2372,14 @@ class _ItemCard extends StatelessWidget {
                     )
                   : const SizedBox.shrink(),
             ),
-            const SizedBox(height: 6),
+            const Spacer(),
             Align(
               alignment: Alignment.center,
               child: ItemImage(
                 imageUrl: item.imageUrl,
-                size: 50,
+                size: 66,
                 fallbackIcon: Icons.inventory_2_outlined,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
             const SizedBox(height: 8),
@@ -2318,7 +2387,7 @@ class _ItemCard extends StatelessWidget {
               item.name,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 14.5,
                 color: AppColors.ink,
                 height: 1.2,
               ),
@@ -2335,9 +2404,11 @@ class _ItemCard extends StatelessWidget {
                     child: Text(
                       hasOverride ? '₵$displayPrice ✎' : '₵$displayPrice',
                       style: TextStyle(
-                        color: hasOverride ? AppColors.warning : AppColors.forest,
+                        color: hasOverride
+                            ? AppColors.warning
+                            : AppColors.forest,
                         fontWeight: FontWeight.w800,
-                        fontSize: 13.5,
+                        fontSize: 15.5,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -2822,23 +2893,30 @@ class _PaystackQrSheetState extends ConsumerState<_PaystackQrSheet> {
 
 // ── Payment success overlay ───────────────────────────────────────────────────
 
-class _PaymentSuccessSheet extends StatefulWidget {
-  const _PaymentSuccessSheet({required this.amount, required this.currency});
+class _SaleSuccessSheet extends StatefulWidget {
+  const _SaleSuccessSheet({required this.amount, required this.method});
+
+  /// Decimal string e.g. "120.00"
   final String amount;
-  final String currency;
+
+  /// 'cash' | 'mobile_money'
+  final String method;
 
   @override
-  State<_PaymentSuccessSheet> createState() => _PaymentSuccessSheetState();
+  State<_SaleSuccessSheet> createState() => _SaleSuccessSheetState();
 }
 
-class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
+class _SaleSuccessSheetState extends State<_SaleSuccessSheet>
     with TickerProviderStateMixin {
   late final AnimationController _circleCtrl;
   late final AnimationController _checkCtrl;
   late final AnimationController _contentCtrl;
+  late final AnimationController _pulseCtrl;
+
   late final Animation<double> _circleAnim;
   late final Animation<double> _checkAnim;
   late final Animation<double> _contentAnim;
+  late final Animation<double> _pulseAnim;
 
   @override
   void initState() {
@@ -2846,20 +2924,26 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
     _circleCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 420));
     _checkCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+        vsync: this, duration: const Duration(milliseconds: 480));
     _contentCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 350));
+        vsync: this, duration: const Duration(milliseconds: 380));
+    _pulseCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1400));
 
     _circleAnim =
         CurvedAnimation(parent: _circleCtrl, curve: Curves.elasticOut);
     _checkAnim = CurvedAnimation(parent: _checkCtrl, curve: Curves.easeOut);
-    _contentAnim = CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut);
+    _contentAnim =
+        CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOutCubic);
+    _pulseAnim =
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut);
 
     HapticFeedback.heavyImpact();
     _circleCtrl.forward().then((_) {
       _checkCtrl.forward().then((_) {
         HapticFeedback.mediumImpact();
         _contentCtrl.forward();
+        _pulseCtrl.repeat();
       });
     });
   }
@@ -2869,17 +2953,25 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
     _circleCtrl.dispose();
     _checkCtrl.dispose();
     _contentCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isCash = widget.method == 'cash';
+    final accent = isCash ? AppColors.success : AppColors.gold;
+    final title = isCash ? 'Sale Recorded!' : 'Payment Confirmed!';
+    final subtitle = isCash ? 'Cash · Paid in full' : 'Mobile Money · Paystack';
+    final subtitleIcon =
+        isCash ? Icons.payments_rounded : Icons.phone_android_rounded;
+
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(28),
@@ -2888,52 +2980,131 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedBuilder(
-                animation: Listenable.merge([_circleCtrl, _checkCtrl]),
-                builder: (_, __) => SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: CustomPaint(
-                    painter: _SuccessCheckPainter(
-                      circleProgress: _circleAnim.value,
-                      checkProgress: _checkAnim.value,
+              // Animated circle + pulse ring
+              SizedBox(
+                width: 180,
+                height: 180,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Expanding pulse ring
+                    AnimatedBuilder(
+                      animation: _pulseAnim,
+                      builder: (_, __) => Opacity(
+                        opacity: (1.0 - _pulseAnim.value) * 0.5,
+                        child: Container(
+                          width: 120 + 56 * _pulseAnim.value,
+                          height: 120 + 56 * _pulseAnim.value,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: accent, width: 2.5),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    // Check circle
+                    AnimatedBuilder(
+                      animation:
+                          Listenable.merge([_circleCtrl, _checkCtrl]),
+                      builder: (_, __) => SizedBox(
+                        width: 120,
+                        height: 120,
+                        child: CustomPaint(
+                          painter: _SuccessCheckPainter(
+                            circleProgress: _circleAnim.value,
+                            checkProgress: _checkAnim.value,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               FadeTransition(
                 opacity: _contentAnim,
                 child: SlideTransition(
                   position: Tween<Offset>(
-                    begin: const Offset(0, 0.15),
+                    begin: const Offset(0, 0.12),
                     end: Offset.zero,
                   ).animate(_contentAnim),
                   child: Column(
                     children: [
-                      const Text(
-                        'Payment Confirmed!',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                          letterSpacing: -0.3,
+                      // "Sale Recorded" badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded,
+                                color: accent, size: 14),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Sale Recorded',
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 14),
+                      // Title
                       Text(
-                        '${widget.currency} ${widget.amount}',
+                        title,
                         style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.success,
-                          letterSpacing: -0.5,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink,
+                          letterSpacing: -0.4,
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Received via Paystack · Sale updated',
-                        style: TextStyle(color: AppColors.muted, fontSize: 13),
+                      // Amount
+                      Text(
+                        '₵${widget.amount}',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                          color: accent,
+                          letterSpacing: -0.8,
+                          fontFamily: 'Constantia',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Method pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(subtitleIcon,
+                                color: AppColors.muted, size: 13),
+                            const SizedBox(width: 6),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 28),
                       SizedBox(
@@ -2941,10 +3112,12 @@ class _PaymentSuccessSheetState extends State<_PaymentSuccessSheet>
                         child: FilledButton(
                           onPressed: () => Navigator.of(context).pop(),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.success,
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(52),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                           child: const Text(
                             'Done',
@@ -2969,10 +3142,12 @@ class _SuccessCheckPainter extends CustomPainter {
   const _SuccessCheckPainter({
     required this.circleProgress,
     required this.checkProgress,
+    required this.color,
   });
 
   final double circleProgress;
   final double checkProgress;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2980,27 +3155,24 @@ class _SuccessCheckPainter extends CustomPainter {
     final radius = size.width / 2;
     final p = circleProgress.clamp(0.0, 1.0);
 
-    // Soft background circle
     canvas.drawCircle(
       center,
       radius * p,
       Paint()
-        ..color = AppColors.success.withValues(alpha: 0.12)
+        ..color = color.withValues(alpha: 0.12)
         ..style = PaintingStyle.fill,
     );
 
-    // Solid filled circle
     canvas.drawCircle(
       center,
       (radius - 10) * p,
       Paint()
-        ..color = AppColors.success
+        ..color = color
         ..style = PaintingStyle.fill,
     );
 
     if (checkProgress <= 0 || p < 0.7) return;
 
-    // Animated checkmark drawn progressively
     final p1 = Offset(center.dx - 22, center.dy + 2);
     final p2 = Offset(center.dx - 6, center.dy + 18);
     final p3 = Offset(center.dx + 24, center.dy - 16);
@@ -3040,7 +3212,8 @@ class _SuccessCheckPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SuccessCheckPainter old) =>
       old.circleProgress != circleProgress ||
-      old.checkProgress != checkProgress;
+      old.checkProgress != checkProgress ||
+      old.color != color;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
