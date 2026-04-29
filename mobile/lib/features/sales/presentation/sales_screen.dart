@@ -470,7 +470,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   )
                                                   .toList(growable: false),
                                             ),
-                                            const SizedBox(height: 12),
+                                            const SizedBox(height: 8),
                                           ],
                                           // Quick Add: Top 3 selling items.
                                           if (quickAddItems.isNotEmpty) ...[
@@ -500,7 +500,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   )
                                                   .toList(growable: false),
                                             ),
-                                            const SizedBox(height: 12),
+                                            const SizedBox(height: 8),
                                           ],
                                           if (regularUnselectedItems
                                               .isNotEmpty) ...[
@@ -2289,8 +2289,8 @@ class _ItemGrid extends StatelessWidget {
         // Keep two cards per row on standard mobile widths.
         final useSingleColumn = constraints.maxWidth < 300;
         final cardExtent = useSingleColumn
-            ? 210.0
-            : (constraints.maxWidth < 360 ? 238.0 : 224.0);
+            ? 200.0
+            : (constraints.maxWidth < 360 ? 226.0 : 214.0);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -2349,7 +2349,7 @@ class _ItemCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 18,
+              height: 14,
               child: item.quantityOnHand <= 5
                   ? Align(
                       alignment: Alignment.centerRight,
@@ -2377,12 +2377,12 @@ class _ItemCard extends StatelessWidget {
               alignment: Alignment.center,
               child: ItemImage(
                 imageUrl: item.imageUrl,
-                size: 66,
+                size: 74,
                 fallbackIcon: Icons.inventory_2_outlined,
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 5),
             Text(
               item.name,
               style: const TextStyle(
