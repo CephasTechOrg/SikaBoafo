@@ -1,7 +1,4 @@
-// ignore_for_file: unused_element, prefer_const_constructors
-
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +15,6 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
-import '../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
@@ -550,11 +546,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           _SalesViewTab.history) ...[
                                         Row(
                                           children: [
-                                            Text(
+                                            const Text(
                                               'Recent Transactions',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.ink,
+                                              ),
                                             ),
                                             const Spacer(),
                                             FilterChip(
@@ -1854,56 +1852,6 @@ class _TopAgg {
       );
 }
 
-// ── Payment card ────────────────────────────────────────────────────────────
-
-class _SalesHeroChip extends StatelessWidget {
-  const _SalesHeroChip({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 88),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.56),
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: tone,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HeroStatChip extends StatelessWidget {
   const _HeroStatChip({
     required this.icon,
@@ -1947,196 +1895,6 @@ class _HeroStatChip extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.55),
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SaleDraftPanel extends StatelessWidget {
-  const _SaleDraftPanel({
-    required this.itemCount,
-    required this.totalAmount,
-    required this.noteController,
-    required this.noteValue,
-    required this.showNote,
-    required this.onToggleNote,
-  });
-
-  final int itemCount;
-  final String totalAmount;
-  final TextEditingController noteController;
-  final String noteValue;
-  final bool showNote;
-  final VoidCallback onToggleNote;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasNote = noteValue.isNotEmpty;
-    return PremiumPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const PremiumSectionHeading(
-            title: 'Sale draft',
-            caption:
-                'Keep the cart summary visible while you browse. Notes stay collapsed until needed.',
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _DraftMetric(
-                icon: Icons.shopping_bag_rounded,
-                iconColor: AppColors.forest,
-                label: 'Items selected',
-                value: '$itemCount',
-              ),
-              _DraftMetric(
-                icon: Icons.attach_money_rounded,
-                iconColor: AppColors.success,
-                label: 'Current total',
-                value: totalAmount,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: onToggleNote,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    showNote
-                        ? Icons.expand_less_rounded
-                        : Icons.note_alt_outlined,
-                    size: 18,
-                    color: AppColors.muted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      hasNote
-                          ? 'Edit sale note'
-                          : showNote
-                              ? 'Hide sale note'
-                              : 'Add sale note',
-                      style: const TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    hasNote ? 'Attached' : 'Collapsed',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (showNote) ...[
-            const SizedBox(height: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: TextField(
-                controller: noteController,
-                maxLines: 2,
-                maxLength: 500,
-                decoration: const InputDecoration(
-                  hintText: 'Add a note for this sale…',
-                  contentPadding: EdgeInsets.all(14),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  counterStyle: TextStyle(
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DraftMetric extends StatelessWidget {
-  const _DraftMetric({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 104),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -2467,26 +2225,30 @@ class _ItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (item.quantityOnHand <= 5)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'Low',
-                    style: TextStyle(
-                      color: AppColors.danger,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
+            SizedBox(
+              height: 22,
+              child: item.quantityOnHand <= 5
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.dangerSoft,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Low',
+                          style: TextStyle(
+                            color: AppColors.danger,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.center,

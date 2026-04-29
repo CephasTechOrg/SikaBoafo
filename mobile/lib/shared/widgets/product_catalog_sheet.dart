@@ -178,7 +178,6 @@ class _ProductCatalogSheetState
                   ),
                   error: (err, _) => _ErrorState(
                     message: _friendlyError(err),
-                    detail: err.toString(),
                     onRetry: () =>
                         ref.invalidate(officialProductsProvider),
                   ),
@@ -300,9 +299,8 @@ class _ProductTile extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry, this.detail});
+  const _ErrorState({required this.message, required this.onRetry});
   final String message;
-  final String? detail;
   final VoidCallback onRetry;
 
   @override
