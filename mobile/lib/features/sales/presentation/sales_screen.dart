@@ -617,11 +617,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       ),
                                       hasItems: hasItems,
                                       isBusy: isBusy,
-                                      onConfirm: () => _showCheckoutSheet(
+                                      onConfirm: () => _showReviewSaleSheet(
                                         items: allItems,
-                                        itemCount: itemCount,
-                                        totalAmount: totalAmount,
-                                        isBusy: isBusy,
                                       ),
                                     ),
                                   ),
@@ -769,34 +766,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         ],
                       ),
                       const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            if (!mounted) return;
-                            _showReviewSaleSheet(
-                              items: items,
-                              itemCount: itemCount,
-                              totalAmount: totalAmount,
-                            );
-                          },
-                          icon: const Icon(Icons.preview_rounded, size: 18),
-                          label: const Text('Review Sale'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.forest,
-                            minimumSize: const Size.fromHeight(48),
-                            side: const BorderSide(color: AppColors.forest),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
@@ -1229,8 +1198,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _showReviewSaleSheet({
     required List<LocalInventoryItem> items,
-    required int itemCount,
-    required String totalAmount,
   }) async {
     final itemById = {for (final item in items) item.id: item};
     await showModalBottomSheet<void>(
