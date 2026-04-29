@@ -774,7 +774,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            Navigator.of(sheetContext).pop();
                             if (!mounted) return;
                             _showReviewSaleSheet(
                               items: items,
@@ -1238,6 +1237,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return StatefulBuilder(
