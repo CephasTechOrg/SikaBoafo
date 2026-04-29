@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show sqrt;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2971,7 +2972,7 @@ class _SuccessCheckPainter extends CustomPainter {
   double _dist(Offset a, Offset b) {
     final dx = b.dx - a.dx;
     final dy = b.dy - a.dy;
-    return math.sqrt(dx * dx + dy * dy);
+    return sqrt(dx * dx + dy * dy);
   }
 
   @override
