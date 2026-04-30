@@ -99,10 +99,10 @@ void main() {
         await tester.tap(find.byIcon(Icons.add_rounded).first);
         await tester.pump();
 
-        await tester.tap(find.text('Checkout'));
+        await tester.tap(find.textContaining('Checkout'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.textContaining('Pay '));
+        await tester.tap(find.textContaining('Cash'));
         await tester.pump();
 
         await tester.pumpWidget(const SizedBox.shrink());
