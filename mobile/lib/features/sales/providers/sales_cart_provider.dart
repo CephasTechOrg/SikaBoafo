@@ -75,6 +75,23 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
       paymentMethod: 'cash',
     );
   }
+
+  void removeItem(String itemId) {
+    final newQty = Map<String, int>.from(state.qtyByItemId);
+    final newOverrides = Map<String, String>.from(state.priceOverrideByItemId);
+    newQty.remove(itemId);
+    newOverrides.remove(itemId);
+    state = state.copyWith(
+      qtyByItemId: newQty,
+      priceOverrideByItemId: newOverrides,
+    );
+  }
+
+  void removeOverride(String itemId) {
+    final newMap = Map<String, String>.from(state.priceOverrideByItemId);
+    newMap.remove(itemId);
+    state = state.copyWith(priceOverrideByItemId: newMap);
+  }
 }
 
 final salesCartProvider = NotifierProvider<SalesCartNotifier, SalesCartState>(
@@ -90,10 +107,13 @@ final salesCartTotalProvider = Provider.autoDispose<String>((ref) {
     final qty = cart.qtyByItemId[item.id] ?? 0;
     if (qty <= 0) continue;
     final overrideStr = cart.priceOverrideByItemId[item.id];
-    
-    int unitPriceMinor = item.priceMinor;
+    int unitPriceMinor;
     if (overrideStr != null) {
       final clean = overrideStr.replaceAll(',', '');
+      final d = double.tryParse(clean) ?? 0.0;
+      unitPriceMinor = (d * 100).round();
+    } else {
+      final clean = item.defaultPrice.replaceAll(',', '');
       final d = double.tryParse(clean) ?? 0.0;
       unitPriceMinor = (d * 100).round();
     }
