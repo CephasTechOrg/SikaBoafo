@@ -323,9 +323,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         .refresh(),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                       children: [
-                        // â”€â”€ Add Item accordion â”€â”€
                         _AddItemAccordion(
                           expanded: _showForm,
                           nameCtrl: _nameCtrl,
@@ -342,15 +341,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           onImageChanged: (v) =>
                               setState(() => _newItemUrl = v),
                         ),
-                        const SizedBox(height: 20),
-
-                        // â”€â”€ Search + filter â”€â”€
+                        const SizedBox(height: 16),
                         _SearchBar(
                           controller: _searchCtrl,
                           onChanged: (v) => setState(() => _searchQuery = v),
                         ),
                         if (categories.isNotEmpty) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           _CategoryFilter(
                             categories: categories.toList()..sort(),
                             selected: _filterCategory,
@@ -358,19 +355,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 setState(() => _filterCategory = c),
                           ),
                         ],
-                        const SizedBox(height: 16),
-
-                        // â”€â”€ Items list â”€â”€
+                        const SizedBox(height: 14),
                         Row(
                           children: [
                             Text(
                               filteredActive.isEmpty && q.isNotEmpty
-                                  ? 'No active matches'
-                                  : 'Active Items',
+                                  ? 'NO MATCHES'
+                                  : 'ACTIVE ITEMS',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: AppColors.ink,
+                                fontSize: 11,
+                                color: AppColors.muted,
+                                letterSpacing: 0.5,
                               ),
                             ),
                             const Spacer(),
@@ -378,13 +374,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               Text(
                                 '${filteredActive.length} of ${activeItems.length}',
                                 style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 12,
+                                  color: AppColors.mutedSoft,
+                                  fontSize: 11,
                                 ),
                               ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
 
                         if (itemsAsync.isLoading && items.isEmpty)
                           const _LoadingCard()
@@ -413,7 +409,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             ),
                           ),
                         if (archivedItems.isNotEmpty) ...[
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           _ArchivedSection(
                             archivedCount: archivedItems.length,
                             visibleCount: filteredArchived.length,
