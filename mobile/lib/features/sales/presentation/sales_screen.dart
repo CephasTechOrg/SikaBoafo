@@ -594,7 +594,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             icon: Icons.receipt_long_outlined,
                                             message: _showVoided
                                                 ? 'No sales found yet.'
-                                                : 'No sales yet. Record your first sale above.',
+                                                : 'No sales yet. Switch to New Sale to record your first one.',
                                           )
                                         else
                                           ...historySales
@@ -909,7 +909,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       'applied' || 'duplicate' => AppColors.success,
       'failed' => AppColors.danger,
       'conflict' => AppColors.warning,
-      _ => AppColors.warning,
+      _ => AppColors.muted,
     };
 
     final fmt = DateFormat('MMM d, HH:mm');
@@ -958,7 +958,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'GHS ${sale.totalAmount}',
+                          '₵${sale.totalAmount}',
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
@@ -1656,153 +1656,389 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     var isSaving = false;
 
     if (!mounted) return;
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit Sale'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: paymentMethod,
-                      decoration:
-                          const InputDecoration(labelText: 'Payment method'),
-                      items: const [
-                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                        DropdownMenuItem(
-                          value: 'mobile_money',
-                          child: Text('Mobile Money'),
+          builder: (sheetContext, setSheet) {
+            final viewBottom =
+                MediaQuery.of(sheetContext).viewInsets.bottom;
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding:
+                    EdgeInsets.fromLTRB(12, 0, 12, 12 + viewBottom),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: AppShadows.elevated,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.borderStrong,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                         ),
-                        DropdownMenuItem(
-                          value: 'bank_transfer',
-                          child: Text('Bank Transfer'),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: AppColors.forest
+                                  .withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              color: AppColors.forest,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Edit Sale',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                                Text(
+                                  'Adjust quantities and payment method.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: isSaving
+                                ? null
+                                : () =>
+                                    Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close_rounded),
+                            color: AppColors.muted,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Payment method',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
-                      ],
-                      onChanged: isSaving
-                          ? null
-                          : (value) {
-                              if (value == null) return;
-                              setDialogState(() => paymentMethod = value);
-                            },
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Adjust existing line quantities',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    ...editable.lines.map((line) {
-                      final selectedQty =
-                          qtyByItem[line.itemId] ?? line.quantity;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          for (final entry in [
+                            (
+                              'cash',
+                              'Cash',
+                              Icons.payments_rounded
+                            ),
+                            (
+                              'mobile_money',
+                              'MoMo',
+                              Icons.phone_android_rounded
+                            ),
+                            (
+                              'bank_transfer',
+                              'Bank',
+                              Icons.account_balance_rounded
+                            ),
+                          ]) ...[
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    line.itemName,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700),
+                              child: GestureDetector(
+                                onTap: isSaving
+                                    ? null
+                                    : () => setSheet(
+                                          () => paymentMethod =
+                                              entry.$1,
+                                        ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(
+                                      milliseconds: 150),
+                                  padding: const EdgeInsets
+                                      .symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: paymentMethod == entry.$1
+                                        ? AppColors.forest
+                                            .withValues(alpha: 0.08)
+                                        : AppColors.surfaceAlt,
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: paymentMethod == entry.$1
+                                          ? AppColors.forest
+                                          : AppColors.border,
+                                      width:
+                                          paymentMethod == entry.$1
+                                              ? 1.5
+                                              : 1,
+                                    ),
                                   ),
-                                  Text(
-                                    'Unit GHS ${line.unitPrice} | Max ${line.maxQuantity}',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        entry.$3,
+                                        size: 16,
+                                        color: paymentMethod ==
+                                                entry.$1
+                                            ? AppColors.forest
+                                            : AppColors.muted,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        entry.$2,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: paymentMethod ==
+                                                  entry.$1
+                                              ? AppColors.forest
+                                              : AppColors.muted,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            _CircleQtyBtn(
-                              icon: Icons.remove_rounded,
-                              enabled: !isSaving && selectedQty > 1,
-                              onTap: () => setDialogState(
-                                () => qtyByItem[line.itemId] = selectedQty - 1,
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10),
-                              child: Text(
-                                '$selectedQty',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
                                 ),
                               ),
                             ),
-                            _CircleQtyBtn(
-                              icon: Icons.add_rounded,
-                              enabled:
-                                  !isSaving && selectedQty < line.maxQuantity,
-                              onTap: () => setDialogState(
-                                () => qtyByItem[line.itemId] = selectedQty + 1,
+                            if (entry.$1 != 'bank_transfer')
+                              const SizedBox(width: 8),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Line quantities',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ...editable.lines.map((line) {
+                        final selectedQty =
+                            qtyByItem[line.itemId] ?? line.quantity;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      line.itemName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: AppColors.ink,
+                                      ),
+                                    ),
+                                    Text(
+                                      '₵${line.unitPrice} · max ${line.maxQuantity}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceAlt,
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _CircleQtyBtn(
+                                      icon: Icons.remove_rounded,
+                                      enabled: !isSaving &&
+                                          selectedQty > 1,
+                                      onTap: () => setSheet(
+                                        () => qtyByItem[
+                                                line.itemId] =
+                                            selectedQty - 1,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 36,
+                                      child: Center(
+                                        child: Text(
+                                          '$selectedQty',
+                                          style: const TextStyle(
+                                            fontWeight:
+                                                FontWeight.w800,
+                                            fontSize: 17,
+                                            color: AppColors.ink,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    _CircleQtyBtn(
+                                      icon: Icons.add_rounded,
+                                      enabled: !isSaving &&
+                                          selectedQty <
+                                              line.maxQuantity,
+                                      onTap: () => setSheet(
+                                        () => qtyByItem[
+                                                line.itemId] =
+                                            selectedQty + 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isSaving
+                                  ? null
+                                  : () =>
+                                      Navigator.of(sheetContext).pop(),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.muted,
+                                side: const BorderSide(
+                                    color: AppColors.border),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700),
                               ),
                             ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: isSaving
+                                  ? null
+                                  : () async {
+                                      setSheet(
+                                          () => isSaving = true);
+                                      try {
+                                        final lines = editable.lines
+                                            .map(
+                                              (line) =>
+                                                  SaleQuantityUpdateDraft(
+                                                itemId: line.itemId,
+                                                quantity: qtyByItem[
+                                                        line.itemId] ??
+                                                    line.quantity,
+                                              ),
+                                            )
+                                            .toList(growable: false);
+                                        await ref
+                                            .read(
+                                              salesControllerProvider
+                                                  .notifier,
+                                            )
+                                            .updateSale(
+                                              saleId: sale.saleId,
+                                              paymentMethodLabel:
+                                                  paymentMethod,
+                                              lines: lines,
+                                            );
+                                        if (sheetContext.mounted) {
+                                          Navigator.of(sheetContext)
+                                              .pop();
+                                        }
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Sale updated.')),
+                                        );
+                                      } catch (error) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              humanizeInventoryError(
+                                                  error),
+                                            ),
+                                          ),
+                                        );
+                                      } finally {
+                                        if (sheetContext.mounted) {
+                                          setSheet(
+                                              () => isSaving = false);
+                                        }
+                                      }
+                                    },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.forest,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: Text(
+                                isSaving ? 'Saving...' : 'Save Changes',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed:
-                      isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          setDialogState(() => isSaving = true);
-                          try {
-                            final lines = editable.lines
-                                .map(
-                                  (line) => SaleQuantityUpdateDraft(
-                                    itemId: line.itemId,
-                                    quantity:
-                                        qtyByItem[line.itemId] ?? line.quantity,
-                                  ),
-                                )
-                                .toList(growable: false);
-                            await ref
-                                .read(salesControllerProvider.notifier)
-                                .updateSale(
-                                  saleId: sale.saleId,
-                                  paymentMethodLabel: paymentMethod,
-                                  lines: lines,
-                                );
-                            if (dialogContext.mounted) {
-                              Navigator.of(dialogContext).pop();
-                            }
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Sale updated.')),
-                            );
-                          } catch (error) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(humanizeInventoryError(error))),
-                            );
-                          } finally {
-                            if (dialogContext.mounted) {
-                              setDialogState(() => isSaving = false);
-                            }
-                          }
-                        },
-                  child: Text(isSaving ? 'Saving...' : 'Save'),
-                ),
-              ],
             );
           },
         );
@@ -1813,37 +2049,165 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   Future<void> _showVoidSaleDialog(LocalSaleRecord sale) async {
     final reasonCtrl = TextEditingController();
     try {
-      final shouldVoid = await showDialog<bool>(
+      final shouldVoid = await showModalBottomSheet<bool>(
         context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text('Void Sale'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This will reverse stock quantities and keep the sale as a voided record.',
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) {
+          final viewBottom =
+              MediaQuery.of(sheetContext).viewInsets.bottom;
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding:
+                  EdgeInsets.fromLTRB(12, 0, 12, 12 + viewBottom),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: AppShadows.elevated,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason (optional)',
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderStrong,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.dangerSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.block_rounded,
+                            color: AppColors.danger,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Void Sale',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              Text(
+                                'Reverses stock quantities. Cannot be undone.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: reasonCtrl,
+                      style: const TextStyle(
+                          fontSize: 14, color: AppColors.ink),
+                      decoration: InputDecoration(
+                        hintText: 'Reason (optional)',
+                        hintStyle: const TextStyle(
+                            color: AppColors.muted, fontSize: 14),
+                        filled: true,
+                        fillColor: AppColors.canvas,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                              color: AppColors.danger, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.muted,
+                              side: const BorderSide(
+                                  color: AppColors.border),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.danger,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Void Sale',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Void Sale'),
-              ),
-            ],
           );
         },
       );
