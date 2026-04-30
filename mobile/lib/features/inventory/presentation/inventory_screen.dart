@@ -949,17 +949,8 @@ class _ItemCard extends StatelessWidget {
     final isLow = hasThreshold &&
         item.quantityOnHand <= item.lowStockThreshold! &&
         !isOut;
-
-    final Color stockColor = isOut
-        ? const Color(0xFFDC2626)
-        : isLow
-            ? const Color(0xFFD97706)
-            : AppColors.forest;
-    final String stockLabel = isOut
-        ? 'Out of Stock'
-        : isLow
-            ? 'Low Stock'
-            : 'In Stock';
+    final hasIssue = isOut || isLow;
+    final Color statusColor = isOut ? AppColors.danger : AppColors.warning;
 
     final double progress = hasThreshold && item.lowStockThreshold! > 0
         ? (item.quantityOnHand / (item.lowStockThreshold! * 2.0))
