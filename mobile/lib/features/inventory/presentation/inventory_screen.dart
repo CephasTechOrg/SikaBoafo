@@ -311,20 +311,36 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               ],
             ),
           ),
-          const StaleBanner(
-            screenKey: 'inventory',
-            kvKey: KvCacheRepository.kInventoryTs,
-          ),
           Expanded(
-                  child: PremiumSurface(
-                  child: RefreshIndicator(
-                    onRefresh: () => ref
-                        .read(inventoryControllerProvider.notifier)
-                        .refresh(),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                      children: [
+            child: Transform.translate(
+              offset: const Offset(0, -8),
+              child: Column(
+                children: [
+                  const StaleBanner(
+                    screenKey: 'inventory',
+                    kvKey: KvCacheRepository.kInventoryTs,
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.canvas,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(28),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(28),
+                        ),
+                        child: RefreshIndicator(
+                          onRefresh: () => ref
+                              .read(inventoryControllerProvider.notifier)
+                              .refresh(),
+                          child: ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            children: [
                         _AddItemAccordion(
                           expanded: _showForm,
                           nameCtrl: _nameCtrl,
@@ -432,10 +448,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               ),
                           ],
                         ],
-                      ],
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
