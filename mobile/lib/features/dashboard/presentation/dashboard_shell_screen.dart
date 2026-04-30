@@ -131,7 +131,7 @@ class _HomeDashboard extends ConsumerWidget {
         final heroHeight = (h * 0.40).clamp(280.0, 360.0);
         // How far the curved top of the white sheet pulls up into the hero
         // so the rounded corners are clearly visible against the green/swirl.
-        const sheetCurveLift = 28.0;
+        const sheetCurveLift = 44.0;
         // Cards should straddle the new (lifted) flat top of the sheet —
         // ~50% on green / ~50% on white.
 
@@ -214,7 +214,7 @@ class _HomeDashboard extends ConsumerWidget {
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(
                             18,
-                            24,
+                            16,
                             18,
                             36,
                           ),
