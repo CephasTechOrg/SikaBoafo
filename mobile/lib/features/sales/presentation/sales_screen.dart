@@ -22,6 +22,7 @@ import '../../inventory/providers/inventory_providers.dart';
 import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
+import '../providers/sales_cart_provider.dart';
 import 'widgets/empty_card.dart';
 import 'widgets/hero_stat_chip.dart';
 import 'widgets/sales_search_bar.dart';
@@ -50,14 +51,9 @@ class SalesScreen extends ConsumerStatefulWidget {
 }
 
 class _SalesScreenState extends ConsumerState<SalesScreen> {
-  final Map<String, int> _qtyByItemId = {};
-  // O(1) lookup per item for price override.
-  final Map<String, String> _priceOverrideByItemId = {};
-  final TextEditingController _noteCtrl = TextEditingController();
+      final TextEditingController _noteCtrl = TextEditingController();
   final TextEditingController _searchCtrl = TextEditingController();
-  String _paymentMethod = 'cash';
-  String _searchQuery = '';
-  SalesViewTab _activeTab = SalesViewTab.newSale;
+      SalesViewTab _activeTab = SalesViewTab.newSale;
   bool _showVoided = false;
 
   @override
@@ -69,6 +65,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cart = ref.watch(salesCartProvider);
+    final cartNotifier = ref.read(salesCartProvider.notifier);
+
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
     final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
@@ -81,18 +80,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final isBusy = salesAsync.isLoading;
 
     // O(n·m) search filter — acceptable for n < 500 items.
-    final filtered = _searchQuery.isEmpty
+    final filtered = cart.searchQuery.isEmpty
         ? allItems
         : allItems
             .where((i) =>
-                i.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+                i.name.toLowerCase().contains(cart.searchQuery.toLowerCase()))
             .toList(growable: false);
 
     // O(n) single-pass partition — stable within each group.
     final selectedItems = <LocalInventoryItem>[];
     final unselectedItems = <LocalInventoryItem>[];
     for (final item in filtered) {
-      ((_qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems)
+      ((cart.qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems)
           .add(item);
     }
 
@@ -118,7 +117,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     // Sort regular items by name.
     regularUnselectedItems.sort((a, b) => a.name.compareTo(b.name));
 
-    final itemCount = _qtyByItemId.values.fold(0, (a, b) => a + b);
+    final itemCount = cart.qtyByItemId.values.fold(0, (a, b) => a + b);
     final totalAmount = _calculateTotal(allItems);
     final hasItems = _parseTotal(totalAmount) > 0;
     final visibleSales = recentSales.where((sale) => !sale.isVoided).toList();
@@ -427,13 +426,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           SalesViewTab.newSale) ...[
                                         SalesSearchBar(
                                           controller: _searchCtrl,
-                                          hasQuery: _searchQuery.isNotEmpty,
+                                          hasQuery: cart.searchQuery.isNotEmpty,
                                           onChanged: (v) => setState(
-                                            () => _searchQuery = v.trim(),
+                                            () => cartNotifier.setSearchQuery v.trim(),
                                           ),
                                           onClear: () {
                                             _searchCtrl.clear();
-                                            setState(() => _searchQuery = '');
+                                            setState(() => cartNotifier.setSearchQuery '');
                                           },
                                         ),
                                         const SizedBox(height: 8),
@@ -460,20 +459,20 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   .map(
                                                     (item) => ItemCard(
                                                       item: item,
-                                                      qty: _qtyByItemId[
+                                                      qty: cart.qtyByItemId[
                                                               item.id] ??
                                                           0,
                                                       priceOverride:
-                                                          _priceOverrideByItemId[
+                                                          cart.priceOverrideByItemId[
                                                               item.id],
                                                       isSelected: true,
                                                       onMinus: () => setState(
-                                                        () => _decrementQty(
+                                                        () => cartNotifier.decrementQty(
                                                           item.id,
                                                         ),
                                                       ),
                                                       onPlus: () => setState(
-                                                        () => _incrementQty(
+                                                        () => cartNotifier.incrementQty(
                                                           item,
                                                         ),
                                                       ),
@@ -503,7 +502,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                       isSelected: false,
                                                       onMinus: () {},
                                                       onPlus: () => setState(
-                                                        () => _incrementQty(
+                                                        () => cartNotifier.incrementQty(
                                                           item,
                                                         ),
                                                       ),
@@ -535,7 +534,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                       isSelected: false,
                                                       onMinus: () {},
                                                       onPlus: () => setState(
-                                                        () => _incrementQty(
+                                                        () => cartNotifier.incrementQty(
                                                           item,
                                                         ),
                                                       ),
@@ -549,11 +548,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                           ],
                                           if (filtered.isEmpty &&
-                                              _searchQuery.isNotEmpty)
+                                              cart.searchQuery.isNotEmpty)
                                             EmptyCard(
                                               icon: Icons.search_off_rounded,
                                               message:
-                                                  'No items match "$_searchQuery".',
+                                                  'No items match "$cart.searchQuery".',
                                             ),
                                         ],
                                         const SizedBox(height: 24),
@@ -628,7 +627,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       itemCount: itemCount,
                                       totalAmount: totalAmount,
                                       paymentMethod: _paymentLabel(
-                                        _paymentMethod,
+                                        cart.paymentMethod,
                                       ),
                                       hasItems: hasItems,
                                       isBusy: isBusy,
@@ -653,21 +652,21 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     );
   }
 
-  void _incrementQty(LocalInventoryItem item) {
-    final current = _qtyByItemId[item.id] ?? 0;
+  void cartNotifier.incrementQty(LocalInventoryItem item) {
+    final current = cart.qtyByItemId[item.id] ?? 0;
     if (current >= item.quantityOnHand) {
       return;
     }
-    _qtyByItemId[item.id] = current + 1;
+    cart.qtyByItemId[item.id] = current + 1;
   }
 
-  void _decrementQty(String itemId) {
-    final current = _qtyByItemId[itemId] ?? 0;
+  void cartNotifier.decrementQty(String itemId) {
+    final current = cart.qtyByItemId[itemId] ?? 0;
     if (current <= 1) {
-      _qtyByItemId.remove(itemId);
+      cart.qtyByItemId.remove(itemId);
       return;
     }
-    _qtyByItemId[itemId] = current - 1;
+    cart.qtyByItemId[itemId] = current - 1;
   }
 
   String _formatMinor(int minor, {String symbol = 'GHS '}) {
@@ -689,7 +688,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     if (_parseTotal(totalAmount) <= 0 || isBusy) {
       return;
     }
-    var selectedMethod = _paymentMethod;
+    var selectedMethod = cart.paymentMethod;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -790,7 +789,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             onPressed: () async {
                               Navigator.of(sheetContext).pop();
                               if (!mounted) return;
-                              setState(() => _paymentMethod = selectedMethod);
+                              setState(() => cart.paymentMethod = selectedMethod);
                               final ok = await _recordSale(
                                 items: items,
                                 paymentMethodLabel: selectedMethod,
@@ -836,7 +835,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                             onPressed: () async {
                               Navigator.of(sheetContext).pop();
                               if (!mounted) return;
-                              setState(() => _paymentMethod = selectedMethod);
+                              setState(() => cart.paymentMethod = selectedMethod);
                               await _recordSaleWithPaystackLink(
                                 items: items,
                                 paymentMethodLabel: selectedMethod,
@@ -1045,12 +1044,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   String _calculateTotal(List<LocalInventoryItem> items) {
     final itemById = {for (final item in items) item.id: item};
     int totalMinor = 0;
-    for (final entry in _qtyByItemId.entries) {
+    for (final entry in cart.qtyByItemId.entries) {
       final qty = entry.value;
       if (qty <= 0) continue;
       final item = itemById[entry.key];
       if (item == null) continue;
-      final price = _priceOverrideByItemId[entry.key] ?? item.defaultPrice;
+      final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
       totalMinor += _moneyToMinor(price) * qty;
     }
     final major = totalMinor ~/ 100;
@@ -1094,7 +1093,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     try {
       await ref.read(salesControllerProvider.notifier).recordSale(
-            paymentMethodLabel: paymentMethodLabel ?? _paymentMethod,
+            paymentMethodLabel: paymentMethodLabel ?? cart.paymentMethod,
             lines: lines,
             note: note,
           );
@@ -1205,12 +1204,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   List<SaleDraftLine> _buildSaleDraftLines(List<LocalInventoryItem> items) {
     final itemById = {for (final item in items) item.id: item};
     final lines = <SaleDraftLine>[];
-    for (final entry in _qtyByItemId.entries) {
+    for (final entry in cart.qtyByItemId.entries) {
       final qty = entry.value;
       if (qty <= 0) continue;
       final item = itemById[entry.key];
       if (item == null) continue;
-      final price = _priceOverrideByItemId[entry.key] ?? item.defaultPrice;
+      final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
       lines
           .add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
     }
@@ -1219,9 +1218,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   void _resetDraftAfterSale() {
     setState(() {
-      _qtyByItemId.clear();
-      _priceOverrideByItemId.clear();
-      _searchQuery = '';
+      
+      cartNotifier.clearCart();
+      cartNotifier.setSearchQuery '';
     });
     _noteCtrl.clear();
     _searchCtrl.clear();
@@ -1275,7 +1274,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheet) {
-            final entries = _qtyByItemId.entries
+            final entries = cart.qtyByItemId.entries
                 .where((e) => e.value > 0 && itemById.containsKey(e.key))
                 .toList();
             final currentCount = entries.fold(0, (s, e) => s + e.value);
@@ -1376,7 +1375,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 final item = itemById[entry.key]!;
                                 final qty = entry.value;
                                 final price =
-                                    _priceOverrideByItemId[entry.key] ??
+                                    cart.priceOverrideByItemId[entry.key] ??
                                         item.defaultPrice;
                                 final lineTotal =
                                     _moneyToMinor(price) * qty;
@@ -1442,9 +1441,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           GestureDetector(
                                             onTap: () => setSheet(() {
                                               setState(() {
-                                                _qtyByItemId
+                                                cart.qtyByItemId
                                                     .remove(entry.key);
-                                                _priceOverrideByItemId
+                                                cart.priceOverrideByItemId
                                                     .remove(entry.key);
                                               });
                                             }),
@@ -1576,7 +1575,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       if (!mounted) return;
                                       await _showCheckoutSheet(
                                         items: items,
-                                        itemCount: _qtyByItemId.values
+                                        itemCount: cart.qtyByItemId.values
                                             .fold(0, (a, b) => a + b),
                                         totalAmount:
                                             _calculateTotal(items),
@@ -1609,7 +1608,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     final ctrl = TextEditingController(
-        text: _priceOverrideByItemId[item.id] ?? item.defaultPrice);
+        text: cart.priceOverrideByItemId[item.id] ?? item.defaultPrice);
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1630,7 +1629,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                setState(() => _priceOverrideByItemId.remove(item.id));
+                setState(() => cart.priceOverrideByItemId.remove(item.id));
                 Navigator.of(ctx).pop();
               },
               child: const Text('Reset to default'),
@@ -1640,7 +1639,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 final raw = ctrl.text.trim();
                 final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
                 if (match == null || double.tryParse(raw) == 0) return;
-                setState(() => _priceOverrideByItemId[item.id] = raw);
+                cartNotifier.overridePrice(item.id, raw);
                 Navigator.of(ctx).pop();
               },
               child: const Text('Apply'),
