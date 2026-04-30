@@ -27,6 +27,9 @@ import 'widgets/hero_stat_chip.dart';
 import 'widgets/sales_search_bar.dart';
 import 'widgets/sales_tab_bar.dart';
 import 'widgets/section_label.dart';
+import 'widgets/item_card.dart';
+import 'widgets/sales_bottom_bar.dart';
+
 
 
 enum _SaleAction { edit, voidSale }
@@ -446,10 +449,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   'In cart (${selectedItems.length})',
                                             ),
                                             const SizedBox(height: 7),
-                                            _ItemGrid(
+                                            ItemGrid(
                                               children: selectedItems
                                                   .map(
-                                                    (item) => _ItemCard(
+                                                    (item) => ItemCard(
                                                       item: item,
                                                       qty: _qtyByItemId[
                                                               item.id] ??
@@ -484,10 +487,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                               label: 'Quick Add',
                                             ),
                                             const SizedBox(height: 7),
-                                            _ItemGrid(
+                                            ItemGrid(
                                               children: quickAddItems
                                                   .map(
-                                                    (item) => _ItemCard(
+                                                    (item) => ItemCard(
                                                       item: item,
                                                       qty: 0,
                                                       priceOverride: null,
@@ -516,10 +519,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                                   : 'Available products',
                                             ),
                                             const SizedBox(height: 7),
-                                            _ItemGrid(
+                                            ItemGrid(
                                               children: regularUnselectedItems
                                                   .map(
-                                                    (item) => _ItemCard(
+                                                    (item) => ItemCard(
                                                       item: item,
                                                       qty: 0,
                                                       priceOverride: null,
@@ -615,7 +618,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     left: 0,
                                     right: 0,
                                     bottom: 0,
-                                    child: _BottomBar(
+                                    child: SalesBottomBar(
                                       itemCount: itemCount,
                                       totalAmount: totalAmount,
                                       paymentMethod: _paymentLabel(
@@ -1893,7 +1896,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _CircleQtyBtn(
+                                    CircleQtyBtn(
                                       icon: Icons.remove_rounded,
                                       enabled: !isSaving &&
                                           selectedQty > 1,
@@ -1917,7 +1920,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         ),
                                       ),
                                     ),
-                                    _CircleQtyBtn(
+                                    CircleQtyBtn(
                                       icon: Icons.add_rounded,
                                       enabled: !isSaving &&
                                           selectedQty <
@@ -2460,396 +2463,13 @@ class _CheckoutMethodButton extends StatelessWidget {
 
 // ── Item card ────────────────────────────────────────────────────────────────
 
-class _ItemGrid extends StatelessWidget {
-  const _ItemGrid({required this.children});
 
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Keep two cards per row on standard mobile widths.
-        final useSingleColumn = constraints.maxWidth < 300;
-        final cardExtent = useSingleColumn
-            ? 200.0
-            : (constraints.maxWidth < 360 ? 226.0 : 214.0);
-        return GridView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: useSingleColumn ? 1 : 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: cardExtent,
-          ),
-          children: children,
-        );
-      },
-    );
-  }
-}
-
-class _ItemCard extends StatelessWidget {
-  const _ItemCard({
-    required this.item,
-    required this.qty,
-    required this.priceOverride,
-    required this.isSelected,
-    required this.onMinus,
-    required this.onPlus,
-    required this.onPriceTap,
-  });
-
-  final LocalInventoryItem item;
-  final int qty;
-  final String? priceOverride;
-  final bool isSelected;
-  final VoidCallback onMinus;
-  final VoidCallback onPlus;
-  final VoidCallback onPriceTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final displayPrice = priceOverride ?? item.defaultPrice;
-    final hasOverride = priceOverride != null;
-    final stockTone =
-        item.quantityOnHand <= 5 ? AppColors.danger : AppColors.success;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isSelected ? AppColors.forest : AppColors.border,
-          width: isSelected ? 1.5 : 1,
-        ),
-        boxShadow: isSelected ? AppShadows.card : AppShadows.subtle,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 14,
-              child: item.quantityOnHand <= 5
-                  ? Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.dangerSoft,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          'Low',
-                          style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-            const Spacer(),
-            Align(
-              alignment: Alignment.center,
-              child: ItemImage(
-                imageUrl: item.imageUrl,
-                size: 74,
-                fallbackIcon: Icons.inventory_2_outlined,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              item.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14.5,
-                color: AppColors.ink,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 5),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onPriceTap,
-                    child: Text(
-                      hasOverride ? '₵$displayPrice ✎' : '₵$displayPrice',
-                      style: TextStyle(
-                        color: hasOverride
-                            ? AppColors.warning
-                            : AppColors.forest,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: stockTone.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${item.quantityOnHand}',
-                    style: TextStyle(
-                      color: stockTone,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const SizedBox(height: 6),
-            Container(
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? const Color(0xFFF0FAF3) : AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(
-                children: [
-                  _CircleQtyBtn(
-                    icon: Icons.remove_rounded,
-                    enabled: qty > 0,
-                    onTap: onMinus,
-                  ),
-                  SizedBox(
-                    width: 32,
-                    child: Center(
-                      child: Text(
-                        '$qty',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
-                  ),
-                  _CircleQtyBtn(
-                    icon: Icons.add_rounded,
-                    enabled: qty < item.quantityOnHand,
-                    onTap: onPlus,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ── Circular qty button ──────────────────────────────────────────────────────
 
-class _CircleQtyBtn extends StatelessWidget {
-  const _CircleQtyBtn({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all(
-            color: enabled ? AppColors.forest : const Color(0xFFDDDDDD),
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: enabled ? AppColors.forest : AppColors.muted,
-        ),
-      ),
-    );
-  }
-}
 
 // ── Bottom action bar ────────────────────────────────────────────────────────
 
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({
-    required this.itemCount,
-    required this.totalAmount,
-    required this.paymentMethod,
-    required this.hasItems,
-    required this.isBusy,
-    required this.onConfirm,
-  });
-
-  final int itemCount;
-  final String totalAmount;
-  final String paymentMethod;
-  final bool hasItems;
-  final bool isBusy;
-  final VoidCallback onConfirm;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: hasItems
-            ? const LinearGradient(
-                colors: [Color(0xFF0A3D1A), Color(0xFF155236)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              )
-            : null,
-        color: hasItems ? null : const Color(0xFFF8F9FC),
-        boxShadow: AppShadows.elevated,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: hasItems
-                      ? Colors.white.withValues(alpha: 0.15)
-                      : AppColors.forest.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: Icon(
-                        Icons.shopping_cart_outlined,
-                        color: hasItems ? Colors.white : AppColors.forest,
-                        size: 20,
-                      ),
-                    ),
-                    if (itemCount > 0)
-                      Positioned(
-                        right: -3,
-                        top: -3,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$itemCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    itemCount == 0 ? 'Cart is empty' : 'Ready to checkout',
-                    style: TextStyle(
-                      color: hasItems ? Colors.white : AppColors.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    '₵$totalAmount',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Constantia',
-                      color: hasItems ? Colors.white : AppColors.ink,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  Text(
-                    hasItems ? 'Payment at checkout' : paymentMethod,
-                    style: TextStyle(
-                      color: hasItems
-                          ? Colors.white.withValues(alpha: 0.65)
-                          : AppColors.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                height: 46,
-                child: FilledButton.icon(
-                  onPressed: (hasItems && !isBusy) ? onConfirm : null,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                  iconAlignment: IconAlignment.end,
-                  label: Text(isBusy ? 'Saving...' : 'Checkout'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: hasItems ? Colors.white : AppColors.forest,
-                    foregroundColor: hasItems ? AppColors.forest : Colors.white,
-                    disabledBackgroundColor: const Color(0xFFCCCCCC),
-                    minimumSize: Size.zero,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Paystack QR payment sheet ─────────────────────────────────────────────────
 
