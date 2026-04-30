@@ -22,10 +22,16 @@ import '../../inventory/providers/inventory_providers.dart';
 import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
+import 'widgets/empty_card.dart';
+import 'widgets/hero_stat_chip.dart';
+import 'widgets/sales_search_bar.dart';
+import 'widgets/sales_tab_bar.dart';
+import 'widgets/section_label.dart';
+
 
 enum _SaleAction { edit, voidSale }
 
-enum _SalesViewTab { newSale, history }
+enum SalesViewTab { newSale, history }
 
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
@@ -42,7 +48,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _paymentMethod = 'cash';
   String _searchQuery = '';
-  _SalesViewTab _activeTab = _SalesViewTab.newSale;
+  SalesViewTab _activeTab = SalesViewTab.newSale;
   bool _showVoided = false;
 
   @override
@@ -313,20 +319,20 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _HeroStatChip(
+                              HeroStatChip(
                                 icon: Icons.receipt_long_rounded,
                                 value: '${todaySales.length}',
                                 label: 'txns today',
                               ),
                               const SizedBox(width: 8),
-                              _HeroStatChip(
+                              HeroStatChip(
                                 icon: Icons.payments_rounded,
                                 value:
                                     _formatMinor(cashTotalMinor, symbol: '₵'),
                                 label: 'Cash',
                               ),
                               const SizedBox(width: 8),
-                              _HeroStatChip(
+                              HeroStatChip(
                                 icon: Icons.phone_android_rounded,
                                 value:
                                     _formatMinor(momoTotalMinor, symbol: '₵'),
@@ -396,12 +402,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       16,
                                       14,
                                       16,
-                                      _activeTab == _SalesViewTab.newSale
+                                      _activeTab == SalesViewTab.newSale
                                           ? 108
                                           : 24,
                                     ),
                                     children: [
-                                      _SalesTabBar(
+                                      SalesTabBar(
                                         activeTab: _activeTab,
                                         onChanged: (tab) => setState(
                                           () => _activeTab = tab,
@@ -409,8 +415,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                       ),
                                       const SizedBox(height: 10),
                                       if (_activeTab ==
-                                          _SalesViewTab.newSale) ...[
-                                        _SalesSearchBar(
+                                          SalesViewTab.newSale) ...[
+                                        SalesSearchBar(
                                           controller: _searchCtrl,
                                           hasQuery: _searchQuery.isNotEmpty,
                                           onChanged: (v) => setState(
@@ -428,14 +434,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         ),
                                         const SizedBox(height: 5),
                                         if (allItems.isEmpty)
-                                          const _EmptyCard(
+                                          const EmptyCard(
                                             icon: Icons.inventory_2_outlined,
                                             message:
                                                 'No inventory items. Add stock in Inventory first.',
                                           )
                                         else ...[
                                           if (selectedItems.isNotEmpty) ...[
-                                            _SectionLabel(
+                                            SectionLabel(
                                               label:
                                                   'In cart (${selectedItems.length})',
                                             ),
@@ -474,7 +480,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           ],
                                           // Quick Add: Top 3 selling items.
                                           if (quickAddItems.isNotEmpty) ...[
-                                            const _SectionLabel(
+                                            const SectionLabel(
                                               label: 'Quick Add',
                                             ),
                                             const SizedBox(height: 7),
@@ -504,7 +510,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           ],
                                           if (regularUnselectedItems
                                               .isNotEmpty) ...[
-                                            _SectionLabel(
+                                            SectionLabel(
                                               label: selectedItems.isNotEmpty
                                                   ? 'Add more products'
                                                   : 'Available products',
@@ -535,7 +541,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                           ],
                                           if (filtered.isEmpty &&
                                               _searchQuery.isNotEmpty)
-                                            _EmptyCard(
+                                            EmptyCard(
                                               icon: Icons.search_off_rounded,
                                               message:
                                                   'No items match "$_searchQuery".',
@@ -544,7 +550,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         const SizedBox(height: 24),
                                       ],
                                       if (_activeTab ==
-                                          _SalesViewTab.history) ...[
+                                          SalesViewTab.history) ...[
                                         Row(
                                           children: [
                                             const Text(
@@ -590,7 +596,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                             ),
                                           )
                                         else if (historySales.isEmpty)
-                                          _EmptyCard(
+                                          EmptyCard(
                                             icon: Icons.receipt_long_outlined,
                                             message: _showVoided
                                                 ? 'No sales found yet.'
@@ -604,7 +610,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                     ],
                                   ),
                                 ),
-                                if (_activeTab == _SalesViewTab.newSale)
+                                if (_activeTab == SalesViewTab.newSale)
                                   Positioned(
                                     left: 0,
                                     right: 0,
@@ -2322,119 +2328,7 @@ class _TopAgg {
       );
 }
 
-class _HeroStatChip extends StatelessWidget {
-  const _HeroStatChip({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
 
-  final IconData icon;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.65), size: 14),
-          const SizedBox(width: 7),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SalesSearchBar extends StatelessWidget {
-  const _SalesSearchBar({
-    required this.controller,
-    required this.hasQuery,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  final TextEditingController controller;
-  final bool hasQuery;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: const TextStyle(fontSize: 13, color: AppColors.ink),
-        decoration: InputDecoration(
-          hintText: 'Search products',
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            size: 16,
-            color: AppColors.muted,
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 32,
-            minHeight: 0,
-          ),
-          suffixIcon: hasQuery
-              ? IconButton(
-                  onPressed: onClear,
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 16,
-                    color: AppColors.muted,
-                  ),
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
-                )
-              : null,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-        ),
-      ),
-    );
-  }
-}
 
 class _ProductsHeader extends StatelessWidget {
   const _ProductsHeader({
@@ -2487,82 +2381,7 @@ class _ProductsHeader extends StatelessWidget {
   }
 }
 
-class _SalesTabBar extends StatelessWidget {
-  const _SalesTabBar({
-    required this.activeTab,
-    required this.onChanged,
-  });
 
-  final _SalesViewTab activeTab;
-  final ValueChanged<_SalesViewTab> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _SalesTabPill(
-              label: 'New Sale',
-              selected: activeTab == _SalesViewTab.newSale,
-              onTap: () => onChanged(_SalesViewTab.newSale),
-            ),
-          ),
-          Expanded(
-            child: _SalesTabPill(
-              label: 'History',
-              selected: activeTab == _SalesViewTab.history,
-              onTap: () => onChanged(_SalesViewTab.history),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SalesTabPill extends StatelessWidget {
-  const _SalesTabPill({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.forest : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.inkSoft,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _CheckoutMethodButton extends StatelessWidget {
   const _CheckoutMethodButton({
@@ -3582,23 +3401,6 @@ class _SuccessCheckPainter extends CustomPainter {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.muted,
-        letterSpacing: 0.2,
-      ),
-    );
-  }
-}
 
 class _SaleStatusPill extends StatelessWidget {
   const _SaleStatusPill({
@@ -3629,32 +3431,3 @@ class _SaleStatusPill extends StatelessWidget {
   }
 }
 
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.icon, required this.message});
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.muted, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
