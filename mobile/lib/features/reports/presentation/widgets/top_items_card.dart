@@ -13,6 +13,9 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'empty_card.dart';
+import 'empty_card.dart';
+import 'reports_utils.dart';
 
 class TopItemsCard extends StatelessWidget {
   const TopItemsCard({required this.items});
@@ -21,7 +24,7 @@ class TopItemsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const _EmptyCard(
+      return const EmptyCard(
         icon: Icons.inventory_2_outlined,
         message: 'No sales recorded this month.',
       );
@@ -91,7 +94,7 @@ class TopItemsCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _fmtMoney(item.salesTotal),
+                      fmtMoney(item.salesTotal),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,

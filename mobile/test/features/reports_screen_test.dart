@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:biztrack_gh/features/dashboard/data/dashboard_api.dart';
-import 'package:biztrack_gh/features/dashboard/presentation/reports_screen.dart';
+import 'package:biztrack_gh/features/reports/presentation/reports_screen.dart';
 import 'package:biztrack_gh/features/dashboard/providers/dashboard_providers.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
 import 'package:biztrack_gh/features/debts/providers/debts_providers.dart';

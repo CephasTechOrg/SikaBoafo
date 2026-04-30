@@ -13,6 +13,8 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'payment_breakdown_card.dart';
+import 'payment_breakdown_card.dart';
 
 class BarChartCard extends StatelessWidget {
   const BarChartCard({
@@ -55,7 +57,7 @@ class BarChartCard extends StatelessWidget {
             height: 160,
             child: CustomPaint(
               size: const Size(double.infinity, 160),
-              painter: _BarChartPainter(
+              painter: BarChartPainter(
                 bars: [
                   (
                     label: 'Sales',
@@ -84,11 +86,11 @@ class BarChartCard extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _LegendDot(color: AppColors.forest, label: 'Sales'),
+              LegendDot(color: AppColors.forest, label: 'Sales'),
               SizedBox(width: 16),
-              _LegendDot(color: AppColors.danger, label: 'Expenses'),
+              LegendDot(color: AppColors.danger, label: 'Expenses'),
               SizedBox(width: 16),
-              _LegendDot(color: AppColors.warning, label: 'Profit'),
+              LegendDot(color: AppColors.warning, label: 'Profit'),
             ],
           ),
         ],

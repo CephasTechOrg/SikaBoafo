@@ -13,6 +13,7 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'reports_utils.dart';
 
 class BusinessSummaryCard extends StatelessWidget {
   const BusinessSummaryCard({
@@ -74,14 +75,14 @@ class BusinessSummaryCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _SummaryStat(
+                child: SummaryStat(
                   label: 'Outstanding Debt',
-                  value: _fmtMoney(debtOutstanding),
+                  value: fmtMoney(debtOutstanding),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _SummaryStat(
+                child: SummaryStat(
                   label: 'Low Stock',
                   value: '$lowStockCount item${lowStockCount == 1 ? '' : 's'}',
                 ),

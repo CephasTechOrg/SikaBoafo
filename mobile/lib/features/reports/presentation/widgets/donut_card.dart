@@ -13,6 +13,7 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'reports_utils.dart';
 
 class DonutCard extends StatelessWidget {
   const DonutCard({required this.categoryMinors, required this.totalMinor});
@@ -29,7 +30,7 @@ class DonutCard extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final pieSlices = slices.asMap().entries.map((e) {
-      final color = _kPieColors[e.key % _kPieColors.length];
+      final color = kPieColors[e.key % kPieColors.length];
       return (color: color, fraction: e.value.value / total);
     }).toList(growable: false);
 
@@ -56,7 +57,7 @@ class DonutCard extends StatelessWidget {
                 children: [
                   CustomPaint(
                     size: const Size(120, 120),
-                    painter: _DonutPainter(slices: pieSlices),
+                    painter: DonutPainter(slices: pieSlices),
                   ),
                   Text(
                     centerLabel,
@@ -84,7 +85,7 @@ class DonutCard extends StatelessWidget {
             )
           else
             ...slices.take(4).toList().asMap().entries.map((e) {
-              final color = _kPieColors[e.key % _kPieColors.length];
+              final color = kPieColors[e.key % kPieColors.length];
               final label = _catLabel(e.value.key);
               final pct = totalMinor == 0
                   ? 0

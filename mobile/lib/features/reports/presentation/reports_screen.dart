@@ -29,64 +29,8 @@ import 'widgets/empty_card.dart';
 import 'widgets/offline_card.dart';
 import 'widgets/reports_loading.dart';
 import 'widgets/error_view.dart';
+import 'widgets/reports_utils.dart';
 
-
-// ── Chart palette ─────────────────────────────────────────────────────────────
-
-const _kPieColors = [
-  AppColors.forest,
-  AppColors.info,
-  AppColors.warning,
-  AppColors.gold,
-  AppColors.danger,
-  AppColors.success,
-  AppColors.muted,
-];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-int _toMinor(String v) {
-  final raw = v.trim();
-  final m = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-  if (m == null) return 0;
-  final p = raw.split('.');
-  final dec = p.length == 2 ? p[1].padRight(2, '0') : '00';
-  return int.parse(p[0]) * 100 + int.parse(dec);
-}
-
-String _fmtMoney(String v) => '\u20B5$v';
-
-// O(n) single-pass debt aging — YYYY-MM-DD lexicographic order is valid.
-class _DebtAging {
-  const _DebtAging(
-      {required this.overdue,
-      required this.dueSoon,
-      required this.current,
-      required this.noDue});
-  final int overdue, dueSoon, current, noDue;
-  int get total => overdue + dueSoon + current + noDue;
-}
-
-_DebtAging _computeAging(List<LocalReceivableRecord> receivables) {
-  final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  final soon = DateFormat('yyyy-MM-dd')
-      .format(DateTime.now().add(const Duration(days: 7)));
-  int ov = 0, ds = 0, cu = 0, nd = 0;
-  for (final r in receivables) {
-    if (r.status != 'open') continue;
-    final d = r.dueDateIso;
-    if (d == null || d.isEmpty) {
-      nd++;
-    } else if (d.compareTo(today) < 0) {
-      ov++;
-    } else if (d.compareTo(soon) <= 0) {
-      ds++;
-    } else {
-      cu++;
-    }
-  }
-  return _DebtAging(overdue: ov, dueSoon: ds, current: cu, noDue: nd);
-}
 
 // ── Reports screen ────────────────────────────────────────────────────────────
 
@@ -113,7 +57,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final receivables =
         debtsAsync.valueOrNull?.receivables ?? const <LocalReceivableRecord>[];
     final expenses = expensesAsync.valueOrNull ?? const <LocalExpenseRecord>[];
-    final aging = _computeAging(receivables);
+    final aging = computeAging(receivables);
 
     final (salesStr, expensesStr, profitStr, grossProfitStr) =
         switch (_periodIndex) {
@@ -139,15 +83,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     final Map<String, int> catMinors = {};
     for (final e in expenses) {
-      catMinors[e.category] = (catMinors[e.category] ?? 0) + _toMinor(e.amount);
+      catMinors[e.category] = (catMinors[e.category] ?? 0) + toMinor(e.amount);
     }
     final catTotal = catMinors.values.fold(0, (a, b) => a + b);
 
     final openRecs = receivables
         .where((r) => r.status == 'open')
         .toList(growable: false)
-      ..sort((a, b) => _toMinor(b.outstandingAmount)
-          .compareTo(_toMinor(a.outstandingAmount)));
+      ..sort((a, b) => toMinor(b.outstandingAmount)
+          .compareTo(toMinor(a.outstandingAmount)));
     final paymentBreakdown = insights?.monthlyPaymentBreakdown ??
         const <DashboardPaymentBreakdown>[];
     final momoAmount = paymentBreakdown

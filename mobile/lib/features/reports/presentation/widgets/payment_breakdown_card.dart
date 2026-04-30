@@ -13,6 +13,9 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'empty_card.dart';
+import 'empty_card.dart';
+import 'reports_utils.dart';
 
 class PaymentBreakdownCard extends StatelessWidget {
   const PaymentBreakdownCard({required this.breakdown});
@@ -27,13 +30,13 @@ class PaymentBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (breakdown.isEmpty) {
-      return const _EmptyCard(
+      return const EmptyCard(
         icon: Icons.payments_outlined,
         message: 'No payment data this month.',
       );
     }
 
-    final totalMinor = breakdown.fold(0, (a, b) => a + _toMinor(b.totalAmount));
+    final totalMinor = breakdown.fold(0, (a, b) => a + toMinor(b.totalAmount));
 
     return AppCard(
       padding: EdgeInsets.zero,
@@ -41,7 +44,7 @@ class PaymentBreakdownCard extends StatelessWidget {
         children: breakdown.asMap().entries.map((e) {
           final item = e.value;
           final pct =
-              totalMinor == 0 ? 0.0 : _toMinor(item.totalAmount) / totalMinor;
+              totalMinor == 0 ? 0.0 : toMinor(item.totalAmount) / totalMinor;
           final methodColor =
               _methodColors[item.paymentMethodLabel] ?? AppColors.muted;
           return Column(
@@ -109,7 +112,7 @@ class PaymentBreakdownCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          _fmtMoney(item.totalAmount),
+                          fmtMoney(item.totalAmount),
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,

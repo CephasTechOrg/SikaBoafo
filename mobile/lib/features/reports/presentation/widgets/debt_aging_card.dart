@@ -13,10 +13,11 @@ import '../../../debts/data/debts_repository.dart';
 import '../../../debts/providers/debts_providers.dart';
 import '../../../expenses/data/expenses_repository.dart';
 import '../../../expenses/providers/expenses_providers.dart';
+import 'reports_utils.dart';
 
 class DebtAgingCard extends StatelessWidget {
   const DebtAgingCard({required this.aging});
-  final _DebtAging aging;
+  final DebtAging aging;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class DebtAgingCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _AgingRow(
+          AgingRow(
             label: 'Overdue',
             count: aging.overdue,
             total: total,
@@ -33,7 +34,7 @@ class DebtAgingCard extends StatelessWidget {
             softBg: AppColors.dangerSoft,
           ),
           const SizedBox(height: 12),
-          _AgingRow(
+          AgingRow(
             label: 'Due within 7 days',
             count: aging.dueSoon,
             total: total,
@@ -41,7 +42,7 @@ class DebtAgingCard extends StatelessWidget {
             softBg: AppColors.warningSoft,
           ),
           const SizedBox(height: 12),
-          _AgingRow(
+          AgingRow(
             label: 'Current',
             count: aging.current,
             total: total,
@@ -49,7 +50,7 @@ class DebtAgingCard extends StatelessWidget {
             softBg: AppColors.successSoft,
           ),
           const SizedBox(height: 12),
-          _AgingRow(
+          AgingRow(
             label: 'No due date',
             count: aging.noDue,
             total: total,
