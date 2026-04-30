@@ -200,6 +200,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       width: 185,
                       height: 185,
                       fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox(width: 185, height: 185),
                     ),
                   ),
                 ),
