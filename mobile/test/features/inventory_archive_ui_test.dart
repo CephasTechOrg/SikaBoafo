@@ -77,7 +77,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Active Items'), findsOneWidget);
+      expect(find.text('ACTIVE ITEMS'), findsOneWidget);
       expect(find.text('Rice'), findsOneWidget);
       expect(find.text('Archive'), findsOneWidget);
 
