@@ -31,7 +31,7 @@ import 'widgets/section_label.dart';
 
 enum _SaleAction { edit, voidSale }
 
-enum SalesViewTab { newSale, history }
+
 
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
