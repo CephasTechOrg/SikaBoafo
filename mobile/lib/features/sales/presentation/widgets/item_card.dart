@@ -15,8 +15,8 @@ class ItemGrid extends StatelessWidget {
         // Keep two cards per row on standard mobile widths.
         final useSingleColumn = constraints.maxWidth < 300;
         final cardExtent = useSingleColumn
-            ? 200.0
-            : (constraints.maxWidth < 360 ? 226.0 : 214.0);
+            ? 212.0
+            : (constraints.maxWidth < 360 ? 238.0 : 226.0);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -80,7 +80,7 @@ class ItemCard extends StatelessWidget {
             Stack(
               children: [
                 Container(
-                  height: 78,
+                  height: 90,
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFFE4F4EB)
@@ -90,7 +90,7 @@ class ItemCard extends StatelessWidget {
                   child: Center(
                     child: ItemImage(
                       imageUrl: item.imageUrl,
-                      size: 60,
+                      size: 72,
                       fallbackIcon: Icons.inventory_2_outlined,
                       borderRadius: BorderRadius.circular(10),
                     ),
