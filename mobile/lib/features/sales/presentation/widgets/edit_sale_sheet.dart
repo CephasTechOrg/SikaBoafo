@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../data/sales_repository.dart';
 import '../../providers/sales_providers.dart';
+import '../../../inventory/data/inventory_api.dart';
 import '../widgets/item_card.dart';
 
 /// Bottom sheet that lets the user adjust quantities and payment method

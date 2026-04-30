@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../data/sales_repository.dart';
-import '../../providers/sales_providers.dart';
 
 /// Confirmation sheet for voiding a sale. Returns `true` if the user
 /// confirms, `false`/`null` if they cancel.

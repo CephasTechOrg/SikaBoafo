@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
-import '../../data/sales_repository.dart';
 import '../../providers/sales_cart_provider.dart';
-import '../../providers/sales_providers.dart';
-import '../../../shared/widgets/product_image_catalog.dart';
-import '../../../inventory/data/inventory_repository.dart';
-import '../widgets/item_card.dart';
 import '../widgets/sale_success_sheet.dart';
 import '../widgets/checkout_method_button.dart';
+import '../../../inventory/data/inventory_repository.dart';
 
 /// The payment-method selection + confirm sheet shown before a sale is finalised.
 ///

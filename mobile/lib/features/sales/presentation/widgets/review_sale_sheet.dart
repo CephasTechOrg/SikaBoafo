@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../inventory/data/inventory_repository.dart';
-import '../../../shared/widgets/product_image_catalog.dart';
+import '../../../../shared/widgets/product_image_catalog.dart';
 import '../../providers/sales_cart_provider.dart';
-import 'item_card.dart';
 
 /// Order review sheet — shows cart contents, note field, total, and proceeds
 /// to checkout when the user is satisfied.
