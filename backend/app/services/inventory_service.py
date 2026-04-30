@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
@@ -15,6 +15,7 @@ from app.core.constants import (
 )
 from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
+from app.models.sale import SaleItem
 from app.models.store import Store
 from app.schemas.inventory import ItemCreateIn, ItemUpdateIn
 from app.services.audit_service import log_audit
@@ -39,6 +40,10 @@ class InvalidItemArchiveError(Exception):
 
 class OptimisticLockError(Exception):
     """Version mismatch: another write occurred since this device last read the entity."""
+
+
+class ItemHasSalesHistoryError(Exception):
+    """Item cannot be hard-deleted because it is referenced by sale records."""
 
 
 @dataclass(slots=True)
@@ -284,6 +289,43 @@ class InventoryService:
             movement_type=movement.movement_type,
             movement_quantity=movement.quantity,
         )
+
+    def delete_item(
+        self,
+        *,
+        user_id: UUID,
+        item_id: UUID,
+        commit: bool = True,
+    ) -> None:
+        store = self._get_default_store_for_user(user_id=user_id)
+        item = self._get_item_for_store(store_id=store.id, item_id=item_id)
+        if item.is_active:
+            msg = "Only archived items can be permanently deleted."
+            raise InvalidItemArchiveError(msg)
+        sale_count = self.db.scalar(
+            select(func.count()).select_from(SaleItem).where(SaleItem.item_id == item_id)
+        )
+        if sale_count and sale_count > 0:
+            msg = (
+                f"This item appears in {sale_count} sale record(s) and cannot be "
+                "permanently deleted. Your sales history would be affected. "
+                "Keeping it archived is the right choice."
+            )
+            raise ItemHasSalesHistoryError(msg)
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="item.deleted",
+            entity_type="item",
+            entity_id=item.id,
+            meta={"name": item.name},
+        )
+        self.db.delete(item)
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         try:

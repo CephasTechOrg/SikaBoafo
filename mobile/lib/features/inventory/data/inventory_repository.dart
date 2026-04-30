@@ -503,6 +503,40 @@ class InventoryRepository {
     });
   }
 
+  /// Permanently deletes an archived item.
+  ///
+  /// If the item has been synced to the server (serverVersion != null), the
+  /// DELETE is sent immediately — not queued — because it requires server
+  /// confirmation (FK constraints / sales-history guard). On success the local
+  /// row and any pending sync_queue entries for that item are removed.
+  ///
+  /// If the item was never synced (serverVersion == null) it is deleted locally
+  /// only; no network call is made.
+  Future<void> deleteItemLocal({required String itemId}) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'items_local',
+      columns: ['is_active', 'server_version'],
+      where: 'id = ?',
+      whereArgs: [itemId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw ArgumentError('Item not found.');
+    final isActive = (rows.first['is_active'] as int? ?? 1) == 1;
+    if (isActive) throw ArgumentError('Only archived items can be permanently deleted.');
+
+    final serverVersion = rows.first['server_version'] as int?;
+    if (serverVersion != null) {
+      // Requires server confirmation — call API directly (not sync queue).
+      await _inventoryApi.deleteItem(itemId);
+    }
+
+    await db.transaction((tx) async {
+      await tx.delete('items_local', where: 'id = ?', whereArgs: [itemId]);
+      await tx.delete('sync_queue', where: 'entity_id = ?', whereArgs: [itemId]);
+    });
+  }
+
   Future<SyncRunSummary> syncPendingQueue({int limit = 100}) async {
     final result = await _syncQueueRunner.run(limit: limit);
     return SyncRunSummary(applied: result.applied, failed: result.failed);

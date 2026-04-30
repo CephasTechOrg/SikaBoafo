@@ -59,6 +59,10 @@ class InventoryApi {
         .map(InventoryItemDto.fromJson)
         .toList(growable: false);
   }
+
+  Future<void> deleteItem(String itemId) async {
+    await _apiClient.dio.delete<void>('/items/$itemId');
+  }
 }
 
 String humanizeInventoryError(Object error) {

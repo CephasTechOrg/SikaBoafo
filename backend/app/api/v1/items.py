@@ -25,6 +25,7 @@ from app.services.inventory_service import (
     InventoryItemSnapshot,
     InventoryMutationSnapshot,
     InventoryService,
+    ItemHasSalesHistoryError,
     MerchantContextMissingError,
 )
 
@@ -127,6 +128,31 @@ def adjust_stock(
             detail=str(exc),
         ) from exc
     return _to_mutation_out(result)
+
+
+@router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_item(
+    item_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    service = InventoryService(db=db)
+    try:
+        service.delete_item(user_id=current_user.id, item_id=item_id)
+    except MerchantContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InventoryItemNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except InvalidItemArchiveError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except ItemHasSalesHistoryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
 
 def _to_item_out(s: InventoryItemSnapshot) -> InventoryItemOut:

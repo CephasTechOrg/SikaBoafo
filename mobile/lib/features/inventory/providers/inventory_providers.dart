@@ -157,4 +157,10 @@ class InventoryController
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
     state = AsyncValue.data(await _repo.listLocalItems());
   }
+
+  Future<void> deleteItem({required String itemId}) async {
+    await _repo.deleteItemLocal(itemId: itemId);
+    await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    state = AsyncValue.data(await _repo.listLocalItems());
+  }
 }

@@ -444,6 +444,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                   item: item,
                                   onEdit: () => _openEdit(item),
                                   onRestore: () => _restoreItem(item),
+                                  onDelete: () => _deleteItem(item),
                                 ),
                               ),
                           ],
@@ -570,6 +571,27 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           .restoreItem(itemId: item.id);
       if (!mounted) return;
       _msg('${item.name} restored to active inventory.');
+    } catch (error) {
+      if (!mounted) return;
+      _msg(humanizeInventoryError(error));
+    }
+  }
+
+  Future<void> _deleteItem(LocalInventoryItem item) async {
+    final confirmed = await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _DeleteConfirmSheet(itemName: item.name),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await ref
+          .read(inventoryControllerProvider.notifier)
+          .deleteItem(itemId: item.id);
+      if (!mounted) return;
+      _msg('${item.name} permanently deleted.');
     } catch (error) {
       if (!mounted) return;
       _msg(humanizeInventoryError(error));
@@ -954,6 +976,7 @@ class _ItemCard extends StatelessWidget {
     this.onAdjust,
     this.onArchive,
     this.onRestore,
+    this.onDelete,
   });
 
   final LocalInventoryItem item;
@@ -962,6 +985,7 @@ class _ItemCard extends StatelessWidget {
   final VoidCallback? onAdjust;
   final VoidCallback? onArchive;
   final VoidCallback? onRestore;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1202,6 +1226,17 @@ class _ItemCard extends StatelessWidget {
                       onTap: onRestore!,
                     ),
                   ),
+                if (!item.isActive && onDelete != null) ...[
+                  const VerticalDivider(width: 1, color: AppColors.border),
+                  Expanded(
+                    child: _ActionBtn(
+                      label: 'Delete',
+                      icon: Icons.delete_forever_rounded,
+                      color: AppColors.danger,
+                      onTap: onDelete!,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2130,6 +2165,93 @@ class _ArchiveConfirmSheet extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: const Text('Archive Item'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── delete confirm sheet ─────────────────────────────────────────────────────
+
+class _DeleteConfirmSheet extends StatelessWidget {
+  const _DeleteConfirmSheet({required this.itemName});
+  final String itemName;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumSheetFrame(
+      title: 'Delete Forever',
+      subtitle: 'This action cannot be undone',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.dangerSoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.delete_forever_rounded,
+              color: AppColors.danger,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Delete "$itemName"?',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.inkSoft,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'The item and its stock history will be removed permanently. '
+            'Your recorded sales are not affected.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.muted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.muted,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Delete Forever'),
                 ),
               ),
             ],
