@@ -960,191 +960,172 @@ class _ItemCard extends StatelessWidget {
             : 0.0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border:
-            Border.all(color: AppColors.borderStrong.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // â”€â”€ main info â”€â”€
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product image â€” always neutral background, image contained
                 ItemImage(
                   imageUrl: item.imageUrl,
-                  size: 56,
+                  size: 48,
                   fallbackIcon: Icons.inventory_2_outlined,
                 ),
                 const SizedBox(width: 12),
-                // Item details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!item.isActive)
+                      if (!item.isActive) ...[
                         Container(
                           margin: const EdgeInsets.only(bottom: 4),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFEE2E2),
-                            borderRadius: BorderRadius.circular(5),
+                            color: AppColors.dangerSoft,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'ARCHIVED',
                             style: TextStyle(
                               fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFDC2626),
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.danger,
                               letterSpacing: 0.4,
                             ),
                           ),
                         ),
+                      ],
                       Text(
                         item.name,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                          fontSize: 14.5,
                           color: AppColors.ink,
+                          height: 1.2,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'â‚µ${item.defaultPrice}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.forestDark,
-                        ),
-                      ),
-                      if (item.category != null || item.sku != null) ...[
-                        const SizedBox(height: 5),
-                        Wrap(
-                          spacing: 5,
-                          runSpacing: 3,
-                          children: [
-                            if (item.category != null)
-                              _SmallBadge(label: item.category!),
-                            if (item.sku != null) _SmallBadge(label: item.sku!),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Text(
+                            '₵${item.defaultPrice}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
+                              color: AppColors.forestDark,
+                            ),
+                          ),
+                          if (item.category != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              decoration: const BoxDecoration(
+                                color: AppColors.border,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                item.category!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
+                        ],
+                      ),
+                      if (item.sku != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'SKU ${item.sku}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.mutedSoft,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Stock quantity
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '${item.quantityOnHand}',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                        color: stockColor,
+                        fontSize: 20,
+                        color: hasIssue ? statusColor : AppColors.ink,
                         height: 1,
                       ),
                     ),
-                    Text(
+                    const Text(
                       'units',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: stockColor.withValues(alpha: 0.7),
-                      ),
+                      style: TextStyle(fontSize: 10, color: AppColors.muted),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: stockColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        isOut
-                            ? 'Out'
-                            : isLow
-                                ? 'Low'
-                                : 'OK',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: stockColor,
+                    if (hasIssue) ...[
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isOut ? 'Out' : 'Low',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
-
-          // â”€â”€ stock bar (only when threshold set) â”€â”€
           if (hasThreshold)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: stockColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            stockLabel,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: stockColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Alert: ${item.lowStockThreshold} units',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 3,
+                  backgroundColor: AppColors.border,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isOut
+                        ? AppColors.danger
+                        : isLow
+                            ? AppColors.warning
+                            : AppColors.forest,
                   ),
-                  const SizedBox(height: 5),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 5,
-                      backgroundColor: const Color(0xFFE5E7EB),
-                      valueColor: AlwaysStoppedAnimation<Color>(stockColor),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-
-          // â”€â”€ divider + actions â”€â”€
           const Divider(height: 1, color: AppColors.border),
           IntrinsicHeight(
             child: Row(
@@ -1204,31 +1185,6 @@ class _ItemCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SmallBadge extends StatelessWidget {
-  const _SmallBadge({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.inkSoft,
-        ),
       ),
     );
   }
