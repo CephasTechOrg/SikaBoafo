@@ -31,15 +31,13 @@ import 'widgets/section_label.dart';
 import 'widgets/item_card.dart';
 import 'widgets/sales_bottom_bar.dart';
 import 'widgets/products_header.dart';
-import 'widgets/checkout_method_button.dart';
-import 'widgets/sale_status_pill.dart';
 import 'widgets/paystack_qr_sheet.dart';
 import 'widgets/sale_success_sheet.dart';
-
-
-
-
-enum _SaleAction { edit, voidSale }
+import 'widgets/checkout_sheet.dart';
+import 'widgets/review_sale_sheet.dart';
+import 'widgets/edit_sale_sheet.dart';
+import 'widgets/void_sale_sheet.dart';
+import 'widgets/recent_sale_tile.dart';
 
 
 
@@ -670,10 +668,28 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String totalAmount,
     required bool isBusy,
   }) async {
-    if (_parseTotal(totalAmount) <= 0 || isBusy) {
-      return;
-    }
-    var selectedMethod = ref.read(salesCartProvider).paymentMethod;
+    if (_parseTotal(totalAmount) <= 0 || isBusy) return;
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CheckoutSheet(
+        items: items,
+        itemCount: itemCount,
+        totalAmount: totalAmount,
+        formatMajor: _formatMajor,
+        onRecordCash: (method) => _recordSale(
+          items: items,
+          paymentMethodLabel: method,
+        ),
+        onRecordMomo: (method) => _recordSaleWithPaystackLink(
+          items: items,
+          paymentMethodLabel: method,
+        ),
+      ),
+    );
+  }
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
