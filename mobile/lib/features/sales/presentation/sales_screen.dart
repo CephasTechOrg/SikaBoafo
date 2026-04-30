@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:math' show sqrt;
+
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
