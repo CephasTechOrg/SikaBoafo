@@ -114,6 +114,8 @@ CREATE TABLE items_local (
   is_active INTEGER NOT NULL DEFAULT 1,
   quantity_on_hand INTEGER NOT NULL DEFAULT 0,
   image_asset TEXT,
+  image_url TEXT,
+  server_version INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )
