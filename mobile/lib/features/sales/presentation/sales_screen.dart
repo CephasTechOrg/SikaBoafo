@@ -15,7 +15,7 @@ import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
-import '../../../shared/widgets/product_image_catalog.dart';
+
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
