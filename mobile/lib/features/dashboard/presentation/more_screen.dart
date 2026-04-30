@@ -19,12 +19,8 @@ class MoreScreen extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
         children: [
-          const _SectionLabel('Operations'),
-          const SizedBox(height: 12),
           _MoreTile(
             icon: Icons.receipt_long_rounded,
-            iconBg: AppColors.warningSoft,
-            iconColor: AppColors.warning,
             title: 'Expenses',
             subtitle: 'Track costs and spending',
             onTap: () => Navigator.of(context).push(
@@ -34,8 +30,6 @@ class MoreScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _MoreTile(
             icon: Icons.handshake_rounded,
-            iconBg: AppColors.successSoft,
-            iconColor: AppColors.forest,
             title: 'Debts',
             subtitle: 'Receivables and repayments',
             onTap: () => context.push(AppRoute.debts.path),
@@ -43,30 +37,20 @@ class MoreScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _MoreTile(
             icon: Icons.people_alt_rounded,
-            iconBg: AppColors.infoSoft,
-            iconColor: AppColors.navy,
             title: 'Customers',
             subtitle: 'Customer list and details',
             onTap: () => context.push(AppRoute.customers.path),
           ),
-          const SizedBox(height: 22),
-          const _SectionLabel('Insights'),
           const SizedBox(height: 12),
           _MoreTile(
             icon: Icons.bar_chart_rounded,
-            iconBg: AppColors.surfaceAlt,
-            iconColor: AppColors.navy,
             title: 'Reports',
             subtitle: 'Insights across sales and stock',
             onTap: () => context.push(AppRoute.reports.path),
           ),
-          const SizedBox(height: 22),
-          const _SectionLabel('Account'),
           const SizedBox(height: 12),
           _MoreTile(
             icon: Icons.settings_rounded,
-            iconBg: AppColors.surfaceAlt,
-            iconColor: AppColors.inkSoft,
             title: 'Settings',
             subtitle: 'Business profile, staff and payments',
             onTap: () => context.push(AppRoute.settings.path),
@@ -77,36 +61,15 @@ class MoreScreen extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
-          ),
-    );
-  }
-}
-
 class _MoreTile extends StatelessWidget {
   const _MoreTile({
     required this.icon,
-    required this.iconBg,
-    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -132,10 +95,10 @@ class _MoreTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: iconBg,
+                  color: AppColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
+                child: Icon(icon, color: AppColors.ink, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
