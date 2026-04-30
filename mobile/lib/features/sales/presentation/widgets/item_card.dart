@@ -56,71 +56,82 @@ class ItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayPrice = priceOverride ?? item.defaultPrice;
     final hasOverride = priceOverride != null;
-    final stockTone =
-        item.quantityOnHand <= 5 ? AppColors.danger : AppColors.success;
+    final isLowStock = item.quantityOnHand <= 5;
+    final stockTone = isLowStock ? AppColors.danger : AppColors.forest;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: isSelected ? const Color(0xFFF2FAF5) : AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? AppColors.forest : AppColors.border,
+          color: isSelected
+              ? AppColors.forest.withValues(alpha: 0.50)
+              : AppColors.border,
           width: isSelected ? 1.5 : 1,
         ),
         boxShadow: isSelected ? AppShadows.card : AppShadows.subtle,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 14,
-              child: item.quantityOnHand <= 5
-                  ? Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.dangerSoft,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text(
-                          'Low',
-                          style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                          ),
+            // Image area with stock badge overlay
+            Stack(
+              children: [
+                Container(
+                  height: 78,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFE4F4EB)
+                        : AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: ItemImage(
+                      imageUrl: item.imageUrl,
+                      size: 60,
+                      fallbackIcon: Icons.inventory_2_outlined,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                if (isLowStock)
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text(
+                        'Low',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    )
-                  : const SizedBox.shrink(),
+                    ),
+                  ),
+              ],
             ),
-            const Spacer(),
-            Align(
-              alignment: Alignment.center,
-              child: ItemImage(
-                imageUrl: item.imageUrl,
-                size: 74,
-                fallbackIcon: Icons.inventory_2_outlined,
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
             Text(
               item.name,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 14.5,
+                fontSize: 13.5,
                 color: AppColors.ink,
                 height: 1.2,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 3),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -132,9 +143,9 @@ class ItemCard extends StatelessWidget {
                       style: TextStyle(
                         color: hasOverride
                             ? AppColors.warning
-                            : AppColors.forest,
+                            : AppColors.forestDark,
                         fontWeight: FontWeight.w800,
-                        fontSize: 15.5,
+                        fontSize: 14.5,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -143,10 +154,10 @@ class ItemCard extends StatelessWidget {
                 ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: stockTone.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '${item.quantityOnHand}',
@@ -160,14 +171,14 @@ class ItemCard extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(
-                color:
-                    isSelected ? const Color(0xFFF0FAF3) : AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(12),
+                color: isSelected
+                    ? const Color(0xFFDDF0E5)
+                    : AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(10),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
               child: Row(
                 children: [
                   CircleQtyBtn(
@@ -176,13 +187,13 @@ class ItemCard extends StatelessWidget {
                     onTap: onMinus,
                   ),
                   SizedBox(
-                    width: 32,
+                    width: 30,
                     child: Center(
                       child: Text(
                         '$qty',
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 17,
+                          fontSize: 16,
                           color: AppColors.ink,
                         ),
                       ),

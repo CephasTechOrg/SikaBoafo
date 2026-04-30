@@ -128,12 +128,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Color(0xFF020F06),
-                              Color(0xFF063318),
-                              Color(0xFF0B5228),
-                              Color(0xFF116438),
+                              Color(0xFF041C0B),
+                              Color(0xFF083A1A),
+                              Color(0xFF0F5A30),
+                              Color(0xFF196E3D),
                             ],
-                            stops: [0.0, 0.32, 0.66, 1.0],
+                            stops: [0.0, 0.28, 0.62, 1.0],
                             begin: Alignment.bottomLeft,
                             end: Alignment.topRight,
                           ),
@@ -170,9 +170,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF010A04).withValues(alpha: 0.72),
+                              const Color(0xFF010A04).withValues(alpha: 0.36),
                               Colors.transparent,
-                              const Color(0xFF010A04).withValues(alpha: 0.30),
+                              const Color(0xFF010A04).withValues(alpha: 0.12),
                             ],
                             stops: const [0.0, 0.50, 1.0],
                             begin: Alignment.bottomCenter,
