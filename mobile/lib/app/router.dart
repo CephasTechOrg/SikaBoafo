@@ -6,7 +6,7 @@ import '../shared/providers/core_providers.dart';
 import '../features/auth/presentation/auth_shell_screen.dart';
 import '../features/auth/presentation/set_pin_screen.dart';
 import '../features/dashboard/presentation/dashboard_shell_screen.dart';
-import '../features/dashboard/presentation/reports_screen.dart';
+import '../features/reports/presentation/reports_screen.dart';
 import '../features/onboarding/presentation/business_onboarding_screen.dart';
 import '../features/onboarding/presentation/splash_screen.dart';
 import '../features/security/presentation/app_lock_screen.dart';
