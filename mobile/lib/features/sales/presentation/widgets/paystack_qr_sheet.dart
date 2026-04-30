@@ -6,7 +6,7 @@ import '../../providers/sales_providers.dart';
 
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../data/sales_payments_api.dart';
+
 
 
 class PaystackQrSheet extends ConsumerStatefulWidget {
