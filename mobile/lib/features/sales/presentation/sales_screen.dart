@@ -216,30 +216,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ),
     );
   }
-}
-
-// ─── Sliver Helpers ───────────────────────────────────────────────────────────
-
-class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
-  _SliverTabDelegate({required this.child});
-  final Widget child;
-
-  @override
-  double get minExtent => 68;
-  @override
-  double get maxExtent => 68;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
-  }
-
-  @override
-  bool shouldRebuild(_SliverTabDelegate oldDelegate) => false;
-}
-
-
-
 
   Future<void> _showCheckoutSheet({
     required List<LocalInventoryItem> items,
@@ -299,9 +275,6 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
     final minor = (totalMinor % 100).toString().padLeft(2, '0');
     return '$major.$minor';
   }
-
-
-
 
   Future<bool> _recordSale({
     required List<LocalInventoryItem> items,
@@ -750,6 +723,25 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
 }
 
+class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
+  _SliverTabDelegate({required this.child});
+  final Widget child;
+
+  @override
+  double get minExtent => 68;
+  @override
+  double get maxExtent => 68;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabDelegate oldDelegate) => false;
+}
+
+
 class _TopAgg {
   const _TopAgg({
     required this.itemId,
@@ -770,33 +762,3 @@ class _TopAgg {
         totalMinor: totalMinor ?? this.totalMinor,
       );
 }
-
-
-
-
-
-
-
-// ── Item card ────────────────────────────────────────────────────────────────
-
-
-
-// ── Circular qty button ──────────────────────────────────────────────────────
-
-
-// ── Bottom action bar ────────────────────────────────────────────────────────
-
-
-// ── Paystack QR payment sheet ─────────────────────────────────────────────────
-
-
-
-// ── Payment success overlay ───────────────────────────────────────────────────
-
-
-
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-
-

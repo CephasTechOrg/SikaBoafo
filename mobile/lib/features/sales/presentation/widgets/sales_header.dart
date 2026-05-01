@@ -105,11 +105,8 @@ class SalesHeader extends StatelessWidget {
             ),
           ),
 
-          // ── Content ──────────────────────────────────────────
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 18), // Increased top padding manually for sliver
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
