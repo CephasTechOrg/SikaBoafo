@@ -268,7 +268,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                                 onTap: () =>
                                     setState(() => _showSearch = !_showSearch),
                                 child: const Text(
-                                  'View all →',
+                                  'View all \u2192',
                                   style: TextStyle(
                                     color: AppColors.forest,
                                     fontSize: 13,
@@ -300,7 +300,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     );
   }
 
-  // ── Header ───────────────────────────────────────────────────────────────
+  // \u2500\u2500\u2500 Header \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
   Widget _buildHeader({
     required int outstandingMinor,
@@ -315,118 +315,126 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Debts',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Track customers, due dates, and repayments',
-                          style: TextStyle(
-                            color: AppColors.heroSubtitle,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        DataFreshnessLabel(
-                          kvKey: KvCacheRepository.kDebtsTs,
-                          color: AppColors.heroSubtitle,
-                        ),
-                      ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      onPressed: () => context.go(AppRoute.home.path),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 150),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.16),
-                        ),
-                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Outstanding',
+                            'Debts',
                             style: TextStyle(
-                              color: AppColors.heroSubtitle,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
                             ),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '\u20B5${_minorToMoneyLocal(outstandingMinor)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Constantia',
-                              letterSpacing: -0.6,
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Track customers, due dates, and repayments',
+                            style: TextStyle(
+                              color: AppColors.heroSubtitle,
+                              fontSize: 12.5,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          DataFreshnessLabel(
+                            kvKey: KvCacheRepository.kDebtsTs,
+                            color: AppColors.heroSubtitle,
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildHeroChip(
-                    label: '\u20B5${_minorToMoneyLocal(overdueMinor)}',
-                    value: 'Overdue',
-                    tone: overdueMinor > 0
-                        ? const Color(0xFFF6A6A6)
-                        : Colors.white.withValues(alpha: 0.72),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildHeroChip(
-                    label: '\u20B5$paidThisMonth',
-                    value: 'Collected',
-                    tone: const Color(0xFF9AE7BF),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildHeroChip(
-                    label: '$customerCount',
-                    value: 'Customers',
-                    tone: AppColors.gold,
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Outstanding',
+                              style: TextStyle(
+                                color: AppColors.heroSubtitle,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '\u20B5${_minorToMoneyLocal(outstandingMinor)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Constantia',
+                                letterSpacing: -0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildHeroChip(
+                      label: '\u20B5${_minorToMoneyLocal(overdueMinor)}',
+                      value: 'Overdue',
+                      tone: overdueMinor > 0
+                          ? const Color(0xFFF6A6A6)
+                          : Colors.white.withValues(alpha: 0.72),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildHeroChip(
+                      label: '\u20B5$paidThisMonth',
+                      value: 'Collected',
+                      tone: const Color(0xFF9AE7BF),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildHeroChip(
+                      label: '$customerCount',
+                      value: 'Customers',
+                      tone: AppColors.gold,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
         ),
       ],
     );
   }
 
-  // ── Debt card ────────────────────────────────────────────────────────────
+  // \u2500\u2500\u2500 Debt card \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
   Widget _buildHeroChip({
     required String label,
@@ -614,7 +622,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     );
   }
 
-  // ── Navigation ───────────────────────────────────────────────────────────
+  // \u2500\u2500\u2500 Navigation \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
   Future<void> _openDebtDetail(String receivableId) async {
     await context.push('/debts/$receivableId');
@@ -623,7 +631,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     await ref.read(debtsControllerProvider.notifier).refresh();
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // \u2500\u2500\u2500 Helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
   String? _resolveSelectedReceivable(
       List<LocalReceivableRecord> openReceivables) {
@@ -737,7 +745,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 }
 
-// ── Stats row ───────────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Stats row \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 // ignore: unused_element
 class _StatsRow extends StatelessWidget {
@@ -886,7 +894,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── Quick actions row ────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Quick actions row \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow({
@@ -1001,7 +1009,7 @@ class _QuickTile extends StatelessWidget {
   }
 }
 
-// ── Action sections list (grouped card) ─────────────────────────────────────
+// \u2500\u2500\u2500 Action sections list (grouped card) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _ActionSectionsList extends StatelessWidget {
   const _ActionSectionsList({
@@ -1199,7 +1207,7 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
-// ── Add customer form ─────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Add customer form \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _AddCustomerForm extends StatelessWidget {
   const _AddCustomerForm({
@@ -1252,7 +1260,7 @@ class _AddCustomerForm extends StatelessWidget {
   }
 }
 
-// ── Create debt form ──────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Create debt form \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _CreateDebtForm extends StatelessWidget {
   const _CreateDebtForm({
@@ -1282,7 +1290,7 @@ class _CreateDebtForm extends StatelessWidget {
     return Column(
       children: [
         DropdownButtonFormField<String>(
-          initialValue: selectedCustomerId,
+          value: selectedCustomerId,
           decoration: InputDecoration(
             labelText: 'Customer',
             prefixIcon: const Icon(Icons.person_outline_rounded,
@@ -1304,7 +1312,7 @@ class _CreateDebtForm extends StatelessWidget {
               ? [
                   const DropdownMenuItem(
                       value: null,
-                      child: Text('No customers yet — add one above'))
+                      child: Text('No customers yet \u2014 add one above'))
                 ]
               : customers
                   .map((c) => DropdownMenuItem(
@@ -1368,7 +1376,7 @@ class _CreateDebtForm extends StatelessWidget {
   }
 }
 
-// ── Record payment form ───────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Record payment form \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _RecordPaymentForm extends StatelessWidget {
   const _RecordPaymentForm({
@@ -1396,7 +1404,7 @@ class _RecordPaymentForm extends StatelessWidget {
     return Column(
       children: [
         DropdownButtonFormField<String>(
-          initialValue: selectedReceivableId,
+          value: selectedReceivableId,
           decoration: InputDecoration(
             labelText: 'Open debt',
             prefixIcon: const Icon(Icons.person_outline_rounded,
@@ -1423,7 +1431,7 @@ class _RecordPaymentForm extends StatelessWidget {
                   .map((r) => DropdownMenuItem(
                         value: r.receivableId,
                         child: Text(
-                          '${r.customerName} — \u20B5${r.outstandingAmount}',
+                          '${r.customerName} \u2014 \u20B5${r.outstandingAmount}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ))
@@ -1432,7 +1440,7 @@ class _RecordPaymentForm extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          initialValue: paymentMethod,
+          value: paymentMethod,
           decoration: InputDecoration(
             labelText: 'Payment method',
             prefixIcon: const Icon(Icons.payments_outlined,
@@ -1493,7 +1501,7 @@ class _RecordPaymentForm extends StatelessWidget {
   }
 }
 
-// ── Shared form field ─────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Shared form field \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _FormField extends StatelessWidget {
   const _FormField({
@@ -1550,7 +1558,7 @@ class _FormField extends StatelessWidget {
   }
 }
 
-// ── Search bar ────────────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Search bar \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.onChanged, required this.onClear});
@@ -1564,7 +1572,7 @@ class _SearchBar extends StatelessWidget {
       onChanged: onChanged,
       style: const TextStyle(fontSize: 14, color: AppColors.ink),
       decoration: InputDecoration(
-        hintText: 'Search by customer name…',
+        hintText: 'Search by customer name\u2026',
         prefixIcon:
             const Icon(Icons.search_rounded, color: AppColors.muted, size: 20),
         suffixIcon: IconButton(
@@ -1589,7 +1597,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Empty state ────────────────────────────────────────────────────────────────
+// \u2500\u2500\u2500 Empty state \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 class _EmptyDebts extends StatelessWidget {
   const _EmptyDebts({required this.hasSearch});
