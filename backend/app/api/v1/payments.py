@@ -18,6 +18,7 @@ from app.schemas.payment import (
     PaymentVerifyOut,
     SaleMomoChargeIn,
     SaleMomoChargeOut,
+    SaleMomoOtpIn,
     SalePaymentInitiateIn,
     SalePaymentInitiateOut,
 )
@@ -228,6 +229,49 @@ def initiate_sale_momo_charge(
         status=charged.status,
         sale_id=charged.sale_id,
         display_text=charged.display_text,
+        needs_otp=charged.needs_otp,
+    )
+
+
+@router.post("/{payment_id}/submit-momo-otp", response_model=PaymentVerifyOut)
+def submit_sale_momo_otp(
+    payment_id: UUID,
+    payload: SaleMomoOtpIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> PaymentVerifyOut:
+    service = PaymentService(db=db)
+    try:
+        out = service.submit_sale_momo_otp(
+            user_id=current_user.id,
+            payment_id=payment_id,
+            otp=payload.otp,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return PaymentVerifyOut(
+        payment_id=out.payment_id,
+        sale_id=out.sale_id,
+        provider_payment_status=out.provider_payment_status,
+        sale_payment_status=out.sale_payment_status,
+        paystack_transaction_status=out.paystack_transaction_status,
     )
 
 

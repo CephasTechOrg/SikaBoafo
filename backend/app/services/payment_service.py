@@ -707,58 +707,13 @@ class PaymentService:
             secret_key=secret_key,
             reference=str(payment.provider_reference).strip(),
         )
-
-        verified_amount = self._kobo_to_money(verified.amount_kobo)
-        expected_amount = self._money(sale.total_amount)
-        paystack_status = verified.status.strip().lower()
-
-        if paystack_status == "success":
-            if verified_amount is not None and verified_amount >= expected_amount:
-                payment.status = PROVIDER_PAYMENT_SUCCEEDED
-                payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
-                    tz=UTC
-                )
-                sale.payment_status = PAYMENT_STATUS_SUCCEEDED
-                action = "payment.succeeded"
-            else:
-                payment.status = PROVIDER_PAYMENT_FAILED
-                sale.payment_status = PAYMENT_STATUS_FAILED
-                action = "payment.failed"
-        elif paystack_status in {"failed", "abandoned", "reversed"}:
-            payment.status = PROVIDER_PAYMENT_FAILED
-            sale.payment_status = PAYMENT_STATUS_FAILED
-            action = "payment.failed"
-        else:
-            action = "payment.verify_pending"
-
-        prev_payload: dict[str, Any] = (
-            payment.raw_provider_payload
-            if isinstance(payment.raw_provider_payload, dict)
-            else {}
+        paystack_status = self._apply_paystack_verify_to_sale_payment(
+            user_id=user_id,
+            merchant=merchant,
+            payment=payment,
+            sale=sale,
+            verified=verified,
         )
-        payment.raw_provider_payload = {**prev_payload, "manual_verify": verified.raw_payload}
-        self.db.add(payment)
-        self.db.add(sale)
-        self.db.flush()
-
-        if action != "payment.verify_pending":
-            log_audit(
-                db=self.db,
-                actor_user_id=user_id,
-                business_id=merchant.id,
-                action=action,
-                entity_type="payment",
-                entity_id=payment.id,
-                meta={
-                    "provider_reference": payment.provider_reference,
-                    "sale_id": str(sale.id),
-                    "paystack_status": paystack_status,
-                    "verified_amount": str(verified_amount)
-                    if verified_amount is not None
-                    else None,
-                    "expected_amount": str(expected_amount),
-                },
-            )
 
         self.db.commit()
         self.db.refresh(payment)

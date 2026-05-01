@@ -378,6 +378,7 @@ def test_initiate_sale_momo_charge_uses_paystack_charge_and_atl_maps_to_tgo() ->
         body = response.json()
         assert body["provider_reference"] == "PSK_MOMO_REF_1"
         assert body["display_text"] == "Approve on your phone"
+        assert body.get("needs_otp") is False
         kwargs = mocked_charge.call_args.kwargs
         assert kwargs["provider"] == "tgo"
         assert kwargs["phone"] == "0551234987"
@@ -386,6 +387,91 @@ def test_initiate_sale_momo_charge_uses_paystack_charge_and_atl_maps_to_tgo() ->
             sale = db.scalar(select(Sale).where(Sale.id == sale_id))
             assert sale is not None
             assert sale.payment_status == PAYMENT_STATUS_PENDING_PROVIDER
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_initiate_sale_momo_charge_send_otp_sets_needs_otp() -> None:
+    env = _configure_env()
+    client, _, _, sale_id = _build_sqlite_test_stack()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.charge_mobile_money",
+            return_value=PaystackChargeResult(
+                reference="PSK_MOMO_OTP",
+                status="send_otp",
+                display_text="Dial *110# and enter the voucher as OTP",
+                raw_payload={"status": True, "data": {"reference": "PSK_MOMO_OTP"}},
+            ),
+        ):
+            response = client.post(
+                f"/api/v1/payments/sales/{sale_id}/momo-charge",
+                json={"phone": "0201234567", "provider": "vod"},
+            )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["needs_otp"] is True
+        assert "voucher" in (body.get("display_text") or "").lower()
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_submit_sale_momo_otp_then_verify_succeeds() -> None:
+    env = _configure_env()
+    client, session_local, _, sale_id = _build_sqlite_test_stack()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.charge_mobile_money",
+            return_value=PaystackChargeResult(
+                reference="PSK_MOMO_OTP2",
+                status="send_otp",
+                display_text=None,
+                raw_payload={"status": True, "data": {"reference": "PSK_MOMO_OTP2"}},
+            ),
+        ):
+            r1 = client.post(
+                f"/api/v1/payments/sales/{sale_id}/momo-charge",
+                json={"phone": "0201234567", "provider": "vod"},
+            )
+        assert r1.status_code == 200
+        payment_id = r1.json()["payment_id"]
+
+        with (
+            patch(
+                "app.integrations.paystack.client.PaystackClient.submit_charge_otp",
+                return_value=PaystackChargeResult(
+                    reference="PSK_MOMO_OTP2",
+                    status="success",
+                    display_text=None,
+                    raw_payload={"status": True, "data": {"status": "success"}},
+                ),
+            ) as mocked_otp,
+            patch(
+                "app.integrations.paystack.client.PaystackClient.verify_transaction",
+                return_value=PaystackVerifyResult(
+                    reference="PSK_MOMO_OTP2",
+                    status="success",
+                    amount_kobo=8500,
+                    paid_at="2020-01-01T12:00:00.000Z",
+                    raw_payload={"status": True, "data": {"status": "success"}},
+                ),
+            ),
+        ):
+            r2 = client.post(
+                f"/api/v1/payments/{payment_id}/submit-momo-otp",
+                json={"otp": "482910"},
+            )
+
+        assert r2.status_code == 200
+        assert r2.json()["sale_payment_status"] == PAYMENT_STATUS_SUCCEEDED
+        assert mocked_otp.call_args.kwargs["otp"] == "482910"
+
+        with session_local() as db:
+            sale = db.scalar(select(Sale).where(Sale.id == sale_id))
+            assert sale is not None
+            assert sale.payment_status == PAYMENT_STATUS_SUCCEEDED
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()
