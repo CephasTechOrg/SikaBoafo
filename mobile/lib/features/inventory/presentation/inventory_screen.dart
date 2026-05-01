@@ -196,7 +196,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           )
                         else if (items.isEmpty)
                           _EmptyCard(
-                            onAdd: () => setState(() => _showForm = true),
+                            onAdd: () => _openAddItemSheet(context),
                           )
                         else if (filteredActive.isEmpty && activeItems.isEmpty)
                           _EmptyActiveCard(

@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 
@@ -13,7 +12,6 @@ import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
-import '../../../shared/widgets/data_freshness_label.dart';
 import '../../../shared/widgets/stale_banner.dart';
 
 import '../../inventory/data/inventory_api.dart';
@@ -24,7 +22,6 @@ import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 import '../providers/sales_cart_provider.dart';
 import 'widgets/empty_card.dart';
-import 'widgets/hero_stat_chip.dart';
 import 'widgets/sales_search_bar.dart';
 import 'widgets/sales_tab_bar.dart';
 import 'widgets/section_label.dart';
@@ -40,6 +37,8 @@ import 'widgets/review_sale_sheet.dart';
 import 'widgets/edit_sale_sheet.dart';
 import 'widgets/void_sale_sheet.dart';
 import 'widgets/recent_sale_tile.dart';
+import 'widgets/sales_header.dart';
+import 'utils/sales_ui_utils.dart';
 
 
 
@@ -119,24 +118,24 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
     final itemCount = cart.qtyByItemId.values.fold(0, (a, b) => a + b);
     final totalAmount = _calculateTotal(allItems);
-    final hasItems = _parseTotal(totalAmount) > 0;
+    final hasItems = SalesUiUtils.parseTotal(totalAmount) > 0;
     final visibleSales = recentSales.where((sale) => !sale.isVoided).toList();
     final historySales = _showVoided ? recentSales : visibleSales;
     final todaySales = visibleSales.where((sale) {
       final createdAt =
           DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
-      return _isSameLocalDay(createdAt, DateTime.now());
+      return SalesUiUtils.isSameLocalDay(createdAt, DateTime.now());
     }).toList(growable: false);
     final todayRevenueMinor = todaySales.fold<int>(
       0,
-      (sum, sale) => sum + _parseTotal(sale.totalAmount),
+      (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount),
     );
     final cashTotalMinor = todaySales
         .where((s) => s.paymentMethodLabel == 'cash')
-        .fold<int>(0, (sum, s) => sum + _parseTotal(s.totalAmount));
+        .fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
     final momoTotalMinor = todaySales
         .where((s) => s.paymentMethodLabel == 'mobile_money')
-        .fold<int>(0, (sum, s) => sum + _parseTotal(s.totalAmount));
+        .fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -144,216 +143,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         decoration: const BoxDecoration(color: AppColors.canvas),
         child: Column(
           children: [
-            Container(
-              decoration: const BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x1A0F172A),
-                    blurRadius: 24,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Layer 1 — deep anchor: rich forest at bottom-left,
-                        // bright emerald toward top-right
-                        const DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color(0xFF041C0B),
-                                Color(0xFF083A1A),
-                                Color(0xFF0F5A30),
-                                Color(0xFF196E3D),
-                              ],
-                              stops: [0.0, 0.28, 0.62, 1.0],
-                              begin: Alignment.bottomLeft,
-                              end: Alignment.topRight,
-                            ),
-                          ),
-                        ),
-                        // Layer 2 — vivid emerald bloom, top-right quadrant
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(0.68, -0.72),
-                              radius: 0.92,
-                              colors: [
-                                const Color(0xFF27A84E).withValues(alpha: 0.56),
-                                const Color(0xFF1A7A38).withValues(alpha: 0.22),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.45, 1.0],
-                            ),
-                          ),
-                        ),
-                        // Layer 3 — secondary warm glow, center
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(-0.10, 0.0),
-                              radius: 1.2,
-                              colors: [
-                                const Color(0xFF0D6030).withValues(alpha: 0.35),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 1.0],
-                            ),
-                          ),
-                        ),
-                        // Layer 4 — subtle vignette for depth
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF010A04).withValues(alpha: 0.36),
-                                Colors.transparent,
-                                const Color(0xFF010A04).withValues(alpha: 0.12),
-                              ],
-                              stops: const [0.0, 0.50, 1.0],
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                            ),
-                          ),
-                        ),
-                        // Layer 5 — top-edge sheen for premium depth
-                        const Positioned(
-                          left: 0,
-                          right: 0,
-                          top: 0,
-                          height: 1.5,
-                          child: ColoredBox(color: Color(0x22FFFFFF)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    right: -10,
-                    bottom: -8,
-                    child: Opacity(
-                      opacity: 0.42,
-                      child: Image.asset(
-                        'assets/images/sales.png',
-                        width: 185,
-                        height: 185,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                  SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.point_of_sale_rounded,
-                                  color: Colors.white,
-                                  size: 17,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Sales',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.2,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  DataFreshnessLabel(
-                                    kvKey: KvCacheRepository.kSalesTs,
-                                    color: AppColors.heroSubtitle,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  "TODAY'S REVENUE",
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.65),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _formatMinor(todayRevenueMinor, symbol: '₵'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w900,
-                                    fontFamily: 'Constantia',
-                                    letterSpacing: -0.8,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              HeroStatChip(
-                                icon: Icons.receipt_long_rounded,
-                                value: '${todaySales.length}',
-                                label: 'txns today',
-                              ),
-                              const SizedBox(width: 8),
-                              HeroStatChip(
-                                icon: Icons.payments_rounded,
-                                value:
-                                    _formatMinor(cashTotalMinor, symbol: '₵'),
-                                label: 'Cash',
-                              ),
-                              const SizedBox(width: 8),
-                              HeroStatChip(
-                                icon: Icons.phone_android_rounded,
-                                value:
-                                    _formatMinor(momoTotalMinor, symbol: '₵'),
-                                label: 'MoMo',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            SalesHeader(
+              todayRevenueMinor: todayRevenueMinor,
+              todayTxnsCount: todaySales.length,
+              cashTotalMinor: cashTotalMinor,
+              momoTotalMinor: momoTotalMinor,
             ),
             Expanded(
               child: Transform.translate(
@@ -654,15 +448,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
 
-  String _formatMinor(int minor, {String symbol = 'GHS '}) {
-    final value = minor / 100;
-    return NumberFormat.currency(symbol: symbol, decimalDigits: 2)
-        .format(value);
-  }
 
-  String _formatMajor(String value, {String symbol = 'GHS '}) {
-    return _formatMinor(_parseTotal(value), symbol: symbol);
-  }
 
   Future<void> _showCheckoutSheet({
     required List<LocalInventoryItem> items,
@@ -670,7 +456,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String totalAmount,
     required bool isBusy,
   }) async {
-    if (_parseTotal(totalAmount) <= 0 || isBusy) return;
+    if (SalesUiUtils.parseTotal(totalAmount) <= 0 || isBusy) return;
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -680,7 +466,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         itemCount: itemCount,
         totalAmount: totalAmount,
-        formatMajor: _formatMajor,
+        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
         onRecordCash: (method) => _recordSale(
           items: items,
           paymentMethodLabel: method,
@@ -716,34 +502,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       final item = itemById[entry.key];
       if (item == null) continue;
       final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
-      totalMinor += _moneyToMinor(price) * qty;
+      totalMinor += SalesUiUtils.moneyToMinor(price) * qty;
     }
     final major = totalMinor ~/ 100;
     final minor = (totalMinor % 100).toString().padLeft(2, '0');
     return '$major.$minor';
   }
 
-  int _parseTotal(String value) {
-    final parts = value.split('.');
-    final major = int.tryParse(parts[0]) ?? 0;
-    final minor =
-        parts.length == 2 ? (int.tryParse(parts[1].padRight(2, '0')) ?? 0) : 0;
-    return major * 100 + minor;
-  }
 
-  int _moneyToMinor(String value) {
-    final raw = value.trim();
-    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-    if (match == null) return 0;
-    final parts = raw.split('.');
-    final major = int.parse(parts[0]);
-    final decimals = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-    return (major * 100) + int.parse(decimals);
-  }
 
-  bool _isSameLocalDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
 
   Future<bool> _recordSale({
     required List<LocalInventoryItem> items,
@@ -1022,9 +789,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         noteController: _noteCtrl,
         calculateTotal: _calculateTotal,
-        formatMajor: _formatMajor,
-        formatMinor: _formatMinor,
-        moneyToMinor: _moneyToMinor,
+        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
+        formatMinor: SalesUiUtils.formatMinor,
+        moneyToMinor: SalesUiUtils.moneyToMinor,
         onProceedToCheckout: () async {
           if (!mounted) return;
           await _showCheckoutSheet(
@@ -1150,7 +917,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         itemId: row.itemId,
         itemName: row.itemName,
         qty: row.quantitySold,
-        totalMinor: _moneyToMinorSafe(row.salesTotal),
+        totalMinor: SalesUiUtils.moneyToMinorSafe(row.salesTotal),
       );
     }
     for (final row in pending) {
@@ -1184,21 +951,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             itemId: row.itemId,
             itemName: row.itemName,
             quantitySold: row.qty,
-            salesTotal: minorToMoney(row.totalMinor),
+            salesTotal: SalesUiUtils.minorToMoney(row.totalMinor),
           ),
         )
         .toList(growable: false);
   }
 
-  int _moneyToMinorSafe(String value) {
-    final raw = value.trim();
-    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-    if (match == null) return 0;
-    final parts = raw.split('.');
-    final major = int.tryParse(parts[0]) ?? 0;
-    final decimals = parts.length == 2 ? (parts[1].padRight(2, '0')) : '00';
-    return (major * 100) + (int.tryParse(decimals) ?? 0);
-  }
 }
 
 class _TopAgg {

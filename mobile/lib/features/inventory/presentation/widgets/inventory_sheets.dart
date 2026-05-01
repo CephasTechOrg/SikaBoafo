@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../../shared/widgets/product_image_catalog.dart';
-import '../data/inventory_api.dart';
-import '../providers/inventory_providers.dart';
+import '../../data/inventory_api.dart';
+import '../../data/inventory_repository.dart';
+import '../../providers/inventory_providers.dart';
 
 class InventoryItemDetailSheet extends StatelessWidget {
   const InventoryItemDetailSheet({
