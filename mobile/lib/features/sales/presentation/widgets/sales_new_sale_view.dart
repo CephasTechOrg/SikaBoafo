@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
-import '../../inventory/data/inventory_repository.dart';
+import '../../../inventory/data/inventory_repository.dart';
 import '../../providers/sales_cart_provider.dart';
 import 'empty_card.dart';
 import 'item_card.dart';
@@ -63,75 +63,119 @@ class SalesNewSaleView extends ConsumerWidget {
             )
           else ...[
             if (selectedItems.isNotEmpty) ...[
-              PremiumPanel(
-                title: 'In Cart',
-                trailing: Text(
-                  '${selectedItems.length} items',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
-                ),
-                child: ItemGrid(
-                  children: selectedItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: cart.qtyByItemId[item.id] ?? 0,
-                          priceOverride: cart.priceOverrideByItemId[item.id],
-                          isSelected: true,
-                          onMinus: () => cartNotifier.decrementQty(item.id),
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'In Cart',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
-                      )
-                      .toList(growable: false),
-                ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${selectedItems.length} items',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  PremiumPanel(
+                    child: ItemGrid(
+                      children: selectedItems
+                          .map(
+                            (item) => ItemCard(
+                              item: item,
+                              qty: cart.qtyByItemId[item.id] ?? 0,
+                              priceOverride: cart.priceOverrideByItemId[item.id],
+                              isSelected: true,
+                              onMinus: () => cartNotifier.decrementQty(item.id),
+                              onPlus: () => cartNotifier.incrementQty(item),
+                              onPriceTap: () => onPriceTap(item),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],
             if (quickAddItems.isNotEmpty) ...[
-              PremiumPanel(
-                title: 'Quick Add',
-                child: ItemGrid(
-                  children: quickAddItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: 0,
-                          priceOverride: null,
-                          isSelected: false,
-                          onMinus: () {},
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Quick Add',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  PremiumPanel(
+                    child: ItemGrid(
+                      children: quickAddItems
+                          .map(
+                            (item) => ItemCard(
+                              item: item,
+                              qty: 0,
+                              priceOverride: null,
+                              isSelected: false,
+                              onMinus: () {},
+                              onPlus: () => cartNotifier.incrementQty(item),
+                              onPriceTap: () => onPriceTap(item),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],
             if (regularUnselectedItems.isNotEmpty) ...[
-              PremiumPanel(
-                title: selectedItems.isNotEmpty
-                    ? 'Add More Products'
-                    : 'Available Products',
-                child: ItemGrid(
-                  children: regularUnselectedItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: 0,
-                          priceOverride: null,
-                          isSelected: false,
-                          onMinus: () {},
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selectedItems.isNotEmpty
+                        ? 'Add More Products'
+                        : 'Available Products',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  PremiumPanel(
+                    child: ItemGrid(
+                      children: regularUnselectedItems
+                          .map(
+                            (item) => ItemCard(
+                              item: item,
+                              qty: 0,
+                              priceOverride: null,
+                              isSelected: false,
+                              onMinus: () {},
+                              onPlus: () => cartNotifier.incrementQty(item),
+                              onPriceTap: () => onPriceTap(item),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
               ),
             ],
             if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
