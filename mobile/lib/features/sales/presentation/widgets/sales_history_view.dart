@@ -25,51 +25,53 @@ class SalesHistoryView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final salesAsync = ref.watch(salesControllerProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Recent Transactions',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppColors.ink,
-                letterSpacing: -0.2,
+    return PremiumReveal(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Recent Transactions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                  letterSpacing: -0.2,
+                ),
               ),
-            ),
-            const Spacer(),
-            FilterChip(
-              label: const Text('Show voided'),
-              selected: showVoided,
-              labelStyle: TextStyle(
-                fontSize: 12,
-                color: showVoided ? Colors.white : AppColors.ink,
-                fontWeight: FontWeight.w600,
+              const Spacer(),
+              FilterChip(
+                label: const Text('Show voided'),
+                selected: showVoided,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  color: showVoided ? Colors.white : AppColors.ink,
+                  fontWeight: FontWeight.w600,
+                ),
+                selectedColor: AppColors.ink,
+                checkmarkColor: Colors.white,
+                onSelected: isBusy ? null : onShowVoidedChanged,
               ),
-              selectedColor: AppColors.ink,
-              checkmarkColor: Colors.white,
-              onSelected: isBusy ? null : onShowVoidedChanged,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (salesAsync.isLoading && historySales.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (historySales.isEmpty)
-          EmptyCard(
-            icon: Icons.receipt_long_outlined,
-            message: showVoided
-                ? 'No transactions found.'
-                : 'No active transactions. Switch to "New Sale" to start selling.',
-          )
-        else
-          ...historySales.take(15).map(buildSaleTile),
-      ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (salesAsync.isLoading && historySales.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (historySales.isEmpty)
+            EmptyCard(
+              icon: Icons.receipt_long_outlined,
+              message: showVoided
+                  ? 'No transactions found.'
+                  : 'No active transactions. Switch to "New Sale" to start selling.',
+            )
+          else
+            ...historySales.take(15).map(buildSaleTile),
+        ],
+      ),
     );
   }
 }

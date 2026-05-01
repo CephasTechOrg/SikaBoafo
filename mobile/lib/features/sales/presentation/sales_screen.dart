@@ -21,13 +21,8 @@ import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 import '../providers/sales_cart_provider.dart';
-import 'widgets/empty_card.dart';
-import 'widgets/sales_search_bar.dart';
 import 'widgets/sales_tab_bar.dart';
-import 'widgets/section_label.dart';
-import 'widgets/item_card.dart';
 import 'widgets/sales_bottom_bar.dart';
-import 'widgets/products_header.dart';
 import '../../settings/presentation/connect_paystack_screen.dart';
 import 'widgets/paystack_momo_sheet.dart';
 import 'widgets/paystack_qr_sheet.dart';
@@ -67,7 +62,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(salesCartProvider);
-    final cartNotifier = ref.read(salesCartProvider.notifier);
 
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);

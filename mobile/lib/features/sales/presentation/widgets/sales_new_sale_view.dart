@@ -35,111 +35,113 @@ class SalesNewSaleView extends ConsumerWidget {
     final cart = ref.watch(salesCartProvider);
     final cartNotifier = ref.read(salesCartProvider.notifier);
 
-    return Column(
-      children: [
-        SalesSearchBar(
-          controller: searchCtrl,
-          hasQuery: cart.searchQuery.isNotEmpty,
-          onChanged: (v) {
-            searchCtrl.value = searchCtrl.value.copyWith(text: v.trim());
-            ref.read(salesCartProvider.notifier).setSearchQuery(v.trim());
-          },
-          onClear: () {
-            searchCtrl.clear();
-            ref.read(salesCartProvider.notifier).setSearchQuery('');
-          },
-        ),
-        const SizedBox(height: 16),
-        ProductsHeader(
-          selectedCount: selectedItems.length,
-          totalCount: allItems.length,
-        ),
-        const SizedBox(height: 12),
-        if (allItems.isEmpty)
-          const EmptyCard(
-            icon: Icons.inventory_2_outlined,
-            message: 'No inventory items. Add stock in Inventory first.',
-          )
-        else ...[
-          if (selectedItems.isNotEmpty) ...[
-            PremiumPanel(
-              title: 'In Cart',
-              trailing: Text(
-                '${selectedItems.length} items',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
+    return PremiumReveal(
+      child: Column(
+        children: [
+          SalesSearchBar(
+            controller: searchCtrl,
+            hasQuery: cart.searchQuery.isNotEmpty,
+            onChanged: (v) {
+              searchCtrl.value = searchCtrl.value.copyWith(text: v.trim());
+              ref.read(salesCartProvider.notifier).setSearchQuery(v.trim());
+            },
+            onClear: () {
+              searchCtrl.clear();
+              ref.read(salesCartProvider.notifier).setSearchQuery('');
+            },
+          ),
+          const SizedBox(height: 16),
+          ProductsHeader(
+            selectedCount: selectedItems.length,
+            totalCount: allItems.length,
+          ),
+          const SizedBox(height: 12),
+          if (allItems.isEmpty)
+            const EmptyCard(
+              icon: Icons.inventory_2_outlined,
+              message: 'No inventory items. Add stock in Inventory first.',
+            )
+          else ...[
+            if (selectedItems.isNotEmpty) ...[
+              PremiumPanel(
+                title: 'In Cart',
+                trailing: Text(
+                  '${selectedItems.length} items',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                  ),
+                ),
+                child: ItemGrid(
+                  children: selectedItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: cart.qtyByItemId[item.id] ?? 0,
+                          priceOverride: cart.priceOverrideByItemId[item.id],
+                          isSelected: true,
+                          onMinus: () => cartNotifier.decrementQty(item.id),
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
+                        ),
+                      )
+                      .toList(growable: false),
                 ),
               ),
-              child: ItemGrid(
-                children: selectedItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: cart.qtyByItemId[item.id] ?? 0,
-                        priceOverride: cart.priceOverrideByItemId[item.id],
-                        isSelected: true,
-                        onMinus: () => cartNotifier.decrementQty(item.id),
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
-                    .toList(growable: false),
+              const SizedBox(height: 16),
+            ],
+            if (quickAddItems.isNotEmpty) ...[
+              PremiumPanel(
+                title: 'Quick Add',
+                child: ItemGrid(
+                  children: quickAddItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: 0,
+                          priceOverride: null,
+                          isSelected: false,
+                          onMinus: () {},
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (quickAddItems.isNotEmpty) ...[
-            PremiumPanel(
-              title: 'Quick Add',
-              child: ItemGrid(
-                children: quickAddItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: 0,
-                        priceOverride: null,
-                        isSelected: false,
-                        onMinus: () {},
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
-                    .toList(growable: false),
+              const SizedBox(height: 16),
+            ],
+            if (regularUnselectedItems.isNotEmpty) ...[
+              PremiumPanel(
+                title: selectedItems.isNotEmpty
+                    ? 'Add More Products'
+                    : 'Available Products',
+                child: ItemGrid(
+                  children: regularUnselectedItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: 0,
+                          priceOverride: null,
+                          isSelected: false,
+                          onMinus: () {},
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (regularUnselectedItems.isNotEmpty) ...[
-            PremiumPanel(
-              title: selectedItems.isNotEmpty
-                  ? 'Add More Products'
-                  : 'Available Products',
-              child: ItemGrid(
-                children: regularUnselectedItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: 0,
-                        priceOverride: null,
-                        isSelected: false,
-                        onMinus: () {},
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
-                    .toList(growable: false),
+            ],
+            if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
+              EmptyCard(
+                icon: Icons.search_off_rounded,
+                message: 'No items match "${cart.searchQuery}".',
               ),
-            ),
           ],
-          if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
-            EmptyCard(
-              icon: Icons.search_off_rounded,
-              message: 'No items match "${cart.searchQuery}".',
-            ),
         ],
-      ],
+      ),
     );
   }
 }
