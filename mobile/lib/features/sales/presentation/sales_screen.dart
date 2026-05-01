@@ -38,6 +38,8 @@ import 'widgets/edit_sale_sheet.dart';
 import 'widgets/void_sale_sheet.dart';
 import 'widgets/recent_sale_tile.dart';
 import 'widgets/sales_header.dart';
+import 'widgets/sales_new_sale_view.dart';
+import 'widgets/sales_history_view.dart';
 import 'utils/sales_ui_utils.dart';
 
 
@@ -216,200 +218,27 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 10),
-                                      if (_activeTab ==
-                                          SalesViewTab.newSale) ...[
-                                        SalesSearchBar(
-                                          controller: _searchCtrl,
-                                          hasQuery: cart.searchQuery.isNotEmpty,
-                                          onChanged: (v) {
-                                            _searchCtrl.value = _searchCtrl.value.copyWith(text: v.trim());
-                                            ref.read(salesCartProvider.notifier).setSearchQuery(v.trim());
+                                      if (_activeTab == SalesViewTab.newSale)
+                                        SalesNewSaleView(
+                                          searchCtrl: _searchCtrl,
+                                          allItems: allItems,
+                                          filteredItems: filtered,
+                                          selectedItems: selectedItems,
+                                          quickAddItems: quickAddItems,
+                                          regularUnselectedItems: regularUnselectedItems,
+                                          onPriceTap: _showPriceOverrideDialog,
+                                        )
+                                      else
+                                        SalesHistoryView(
+                                          showVoided: _showVoided,
+                                          onShowVoidedChanged: (value) async {
+                                            setState(() => _showVoided = value);
+                                            await ref.read(salesControllerProvider.notifier).refresh(includeVoided: value);
                                           },
-                                          onClear: () {
-                                            _searchCtrl.clear();
-                                            ref.read(salesCartProvider.notifier).setSearchQuery('');
-                                          },
+                                          historySales: historySales,
+                                          buildSaleTile: _buildRecentSaleTile,
+                                          isBusy: isBusy,
                                         ),
-                                        const SizedBox(height: 8),
-                                        ProductsHeader(
-                                          selectedCount: selectedItems.length,
-                                          totalCount: allItems.length,
-                                        ),
-                                        const SizedBox(height: 5),
-                                        if (allItems.isEmpty)
-                                          const EmptyCard(
-                                            icon: Icons.inventory_2_outlined,
-                                            message:
-                                                'No inventory items. Add stock in Inventory first.',
-                                          )
-                                        else ...[
-                                          if (selectedItems.isNotEmpty) ...[
-                                            SectionLabel(
-                                              label:
-                                                  'In cart (${selectedItems.length})',
-                                            ),
-                                            const SizedBox(height: 7),
-                                            ItemGrid(
-                                              children: selectedItems
-                                                  .map(
-                                                    (item) => ItemCard(
-                                                      item: item,
-                                                      qty: cart.qtyByItemId[
-                                                              item.id] ??
-                                                          0,
-                                                      priceOverride:
-                                                          cart.priceOverrideByItemId[
-                                                              item.id],
-                                                      isSelected: true,
-                                                      onMinus: () => setState(
-                                                        () => cartNotifier.decrementQty(
-                                                          item.id,
-                                                        ),
-                                                      ),
-                                                      onPlus: () => setState(
-                                                        () => cartNotifier.incrementQty(
-                                                          item,
-                                                        ),
-                                                      ),
-                                                      onPriceTap: () =>
-                                                          _showPriceOverrideDialog(
-                                                        item,
-                                                      ),
-                                                    ),
-                                                  )
-                                                  .toList(growable: false),
-                                            ),
-                                            const SizedBox(height: 8),
-                                          ],
-                                          // Quick Add: Top 3 selling items.
-                                          if (quickAddItems.isNotEmpty) ...[
-                                            const SectionLabel(
-                                              label: 'Quick Add',
-                                            ),
-                                            const SizedBox(height: 7),
-                                            ItemGrid(
-                                              children: quickAddItems
-                                                  .map(
-                                                    (item) => ItemCard(
-                                                      item: item,
-                                                      qty: 0,
-                                                      priceOverride: null,
-                                                      isSelected: false,
-                                                      onMinus: () {},
-                                                      onPlus: () => setState(
-                                                        () => cartNotifier.incrementQty(
-                                                          item,
-                                                        ),
-                                                      ),
-                                                      onPriceTap: () =>
-                                                          _showPriceOverrideDialog(
-                                                        item,
-                                                      ),
-                                                    ),
-                                                  )
-                                                  .toList(growable: false),
-                                            ),
-                                            const SizedBox(height: 8),
-                                          ],
-                                          if (regularUnselectedItems
-                                              .isNotEmpty) ...[
-                                            SectionLabel(
-                                              label: selectedItems.isNotEmpty
-                                                  ? 'Add more products'
-                                                  : 'Available products',
-                                            ),
-                                            const SizedBox(height: 7),
-                                            ItemGrid(
-                                              children: regularUnselectedItems
-                                                  .map(
-                                                    (item) => ItemCard(
-                                                      item: item,
-                                                      qty: 0,
-                                                      priceOverride: null,
-                                                      isSelected: false,
-                                                      onMinus: () {},
-                                                      onPlus: () => setState(
-                                                        () => cartNotifier.incrementQty(
-                                                          item,
-                                                        ),
-                                                      ),
-                                                      onPriceTap: () =>
-                                                          _showPriceOverrideDialog(
-                                                        item,
-                                                      ),
-                                                    ),
-                                                  )
-                                                  .toList(growable: false),
-                                            ),
-                                          ],
-                                          if (filtered.isEmpty &&
-                                              cart.searchQuery.isNotEmpty)
-                                            EmptyCard(
-                                              icon: Icons.search_off_rounded,
-                                              message:
-                                                  'No items match "$cart.searchQuery".',
-                                            ),
-                                        ],
-                                        const SizedBox(height: 24),
-                                      ],
-                                      if (_activeTab ==
-                                          SalesViewTab.history) ...[
-                                        Row(
-                                          children: [
-                                            const Text(
-                                              'Recent Transactions',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.ink,
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            FilterChip(
-                                              label: const Text('Show voided'),
-                                              selected: _showVoided,
-                                              onSelected: isBusy
-                                                  ? null
-                                                  : (value) async {
-                                                      setState(() =>
-                                                          _showVoided = value);
-                                                      await ref
-                                                          .read(
-                                                            salesControllerProvider
-                                                                .notifier,
-                                                          )
-                                                          .refresh(
-                                                            includeVoided:
-                                                                value,
-                                                          );
-                                                    },
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        if (salesAsync.isLoading &&
-                                            recentSales.isEmpty)
-                                          const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: 20,
-                                            ),
-                                            child: Center(
-                                              child:
-                                                  CircularProgressIndicator(),
-                                            ),
-                                          )
-                                        else if (historySales.isEmpty)
-                                          EmptyCard(
-                                            icon: Icons.receipt_long_outlined,
-                                            message: _showVoided
-                                                ? 'No sales found yet.'
-                                                : 'No sales yet. Switch to New Sale to record your first one.',
-                                          )
-                                        else
-                                          ...historySales
-                                              .take(12)
-                                              .map(_buildRecentSaleTile),
-                                      ],
                                     ],
                                   ),
                                 ),
