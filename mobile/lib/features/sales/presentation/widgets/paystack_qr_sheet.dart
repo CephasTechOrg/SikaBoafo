@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../providers/sales_providers.dart';
@@ -104,29 +103,6 @@ class PaystackQrSheetState extends ConsumerState<PaystackQrSheet> {
       widget.checkoutUrl,
       subject: 'Payment link',
       sharePositionOrigin: origin,
-    );
-  }
-
-  Future<void> _openWhatsAppWithLink() async {
-    final uri = Uri.parse(
-      'https://wa.me/?text=${Uri.encodeComponent(widget.checkoutUrl)}',
-    );
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted || ok) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not open WhatsApp.')),
-    );
-  }
-
-  Future<void> _openFacebookShare() async {
-    final uri = Uri.parse(
-      'https://www.facebook.com/sharer/sharer.php?u='
-      '${Uri.encodeComponent(widget.checkoutUrl)}',
-    );
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted || ok) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not open Facebook.')),
     );
   }
 
@@ -266,32 +242,6 @@ class PaystackQrSheetState extends ConsumerState<PaystackQrSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Quick share',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted.withValues(alpha: 0.9),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _QuickShareChip(
-                    icon: Icons.chat_rounded,
-                    label: 'WhatsApp',
-                    onTap: _openWhatsAppWithLink,
-                  ),
-                  const SizedBox(width: 10),
-                  _QuickShareChip(
-                    icon: Icons.facebook_rounded,
-                    label: 'Facebook',
-                    onTap: _openFacebookShare,
-                  ),
-                ],
-              ),
               const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -345,52 +295,6 @@ class PaystackQrSheetState extends ConsumerState<PaystackQrSheet> {
                   foregroundColor: AppColors.inkSoft,
                 ),
                 child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickShareChip extends StatelessWidget {
-  const _QuickShareChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceAlt,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: AppColors.forest),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
-                ),
               ),
             ],
           ),
