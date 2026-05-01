@@ -50,6 +50,7 @@ class SaleMomoChargeOutDto {
     required this.status,
     required this.saleId,
     this.displayText,
+    this.needsOtp = false,
   });
 
   final String paymentId;
@@ -60,6 +61,7 @@ class SaleMomoChargeOutDto {
   final String status;
   final String saleId;
   final String? displayText;
+  final bool needsOtp;
 
   factory SaleMomoChargeOutDto.fromJson(Map<String, dynamic> json) {
     return SaleMomoChargeOutDto(
@@ -71,6 +73,7 @@ class SaleMomoChargeOutDto {
       status: (json['status'] ?? 'pending') as String,
       saleId: (json['sale_id'] ?? '') as String,
       displayText: json['display_text'] as String?,
+      needsOtp: json['needs_otp'] == true,
     );
   }
 }
@@ -176,6 +179,21 @@ class SalesPaymentsApi {
     final data = response.data;
     if (data is! Map<String, dynamic>) {
       throw const FormatException('Unexpected payment verify payload.');
+    }
+    return PaymentVerifyOutDto.fromJson(data);
+  }
+
+  Future<PaymentVerifyOutDto> submitSaleMomoOtp({
+    required String paymentId,
+    required String otp,
+  }) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/$paymentId/submit-momo-otp',
+      data: {'otp': otp},
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected submit MoMo OTP payload.');
     }
     return PaymentVerifyOutDto.fromJson(data);
   }

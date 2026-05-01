@@ -34,13 +34,16 @@ class PaystackMomoSheet extends ConsumerStatefulWidget {
 
 class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   final _phoneCtrl = TextEditingController();
+  final _otpCtrl = TextEditingController();
   final _phoneFocusNode = FocusNode();
   final GlobalKey _phoneFieldKey = GlobalKey();
   String _provider = 'mtn';
   Timer? _timer;
   bool _sending = false;
   bool _checking = false;
+  bool _submittingOtp = false;
   bool _promptSent = false;
+  bool _needsOtp = false;
   String? _paymentId;
   String? _paystackDisplayText;
   int _pollCount = 0;
@@ -77,6 +80,7 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
     _phoneFocusNode.removeListener(_onPhoneFocusChange);
     _phoneFocusNode.dispose();
     _phoneCtrl.dispose();
+    _otpCtrl.dispose();
     super.dispose();
   }
 
@@ -108,6 +112,7 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
         _promptSent = true;
         _paymentId = out.paymentId;
         _paystackDisplayText = out.displayText;
+        _needsOtp = out.needsOtp;
       });
       _startPolling();
       await _check(auto: true);
@@ -155,6 +160,41 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
     }
   }
 
+  Future<void> _submitOtp() async {
+    final paymentId = _paymentId;
+    if (paymentId == null || paymentId.isEmpty) return;
+    final code = _otpCtrl.text.trim();
+    if (code.length < 4) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter the OTP or voucher code from the customer.')),
+      );
+      return;
+    }
+    setState(() => _submittingOtp = true);
+    try {
+      final out = await ref.read(salesPaymentsApiProvider).submitSaleMomoOtp(
+            paymentId: paymentId,
+            otp: code,
+          );
+      if (!mounted) return;
+      if (out.salePaymentStatus == 'succeeded') {
+        _timer?.cancel();
+        widget.onPaymentConfirmed();
+        return;
+      }
+      setState(() => _needsOtp = false);
+      await _check(auto: true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanizeSalesPaymentsError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _submittingOtp = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -194,7 +234,11 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  _promptSent ? 'Waiting for customer approval' : 'Pay with MoMo number',
+                  !_promptSent
+                      ? 'Pay with MoMo number'
+                      : _needsOtp
+                          ? 'Enter customer verification code'
+                          : 'Waiting for customer approval',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -203,9 +247,12 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _promptSent
-                      ? 'Ask the customer to check their phone and approve the MoMo prompt.'
-                      : 'For customers without a smartphone. Enter their MoMo number and network.',
+                  !_promptSent
+                      ? 'For customers without a smartphone. Enter their MoMo number and network.'
+                      : _needsOtp
+                          ? 'Some networks send an OTP or ask the customer to dial USSD for a voucher. '
+                              'Use Paystack’s on-screen instructions, then type the code here.'
+                          : 'Ask the customer to check their phone and approve the MoMo prompt.',
                   style: const TextStyle(
                     color: AppColors.muted,
                     fontSize: 12.5,
@@ -349,6 +396,38 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                  ],
+                  if (_needsOtp) ...[
+                    TextField(
+                      controller: _otpCtrl,
+                      keyboardType: TextInputType.text,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: 'OTP or voucher code',
+                        hintText: 'From customer’s phone / USSD',
+                        filled: true,
+                        fillColor: AppColors.surfaceAlt,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: _submittingOtp ? null : _submitOtp,
+                      icon: _submittingOtp
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.verified_rounded, size: 18),
+                      label: Text(_submittingOtp ? 'Submitting…' : 'Submit code'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.forest,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
