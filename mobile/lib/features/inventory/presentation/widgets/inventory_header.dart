@@ -114,11 +114,9 @@ class InventoryHeader extends StatelessWidget {
           ),
 
           // ── Content ──────────────────────────────────────────
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 18),
-              child: Column(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 18),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Page title + freshness — clean, no icon box
@@ -190,10 +188,6 @@ class InventoryHeader extends StatelessWidget {
                         value: '$categoriesCount',
                         label: 'categories',
                       ),
-                    ],
-                  ),
-                ],
-              ),
             ),
           ),
         ],

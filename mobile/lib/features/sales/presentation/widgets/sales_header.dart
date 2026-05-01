@@ -183,8 +183,6 @@ class SalesHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
-              ),
             ),
           ),
         ],
