@@ -88,7 +88,6 @@ class _CoinsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final sales = _parse(todaySales);
     final profit = _parse(todayProfit);
-    // Profit margin as 0-1 ratio for the bar chart
     final ratio = (sales > 0) ? (profit / sales).clamp(0.0, 1.0) : 0.0;
     final pct = '${(ratio * 100).toStringAsFixed(0)}% margin';
 
@@ -114,26 +113,33 @@ class _CoinsCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
+            // ── Background Sparkline (Subtle Wave) ────────────
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.22,
+                child: CustomPaint(
+                  painter: _SparklinePainter(),
+                ),
+              ),
+            ),
             // Subtle flag pattern overlay
             Positioned.fill(
               child: Opacity(
                 opacity: 0.06,
-                child:
-                    Image.asset('assets/images/flag.png', fit: BoxFit.cover),
+                child: Image.asset('assets/images/flag.png', fit: BoxFit.cover),
               ),
             ),
-            // Coins image — anchored bottom-right, bleeds slightly off edge
+            // Coins image restored
             Positioned(
               right: -6,
               bottom: -14,
               width: 108,
               height: 108,
-              child: Image.asset('assets/images/coins.png',
-                  fit: BoxFit.contain),
+              child: Image.asset('assets/images/coins.png', fit: BoxFit.contain),
             ),
-            // Content — single column, full card minus the coins image area
+            // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 118, 16),
+              padding: const EdgeInsets.fromLTRB(16, 14, 118, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -147,8 +153,7 @@ class _CoinsCard extends StatelessWidget {
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  // FittedBox auto-scales the number down if it grows large
+                  const SizedBox(height: 4),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -156,7 +161,7 @@ class _CoinsCard extends StatelessWidget {
                       '₵$todayProfit',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 30,
+                        fontSize: 32,
                         fontWeight: FontWeight.w900,
                         fontFamily: 'Constantia',
                         letterSpacing: -0.5,
@@ -164,7 +169,7 @@ class _CoinsCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   // Animated profit margin bar
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
@@ -184,13 +189,19 @@ class _CoinsCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: const Color(0xFF7FE0A0),
                               borderRadius: BorderRadius.circular(999),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7FE0A0).withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Text(
                     pct,
                     style: TextStyle(
@@ -208,6 +219,29 @@ class _CoinsCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SparklinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF7FE0A0).withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    // A smoother, more elegant wave pattern for the background
+    path.moveTo(0, size.height * 0.7);
+    path.quadraticBezierTo(size.width * 0.2, size.height * 0.4, size.width * 0.4, size.height * 0.6);
+    path.quadraticBezierTo(size.width * 0.6, size.height * 0.8, size.width * 0.8, size.height * 0.3);
+    path.lineTo(size.width, size.height * 0.5);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─── Stat cards ───────────────────────────────────────────────────────────────
