@@ -34,6 +34,8 @@ class PaystackMomoSheet extends ConsumerStatefulWidget {
 
 class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   final _phoneCtrl = TextEditingController();
+  final _phoneFocusNode = FocusNode();
+  final GlobalKey _phoneFieldKey = GlobalKey();
   String _provider = 'mtn';
   Timer? _timer;
   bool _sending = false;
@@ -45,8 +47,35 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   static const _maxPolls = 40;
 
   @override
+  void initState() {
+    super.initState();
+    _phoneFocusNode.addListener(_onPhoneFocusChange);
+  }
+
+  void _onPhoneFocusChange() {
+    if (!_phoneFocusNode.hasFocus) return;
+    void scrollIntoView() {
+      if (!mounted || !_phoneFocusNode.hasFocus) return;
+      final ctx = _phoneFieldKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.12,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => scrollIntoView());
+    Future<void>.delayed(const Duration(milliseconds: 280), scrollIntoView);
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
+    _phoneFocusNode.removeListener(_onPhoneFocusChange);
+    _phoneFocusNode.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
@@ -128,19 +157,28 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: AppShadows.elevated,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: keyboardInset),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: AppShadows.elevated,
+            ),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -235,9 +273,17 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                 if (!_promptSent) ...[
                   const SizedBox(height: 16),
                   TextField(
+                    key: _phoneFieldKey,
                     controller: _phoneCtrl,
+                    focusNode: _phoneFocusNode,
                     keyboardType: TextInputType.phone,
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]'))],
+                    scrollPadding: EdgeInsets.only(
+                      bottom: keyboardInset + 120,
+                      left: 16,
+                      right: 16,
+                      top: 24,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Customer MoMo number',
                       hintText: widget.paystackTestMode
@@ -354,6 +400,7 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
           ),
         ),
       ),
+    ),
     );
   }
 }

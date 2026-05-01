@@ -182,32 +182,26 @@ class PaystackClient:
             },
             payload=payload,
         )
-        data = raw.get("data")
-        if raw.get("status") is not True or not isinstance(data, dict):
-            msg = str(raw.get("message") or "Paystack mobile money charge failed.")
-            raise PaystackClientError(msg, response_body=raw)
+        return _charge_result_from_raw(raw, fallback_reference=reference)
 
-        provider_reference = data.get("reference")
-        if not isinstance(provider_reference, str) or not provider_reference.strip():
-            provider_reference = reference
-
-        status_raw = data.get("status")
-        status = (
-            status_raw.strip().lower()
-            if isinstance(status_raw, str) and status_raw.strip()
-            else "pending"
+    def submit_charge_otp(
+        self,
+        *,
+        secret_key: str,
+        reference: str,
+        otp: str,
+    ) -> PaystackChargeResult:
+        """POST /charge/submit_otp — complete MoMo flows that require OTP or voucher code."""
+        url = f"{self.base_url.rstrip('/')}/charge/submit_otp"
+        raw = self._post_json(
+            url=url,
+            headers={
+                "Authorization": f"Bearer {secret_key}",
+                "Content-Type": "application/json",
+            },
+            payload={"reference": reference, "otp": otp.strip()},
         )
-
-        display_text = data.get("display_text")
-        if display_text is not None and not isinstance(display_text, str):
-            display_text = None
-
-        return PaystackChargeResult(
-            reference=provider_reference,
-            status=status,
-            display_text=display_text,
-            raw_payload=raw,
-        )
+        return _charge_result_from_raw(raw, fallback_reference=reference)
 
     def verify_transaction(
         self,
@@ -342,6 +336,39 @@ class PaystackClient:
             logger.warning("Paystack GET returned non-JSON payload: %.200s", body)
             raise PaystackClientError(msg)
         return parsed
+
+
+def _charge_result_from_raw(
+    raw: dict[str, Any],
+    *,
+    fallback_reference: str,
+) -> PaystackChargeResult:
+    data = raw.get("data")
+    if raw.get("status") is not True or not isinstance(data, dict):
+        msg = str(raw.get("message") or "Paystack charge response invalid.")
+        raise PaystackClientError(msg, response_body=raw)
+
+    provider_reference = data.get("reference")
+    if not isinstance(provider_reference, str) or not provider_reference.strip():
+        provider_reference = fallback_reference
+
+    status_raw = data.get("status")
+    status = (
+        status_raw.strip().lower()
+        if isinstance(status_raw, str) and status_raw.strip()
+        else "pending"
+    )
+
+    display_text = data.get("display_text")
+    if display_text is not None and not isinstance(display_text, str):
+        display_text = None
+
+    return PaystackChargeResult(
+        reference=provider_reference,
+        status=status,
+        display_text=display_text,
+        raw_payload=raw,
+    )
 
 
 def _parse_json(raw: str) -> dict[str, Any] | None:

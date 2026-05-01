@@ -55,6 +55,13 @@ class SaleMomoChargeOut(BaseModel):
     status: str
     sale_id: UUID
     display_text: str | None = None
+    needs_otp: bool = False
+
+
+class SaleMomoOtpIn(BaseModel):
+    """OTP or network voucher code from the customer (Paystack `send_otp` / Telecel-style flows)."""
+
+    otp: str = Field(min_length=4, max_length=32)
 
 
 class PaymentVerifyOut(BaseModel):

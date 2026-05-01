@@ -38,8 +38,10 @@ from app.core.constants import (
 from app.integrations.paystack.client import (
     PaystackClient,
     PaystackClientError,
+    PaystackVerifyResult,
 )
 from app.models.customer import Customer
+from app.models.merchant import Merchant
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.payment_webhook_event import PaymentWebhookEvent
@@ -122,6 +124,7 @@ class SaleMomoChargeSnapshot:
     status: str
     sale_id: UUID
     display_text: str | None = None
+    needs_otp: bool = False
 
 
 @dataclass(slots=True)
@@ -432,6 +435,22 @@ class PaymentService:
             },
         )
 
+        paystack_charge_status = result.status.strip().lower()
+        needs_otp = paystack_charge_status == "send_otp"
+
+        if paystack_charge_status == "success":
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=str(payment.provider_reference).strip(),
+            )
+            self._apply_paystack_verify_to_sale_payment(
+                user_id=user_id,
+                merchant=merchant,
+                payment=payment,
+                sale=sale,
+                verified=verified,
+            )
+
         self.db.commit()
         self.db.refresh(payment)
         self.db.refresh(sale)
@@ -444,6 +463,193 @@ class PaymentService:
             status=payment.status,
             sale_id=sale.id,
             display_text=result.display_text,
+            needs_otp=needs_otp,
+        )
+
+    def _apply_paystack_verify_to_sale_payment(
+        self,
+        *,
+        user_id: UUID,
+        merchant: Merchant,
+        payment: Payment,
+        sale: Sale,
+        verified: PaystackVerifyResult,
+    ) -> str:
+        """Apply Paystack transaction verify result to sale payment; flush only, no commit."""
+        verified_amount = self._kobo_to_money(verified.amount_kobo)
+        expected_amount = self._money(sale.total_amount)
+        paystack_status = verified.status.strip().lower()
+
+        if paystack_status == "success":
+            if verified_amount is not None and verified_amount >= expected_amount:
+                payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                    tz=UTC
+                )
+                sale.payment_status = PAYMENT_STATUS_SUCCEEDED
+                action = "payment.succeeded"
+            else:
+                payment.status = PROVIDER_PAYMENT_FAILED
+                sale.payment_status = PAYMENT_STATUS_FAILED
+                action = "payment.failed"
+        elif paystack_status in {"failed", "abandoned", "reversed"}:
+            payment.status = PROVIDER_PAYMENT_FAILED
+            sale.payment_status = PAYMENT_STATUS_FAILED
+            action = "payment.failed"
+        else:
+            action = "payment.verify_pending"
+
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.raw_provider_payload = {**prev_payload, "manual_verify": verified.raw_payload}
+        self.db.add(payment)
+        self.db.add(sale)
+        self.db.flush()
+
+        if action != "payment.verify_pending":
+            log_audit(
+                db=self.db,
+                actor_user_id=user_id,
+                business_id=merchant.id,
+                action=action,
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "sale_id": str(sale.id),
+                    "paystack_status": paystack_status,
+                    "verified_amount": str(verified_amount)
+                    if verified_amount is not None
+                    else None,
+                    "expected_amount": str(expected_amount),
+                },
+            )
+
+        return paystack_status
+
+    def submit_sale_momo_otp(
+        self,
+        *,
+        user_id: UUID,
+        payment_id: UUID,
+        otp: str,
+    ) -> PaymentVerifySnapshot:
+        """Submit OTP/voucher after Paystack returns ``send_otp`` on the MoMo charge."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        payment = self.db.scalar(
+            select(Payment)
+            .join(Sale, Sale.id == Payment.sale_id)
+            .where(
+                Payment.id == payment_id,
+                Sale.store_id == store.id,
+                Payment.sale_id.isnot(None),
+            )
+        )
+        if payment is None:
+            msg = "Payment not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        sale = self.db.scalar(select(Sale).where(Sale.id == payment.sale_id))
+        if sale is None:
+            msg = "Sale not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        if payment.provider_reference is None or not str(payment.provider_reference).strip():
+            msg = "Payment has no provider reference."
+            raise PaymentInitiationStateError(msg)
+
+        if (
+            payment.status == PROVIDER_PAYMENT_SUCCEEDED
+            and sale.payment_status == PAYMENT_STATUS_SUCCEEDED
+        ):
+            return PaymentVerifySnapshot(
+                payment_id=payment.id,
+                sale_id=sale.id,
+                provider_payment_status=payment.status,
+                sale_payment_status=sale.payment_status,
+                paystack_transaction_status="success",
+            )
+
+        if payment.status == PROVIDER_PAYMENT_FAILED or sale.payment_status == PAYMENT_STATUS_FAILED:
+            msg = "Payment is no longer pending."
+            raise PaymentInitiationStateError(msg)
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_payment(
+            payment=payment,
+            settings=configured,
+        )
+        charge_out = self._client(configured).submit_charge_otp(
+            secret_key=secret_key,
+            reference=str(payment.provider_reference).strip(),
+            otp=otp,
+        )
+
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.raw_provider_payload = {**prev_payload, "submit_otp_charge": charge_out.raw_payload}
+        self.db.add(payment)
+        self.db.add(sale)
+        self.db.flush()
+
+        charge_status = charge_out.status.strip().lower()
+        paystack_status: str
+
+        if charge_status == "success":
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=str(payment.provider_reference).strip(),
+            )
+            paystack_status = self._apply_paystack_verify_to_sale_payment(
+                user_id=user_id,
+                merchant=merchant,
+                payment=payment,
+                sale=sale,
+                verified=verified,
+            )
+        elif charge_status in {"failed", "abandoned", "reversed"}:
+            payment.status = PROVIDER_PAYMENT_FAILED
+            sale.payment_status = PAYMENT_STATUS_FAILED
+            self.db.add(payment)
+            self.db.add(sale)
+            self.db.flush()
+            log_audit(
+                db=self.db,
+                actor_user_id=user_id,
+                business_id=merchant.id,
+                action="payment.failed",
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "sale_id": str(sale.id),
+                    "paystack_status": charge_status,
+                    "source": "submit_otp",
+                },
+            )
+            paystack_status = charge_status
+        else:
+            paystack_status = charge_status
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(sale)
+        return PaymentVerifySnapshot(
+            payment_id=payment.id,
+            sale_id=sale.id,
+            provider_payment_status=payment.status,
+            sale_payment_status=sale.payment_status,
+            paystack_transaction_status=paystack_status,
         )
 
     def verify_sale_payment(
