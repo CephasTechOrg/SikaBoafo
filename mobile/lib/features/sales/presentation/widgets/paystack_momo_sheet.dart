@@ -36,23 +36,35 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   final _phoneCtrl = TextEditingController();
   final _otpCtrl = TextEditingController();
   final _phoneFocusNode = FocusNode();
+  final _otpFocusNode = FocusNode();
   final GlobalKey _phoneFieldKey = GlobalKey();
   String _provider = 'mtn';
   Timer? _timer;
+  Timer? _otpCooldownTimer;
   bool _sending = false;
   bool _checking = false;
   bool _submittingOtp = false;
+  bool _otpCooldownActive = false;
   bool _promptSent = false;
   bool _needsOtp = false;
   String? _paymentId;
   String? _paystackDisplayText;
   int _pollCount = 0;
   static const _maxPolls = 40;
+  static const _otpLength = 6;
+  /// After submitting an OTP, lock resubmit briefly so merchants don’t spam Paystack
+  /// while the customer’s network is still delivering the prompt.
+  static const _otpResubmitCooldown = Duration(seconds: 28);
 
   @override
   void initState() {
     super.initState();
     _phoneFocusNode.addListener(_onPhoneFocusChange);
+    _otpFocusNode.addListener(_onOtpFocusChange);
+  }
+
+  void _onOtpFocusChange() {
+    if (mounted) setState(() {});
   }
 
   void _onPhoneFocusChange() {
@@ -77,11 +89,123 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   @override
   void dispose() {
     _timer?.cancel();
+    _otpCooldownTimer?.cancel();
     _phoneFocusNode.removeListener(_onPhoneFocusChange);
+    _otpFocusNode.removeListener(_onOtpFocusChange);
     _phoneFocusNode.dispose();
+    _otpFocusNode.dispose();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
     super.dispose();
+  }
+
+  void _clearOtpFields() {
+    _otpCtrl.clear();
+  }
+
+  void _startOtpSubmitCooldown() {
+    _otpCooldownTimer?.cancel();
+    setState(() => _otpCooldownActive = true);
+    _otpCooldownTimer = Timer(_otpResubmitCooldown, () {
+      if (!mounted) return;
+      setState(() => _otpCooldownActive = false);
+    });
+  }
+
+  bool get _canSubmitOtp =>
+      !_submittingOtp &&
+      !_otpCooldownActive &&
+      _otpCtrl.text.length == _otpLength;
+
+  Widget _buildOtpOvalSlots() {
+    final text = _otpCtrl.text;
+    final focused = _otpFocusNode.hasFocus;
+    final activeIndex = focused
+        ? (text.length >= _otpLength
+            ? -1
+            : text.length.clamp(0, _otpLength - 1))
+        : -1;
+
+    return AutofillGroup(
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(_otpLength, (i) {
+              final ch = i < text.length ? text[i] : '';
+              final isActive = activeIndex >= 0 && i == activeIndex;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : 5, right: i == _otpLength - 1 ? 0 : 5),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOutCubic,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        width: isActive ? 1.5 : 1,
+                        color: isActive ? AppColors.forest : AppColors.border,
+                      ),
+                      boxShadow: isActive
+                          ? [
+                              BoxShadow(
+                                color: AppColors.forest.withValues(alpha: 0.18),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      ch,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          // Invisible field: one char per keypress, paste, autofill — avoids six separate fields.
+          Positioned.fill(
+            child: TextField(
+              controller: _otpCtrl,
+              focusNode: _otpFocusNode,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              maxLength: _otpLength,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(color: Colors.transparent, height: 0.01, fontSize: 1),
+              cursorColor: Colors.transparent,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                counterText: '',
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (_) {
+                if (mounted) setState(() {});
+              },
+              onSubmitted: (_) {
+                if (_canSubmitOtp) _submitOtp();
+              },
+            ),
+          ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _startPolling() {
@@ -114,6 +238,12 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
         _paystackDisplayText = out.displayText;
         _needsOtp = out.needsOtp;
       });
+      if (out.needsOtp) {
+        _clearOtpFields();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _otpFocusNode.requestFocus();
+        });
+      }
       _startPolling();
       await _check(auto: true);
     } catch (e) {
@@ -164,13 +294,17 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
     final paymentId = _paymentId;
     if (paymentId == null || paymentId.isEmpty) return;
     final code = _otpCtrl.text.trim();
-    if (code.length < 4) {
+    if (code.length != _otpLength) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the OTP or voucher code from the customer.')),
+        const SnackBar(
+          content: Text('Enter all 6 digits from the customer.'),
+        ),
       );
       return;
     }
+    FocusScope.of(context).unfocus();
+    var saleCompleted = false;
     setState(() => _submittingOtp = true);
     try {
       final out = await ref.read(salesPaymentsApiProvider).submitSaleMomoOtp(
@@ -179,6 +313,8 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
           );
       if (!mounted) return;
       if (out.salePaymentStatus == 'succeeded') {
+        saleCompleted = true;
+        _otpCooldownTimer?.cancel();
         _timer?.cancel();
         widget.onPaymentConfirmed();
         return;
@@ -191,7 +327,12 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
         SnackBar(content: Text(humanizeSalesPaymentsError(e))),
       );
     } finally {
-      if (mounted) setState(() => _submittingOtp = false);
+      if (mounted) {
+        setState(() => _submittingOtp = false);
+        if (!saleCompleted && _needsOtp) {
+          _startOtpSubmitCooldown();
+        }
+      }
     }
   }
 
@@ -250,8 +391,8 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                   !_promptSent
                       ? 'For customers without a smartphone. Enter their MoMo number and network.'
                       : _needsOtp
-                          ? 'Some networks send an OTP or ask the customer to dial USSD for a voucher. '
-                              'Use Paystack’s on-screen instructions, then type the code here.'
+                          ? 'Some networks send a 6-digit OTP or USSD voucher. '
+                              'Follow Paystack’s instructions, then enter the code below.'
                           : 'Ask the customer to check their phone and approve the MoMo prompt.',
                   style: const TextStyle(
                     color: AppColors.muted,
@@ -398,31 +539,44 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                     const SizedBox(height: 14),
                   ],
                   if (_needsOtp) ...[
-                    TextField(
-                      controller: _otpCtrl,
-                      keyboardType: TextInputType.text,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        labelText: 'OTP or voucher code',
-                        hintText: 'From customer’s phone / USSD',
-                        filled: true,
-                        fillColor: AppColors.surfaceAlt,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    _buildOtpOvalSlots(),
+                    const SizedBox(height: 8),
+                    Text(
+                      _otpCooldownActive
+                          ? 'Wait a moment before submitting again so the customer can receive the prompt.'
+                          : 'Tap the boxes to type. One digit per box.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: _otpCooldownActive ? AppColors.inkSoft : AppColors.muted,
+                        height: 1.35,
                       ),
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
-                      onPressed: _submittingOtp ? null : _submitOtp,
+                      onPressed: _canSubmitOtp ? _submitOtp : null,
                       icon: _submittingOtp
                           ? const SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Icon(Icons.verified_rounded, size: 18),
-                      label: Text(_submittingOtp ? 'Submitting…' : 'Submit code'),
+                          : Icon(
+                              Icons.verified_rounded,
+                              size: 18,
+                              color: _canSubmitOtp ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                            ),
+                      label: Text(
+                        _submittingOtp
+                            ? 'Submitting…'
+                            : _otpCooldownActive
+                                ? 'Wait…'
+                                : 'Submit code',
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.forest,
+                        disabledBackgroundColor: AppColors.forest.withValues(alpha: 0.45),
+                        disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
@@ -466,6 +620,7 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                 TextButton(
                   onPressed: () {
                     _timer?.cancel();
+                    _otpCooldownTimer?.cancel();
                     Navigator.of(context).pop();
                   },
                   style: TextButton.styleFrom(
