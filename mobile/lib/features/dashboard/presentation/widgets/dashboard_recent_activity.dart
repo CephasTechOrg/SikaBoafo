@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
+import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 
 class DashboardRecentActivity extends StatelessWidget {
   const DashboardRecentActivity({super.key, required this.activityAsync});
-  final AsyncValue<DashboardRecentActivityData> activityAsync;
+  final AsyncValue<List<DashboardActivity>> activityAsync;
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +46,8 @@ class DashboardRecentActivity extends StatelessWidget {
                   ),
                 ),
               ),
-              data: (data) {
-                final sales = data.recentSales;
-                if (sales.isEmpty) {
+              data: (activity) {
+                if (activity.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(32),
                     child: Center(
@@ -65,9 +66,9 @@ class DashboardRecentActivity extends StatelessWidget {
                 }
                 return Column(
                   children: [
-                    for (int i = 0; i < sales.length; i++) ...[
-                      _ActivityRow(sale: sales[i]),
-                      if (i < sales.length - 1)
+                    for (int i = 0; i < activity.length; i++) ...[
+                      _ActivityRow(activity: activity[i]),
+                      if (i < activity.length - 1)
                         const Divider(height: 1, indent: 64, color: AppColors.border),
                     ],
                   ],
@@ -82,11 +83,13 @@ class DashboardRecentActivity extends StatelessWidget {
 }
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.sale});
-  final DashboardRecentSale sale;
+  const _ActivityRow({required this.activity});
+  final DashboardActivity activity;
 
   @override
   Widget build(BuildContext context) {
+    final timeStr = DateFormat.jm().format(activity.createdAt);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -98,7 +101,13 @@ class _ActivityRow extends StatelessWidget {
               color: AppColors.canvas,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.muted),
+            child: Icon(
+              activity.activityType == 'expense'
+                  ? Icons.outbox_rounded
+                  : Icons.receipt_long_outlined,
+              size: 18,
+              color: AppColors.muted,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -106,7 +115,7 @@ class _ActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sale.customerName ?? 'Guest Customer',
+                  activity.title,
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -115,7 +124,9 @@ class _ActivityRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  sale.timeAgo,
+                  '$timeStr \u2022 ${activity.detail}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -127,7 +138,7 @@ class _ActivityRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            '₵${sale.totalAmount}',
+            '₵${activity.amount}',
             style: const TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w800,

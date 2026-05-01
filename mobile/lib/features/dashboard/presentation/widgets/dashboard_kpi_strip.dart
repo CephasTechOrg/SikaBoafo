@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
-import '../../../sales/presentation/utils/sales_ui_utils.dart';
+import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 
 class DashboardKpiStrip extends StatelessWidget {
@@ -14,7 +14,7 @@ class DashboardKpiStrip extends StatelessWidget {
   });
 
   final AsyncValue<DashboardSummary> summaryAsync;
-  final AsyncValue<DashboardOverlay> overlayAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
   final ValueChanged<int> onNavigate;
 
   @override
@@ -22,8 +22,8 @@ class DashboardKpiStrip extends StatelessWidget {
     final summary = summaryAsync.valueOrNull;
     final overlay = overlayAsync.valueOrNull;
 
-    final margin = summary?.profitMargin ?? '--';
-    final orders = (summary?.todaySalesCount ?? 0) + (overlay?.todayPendingSalesCount ?? 0);
+    final lowStock = summary?.lowStockCount ?? 0;
+    final pendingSync = (overlay?.todayPendingSalesCount ?? 0);
 
     return PremiumReveal(
       delay: const Duration(milliseconds: 100),
@@ -31,23 +31,23 @@ class DashboardKpiStrip extends StatelessWidget {
         children: [
           Expanded(
             child: StatCard(
-              icon: Icons.shopping_bag_outlined,
-              label: 'Total Orders',
-              value: orders == 0 ? '--' : orders.toString(),
+              icon: Icons.sync_problem_rounded,
+              label: 'Pending Sync',
+              value: pendingSync == 0 ? '0' : pendingSync.toString(),
               color: AppColors.info,
               backgroundColor: AppColors.infoSoft,
-              onTap: () => onNavigate(1),
+              onTap: () {},
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: StatCard(
-              icon: Icons.pie_chart_outline_rounded,
-              label: 'Avg Margin',
-              value: margin == '--' ? '--' : '$margin%',
-              color: AppColors.success,
-              backgroundColor: AppColors.successSoft,
-              onTap: () {},
+              icon: Icons.inventory_2_outlined,
+              label: 'Low Stock',
+              value: lowStock == 0 ? '0' : lowStock.toString(),
+              color: AppColors.warning,
+              backgroundColor: AppColors.warningSoft,
+              onTap: () => onNavigate(2),
             ),
           ),
         ],

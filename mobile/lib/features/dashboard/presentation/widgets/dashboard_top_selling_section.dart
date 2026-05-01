@@ -1,8 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
+import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 
 class DashboardTopSellingSection extends StatelessWidget {
@@ -52,7 +52,7 @@ class DashboardTopSellingSection extends StatelessWidget {
                 ),
               ),
               data: (insights) {
-                final top = insights.topProducts;
+                final top = insights.monthlyTopSellingItems;
                 if (top.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(32),
@@ -90,7 +90,7 @@ class DashboardTopSellingSection extends StatelessWidget {
 
 class _TopProductRow extends StatelessWidget {
   const _TopProductRow({required this.product});
-  final DashboardTopProduct product;
+  final DashboardTopSellingItem product;
 
   @override
   Widget build(BuildContext context) {
@@ -105,22 +105,7 @@ class _TopProductRow extends StatelessWidget {
               color: AppColors.canvas,
               borderRadius: BorderRadius.circular(10),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: product.imageUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: product.imageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(
-                      child: SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.muted),
-                  )
-                : const Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.muted),
+            child: const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.muted),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -128,7 +113,7 @@ class _TopProductRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product.name,
+                  product.itemName,
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -137,7 +122,7 @@ class _TopProductRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${product.quantity} sold',
+                  '${product.quantitySold} sold',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -149,7 +134,7 @@ class _TopProductRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            '₵${product.revenue}',
+            '₵${product.salesTotal}',
             style: const TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w800,
