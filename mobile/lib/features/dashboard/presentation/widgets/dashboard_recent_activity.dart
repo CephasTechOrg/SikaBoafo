@@ -234,6 +234,7 @@ class _ActivityRow extends StatelessWidget {
                     color: AppColors.muted,
                   ),
                 ),
+              ],
             ),
           ),
           const SizedBox(width: 12),
