@@ -5,7 +5,6 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/app_components.dart';
-import '../../../shared/widgets/premium_ui.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
 import '../../expenses/data/expenses_repository.dart';
@@ -43,11 +42,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     decimalDigits: 1,
   );
 
-  String _fmt(String raw) {
-    final v = double.tryParse(raw);
-    if (v == null) return '₵$raw';
-    return _compact.format(v);
-  }
 
   @override
   Widget build(BuildContext context) {
