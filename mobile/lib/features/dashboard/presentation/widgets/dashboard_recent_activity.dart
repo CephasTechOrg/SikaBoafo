@@ -212,40 +212,16 @@ class _ActivityRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        activity.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: v.badgeColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        v.badgeLabel,
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: v.badgeColor,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  activity.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    letterSpacing: -0.1,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -258,19 +234,21 @@ class _ActivityRow extends StatelessWidget {
                     color: AppColors.muted,
                   ),
                 ),
-              ],
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            amountStr,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w900,
-              color: v.isIncome
-                  ? AppColors.forest
-                  : const Color(0xFFB54848),
-              letterSpacing: -0.2,
+          const SizedBox(width: 12),
+          // Amount - clearly shows +/- and value
+          SizedBox(
+            width: 75,
+            child: Text(
+              amountStr,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: v.isIncome ? AppColors.forest : const Color(0xFFB54848),
+                letterSpacing: -0.2,
+              ),
             ),
           ),
         ],
