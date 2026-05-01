@@ -31,14 +31,12 @@ class DashboardKpiStrip extends StatelessWidget {
       delay: const Duration(milliseconds: 100),
       child: Column(
         children: [
-          // Coins card — visual highlight showing revenue + profit
           _CoinsCard(
             todaySales: todaySales,
             todayProfit: todayProfit,
             onNavigate: onNavigate,
           ),
           const SizedBox(height: 10),
-          // Stat row: Pending Sync + Low Stock
           Row(
             children: [
               Expanded(
@@ -70,6 +68,8 @@ class DashboardKpiStrip extends StatelessWidget {
   }
 }
 
+// ─── Coins card ───────────────────────────────────────────────────────────────
+
 class _CoinsCard extends StatelessWidget {
   const _CoinsCard({
     required this.todaySales,
@@ -80,11 +80,19 @@ class _CoinsCard extends StatelessWidget {
   final String todayProfit;
   final ValueChanged<int> onNavigate;
 
+  double _parse(String v) => double.tryParse(v.replaceAll(',', '')) ?? 0;
+
   @override
   Widget build(BuildContext context) {
+    final sales = _parse(todaySales);
+    final profit = _parse(todayProfit);
+    final ratio = (sales > 0) ? (profit / sales).clamp(0.0, 1.0) : 0.0;
+    final pct = '${(ratio * 100).toStringAsFixed(0)}% of revenue';
+
     return GestureDetector(
       onTap: () => onNavigate(1),
       child: Container(
+        height: 118,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF0D4023), Color(0xFF1A6840)],
@@ -103,80 +111,156 @@ class _CoinsCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Subtle pattern overlay
+            // Subtle flag pattern overlay
             Positioned.fill(
               child: Opacity(
                 opacity: 0.06,
-                child: Image.asset(
-                  'assets/images/flag.png',
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset('assets/images/flag.png', fit: BoxFit.cover),
               ),
             ),
-            // Coins image anchored to the right, bleeding off bottom
+            // Coins image — bleeds off bottom-right
             Positioned(
-              right: -8,
-              bottom: -12,
-              width: 110,
-              height: 110,
-              child: Image.asset(
-                'assets/images/coins.png',
-                fit: BoxFit.contain,
-              ),
+              right: -6,
+              bottom: -14,
+              width: 108,
+              height: 108,
+              child: Image.asset('assets/images/coins.png', fit: BoxFit.contain),
             ),
             // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 120, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(16, 0, 110, 0),
+              child: Row(
                 children: [
-                  // Revenue row
-                  Text(
-                    'TODAY\'S REVENUE',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₵$todaySales',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Constantia',
-                      letterSpacing: -0.5,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Profit chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.13),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  // ── Left column: Revenue ──────────────────────
+                  Expanded(
+                    flex: 55,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.trending_up_rounded,
-                            size: 11,
-                            color: Colors.white.withValues(alpha: 0.75)),
-                        const SizedBox(width: 4),
                         Text(
-                          'Est. Profit  ₵$todayProfit',
+                          "TODAY'S REVENUE",
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            fontSize: 10,
+                            color: Colors.white.withValues(alpha: 0.58),
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.1,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '₵$todaySales',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Constantia',
+                            letterSpacing: -0.5,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.20)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bar_chart_rounded,
+                                  size: 11,
+                                  color: Colors.white.withValues(alpha: 0.80)),
+                              const SizedBox(width: 4),
+                              Text(
+                                'View Sales',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Divider
+                  Container(
+                    width: 1,
+                    height: 62,
+                    color: Colors.white.withValues(alpha: 0.14),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  // ── Right column: Profit + mini bar chart ──────
+                  Expanded(
+                    flex: 45,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'EST. PROFIT',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.58),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          '₵$todayProfit',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Constantia',
+                            letterSpacing: -0.3,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Mini animated progress bar
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LayoutBuilder(
+                            builder: (ctx, bc) => Stack(
+                              children: [
+                                Container(
+                                  height: 6,
+                                  width: bc.maxWidth,
+                                  color:
+                                      Colors.white.withValues(alpha: 0.18),
+                                ),
+                                AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 700),
+                                  curve: Curves.easeOut,
+                                  height: 6,
+                                  width: bc.maxWidth * ratio,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF7FE0A0),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          pct,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.52),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
@@ -191,6 +275,8 @@ class _CoinsCard extends StatelessWidget {
     );
   }
 }
+
+// ─── Stat cards ───────────────────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
