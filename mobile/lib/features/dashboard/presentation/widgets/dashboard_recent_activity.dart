@@ -1,17 +1,27 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
+import '../../../inventory/providers/inventory_providers.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 
-class DashboardRecentActivity extends StatelessWidget {
+class DashboardRecentActivity extends ConsumerWidget {
   const DashboardRecentActivity({super.key, required this.activityAsync});
   final AsyncValue<List<DashboardActivity>> activityAsync;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Build imageUrl lookup from local inventory by itemId
+    final inventory = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
+    final imageByItemId = <String, String>{
+      for (final item in inventory)
+        if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+          item.id: item.imageUrl!,
+    };
+
     return PremiumReveal(
       delay: const Duration(milliseconds: 300),
       child: Column(
@@ -33,9 +43,9 @@ class DashboardRecentActivity extends StatelessWidget {
               loading: () => const Column(
                 children: [
                   _SkeletonActivityRow(),
-                  Divider(height: 1, indent: 64),
+                  Divider(height: 1, indent: 68),
                   _SkeletonActivityRow(),
-                  Divider(height: 1, indent: 64),
+                  Divider(height: 1, indent: 68),
                   _SkeletonActivityRow(),
                 ],
               ),
@@ -60,8 +70,8 @@ class DashboardRecentActivity extends StatelessWidget {
                           SizedBox(height: 12),
                           Text(
                             'No recent activity',
-                            style:
-                                TextStyle(color: AppColors.muted, fontSize: 13),
+                            style: TextStyle(
+                                color: AppColors.muted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -71,7 +81,12 @@ class DashboardRecentActivity extends StatelessWidget {
                 return Column(
                   children: [
                     for (int i = 0; i < activity.length; i++) ...[
-                      _ActivityRow(activity: activity[i]),
+                      _ActivityRow(
+                        activity: activity[i],
+                        imageUrl: activity[i].itemId != null
+                            ? imageByItemId[activity[i].itemId!]
+                            : null,
+                      ),
                       if (i < activity.length - 1)
                         const Divider(
                             height: 1, indent: 68, color: AppColors.border),
@@ -87,7 +102,7 @@ class DashboardRecentActivity extends StatelessWidget {
   }
 }
 
-// ─── Activity type configuration ─────────────────────────────────────────────
+// ─── Activity type visual ─────────────────────────────────────────────────────
 
 class _ActivityVisual {
   const _ActivityVisual({
@@ -152,8 +167,9 @@ class _ActivityVisual {
 // ─── Activity row ─────────────────────────────────────────────────────────────
 
 class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.activity});
+  const _ActivityRow({required this.activity, this.imageUrl});
   final DashboardActivity activity;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -170,7 +186,7 @@ class _ActivityRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Row(
         children: [
-          // Visual icon card
+          // Icon/image card
           Container(
             width: 42,
             height: 42,
@@ -178,10 +194,20 @@ class _ActivityRow extends StatelessWidget {
               color: v.bgColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(v.icon, size: 20, color: v.iconColor),
+            clipBehavior: Clip.antiAlias,
+            child: imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Icon(v.icon,
+                        size: 20, color: v.iconColor),
+                    errorWidget: (_, __, ___) =>
+                        Icon(v.icon, size: 20, color: v.iconColor),
+                  )
+                : Icon(v.icon, size: 20, color: v.iconColor),
           ),
           const SizedBox(width: 12),
-          // Title + detail
+          // Text section
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +228,6 @@ class _ActivityRow extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // Type badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
@@ -237,13 +262,14 @@ class _ActivityRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Amount
           Text(
             amountStr,
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w900,
-              color: v.isIncome ? AppColors.forest : const Color(0xFFB54848),
+              color: v.isIncome
+                  ? AppColors.forest
+                  : const Color(0xFFB54848),
               letterSpacing: -0.2,
             ),
           ),

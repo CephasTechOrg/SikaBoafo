@@ -1,11 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
+import '../../../inventory/providers/inventory_providers.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 
-class DashboardTopSellingSection extends StatelessWidget {
+class DashboardTopSellingSection extends ConsumerWidget {
   const DashboardTopSellingSection({
     super.key,
     required this.insightsAsync,
@@ -16,7 +18,15 @@ class DashboardTopSellingSection extends StatelessWidget {
   final AsyncValue<LocalDashboardOverlay> overlayAsync;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Build imageUrl lookup from local inventory by item name (best effort)
+    final inventory = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
+    final imageByName = <String, String>{
+      for (final item in inventory)
+        if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+          item.name.trim().toLowerCase(): item.imageUrl!,
+    };
+
     return PremiumReveal(
       delay: const Duration(milliseconds: 200),
       child: Column(
@@ -66,8 +76,8 @@ class DashboardTopSellingSection extends StatelessWidget {
                           SizedBox(height: 12),
                           Text(
                             'No sales data yet',
-                            style:
-                                TextStyle(color: AppColors.muted, fontSize: 13),
+                            style: TextStyle(
+                                color: AppColors.muted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -77,10 +87,17 @@ class DashboardTopSellingSection extends StatelessWidget {
                 return Column(
                   children: [
                     for (int i = 0; i < top.length; i++) ...[
-                      _TopProductRow(product: top[i], rank: i + 1),
+                      _TopProductRow(
+                        product: top[i],
+                        rank: i + 1,
+                        imageUrl: imageByName[
+                            top[i].itemName.trim().toLowerCase()],
+                      ),
                       if (i < top.length - 1)
                         const Divider(
-                            height: 1, indent: 68, color: AppColors.border),
+                            height: 1,
+                            indent: 68,
+                            color: AppColors.border),
                     ],
                   ],
                 );
@@ -96,17 +113,21 @@ class DashboardTopSellingSection extends StatelessWidget {
 // ─── Product row ──────────────────────────────────────────────────────────────
 
 class _TopProductRow extends StatelessWidget {
-  const _TopProductRow({required this.product, required this.rank});
+  const _TopProductRow({
+    required this.product,
+    required this.rank,
+    this.imageUrl,
+  });
   final DashboardTopSellingItem product;
   final int rank;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    // Rank-based accent colors
     final rankColor = rank == 1
         ? const Color(0xFFC58C02)
         : rank == 2
-            ? AppColors.muted
+            ? const Color(0xFF888888)
             : AppColors.forest;
     final rankBg = rank == 1
         ? AppColors.warningSoft
@@ -130,11 +151,22 @@ class _TopProductRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: Icon(
-                  Icons.inventory_2_outlined,
-                  size: 20,
-                  color: AppColors.muted,
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: imageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => const Icon(
+                            Icons.inventory_2_outlined,
+                            size: 20,
+                            color: AppColors.muted),
+                        errorWidget: (_, __, ___) => const Icon(
+                            Icons.inventory_2_outlined,
+                            size: 20,
+                            color: AppColors.muted),
+                      )
+                    : const Icon(Icons.inventory_2_outlined,
+                        size: 20, color: AppColors.muted),
               ),
               // Rank badge
               Positioned(
@@ -178,26 +210,22 @@ class _TopProductRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.successSoft,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${product.quantitySold} sold',
-                        style: const TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.forest,
-                          letterSpacing: 0.1,
-                        ),
-                      ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.successSoft,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${product.quantitySold} sold',
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.forest,
+                      letterSpacing: 0.1,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),

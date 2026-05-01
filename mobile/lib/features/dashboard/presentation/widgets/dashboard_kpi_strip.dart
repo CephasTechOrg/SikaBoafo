@@ -25,14 +25,16 @@ class DashboardKpiStrip extends StatelessWidget {
     final lowStock = summary?.lowStockCount ?? 0;
     final pendingSync = (overlay?.todayPendingSalesCount ?? 0);
     final todaySales = summary?.todaySalesTotal ?? '--';
+    final todayProfit = summary?.todayEstimatedProfit ?? '--';
 
     return PremiumReveal(
       delay: const Duration(milliseconds: 100),
       child: Column(
         children: [
-          // Coins card — visual highlight showing today's total + icon
+          // Coins card — visual highlight showing revenue + profit
           _CoinsCard(
             todaySales: todaySales,
+            todayProfit: todayProfit,
             onNavigate: onNavigate,
           ),
           const SizedBox(height: 10),
@@ -69,8 +71,13 @@ class DashboardKpiStrip extends StatelessWidget {
 }
 
 class _CoinsCard extends StatelessWidget {
-  const _CoinsCard({required this.todaySales, required this.onNavigate});
+  const _CoinsCard({
+    required this.todaySales,
+    required this.todayProfit,
+    required this.onNavigate,
+  });
   final String todaySales;
+  final String todayProfit;
   final ValueChanged<int> onNavigate;
 
   @override
@@ -78,7 +85,6 @@ class _CoinsCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => onNavigate(1),
       child: Container(
-        height: 96,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF0D4023), Color(0xFF1A6840)],
@@ -120,64 +126,61 @@ class _CoinsCard extends StatelessWidget {
             ),
             // Content
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 130, 14),
+              padding: const EdgeInsets.fromLTRB(16, 14, 120, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Revenue row
                   Text(
                     'TODAY\'S REVENUE',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.60),
-                      fontSize: 10,
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
+                      letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     '₵$todaySales',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       fontFamily: 'Constantia',
                       letterSpacing: -0.5,
                       height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18)),
+                  const SizedBox(height: 8),
+                  // Profit chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.13),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.trending_up_rounded,
+                            size: 11,
+                            color: Colors.white.withValues(alpha: 0.75)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Est. Profit  ₵$todayProfit',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1,
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.bar_chart_rounded,
-                                size: 11,
-                                color: Colors.white.withValues(alpha: 0.80)),
-                            const SizedBox(width: 4),
-                            Text(
-                              'View Sales',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
