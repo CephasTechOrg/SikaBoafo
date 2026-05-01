@@ -43,6 +43,14 @@ class PaystackVerifyResult:
     raw_payload: dict[str, Any]
 
 
+@dataclass(slots=True)
+class PaystackChargeResult:
+    reference: str
+    status: str
+    display_text: str | None
+    raw_payload: dict[str, Any]
+
+
 _BASE_HEADERS: dict[str, str] = {
     "User-Agent": "BizTrackGh-Python/1.0 (+https://biztrackgh-api.onrender.com)",
     "Accept": "application/json",
@@ -136,6 +144,68 @@ class PaystackClient:
             authorization_url=authorization_url,
             access_code=access_code,
             reference=provider_reference,
+            raw_payload=raw,
+        )
+
+    def charge_mobile_money(
+        self,
+        *,
+        secret_key: str,
+        email: str,
+        amount_kobo: int,
+        reference: str,
+        currency: str,
+        phone: str,
+        provider: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> PaystackChargeResult:
+        """POST /charge — Ghana MoMo push (customer authorizes on their handset)."""
+        url = f"{self.base_url.rstrip('/')}/charge"
+        payload: dict[str, Any] = {
+            "email": email,
+            "amount": amount_kobo,
+            "reference": reference,
+            "currency": currency,
+            "mobile_money": {
+                "phone": phone,
+                "provider": provider,
+            },
+        }
+        if metadata:
+            payload["metadata"] = metadata
+
+        raw = self._post_json(
+            url=url,
+            headers={
+                "Authorization": f"Bearer {secret_key}",
+                "Content-Type": "application/json",
+            },
+            payload=payload,
+        )
+        data = raw.get("data")
+        if raw.get("status") is not True or not isinstance(data, dict):
+            msg = str(raw.get("message") or "Paystack mobile money charge failed.")
+            raise PaystackClientError(msg, response_body=raw)
+
+        provider_reference = data.get("reference")
+        if not isinstance(provider_reference, str) or not provider_reference.strip():
+            provider_reference = reference
+
+        status_raw = data.get("status")
+        status = (
+            status_raw.strip().lower()
+            if isinstance(status_raw, str) and status_raw.strip()
+            else "pending"
+        )
+
+        display_text = data.get("display_text")
+        if display_text is not None and not isinstance(display_text, str):
+            display_text = None
+
+        return PaystackChargeResult(
+            reference=provider_reference,
+            status=status,
+            display_text=display_text,
             raw_payload=raw,
         )
 

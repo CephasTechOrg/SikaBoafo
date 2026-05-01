@@ -40,6 +40,69 @@ class SalePaymentInitiationDto {
   }
 }
 
+class SaleMomoChargeOutDto {
+  const SaleMomoChargeOutDto({
+    required this.paymentId,
+    required this.provider,
+    required this.providerReference,
+    required this.amount,
+    required this.currency,
+    required this.status,
+    required this.saleId,
+    this.displayText,
+  });
+
+  final String paymentId;
+  final String provider;
+  final String providerReference;
+  final String amount;
+  final String currency;
+  final String status;
+  final String saleId;
+  final String? displayText;
+
+  factory SaleMomoChargeOutDto.fromJson(Map<String, dynamic> json) {
+    return SaleMomoChargeOutDto(
+      paymentId: (json['payment_id'] ?? '') as String,
+      provider: (json['provider'] ?? 'paystack') as String,
+      providerReference: (json['provider_reference'] ?? '') as String,
+      amount: '${json['amount'] ?? '0.00'}',
+      currency: (json['currency'] ?? 'GHS') as String,
+      status: (json['status'] ?? 'pending') as String,
+      saleId: (json['sale_id'] ?? '') as String,
+      displayText: json['display_text'] as String?,
+    );
+  }
+}
+
+class PaymentVerifyOutDto {
+  const PaymentVerifyOutDto({
+    required this.paymentId,
+    required this.saleId,
+    required this.providerPaymentStatus,
+    required this.salePaymentStatus,
+    required this.paystackTransactionStatus,
+  });
+
+  final String paymentId;
+  final String saleId;
+  final String providerPaymentStatus;
+  final String salePaymentStatus;
+  final String paystackTransactionStatus;
+
+  factory PaymentVerifyOutDto.fromJson(Map<String, dynamic> json) {
+    return PaymentVerifyOutDto(
+      paymentId: (json['payment_id'] ?? '') as String,
+      saleId: (json['sale_id'] ?? '') as String,
+      providerPaymentStatus:
+          (json['provider_payment_status'] ?? '') as String,
+      salePaymentStatus: (json['sale_payment_status'] ?? '') as String,
+      paystackTransactionStatus:
+          (json['paystack_transaction_status'] ?? '') as String,
+    );
+  }
+}
+
 class SalePaymentStatusDto {
   const SalePaymentStatusDto({
     required this.saleId,
@@ -88,6 +151,33 @@ class SalesPaymentsApi {
       throw const FormatException('Unexpected sale payment status payload.');
     }
     return SalePaymentStatusDto.fromJson(data);
+  }
+
+  Future<SaleMomoChargeOutDto> initiateSaleMomoCharge({
+    required String saleId,
+    required String phone,
+    required String provider,
+  }) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/sales/$saleId/momo-charge',
+      data: {'phone': phone, 'provider': provider},
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected MoMo charge payload.');
+    }
+    return SaleMomoChargeOutDto.fromJson(data);
+  }
+
+  Future<PaymentVerifyOutDto> verifySalePayment(String paymentId) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/$paymentId/verify',
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected payment verify payload.');
+    }
+    return PaymentVerifyOutDto.fromJson(data);
   }
 }
 

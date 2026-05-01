@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,6 +15,9 @@ from app.models.user import User
 from app.schemas.payment import (
     PaymentInitiateIn,
     PaymentInitiateOut,
+    PaymentVerifyOut,
+    SaleMomoChargeIn,
+    SaleMomoChargeOut,
     SalePaymentInitiateIn,
     SalePaymentInitiateOut,
 )
@@ -178,4 +182,90 @@ def initiate_sale_payment(
         currency=initiated.currency,
         status=initiated.status,
         sale_id=initiated.sale_id,
+    )
+
+
+@router.post("/sales/{sale_id}/momo-charge", response_model=SaleMomoChargeOut)
+def initiate_sale_momo_charge(
+    sale_id: UUID,
+    payload: SaleMomoChargeIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> SaleMomoChargeOut:
+    service = PaymentService(db=db)
+    try:
+        charged = service.initiate_sale_momo_charge(
+            user_id=current_user.id,
+            sale_id=sale_id,
+            phone=payload.phone,
+            provider=payload.provider,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (PaymentInitiationStateError, PaystackConnectionMissingError) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return SaleMomoChargeOut(
+        payment_id=charged.payment_id,
+        provider=charged.provider,
+        provider_reference=charged.provider_reference,
+        amount=charged.amount,
+        currency=charged.currency,
+        status=charged.status,
+        sale_id=charged.sale_id,
+        display_text=charged.display_text,
+    )
+
+
+@router.post("/{payment_id}/verify", response_model=PaymentVerifyOut)
+def verify_sale_payment(
+    payment_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> PaymentVerifyOut:
+    service = PaymentService(db=db)
+    try:
+        out = service.verify_sale_payment(
+            user_id=current_user.id,
+            payment_id=payment_id,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return PaymentVerifyOut(
+        payment_id=out.payment_id,
+        sale_id=out.sale_id,
+        provider_payment_status=out.provider_payment_status,
+        sale_payment_status=out.sale_payment_status,
+        paystack_transaction_status=out.paystack_transaction_status,
     )

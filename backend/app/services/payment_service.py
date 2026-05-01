@@ -113,6 +113,27 @@ class SalePaymentInitiationSnapshot:
 
 
 @dataclass(slots=True)
+class SaleMomoChargeSnapshot:
+    payment_id: UUID
+    provider: str
+    provider_reference: str
+    amount: Decimal
+    currency: str
+    status: str
+    sale_id: UUID
+    display_text: str | None = None
+
+
+@dataclass(slots=True)
+class PaymentVerifySnapshot:
+    payment_id: UUID
+    sale_id: UUID
+    provider_payment_status: str
+    sale_payment_status: str
+    paystack_transaction_status: str
+
+
+@dataclass(slots=True)
 class PaymentWebhookSnapshot:
     status: str
     payment_id: UUID | None = None
@@ -318,6 +339,230 @@ class PaymentService:
             currency=payment.currency,
             status=payment.status,
             sale_id=sale.id,
+        )
+
+    def initiate_sale_momo_charge(
+        self,
+        *,
+        user_id: UUID,
+        sale_id: UUID,
+        phone: str,
+        provider: str,
+    ) -> SaleMomoChargeSnapshot:
+        """Push a Paystack mobile-money charge to the customer's handset (no smartphone needed)."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        sale = self.db.scalar(
+            select(Sale)
+            .where(Sale.id == sale_id, Sale.store_id == store.id)
+            .options(selectinload(Sale.customer))
+        )
+        if sale is None:
+            msg = "Sale not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+        self._validate_sale_state(sale=sale)
+
+        connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_connection(
+            connection=connection,
+            merchant_id=merchant.id,
+            settings=configured,
+        )
+        reference = self._build_sale_reference(merchant_id=merchant.id, sale_id=sale.id)
+        amount = self._money(sale.total_amount)
+        normalized_phone = _normalize_ghana_momo_phone(phone)
+        paystack_provider = _paystack_gh_momo_provider_code(provider)
+
+        result = self._client(configured).charge_mobile_money(
+            secret_key=secret_key,
+            email=_sale_contact_email(sale=sale),
+            amount_kobo=int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP)),
+            reference=reference,
+            currency=merchant.currency_code or DEFAULT_CURRENCY,
+            phone=normalized_phone,
+            provider=paystack_provider,
+            metadata={
+                "sale_id": str(sale.id),
+                "merchant_id": str(merchant.id),
+                "store_id": str(store.id),
+                "cashier_id": str(sale.cashier_id) if sale.cashier_id is not None else None,
+                "payment_method_label": PAYMENT_METHOD_MOBILE_MONEY,
+                "payment_flow": "momo_number_charge",
+                "momo_provider": provider,
+            },
+        )
+
+        payment = Payment(
+            merchant_id=merchant.id,
+            sale_id=sale.id,
+            provider=PAYMENT_PROVIDER_PAYSTACK,
+            provider_reference=result.reference,
+            internal_reference=reference,
+            provider_mode=connection.mode,
+            amount=amount,
+            currency=merchant.currency_code or DEFAULT_CURRENCY,
+            status=PROVIDER_PAYMENT_PENDING,
+            initiated_at=datetime.now(tz=UTC),
+            raw_provider_payload=result.raw_payload,
+        )
+        self.db.add(payment)
+        sale.payment_status = PAYMENT_STATUS_PENDING_PROVIDER
+        self.db.add(sale)
+        self.db.flush()
+
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=merchant.id,
+            action="payment.momo_charge_initiated",
+            entity_type="payment",
+            entity_id=payment.id,
+            meta={
+                "provider": payment.provider,
+                "provider_reference": payment.provider_reference,
+                "sale_id": str(sale.id),
+                "amount": str(payment.amount),
+                "currency": payment.currency,
+                "momo_provider": provider,
+            },
+        )
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(sale)
+        return SaleMomoChargeSnapshot(
+            payment_id=payment.id,
+            provider=payment.provider,
+            provider_reference=payment.provider_reference or result.reference,
+            amount=payment.amount,
+            currency=payment.currency,
+            status=payment.status,
+            sale_id=sale.id,
+            display_text=result.display_text,
+        )
+
+    def verify_sale_payment(
+        self,
+        *,
+        user_id: UUID,
+        payment_id: UUID,
+    ) -> PaymentVerifySnapshot:
+        """Re-query Paystack for a sale-linked payment (MoMo prompt / webhook delay)."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        payment = self.db.scalar(
+            select(Payment)
+            .join(Sale, Sale.id == Payment.sale_id)
+            .where(
+                Payment.id == payment_id,
+                Sale.store_id == store.id,
+                Payment.sale_id.isnot(None),
+            )
+        )
+        if payment is None:
+            msg = "Payment not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        sale = self.db.scalar(select(Sale).where(Sale.id == payment.sale_id))
+        if sale is None:
+            msg = "Sale not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        if payment.provider_reference is None or not str(payment.provider_reference).strip():
+            msg = "Payment has no provider reference."
+            raise PaymentInitiationStateError(msg)
+
+        if (
+            payment.status == PROVIDER_PAYMENT_SUCCEEDED
+            and sale.payment_status == PAYMENT_STATUS_SUCCEEDED
+        ):
+            return PaymentVerifySnapshot(
+                payment_id=payment.id,
+                sale_id=sale.id,
+                provider_payment_status=payment.status,
+                sale_payment_status=sale.payment_status,
+                paystack_transaction_status="success",
+            )
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_payment(
+            payment=payment,
+            settings=configured,
+        )
+        verified = self._client(configured).verify_transaction(
+            secret_key=secret_key,
+            reference=str(payment.provider_reference).strip(),
+        )
+
+        verified_amount = self._kobo_to_money(verified.amount_kobo)
+        expected_amount = self._money(sale.total_amount)
+        paystack_status = verified.status.strip().lower()
+
+        if paystack_status == "success":
+            if verified_amount is not None and verified_amount >= expected_amount:
+                payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                    tz=UTC
+                )
+                sale.payment_status = PAYMENT_STATUS_SUCCEEDED
+                action = "payment.succeeded"
+            else:
+                payment.status = PROVIDER_PAYMENT_FAILED
+                sale.payment_status = PAYMENT_STATUS_FAILED
+                action = "payment.failed"
+        elif paystack_status in {"failed", "abandoned", "reversed"}:
+            payment.status = PROVIDER_PAYMENT_FAILED
+            sale.payment_status = PAYMENT_STATUS_FAILED
+            action = "payment.failed"
+        else:
+            action = "payment.verify_pending"
+
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.raw_provider_payload = {**prev_payload, "manual_verify": verified.raw_payload}
+        self.db.add(payment)
+        self.db.add(sale)
+        self.db.flush()
+
+        if action != "payment.verify_pending":
+            log_audit(
+                db=self.db,
+                actor_user_id=user_id,
+                business_id=merchant.id,
+                action=action,
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "sale_id": str(sale.id),
+                    "paystack_status": paystack_status,
+                    "verified_amount": str(verified_amount)
+                    if verified_amount is not None
+                    else None,
+                    "expected_amount": str(expected_amount),
+                },
+            )
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(sale)
+        return PaymentVerifySnapshot(
+            payment_id=payment.id,
+            sale_id=sale.id,
+            provider_payment_status=payment.status,
+            sale_payment_status=sale.payment_status,
+            paystack_transaction_status=paystack_status,
         )
 
     def handle_paystack_webhook(
@@ -990,6 +1235,35 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def _normalize_ghana_momo_phone(phone: str) -> str:
+    """Digits-only local 0XXXXXXXXX for Paystack Ghana mobile money."""
+    digits = re.sub(r"\D", "", phone.strip())
+    if digits.startswith("233") and len(digits) >= 12:
+        local = digits[3:]
+        if local.startswith("0"):
+            return local[:10]
+        return f"0{local[:9]}"
+    if digits.startswith("0") and len(digits) >= 10:
+        return digits[:10]
+    if len(digits) >= 9 and not digits.startswith("0"):
+        return f"0{digits[-9:]}"
+    return digits
+
+
+def _paystack_gh_momo_provider_code(provider: str) -> str:
+    """Map API provider codes to Paystack's Ghana mobile_money.provider values."""
+    key = provider.strip().lower()
+    mapping = {
+        "mtn": "mtn",
+        "vod": "vod",
+        "atl": "tgo",
+    }
+    if key not in mapping:
+        msg = f"Unsupported MoMo provider: {provider!r}."
+        raise PaymentInitiationStateError(msg)
+    return mapping[key]
+
+
 __all__ = [
     "PaymentGatewayError",
     "PaymentInitiationContextError",
@@ -997,6 +1271,8 @@ __all__ = [
     "PaymentInitiationStateError",
     "PaymentInitiationTargetNotFoundError",
     "PaymentService",
+    "PaymentVerifySnapshot",
+    "SaleMomoChargeSnapshot",
     "SalePaymentInitiationSnapshot",
     "PaymentWebhookSnapshot",
     "PaystackClientError",

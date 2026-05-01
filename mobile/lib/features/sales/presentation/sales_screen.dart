@@ -31,6 +31,7 @@ import 'widgets/section_label.dart';
 import 'widgets/item_card.dart';
 import 'widgets/sales_bottom_bar.dart';
 import 'widgets/products_header.dart';
+import 'widgets/paystack_momo_sheet.dart';
 import 'widgets/paystack_qr_sheet.dart';
 import 'widgets/sale_success_sheet.dart';
 import 'widgets/checkout_sheet.dart';
@@ -687,6 +688,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           items: items,
           paymentMethodLabel: method,
         ),
+        onPayWithMomoNumber: (method) => _recordSaleWithPaystackMomoNumber(
+          items: items,
+          paymentMethodLabel: method,
+          totalAmount: totalAmount,
+        ),
       ),
     );
   }
@@ -819,6 +825,85 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       }
       final message = saleSaved
           ? 'Sale recorded, but payment link failed: ${humanizeSalesPaymentsError(error)}'
+          : humanizeInventoryError(error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  Future<void> _recordSaleWithPaystackMomoNumber({
+    required List<LocalInventoryItem> items,
+    required String paymentMethodLabel,
+    required String totalAmount,
+  }) async {
+    final lines = _buildSaleDraftLines(items);
+    if (lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one item quantity.')),
+      );
+      return;
+    }
+
+    final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+    var saleSaved = false;
+    try {
+      final saleId = await ref
+          .read(salesControllerProvider.notifier)
+          .recordSaleReturningId(
+            paymentMethodLabel: paymentMethodLabel,
+            lines: lines,
+            note: note,
+          );
+      saleSaved = true;
+      if (!mounted) return;
+
+      ref.invalidate(inventoryControllerProvider);
+      _resetDraftAfterSale();
+
+      var confirmed = false;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetCtx) => PaystackMomoSheet(
+          saleId: saleId,
+          amountDisplay: totalAmount,
+          onPaymentConfirmed: () {
+            confirmed = true;
+            Navigator.of(sheetCtx).pop();
+          },
+        ),
+      );
+      if (!mounted || !confirmed) return;
+      await ref
+          .read(salesControllerProvider.notifier)
+          .refresh(includeVoided: _showVoided);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        isDismissible: false,
+        enableDrag: false,
+        builder: (_) => SaleSuccessSheet(
+          amount: totalAmount,
+          method: 'mobile_money',
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      if (saleSaved) {
+        ref.invalidate(inventoryControllerProvider);
+        _resetDraftAfterSale();
+      }
+      final isPaystackNotConnected = _isPaystackNotConnectedError(error);
+      if (isPaystackNotConnected) {
+        await _showPaystackSetupPrompt();
+        return;
+      }
+      final message = saleSaved
+          ? 'Sale recorded, but MoMo prompt failed: ${humanizeSalesPaymentsError(error)}'
           : humanizeInventoryError(error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),

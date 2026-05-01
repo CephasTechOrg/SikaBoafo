@@ -19,6 +19,7 @@ class CheckoutSheet extends ConsumerStatefulWidget {
     required this.totalAmount,
     required this.onRecordCash,
     required this.onRecordMomo,
+    required this.onPayWithMomoNumber,
     required this.formatMajor,
   });
 
@@ -27,6 +28,7 @@ class CheckoutSheet extends ConsumerStatefulWidget {
   final String totalAmount;
   final Future<bool> Function(String method) onRecordCash;
   final Future<void> Function(String method) onRecordMomo;
+  final Future<void> Function(String method) onPayWithMomoNumber;
   final String Function(String value, {String symbol}) formatMajor;
 
   @override
@@ -163,7 +165,7 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                   ),
                 ),
               ]
-              // MoMo — Paystack QR/link only
+              // MoMo — Paystack: QR/link OR MoMo number (keypad customer)
               else if (_selectedMethod == 'mobile_money') ...[
                 SizedBox(
                   width: double.infinity,
@@ -173,13 +175,41 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                       ref.read(salesCartProvider.notifier).setPaymentMethod(_selectedMethod);
                       await widget.onRecordMomo(_selectedMethod);
                     },
-                    icon: const Icon(Icons.qr_code_rounded, size: 18),
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
                     label: Text(
-                        'Pay via MoMo — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}'),
+                      'Pay by QR / link — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.gold,
                       foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(52),
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      ref.read(salesCartProvider.notifier).setPaymentMethod(_selectedMethod);
+                      await widget.onPayWithMomoNumber(_selectedMethod);
+                    },
+                    icon: const Icon(Icons.phone_callback_rounded, size: 18),
+                    label: Text(
+                      'Pay with MoMo number — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.forest,
+                      side: const BorderSide(color: AppColors.forest, width: 1.5),
+                      minimumSize: const Size.fromHeight(50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
