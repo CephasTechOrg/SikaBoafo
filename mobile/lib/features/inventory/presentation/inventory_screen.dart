@@ -119,209 +119,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     
       body: Column(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1A0F172A),
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFF041C0B),
-                              Color(0xFF083A1A),
-                              Color(0xFF0F5A30),
-                              Color(0xFF196E3D),
-                            ],
-                            stops: [0.0, 0.28, 0.62, 1.0],
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                          ),
-                        ),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(0.68, -0.72),
-                            radius: 0.92,
-                            colors: [
-                              const Color(0xFF27A84E).withValues(alpha: 0.56),
-                              const Color(0xFF1A7A38).withValues(alpha: 0.22),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 0.45, 1.0],
-                          ),
-                        ),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: const Alignment(-0.10, 0.0),
-                            radius: 1.2,
-                            colors: [
-                              const Color(0xFF0D6030).withValues(alpha: 0.35),
-                              Colors.transparent,
-                            ],
-                            stops: const [0.0, 1.0],
-                          ),
-                        ),
-                      ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF010A04).withValues(alpha: 0.36),
-                              Colors.transparent,
-                              const Color(0xFF010A04).withValues(alpha: 0.12),
-                            ],
-                            stops: const [0.0, 0.50, 1.0],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                      ),
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        height: 1.5,
-                        child: ColoredBox(color: Color(0x22FFFFFF)),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  right: -10,
-                  bottom: -8,
-                  child: Opacity(
-                    opacity: 0.42,
-                    child: Image.asset(
-                      'assets/images/inventory.png',
-                      width: 185,
-                      height: 185,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const SizedBox(width: 185, height: 185),
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.inventory_2_rounded,
-                                color: Colors.white,
-                                size: 17,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Inventory',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                    height: 1.1,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                DataFreshnessLabel(
-                                  kvKey: KvCacheRepository.kInventoryTs,
-                                  color: AppColors.heroSubtitle,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'STOCK VALUE',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.65),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _fmtMoney(totalValueMinor),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'Constantia',
-                                  letterSpacing: -0.8,
-                                  height: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            HeroStatChip(
-                              icon: Icons.inventory_2_rounded,
-                              value: '${activeItems.length}',
-                              label: 'active items',
-                            ),
-                            const SizedBox(width: 8),
-                            HeroStatChip(
-                              icon: Icons.warning_amber_rounded,
-                              value: '$lowStockCount',
-                              label: 'low stock',
-                            ),
-                            const SizedBox(width: 8),
-                            HeroStatChip(
-                              icon: Icons.category_rounded,
-                              value: '${categories.length}',
-                              label: 'categories',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          InventoryHeader(
+            totalValueMinor: totalValueMinor,
+            activeItemsCount: activeItems.length,
+            lowStockCount: lowStockCount,
+            categoriesCount: categories.length,
           ),
           Expanded(
             child: Transform.translate(
@@ -451,6 +253,48 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+
+  void _openItemDetail(LocalInventoryItem item) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => InventoryItemDetailSheet(
+        item: item,
+        onEdit: () => _openEdit(item),
+        onStockIn: () => _openStockIn(item),
+        onAdjust: () => _openAdjust(item),
+        onArchive: () => _archiveItem(item),
+        onRestore: () => _restoreItem(item),
+        onDelete: () => _deleteItem(item),
+      ),
+    );
+  }
+
+  void _openAddItemSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddItemSheet(
+        nameCtrl: _nameCtrl,
+        priceCtrl: _priceCtrl,
+        skuCtrl: _skuCtrl,
+        categoryCtrl: _categoryCtrl,
+        thresholdCtrl: _thresholdCtrl,
+        qtyCtrl: _qtyCtrl,
+        onSave: () {
+          Navigator.of(context).pop();
+          _saveItem();
+        },
+        selectedImage: _newItemUrl,
+        onImageChanged: (v) => setState(() => _newItemUrl = v),
       ),
     );
   }
@@ -959,315 +803,9 @@ class _Chip extends StatelessWidget {
 
 // â”€â”€â”€ item card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class _ItemCard extends StatelessWidget {
-  const _ItemCard({
-    required this.item,
-    this.onEdit,
-    this.onStockIn,
-    this.onAdjust,
-    this.onArchive,
-    this.onRestore,
-    this.onDelete,
-  });
 
-  final LocalInventoryItem item;
-  final VoidCallback? onEdit;
-  final VoidCallback? onStockIn;
-  final VoidCallback? onAdjust;
-  final VoidCallback? onArchive;
-  final VoidCallback? onRestore;
-  final VoidCallback? onDelete;
 
-  @override
-  Widget build(BuildContext context) {
-    final hasThreshold = item.lowStockThreshold != null;
-    final isOut = item.quantityOnHand == 0;
-    final isLow = hasThreshold &&
-        item.quantityOnHand <= item.lowStockThreshold! &&
-        !isOut;
-    final hasIssue = isOut || isLow;
-    final Color statusColor = isOut ? AppColors.danger : AppColors.warning;
 
-    final double progress = hasThreshold && item.lowStockThreshold! > 0
-        ? (item.quantityOnHand / (item.lowStockThreshold! * 2.0))
-            .clamp(0.0, 1.0)
-        : item.quantityOnHand > 0
-            ? 1.0
-            : 0.0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ItemImage(
-                  imageUrl: item.imageUrl,
-                  size: 48,
-                  fallbackIcon: Icons.inventory_2_outlined,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!item.isActive) ...[
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.dangerSoft,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'ARCHIVED',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.danger,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                      ],
-                      Text(
-                        item.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                          color: AppColors.ink,
-                          height: 1.2,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Text(
-                            '₵${item.defaultPrice}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.5,
-                              color: AppColors.forestDark,
-                            ),
-                          ),
-                          if (item.category != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              width: 3,
-                              height: 3,
-                              decoration: const BoxDecoration(
-                                color: AppColors.border,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                item.category!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.muted,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (item.sku != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'SKU ${item.sku}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mutedSoft,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${item.quantityOnHand}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                        color: hasIssue ? statusColor : AppColors.ink,
-                        height: 1,
-                      ),
-                    ),
-                    const Text(
-                      'units',
-                      style: TextStyle(fontSize: 10, color: AppColors.muted),
-                    ),
-                    if (hasIssue) ...[
-                      const SizedBox(height: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          isOut ? 'Out' : 'Low',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (hasThreshold)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 3,
-                  backgroundColor: AppColors.border,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isOut
-                        ? AppColors.danger
-                        : isLow
-                            ? AppColors.warning
-                            : AppColors.forest,
-                  ),
-                ),
-              ),
-            ),
-          const Divider(height: 1, color: AppColors.border),
-          IntrinsicHeight(
-            child: Row(
-              children: [
-                if (onEdit != null)
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Edit',
-                      icon: Icons.edit_rounded,
-                      color: AppColors.forestDark,
-                      onTap: onEdit!,
-                    ),
-                  ),
-                if (item.isActive && onStockIn != null) ...[
-                  const VerticalDivider(width: 1, color: AppColors.border),
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Stock In',
-                      icon: Icons.add_box_rounded,
-                      color: AppColors.forest,
-                      onTap: onStockIn!,
-                    ),
-                  ),
-                ],
-                if (item.isActive && onAdjust != null) ...[
-                  const VerticalDivider(width: 1, color: AppColors.border),
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Adjust',
-                      icon: Icons.tune_rounded,
-                      color: const Color(0xFFD97706),
-                      onTap: onAdjust!,
-                    ),
-                  ),
-                ],
-                if (item.isActive && onArchive != null) ...[
-                  const VerticalDivider(width: 1, color: AppColors.border),
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Archive',
-                      icon: Icons.archive_outlined,
-                      color: const Color(0xFF6B7280),
-                      onTap: onArchive!,
-                    ),
-                  ),
-                ],
-                if (!item.isActive && onRestore != null)
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Restore',
-                      icon: Icons.unarchive_outlined,
-                      color: AppColors.forestDark,
-                      onTap: onRestore!,
-                    ),
-                  ),
-                if (!item.isActive && onDelete != null) ...[
-                  const VerticalDivider(width: 1, color: AppColors.border),
-                  Expanded(
-                    child: _ActionBtn(
-                      label: 'Delete',
-                      icon: Icons.delete_forever_rounded,
-                      color: AppColors.danger,
-                      onTap: onDelete!,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onTap,
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
-        ),
-      ),
-      icon: Icon(icon, size: 14),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
 
 // â”€â”€â”€ bottom sheets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -2019,76 +1557,9 @@ class _ErrorCard extends StatelessWidget {
 
 // â”€â”€â”€ shared field widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class _IField extends StatelessWidget {
-  const InventoryIField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.prefixIcon,
-    this.keyboardType,
-  });
-  final TextEditingController controller;
-  final String label, hint;
-  final IconData prefixIcon;
-  final TextInputType? keyboardType;
 
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, size: 18),
-        filled: true,
-        fillColor: AppColors.surfaceAlt,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      ),
-    );
-  }
-}
 
-class _SaveBtn extends StatelessWidget {
-  const InventorySaveBtn({required this.label, this.onTap, this.color});
-  final String label;
-  final VoidCallback? onTap;
-  final Color? color;
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: FilledButton(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: color ?? AppColors.forest,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-    );
-  }
-}
 
 // ─── archive confirm sheet ────────────────────────────────────────────────────
 
@@ -2246,6 +1717,119 @@ class _DeleteConfirmSheet extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _AddItemSheet extends StatelessWidget {
+  const _AddItemSheet({
+    required this.nameCtrl,
+    required this.priceCtrl,
+    required this.skuCtrl,
+    required this.categoryCtrl,
+    required this.thresholdCtrl,
+    required this.qtyCtrl,
+    required this.onSave,
+    required this.selectedImage,
+    required this.onImageChanged,
+  });
+
+  final TextEditingController nameCtrl, priceCtrl, skuCtrl, categoryCtrl, thresholdCtrl, qtyCtrl;
+  final VoidCallback onSave;
+  final String? selectedImage;
+  final ValueChanged<String?> onImageChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return PremiumSheetFrame(
+      title: 'Add New Item',
+      subtitle: 'Name, price, stock & more',
+      badge: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.forest.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.add_box_rounded, color: AppColors.forest, size: 20),
+      ),
+      bottomInset: MediaQuery.of(context).viewInsets.bottom,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InventoryIField(
+            controller: nameCtrl,
+            label: 'Item Name',
+            hint: 'e.g. Sachet Water, Indomie Noodles',
+            prefixIcon: Icons.label_rounded,
+          ),
+          const SizedBox(height: 10),
+          InventoryIField(
+            controller: priceCtrl,
+            label: 'Selling Price (₵)',
+            hint: 'e.g. 5.00',
+            prefixIcon: Icons.payments_rounded,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: InventoryIField(
+                  controller: qtyCtrl,
+                  label: 'Initial Qty',
+                  hint: '0',
+                  prefixIcon: Icons.inventory_rounded,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InventoryIField(
+                  controller: thresholdCtrl,
+                  label: 'Low Stock Alert',
+                  hint: 'e.g. 10',
+                  prefixIcon: Icons.warning_amber_rounded,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: InventoryIField(
+                  controller: categoryCtrl,
+                  label: 'Category',
+                  hint: 'e.g. Drinks, Snacks',
+                  prefixIcon: Icons.category_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InventoryIField(
+                  controller: skuCtrl,
+                  label: 'SKU / Code',
+                  hint: 'e.g. SKU-001',
+                  prefixIcon: Icons.qr_code_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ProductImagePicker(
+            selected: selectedImage,
+            onChanged: onImageChanged,
+          ),
+          const SizedBox(height: 18),
+          InventorySaveBtn(
+            label: 'Add Item to Inventory',
+            onTap: onSave,
           ),
         ],
       ),
