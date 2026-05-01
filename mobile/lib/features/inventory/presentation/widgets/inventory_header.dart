@@ -117,77 +117,80 @@ class InventoryHeader extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 52, 20, 18),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Page title + freshness — clean, no icon box
-                  Row(
-                    children: [
-                      Text(
-                        'Inventory',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.95),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.4,
-                          height: 1.1,
-                        ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Page title + freshness — clean, no icon box
+                Row(
+                  children: [
+                    Text(
+                      'Inventory',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        height: 1.1,
                       ),
-                      const SizedBox(width: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: DataFreshnessLabel(
-                          kvKey: KvCacheRepository.kInventoryTs,
-                          color: AppColors.heroSubtitle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Hero figure — left-aligned
-                  Text(
-                    'STOCK VALUE',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _fmtMoney(totalValueMinor),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Constantia',
-                      letterSpacing: -0.8,
-                      height: 1.0,
+                    const SizedBox(width: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: DataFreshnessLabel(
+                        kvKey: KvCacheRepository.kInventoryTs,
+                        color: AppColors.heroSubtitle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                  ],
+                ),
+                const SizedBox(height: 14),
 
-                  // Two key stats
-                  Row(
-                    children: [
-                      _StatPill(
-                        icon: Icons.inventory_2_rounded,
-                        value: '$activeItemsCount',
-                        label: 'active items',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.warning_amber_rounded,
-                        value: '$lowStockCount',
-                        label: 'low stock',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.category_rounded,
-                        value: '$categoriesCount',
-                        label: 'categories',
-                      ),
+                // Hero figure — left-aligned
+                Text(
+                  'STOCK VALUE',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _fmtMoney(totalValueMinor),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Constantia',
+                    letterSpacing: -0.8,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Two key stats
+                Row(
+                  children: [
+                    _StatPill(
+                      icon: Icons.inventory_2_rounded,
+                      value: '$activeItemsCount',
+                      label: 'active items',
+                    ),
+                    const SizedBox(width: 10),
+                    _StatPill(
+                      icon: Icons.warning_amber_rounded,
+                      value: '$lowStockCount',
+                      label: 'low stock',
+                    ),
+                    const SizedBox(width: 10),
+                    _StatPill(
+                      icon: Icons.category_rounded,
+                      value: '$categoriesCount',
+                      label: 'categories',
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

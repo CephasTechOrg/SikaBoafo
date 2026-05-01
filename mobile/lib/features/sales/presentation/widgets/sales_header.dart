@@ -105,84 +105,86 @@ class SalesHeader extends StatelessWidget {
             ),
           ),
 
+          // ── Content ──────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 48, 20, 18), // Increased top padding manually for sliver
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Page title + freshness — clean, no icon box
-                  Row(
-                    children: [
-                      Text(
-                        'Sales',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.95),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.4,
-                          height: 1.1,
-                        ),
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Page title + freshness — clean, no icon box
+                Row(
+                  children: [
+                    Text(
+                      'Sales',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        height: 1.1,
                       ),
-                      const SizedBox(width: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 3),
-                        child: DataFreshnessLabel(
-                          kvKey: KvCacheRepository.kSalesTs,
-                          color: AppColors.heroSubtitle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Hero figure — left-aligned, not centred
-                  Text(
-                    "TODAY'S REVENUE",
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    SalesUiUtils.formatMinor(todayRevenueMinor, symbol: '₵'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Constantia',
-                      letterSpacing: -0.8,
-                      height: 1.0,
+                    const SizedBox(width: 10),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: DataFreshnessLabel(
+                        kvKey: KvCacheRepository.kSalesTs,
+                        color: AppColors.heroSubtitle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                  ],
+                ),
+                const SizedBox(height: 14),
 
-                  // Two key stats — clean, spaced out
-                  Row(
-                    children: [
-                      _StatPill(
-                        icon: Icons.receipt_long_rounded,
-                        value: '$todayTxnsCount',
-                        label: 'transactions',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.payments_rounded,
-                        value: SalesUiUtils.formatMinor(cashTotalMinor,
-                            symbol: '₵'),
-                        label: 'cash',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.phone_android_rounded,
-                        value: SalesUiUtils.formatMinor(momoTotalMinor,
-                            symbol: '₵'),
-                        label: 'MoMo',
-                      ),
-                    ],
+                // Hero figure — left-aligned, not centred
+                Text(
+                  "TODAY'S REVENUE",
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  SalesUiUtils.formatMinor(todayRevenueMinor, symbol: '₵'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Constantia',
+                    letterSpacing: -0.8,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Two key stats — clean, spaced out
+                Row(
+                  children: [
+                    _StatPill(
+                      icon: Icons.receipt_long_rounded,
+                      value: '$todayTxnsCount',
+                      label: 'transactions',
+                    ),
+                    const SizedBox(width: 10),
+                    _StatPill(
+                      icon: Icons.payments_rounded,
+                      value: SalesUiUtils.formatMinor(cashTotalMinor,
+                          symbol: '₵'),
+                      label: 'cash',
+                    ),
+                    const SizedBox(width: 10),
+                    _StatPill(
+                      icon: Icons.phone_android_rounded,
+                      value: SalesUiUtils.formatMinor(momoTotalMinor,
+                          symbol: '₵'),
+                      label: 'MoMo',
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],

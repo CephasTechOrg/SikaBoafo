@@ -1316,7 +1316,6 @@ class _AddItemSheet extends StatelessWidget {
               label: 'Product Name',
               hint: 'e.g. Sachet Water',
               prefixIcon: Icons.label_rounded,
-              autofocus: true,
             ),
             const SizedBox(height: 12),
             InventoryIField(
