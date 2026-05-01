@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../inventory/data/inventory_repository.dart';
-import '../providers/sales_cart_provider.dart';
+import '../../providers/sales_cart_provider.dart';
 import 'empty_card.dart';
 import 'item_card.dart';
 import 'products_header.dart';

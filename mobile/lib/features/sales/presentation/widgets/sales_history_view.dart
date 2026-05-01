@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
-import '../data/sales_repository.dart';
-import '../providers/sales_providers.dart';
+import '../../../../shared/widgets/premium_ui.dart';
+import '../../data/sales_repository.dart';
+import '../../providers/sales_providers.dart';
 import 'empty_card.dart';
 
 class SalesHistoryView extends ConsumerWidget {
