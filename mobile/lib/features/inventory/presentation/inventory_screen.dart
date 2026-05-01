@@ -15,12 +15,17 @@ import 'widgets/inventory_sheets.dart';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-int _priceToMinor(String value) {
-  final parts = value.split('.');
-  if (parts.length == 1) return int.parse(parts[0]) * 100;
-  final major = int.parse(parts[0]) * 100;
-  final minor = int.parse(parts[1].padRight(2, '0').substring(0, 2));
-  return major + minor;
+int _priceToMinor(String? value) {
+  if (value == null || value.isEmpty) return 0;
+  try {
+    final parts = value.split('.');
+    if (parts.length == 1) return (int.tryParse(parts[0]) ?? 0) * 100;
+    final major = (int.tryParse(parts[0]) ?? 0) * 100;
+    final minor = (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0);
+    return major + minor;
+  } catch (_) {
+    return 0;
+  }
 }
 
 // ─── screen ──────────────────────────────────────────────────────────────────
