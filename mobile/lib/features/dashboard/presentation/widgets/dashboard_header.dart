@@ -7,7 +7,7 @@ import '../../../../shared/widgets/premium_ui.dart';
 import '../../../../shared/widgets/sync_status_pill.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';
 import '../data/dashboard_api.dart';
-import '../providers/dashboard_providers.dart';
+import '../../providers/dashboard_providers.dart';
 import '../utils/dashboard_ui_utils.dart';
 
 class DashboardHeader extends ConsumerWidget {

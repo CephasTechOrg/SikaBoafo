@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';
-import '../providers/dashboard_providers.dart';
+import '../../providers/dashboard_providers.dart';
 
 class DashboardKpiStrip extends StatelessWidget {
   const DashboardKpiStrip({
