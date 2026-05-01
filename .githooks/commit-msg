@@ -1,0 +1,8 @@
+#!/bin/sh
+# Runs after the full message is assembled — catches trailers added late by tooling.
+# Enable: git config core.hooksPath .githooks
+MSG_FILE="$1"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+python3 "$(dirname "$0")/strip_cursor_footer.py" "$MSG_FILE" 2>/dev/null || true
+
+sed -i '/^Co-authored-by: Copilot <copilot@github.com>$/d' "$1"

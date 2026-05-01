@@ -17,8 +17,6 @@ __pycache__/
 dist/
 build/
 
-.githooks/
-
 # Node / admin
 admin/node_modules/
 admin/.next/

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs before the message is finalized (optional cleanup).
+# Enable: git config core.hooksPath .githooks
+MSG_FILE="$1"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+python3 "$(dirname "$0")/strip_cursor_footer.py" "$MSG_FILE" 2>/dev/null || true
