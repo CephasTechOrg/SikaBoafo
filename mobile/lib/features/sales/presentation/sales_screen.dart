@@ -116,7 +116,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               // ── Collapsing Hero Header ────────────────────────
               SliverAppBar(
-                expandedHeight: 184,
+                expandedHeight: 210,
                 pinned: true,
                 stretch: true,
                 backgroundColor: const Color(0xFF041C0B),

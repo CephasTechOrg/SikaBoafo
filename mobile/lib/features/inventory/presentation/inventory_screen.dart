@@ -103,7 +103,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           // ── Collapsing Hero Header ────────────────────────
           SliverAppBar(
-            expandedHeight: 184,
+            expandedHeight: 210,
             pinned: true,
             stretch: true,
             backgroundColor: const Color(0xFF041C0B),
@@ -149,7 +149,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ],
                 ),
               ),
-              height: 62.0 + (categories.isNotEmpty ? 44.0 : 0.0),
+              height: 76.0 + (categories.isNotEmpty ? 44.0 : 0.0),
             ),
           ),
         ],
