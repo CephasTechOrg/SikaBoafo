@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -135,7 +135,7 @@ def delete_item(
     item_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> None:
+) -> Response:
     service = InventoryService(db=db)
     try:
         service.delete_item(user_id=current_user.id, item_id=item_id)
@@ -153,6 +153,7 @@ def delete_item(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _to_item_out(s: InventoryItemSnapshot) -> InventoryItemOut:

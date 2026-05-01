@@ -85,6 +85,8 @@ class PaymentVerifyOutDto {
     required this.providerPaymentStatus,
     required this.salePaymentStatus,
     required this.paystackTransactionStatus,
+    this.displayText,
+    this.needsOtp = false,
   });
 
   final String paymentId;
@@ -92,6 +94,8 @@ class PaymentVerifyOutDto {
   final String providerPaymentStatus;
   final String salePaymentStatus;
   final String paystackTransactionStatus;
+  final String? displayText;
+  final bool needsOtp;
 
   factory PaymentVerifyOutDto.fromJson(Map<String, dynamic> json) {
     return PaymentVerifyOutDto(
@@ -102,6 +106,8 @@ class PaymentVerifyOutDto {
       salePaymentStatus: (json['sale_payment_status'] ?? '') as String,
       paystackTransactionStatus:
           (json['paystack_transaction_status'] ?? '') as String,
+      displayText: json['display_text'] as String?,
+      needsOtp: json['needs_otp'] == true,
     );
   }
 }

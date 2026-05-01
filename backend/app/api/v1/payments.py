@@ -272,6 +272,8 @@ def submit_sale_momo_otp(
         provider_payment_status=out.provider_payment_status,
         sale_payment_status=out.sale_payment_status,
         paystack_transaction_status=out.paystack_transaction_status,
+        display_text=out.display_text,
+        needs_otp=out.needs_otp,
     )
 
 
@@ -312,4 +314,6 @@ def verify_sale_payment(
         provider_payment_status=out.provider_payment_status,
         sale_payment_status=out.sale_payment_status,
         paystack_transaction_status=out.paystack_transaction_status,
+        display_text=out.display_text,
+        needs_otp=out.needs_otp,
     )

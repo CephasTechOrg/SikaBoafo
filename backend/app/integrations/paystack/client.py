@@ -6,7 +6,7 @@ import json
 import logging
 from dataclasses import dataclass
 from typing import Any
-from urllib import error, request
+from urllib import error, parse, request
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +202,64 @@ class PaystackClient:
             payload={"reference": reference, "otp": otp.strip()},
         )
         return _charge_result_from_raw(raw, fallback_reference=reference)
+
+    def get_charge_transaction(
+        self,
+        *,
+        secret_key: str,
+        reference: str,
+    ) -> PaystackVerifyResult:
+        """GET /charge/{reference} — Paystack recommends this for pending charge status (e.g. MoMo)."""
+        ref = str(reference).strip()
+        safe = parse.quote(ref, safe="-._=")
+        url = f"{self.base_url.rstrip('/')}/charge/{safe}"
+        raw = self._get_json(
+            url=url,
+            headers={
+                "Authorization": f"Bearer {secret_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        data = raw.get("data")
+        if raw.get("status") is not True or not isinstance(data, dict):
+            msg = str(raw.get("message") or "Paystack charge lookup failed.")
+            raise PaystackClientError(msg, response_body=raw)
+
+        provider_reference = data.get("reference")
+        if not isinstance(provider_reference, str) or not provider_reference.strip():
+            provider_reference = ref
+
+        payment_status = data.get("status")
+        if not isinstance(payment_status, str) or not payment_status.strip():
+            msg = "Paystack charge lookup response missing status."
+            raise PaystackClientError(msg, response_body=raw)
+
+        amount_kobo_raw = data.get("amount")
+        amount_kobo: int | None
+        if isinstance(amount_kobo_raw, int):
+            amount_kobo = amount_kobo_raw
+        elif isinstance(amount_kobo_raw, str) and amount_kobo_raw.isdigit():
+            amount_kobo = int(amount_kobo_raw)
+        else:
+            amount_kobo = None
+
+        paid_at_raw = data.get("paid_at") or data.get("paidAt")
+        paid_at: str | None
+        if paid_at_raw is None:
+            paid_at = None
+        elif isinstance(paid_at_raw, str):
+            paid_at = paid_at_raw
+        else:
+            msg = "Paystack charge lookup response has invalid paid_at."
+            raise PaystackClientError(msg, response_body=raw)
+
+        return PaystackVerifyResult(
+            reference=provider_reference.strip(),
+            status=payment_status.strip().lower(),
+            amount_kobo=amount_kobo,
+            paid_at=paid_at,
+            raw_payload=raw,
+        )
 
     def verify_transaction(
         self,

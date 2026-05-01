@@ -269,6 +269,13 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
     try {
       final verify = await ref.read(salesPaymentsApiProvider).verifySalePayment(paymentId);
       if (!mounted) return;
+      setState(() {
+        _needsOtp = verify.needsOtp;
+        final t = verify.displayText;
+        if (t != null && t.trim().isNotEmpty) {
+          _paystackDisplayText = t.trim();
+        }
+      });
       if (verify.salePaymentStatus == 'succeeded') {
         _timer?.cancel();
         widget.onPaymentConfirmed();
@@ -305,6 +312,7 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
     }
     FocusScope.of(context).unfocus();
     var saleCompleted = false;
+    var cooldownAfterSubmit = false;
     setState(() => _submittingOtp = true);
     try {
       final out = await ref.read(salesPaymentsApiProvider).submitSaleMomoOtp(
@@ -319,17 +327,32 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
         widget.onPaymentConfirmed();
         return;
       }
-      setState(() => _needsOtp = false);
-      await _check(auto: true);
+      cooldownAfterSubmit = out.needsOtp;
+      setState(() {
+        _needsOtp = out.needsOtp;
+        final t = out.displayText;
+        if (t != null && t.trim().isNotEmpty) {
+          _paystackDisplayText = t.trim();
+        }
+      });
+      if (out.needsOtp) {
+        _clearOtpFields();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _otpFocusNode.requestFocus();
+        });
+      } else {
+        await _check(auto: true);
+      }
     } catch (e) {
       if (!mounted) return;
+      cooldownAfterSubmit = _needsOtp;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(humanizeSalesPaymentsError(e))),
       );
     } finally {
       if (mounted) {
         setState(() => _submittingOtp = false);
-        if (!saleCompleted && _needsOtp) {
+        if (!saleCompleted && cooldownAfterSubmit) {
           _startOtpSubmitCooldown();
         }
       }

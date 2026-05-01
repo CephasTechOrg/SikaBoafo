@@ -56,6 +56,30 @@ _MONEY_SCALE = Decimal("0.01")
 _TERMINAL_RECEIVABLE_STATUSES = {RECEIVABLE_STATUS_SETTLED, RECEIVABLE_STATUS_CANCELLED}
 
 
+def _paystack_display_text_from_raw(raw: dict[str, Any]) -> str | None:
+    data = raw.get("data")
+    if not isinstance(data, dict):
+        return None
+    dt = data.get("display_text")
+    if isinstance(dt, str) and dt.strip():
+        return dt.strip()
+    return None
+
+
+def _payment_is_momo_number_charge(payment: Payment) -> bool:
+    """True when this payment was started via our MoMo-on-number `/charge` flow."""
+    raw = payment.raw_provider_payload
+    if not isinstance(raw, dict):
+        return False
+    data = raw.get("data")
+    if not isinstance(data, dict):
+        return False
+    meta = data.get("metadata")
+    if not isinstance(meta, dict):
+        return False
+    return meta.get("payment_flow") == "momo_number_charge"
+
+
 class PaymentInitiationContextError(Exception):
     """Caller has no merchant/store context."""
 
@@ -134,6 +158,8 @@ class PaymentVerifySnapshot:
     provider_payment_status: str
     sale_payment_status: str
     paystack_transaction_status: str
+    display_text: str | None = None
+    needs_otp: bool = False
 
 
 @dataclass(slots=True)
@@ -400,6 +426,22 @@ class PaymentService:
             },
         )
 
+        if isinstance(result.raw_payload, dict):
+            raw_for_store: dict[str, Any] = {**result.raw_payload}
+            inner = raw_for_store.get("data")
+            if isinstance(inner, dict):
+                inner_copy = {**inner}
+                meta = inner_copy.get("metadata")
+                if not isinstance(meta, dict):
+                    meta = {}
+                else:
+                    meta = {**meta}
+                meta.setdefault("payment_flow", "momo_number_charge")
+                inner_copy["metadata"] = meta
+                raw_for_store["data"] = inner_copy
+        else:
+            raw_for_store = result.raw_payload
+
         payment = Payment(
             merchant_id=merchant.id,
             sale_id=sale.id,
@@ -411,7 +453,7 @@ class PaymentService:
             currency=merchant.currency_code or DEFAULT_CURRENCY,
             status=PROVIDER_PAYMENT_PENDING,
             initiated_at=datetime.now(tz=UTC),
-            raw_provider_payload=result.raw_payload,
+            raw_provider_payload=raw_for_store,
         )
         self.db.add(payment)
         sale.payment_status = PAYMENT_STATUS_PENDING_PROVIDER
@@ -575,6 +617,8 @@ class PaymentService:
                 provider_payment_status=payment.status,
                 sale_payment_status=sale.payment_status,
                 paystack_transaction_status="success",
+                display_text=None,
+                needs_otp=False,
             )
 
         if payment.status == PROVIDER_PAYMENT_FAILED or sale.payment_status == PAYMENT_STATUS_FAILED:
@@ -592,6 +636,10 @@ class PaymentService:
             otp=otp,
         )
 
+        new_ref = str(charge_out.reference).strip()
+        if new_ref:
+            payment.provider_reference = new_ref
+
         prev_payload: dict[str, Any] = (
             payment.raw_provider_payload
             if isinstance(payment.raw_provider_payload, dict)
@@ -604,6 +652,10 @@ class PaymentService:
 
         charge_status = charge_out.status.strip().lower()
         paystack_status: str
+        response_display = charge_out.display_text or _paystack_display_text_from_raw(
+            charge_out.raw_payload
+        )
+        response_needs_otp = charge_status == "send_otp"
 
         if charge_status == "success":
             verified = self._client(configured).verify_transaction(
@@ -616,6 +668,10 @@ class PaymentService:
                 payment=payment,
                 sale=sale,
                 verified=verified,
+            )
+            response_needs_otp = paystack_status == "send_otp"
+            response_display = response_display or _paystack_display_text_from_raw(
+                verified.raw_payload
             )
         elif charge_status in {"failed", "abandoned", "reversed"}:
             payment.status = PROVIDER_PAYMENT_FAILED
@@ -638,6 +694,7 @@ class PaymentService:
                 },
             )
             paystack_status = charge_status
+            response_needs_otp = False
         else:
             paystack_status = charge_status
 
@@ -650,6 +707,8 @@ class PaymentService:
             provider_payment_status=payment.status,
             sale_payment_status=sale.payment_status,
             paystack_transaction_status=paystack_status,
+            display_text=response_display,
+            needs_otp=response_needs_otp,
         )
 
     def verify_sale_payment(
@@ -696,6 +755,8 @@ class PaymentService:
                 provider_payment_status=payment.status,
                 sale_payment_status=sale.payment_status,
                 paystack_transaction_status="success",
+                display_text=None,
+                needs_otp=False,
             )
 
         configured = self.settings or get_settings()
@@ -703,10 +764,24 @@ class PaymentService:
             payment=payment,
             settings=configured,
         )
-        verified = self._client(configured).verify_transaction(
-            secret_key=secret_key,
-            reference=str(payment.provider_reference).strip(),
-        )
+        ref = str(payment.provider_reference).strip()
+        verified: PaystackVerifyResult
+        if _payment_is_momo_number_charge(payment):
+            try:
+                verified = self._client(configured).get_charge_transaction(
+                    secret_key=secret_key,
+                    reference=ref,
+                )
+            except PaystackClientError:
+                verified = self._client(configured).verify_transaction(
+                    secret_key=secret_key,
+                    reference=ref,
+                )
+        else:
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=ref,
+            )
         paystack_status = self._apply_paystack_verify_to_sale_payment(
             user_id=user_id,
             merchant=merchant,
@@ -724,6 +799,8 @@ class PaymentService:
             provider_payment_status=payment.status,
             sale_payment_status=sale.payment_status,
             paystack_transaction_status=paystack_status,
+            display_text=_paystack_display_text_from_raw(verified.raw_payload),
+            needs_otp=paystack_status == "send_otp",
         )
 
     def handle_paystack_webhook(

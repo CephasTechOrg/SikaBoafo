@@ -70,3 +70,5 @@ class PaymentVerifyOut(BaseModel):
     provider_payment_status: str
     sale_payment_status: str
     paystack_transaction_status: str
+    display_text: str | None = None
+    needs_otp: bool = False

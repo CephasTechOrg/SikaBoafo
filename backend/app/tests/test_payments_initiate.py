@@ -498,7 +498,7 @@ def test_verify_sale_payment_marks_sale_succeeded() -> None:
         payment_id = r1.json()["payment_id"]
 
         with patch(
-            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            "app.integrations.paystack.client.PaystackClient.get_charge_transaction",
             return_value=PaystackVerifyResult(
                 reference="PSK_MOMO_REF_VERIFY",
                 status="success",
