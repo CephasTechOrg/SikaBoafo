@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../data/dashboard_api.dart';
@@ -23,7 +25,7 @@ class DashboardKpiStrip extends StatelessWidget {
     final overlay = overlayAsync.valueOrNull;
 
     final lowStock = summary?.lowStockCount ?? 0;
-    final pendingSync = overlay?.todayPendingSalesCount ?? 0;
+    final debtOutstanding = summary?.debtOutstandingTotal ?? '0.00';
     final todaySales = summary?.todaySalesTotal ?? '0.00';
     final todayProfit = summary?.todayEstimatedProfit ?? '0.00';
 
@@ -41,12 +43,12 @@ class DashboardKpiStrip extends StatelessWidget {
             children: [
               Expanded(
                 child: _StatCard(
-                  icon: Icons.sync_problem_rounded,
-                  label: 'Pending Sync',
-                  value: pendingSync == 0 ? '0' : pendingSync.toString(),
-                  color: AppColors.info,
-                  backgroundColor: AppColors.infoSoft,
-                  onTap: () {},
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Debt Outstanding',
+                  value: '₵$debtOutstanding',
+                  color: const Color(0xFFB54848),
+                  backgroundColor: const Color(0xFFFFF0F0),
+                  onTapWithCtx: (ctx) => ctx.push(AppRoute.debts.path),
                 ),
               ),
               const SizedBox(width: 12),
@@ -57,7 +59,7 @@ class DashboardKpiStrip extends StatelessWidget {
                   value: lowStock == 0 ? '0' : lowStock.toString(),
                   color: AppColors.warning,
                   backgroundColor: AppColors.warningSoft,
-                  onTap: () => onNavigate(2),
+                  onTapSimple: () => onNavigate(2),
                 ),
               ),
             ],
@@ -217,7 +219,8 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.color,
     required this.backgroundColor,
-    required this.onTap,
+    this.onTapSimple,
+    this.onTapWithCtx,
   });
 
   final IconData icon;
@@ -225,7 +228,8 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color color;
   final Color backgroundColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTapSimple;
+  final ValueChanged<BuildContext>? onTapWithCtx;
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +238,10 @@ class _StatCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () {
+            if (onTapWithCtx != null) onTapWithCtx!(context);
+            if (onTapSimple != null) onTapSimple!();
+          },
           borderRadius: BorderRadius.circular(AppRadii.md),
           child: Padding(
             padding: const EdgeInsets.all(14),
