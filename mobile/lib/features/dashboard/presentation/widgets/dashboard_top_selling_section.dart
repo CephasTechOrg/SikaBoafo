@@ -13,7 +13,7 @@ class DashboardTopSellingSection extends StatelessWidget {
   });
 
   final AsyncValue<DashboardInsights> insightsAsync;
-  final AsyncValue<DashboardOverlay> overlayAsync;
+  final AsyncValue<LocalDashboardOverlay> overlayAsync;
 
   @override
   Widget build(BuildContext context) {
