@@ -31,6 +31,7 @@ import 'widgets/section_label.dart';
 import 'widgets/item_card.dart';
 import 'widgets/sales_bottom_bar.dart';
 import 'widgets/products_header.dart';
+import '../../settings/presentation/connect_paystack_screen.dart';
 import 'widgets/paystack_momo_sheet.dart';
 import 'widgets/paystack_qr_sheet.dart';
 import 'widgets/sale_success_sheet.dart';
@@ -866,14 +867,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetCtx) => PaystackMomoSheet(
-          saleId: saleId,
-          amountDisplay: totalAmount,
-          onPaymentConfirmed: () {
-            confirmed = true;
-            Navigator.of(sheetCtx).pop();
-          },
-        ),
+        builder: (sheetCtx) {
+          final mode = ref.read(paystackConnectionProvider).valueOrNull?.mode.toLowerCase();
+          final paystackTestMode = mode == 'test';
+          return PaystackMomoSheet(
+            saleId: saleId,
+            amountDisplay: totalAmount,
+            paystackTestMode: paystackTestMode,
+            onPaymentConfirmed: () {
+              confirmed = true;
+              Navigator.of(sheetCtx).pop();
+            },
+          );
+        },
       );
       if (!mounted || !confirmed) return;
       await ref

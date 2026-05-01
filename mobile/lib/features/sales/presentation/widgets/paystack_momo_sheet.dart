@@ -16,11 +16,17 @@ class PaystackMomoSheet extends ConsumerStatefulWidget {
     required this.saleId,
     required this.amountDisplay,
     required this.onPaymentConfirmed,
+    this.paystackTestMode = false,
   });
 
   final String saleId;
   final String amountDisplay;
   final VoidCallback onPaymentConfirmed;
+
+  /// When the merchant's Paystack connection uses **test** keys, only Paystack's
+  /// sandbox MoMo numbers work (see Paystack test payments docs). Real phones
+  /// need **live** keys.
+  final bool paystackTestMode;
 
   @override
   ConsumerState<PaystackMomoSheet> createState() => _PaystackMomoSheetState();
@@ -190,6 +196,42 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                     ],
                   ),
                 ),
+                if (widget.paystackTestMode && !_promptSent) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Test keys — sandbox MoMo only',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Paystack will not send a real network prompt to customer phones while you use test (sk_test_) keys. '
+                          'For Ghana MTN tests, use number 0551234987 and network MTN (Paystack test docs). '
+                          'Telecel and other real numbers need live keys in Settings → Paystack.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.35,
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (!_promptSent) ...[
                   const SizedBox(height: 16),
                   TextField(
@@ -198,7 +240,9 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]'))],
                     decoration: InputDecoration(
                       labelText: 'Customer MoMo number',
-                      hintText: 'e.g. 055 123 4567',
+                      hintText: widget.paystackTestMode
+                          ? 'Test MTN: 0551234987'
+                          : 'e.g. 055 123 4567',
                       filled: true,
                       fillColor: AppColors.surfaceAlt,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
