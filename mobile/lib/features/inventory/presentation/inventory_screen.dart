@@ -62,19 +62,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(inventoryControllerProvider);
     final items = itemsAsync.valueOrNull ?? const <LocalInventoryItem>[];
-    final activeItems =
-        items.where((item) => item.isActive).toList(growable: false);
-    final archivedItems =
-        items.where((item) => !item.isActive).toList(growable: false);
+    final activeItems = items.where((item) => item.isActive).toList();
+    final archivedItems = items.where((item) => !item.isActive).toList();
 
-    // O(n) stats pass
     int totalValueMinor = 0;
     int lowStockCount = 0;
     final categories = <String>{};
     for (final item in activeItems) {
       totalValueMinor += _priceToMinor(item.defaultPrice) * item.quantityOnHand;
-      if (item.lowStockThreshold != null &&
-          item.quantityOnHand <= item.lowStockThreshold!) {
+      if (item.lowStockThreshold != null && item.quantityOnHand <= item.lowStockThreshold!) {
         lowStockCount++;
       }
     }
@@ -82,172 +78,161 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       if (item.category != null) categories.add(item.category!);
     }
 
-    // Filter
     final q = _searchQuery.toLowerCase();
     bool matchesFilters(LocalInventoryItem item) {
       final matchQuery = q.isEmpty ||
           item.name.toLowerCase().contains(q) ||
           (item.category?.toLowerCase().contains(q) ?? false) ||
           (item.sku?.toLowerCase().contains(q) ?? false);
-      final matchCat =
-          _filterCategory == null || item.category == _filterCategory;
+      final matchCat = _filterCategory == null || item.category == _filterCategory;
       return matchQuery && matchCat;
     }
 
-    final filteredActive =
-        activeItems.where(matchesFilters).toList(growable: false);
-    final filteredArchived =
-        archivedItems.where(matchesFilters).toList(growable: false);
+    final filteredActive = activeItems.where(matchesFilters).toList();
+    final filteredArchived = archivedItems.where(matchesFilters).toList();
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddItemSheet(context),
         backgroundColor: AppColors.forest,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add_rounded),
       ),
-    
-      body: Column(
-        children: [
-          InventoryHeader(
-            totalValueMinor: totalValueMinor,
-            activeItemsCount: activeItems.length,
-            lowStockCount: lowStockCount,
-            categoriesCount: categories.length,
-          ),
-          Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, -8),
-              child: Column(
-                children: [
-                  const StaleBanner(
-                    screenKey: 'inventory',
-                    kvKey: KvCacheRepository.kInventoryTs,
-                  ),
-                  Expanded(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: AppColors.canvas,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(28),
-                        ),
-                        child: RefreshIndicator(
-                          onRefresh: () => ref
-                              .read(inventoryControllerProvider.notifier)
-                              .refresh(),
-                          child: ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                            children: [
-
-                        _SearchBar(
-                          controller: _searchCtrl,
-                          onChanged: (v) => setState(() => _searchQuery = v),
-                        ),
-                        if (categories.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          _CategoryFilter(
-                            categories: categories.toList()..sort(),
-                            selected: _filterCategory,
-                            onChanged: (c) =>
-                                setState(() => _filterCategory = c),
-                          ),
-                        ],
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Text(
-                              filteredActive.isEmpty && q.isNotEmpty
-                                  ? 'NO MATCHES'
-                                  : 'ACTIVE ITEMS',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 11,
-                                color: AppColors.muted,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (items.isNotEmpty)
-                              Text(
-                                '${filteredActive.length} of ${activeItems.length}',
-                                style: const TextStyle(
-                                  color: AppColors.mutedSoft,
-                                  fontSize: 11,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        if (itemsAsync.isLoading && items.isEmpty)
-                          const _LoadingCard()
-                        else if (itemsAsync.hasError)
-                          _ErrorCard(
-                            message: humanizeInventoryError(itemsAsync.error!),
-                          )
-                        else if (items.isEmpty)
-                          _EmptyCard(
-                            onAdd: () => _openAddItemSheet(context),
-                          )
-                        else if (filteredActive.isEmpty && activeItems.isEmpty)
-                          _EmptyActiveCard(
-                            archivedCount: archivedItems.length,
-                          )
-                        else if (filteredActive.isEmpty)
-                          const _NoMatchCard()
-                        else
-                          ...filteredActive.map(
-                            (item) => InventoryItemCard(
-                              item: item,
-                              onTap: () => _openItemDetail(item),
-                            ),
-                          ),
-                        if (archivedItems.isNotEmpty) ...[
-                          const SizedBox(height: 14),
-                          _ArchivedSection(
-                            archivedCount: archivedItems.length,
-                            visibleCount: filteredArchived.length,
-                            expanded: _showArchived,
-                            onToggle: () => setState(
-                              () => _showArchived = !_showArchived,
-                            ),
-                          ),
-                          if (_showArchived) ...[
-                            const SizedBox(height: 10),
-                            if (filteredArchived.isEmpty)
-                              const _ArchivedNoMatchCard()
-                            else
-                              ...filteredArchived.map(
-                                (item) => InventoryItemCard(
-                                  item: item,
-                                  onTap: () => _openItemDetail(item),
-                                ),
-                              ),
-                          ],
-                        ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          // ── Collapsing Hero Header ────────────────────────
+          SliverAppBar(
+            expandedHeight: 184,
+            pinned: true,
+            stretch: true,
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: InventoryHeader(
+                totalValueMinor: totalValueMinor,
+                activeItemsCount: activeItems.length,
+                lowStockCount: lowStockCount,
+                categoriesCount: categories.length,
               ),
+              title: innerBoxIsScrolled 
+                ? const Text('Inventory', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18))
+                : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+            ),
+          ),
+
+          // ── Sticky Search & Filters ───────────────────────
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _SliverFilterDelegate(
+              child: Container(
+                color: AppColors.canvas,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SearchBar(
+                      controller: _searchCtrl,
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    ),
+                    if (categories.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _CategoryFilter(
+                        categories: categories.toList()..sort(),
+                        selected: _filterCategory,
+                        onChanged: (c) => setState(() => _filterCategory = c),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              height: 62.0 + (categories.isNotEmpty ? 44.0 : 0.0),
             ),
           ),
         ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(inventoryControllerProvider.notifier).refresh(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      filteredActive.isEmpty && q.isNotEmpty ? 'NO MATCHES' : 'ACTIVE ITEMS',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppColors.muted, letterSpacing: 0.5),
+                    ),
+                    const Spacer(),
+                    if (items.isNotEmpty)
+                      Text(
+                        '${filteredActive.length} of ${activeItems.length}',
+                        style: const TextStyle(color: AppColors.mutedSoft, fontSize: 11),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                if (itemsAsync.isLoading && items.isEmpty)
+                  const _LoadingCard()
+                else if (itemsAsync.hasError)
+                  _ErrorCard(message: humanizeInventoryError(itemsAsync.error!))
+                else if (items.isEmpty)
+                  _EmptyCard(onAdd: () => _openAddItemSheet(context))
+                else if (filteredActive.isEmpty && activeItems.isEmpty)
+                  _EmptyActiveCard(archivedCount: archivedItems.length)
+                else if (filteredActive.isEmpty)
+                  const _NoMatchCard()
+                else
+                  ...filteredActive.map((item) => InventoryItemCard(item: item, onTap: () => _openItemDetail(item))),
+                
+                if (archivedItems.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _ArchivedSection(
+                    archivedCount: archivedItems.length,
+                    visibleCount: filteredArchived.length,
+                    expanded: _showArchived,
+                    onToggle: () => setState(() => _showArchived = !_showArchived),
+                  ),
+                  if (_showArchived) ...[
+                    const SizedBox(height: 10),
+                    if (filteredArchived.isEmpty) const _ArchivedNoMatchCard()
+                    else ...filteredArchived.map((item) => InventoryItemCard(item: item, onTap: () => _openItemDetail(item))),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+// ─── Sliver Helpers ───────────────────────────────────────────────────────────
+
+class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
+  _SliverFilterDelegate({required this.child, required this.height});
+  final Widget child;
+  final double height;
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverFilterDelegate oldDelegate) => oldDelegate.height != height;
+}
 
 
   void _openItemDetail(LocalInventoryItem item) {

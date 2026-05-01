@@ -62,32 +62,26 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(salesCartProvider);
-
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
     final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
     final dashboardOverlayAsync = ref.watch(localDashboardOverlayProvider);
-    final allItems =
-        (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
+    
+    final allItems = (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
             .where((item) => item.isActive)
             .toList(growable: false);
     final recentSales = salesAsync.valueOrNull ?? const <LocalSaleRecord>[];
     final isBusy = salesAsync.isLoading;
 
-    // O(n·m) search filter — acceptable for n < 500 items.
     final filtered = cart.searchQuery.isEmpty
         ? allItems
-        : allItems
-            .where((i) =>
-                i.name.toLowerCase().contains(cart.searchQuery.toLowerCase()))
+        : allItems.where((i) => i.name.toLowerCase().contains(cart.searchQuery.toLowerCase()))
             .toList(growable: false);
 
-    // O(n) single-pass partition — stable within each group.
     final selectedItems = <LocalInventoryItem>[];
     final unselectedItems = <LocalInventoryItem>[];
     for (final item in filtered) {
-      ((cart.qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems)
-          .add(item);
+      ((cart.qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems).add(item);
     }
 
     final topSellingRows = _mergeTopSelling(
@@ -95,21 +89,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       dashboardOverlayAsync.valueOrNull?.monthPendingTopSelling ?? const [],
       limit: 3,
     );
-
-    // Build set of top-selling item IDs to filter from available list.
-    final topSellingIds = <String>{
-      for (final row in topSellingRows) row.itemId,
-    };
-
-    // Filter top-selling items from unselected for separate "Quick Add" section.
-    final quickAddItems = unselectedItems
-        .where((item) => topSellingIds.contains(item.id))
-        .toList(growable: false);
-    final regularUnselectedItems = unselectedItems
-        .where((item) => !topSellingIds.contains(item.id))
-        .toList(growable: false);
-
-    // Sort regular items by name.
+    final topSellingIds = {for (final row in topSellingRows) row.itemId};
+    final quickAddItems = unselectedItems.where((item) => topSellingIds.contains(item.id)).toList();
+    final regularUnselectedItems = unselectedItems.where((item) => !topSellingIds.contains(item.id)).toList();
     regularUnselectedItems.sort((a, b) => a.name.compareTo(b.name));
 
     final itemCount = cart.qtyByItemId.values.fold(0, (a, b) => a + b);
@@ -118,157 +100,143 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final visibleSales = recentSales.where((sale) => !sale.isVoided).toList();
     final historySales = _showVoided ? recentSales : visibleSales;
     final todaySales = visibleSales.where((sale) {
-      final createdAt =
-          DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
+      final createdAt = DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
       return SalesUiUtils.isSameLocalDay(createdAt, DateTime.now());
-    }).toList(growable: false);
-    final todayRevenueMinor = todaySales.fold<int>(
-      0,
-      (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount),
-    );
-    final cashTotalMinor = todaySales
-        .where((s) => s.paymentMethodLabel == 'cash')
-        .fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
-    final momoTotalMinor = todaySales
-        .where((s) => s.paymentMethodLabel == 'mobile_money')
-        .fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
+    }).toList();
+
+    final todayRevenueMinor = todaySales.fold<int>(0, (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount));
+    final cashTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'cash').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
+    final momoTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'mobile_money').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(color: AppColors.canvas),
-        child: Column(
-          children: [
-            SalesHeader(
-              todayRevenueMinor: todayRevenueMinor,
-              todayTxnsCount: todaySales.length,
-              cashTotalMinor: cashTotalMinor,
-              momoTotalMinor: momoTotalMinor,
-            ),
-            Expanded(
-              child: Transform.translate(
-                offset: const Offset(0, -8),
-                child: Column(
-                  children: [
-                    const StaleBanner(
-                      screenKey: 'sales',
-                      kvKey: KvCacheRepository.kSalesTs,
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              // ── Collapsing Hero Header ────────────────────────
+              SliverAppBar(
+                expandedHeight: 184,
+                pinned: true,
+                stretch: true,
+                backgroundColor: const Color(0xFF041C0B),
+                elevation: 0,
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [StretchMode.zoomBackground],
+                  background: SalesHeader(
+                    todayRevenueMinor: todayRevenueMinor,
+                    todayTxnsCount: todaySales.length,
+                    cashTotalMinor: cashTotalMinor,
+                    momoTotalMinor: momoTotalMinor,
+                  ),
+                  // App Title shows only when collapsed
+                  title: innerBoxIsScrolled 
+                    ? const Text('Sales', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18))
+                    : null,
+                  centerTitle: false,
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                ),
+              ),
+
+              // ── Sticky Tab Bar ────────────────────────────────
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabDelegate(
+                  child: Container(
+                    color: AppColors.canvas,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: SalesTabBar(
+                      activeTab: _activeTab,
+                      onChanged: (tab) => setState(() => _activeTab = tab),
                     ),
-                    Expanded(
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: AppColors.canvas,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(28),
-                          ),
+                  ),
+                ),
+              ),
+            ],
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: inventoryAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(child: Text(humanizeInventoryError(error))),
+                data: (_) => RefreshIndicator(
+                  onRefresh: () async {
+                    await Future.wait([
+                      ref.read(inventoryControllerProvider.notifier).refresh(),
+                      ref.read(salesControllerProvider.notifier).refresh(includeVoided: _showVoided),
+                    ]);
+                  },
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, _activeTab == SalesViewTab.newSale ? 100 : 24),
+                    children: [
+                      if (_activeTab == SalesViewTab.newSale)
+                        SalesNewSaleView(
+                          searchCtrl: _searchCtrl,
+                          allItems: allItems,
+                          filteredItems: filtered,
+                          selectedItems: selectedItems,
+                          quickAddItems: quickAddItems,
+                          regularUnselectedItems: regularUnselectedItems,
+                          onPriceTap: _showPriceOverrideDialog,
+                        )
+                      else
+                        SalesHistoryView(
+                          showVoided: _showVoided,
+                          onShowVoidedChanged: (value) async {
+                            setState(() => _showVoided = value);
+                            await ref.read(salesControllerProvider.notifier).refresh(includeVoided: value);
+                          },
+                          historySales: historySales,
+                          buildSaleTile: _buildRecentSaleTile,
+                          isBusy: isBusy,
                         ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(28),
-                          ),
-                          child: inventoryAsync.when(
-                            loading: () => const Center(
-                                child: CircularProgressIndicator()),
-                            error: (error, _) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Text(
-                                  humanizeInventoryError(error),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                            data: (_) => Stack(
-                              children: [
-                                RefreshIndicator(
-                                  onRefresh: () async {
-                                    await Future.wait([
-                                      ref
-                                          .read(inventoryControllerProvider
-                                              .notifier)
-                                          .refresh(),
-                                      ref
-                                          .read(
-                                              salesControllerProvider.notifier)
-                                          .refresh(includeVoided: _showVoided),
-                                    ]);
-                                  },
-                                  child: ListView(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    padding: EdgeInsets.fromLTRB(
-                                      16,
-                                      14,
-                                      16,
-                                      _activeTab == SalesViewTab.newSale
-                                          ? 108
-                                          : 24,
-                                    ),
-                                    children: [
-                                      SalesTabBar(
-                                        activeTab: _activeTab,
-                                        onChanged: (tab) => setState(
-                                          () => _activeTab = tab,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      if (_activeTab == SalesViewTab.newSale)
-                                        SalesNewSaleView(
-                                          searchCtrl: _searchCtrl,
-                                          allItems: allItems,
-                                          filteredItems: filtered,
-                                          selectedItems: selectedItems,
-                                          quickAddItems: quickAddItems,
-                                          regularUnselectedItems: regularUnselectedItems,
-                                          onPriceTap: _showPriceOverrideDialog,
-                                        )
-                                      else
-                                        SalesHistoryView(
-                                          showVoided: _showVoided,
-                                          onShowVoidedChanged: (value) async {
-                                            setState(() => _showVoided = value);
-                                            await ref.read(salesControllerProvider.notifier).refresh(includeVoided: value);
-                                          },
-                                          historySales: historySales,
-                                          buildSaleTile: _buildRecentSaleTile,
-                                          isBusy: isBusy,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                if (_activeTab == SalesViewTab.newSale)
-                                  Positioned(
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
-                                    child: SalesBottomBar(
-                                      itemCount: itemCount,
-                                      totalAmount: totalAmount,
-                                      paymentMethod: _paymentLabel(
-                                        cart.paymentMethod,
-                                      ),
-                                      hasItems: hasItems,
-                                      isBusy: isBusy,
-                                      onConfirm: () => _showReviewSaleSheet(
-                                        items: allItems,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // ── Bottom Checkout Bar ──────────────────────────────
+          if (_activeTab == SalesViewTab.newSale)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SalesBottomBar(
+                itemCount: itemCount,
+                totalAmount: totalAmount,
+                paymentMethod: _paymentLabel(cart.paymentMethod),
+                hasItems: hasItems,
+                isBusy: isBusy,
+                onConfirm: () => _showReviewSaleSheet(items: allItems),
+              ),
+            ),
+        ],
       ),
     );
   }
+}
+
+// ─── Sliver Helpers ───────────────────────────────────────────────────────────
+
+class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
+  _SliverTabDelegate({required this.child});
+  final Widget child;
+
+  @override
+  double get minExtent => 68;
+  @override
+  double get maxExtent => 68;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabDelegate oldDelegate) => false;
+}
 
 
 
