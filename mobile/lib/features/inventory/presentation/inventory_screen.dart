@@ -13,7 +13,7 @@ import 'widgets/inventory_header.dart';
 import 'widgets/inventory_item_card.dart';
 import 'widgets/inventory_sheets.dart';
 
-// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 int _priceToMinor(String value) {
   final parts = value.split('.');
@@ -23,7 +23,7 @@ int _priceToMinor(String value) {
   return major + minor;
 }
 
-// â”€â”€â”€ screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── screen ──────────────────────────────────────────────────────────────────
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -211,29 +211,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
     );
   }
-}
-
-// ─── Sliver Helpers ───────────────────────────────────────────────────────────
-
-class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
-  _SliverFilterDelegate({required this.child, required this.height});
-  final Widget child;
-  final double height;
-
-  @override
-  double get minExtent => height;
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
-  }
-
-  @override
-  bool shouldRebuild(_SliverFilterDelegate oldDelegate) => oldDelegate.height != height;
-}
-
 
   void _openItemDetail(LocalInventoryItem item) {
     showModalBottomSheet<void>(
@@ -413,10 +390,29 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 }
 
-// â”€â”€â”€ header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sliver Helpers ───────────────────────────────────────────────────────────
+
+class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
+  _SliverFilterDelegate({required this.child, required this.height});
+  final Widget child;
+  final double height;
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverFilterDelegate oldDelegate) => oldDelegate.height != height;
+}
 
 
-// â”€â”€â”€ add item accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── add item accordion ───────────────────────────────────────────────────────
 
 
 
@@ -444,7 +440,7 @@ class _FieldGroup extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ search & filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── search & filter ──────────────────────────────────────────────────────────
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({required this.controller, required this.onChanged});
@@ -457,7 +453,7 @@ class _SearchBar extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search items by name, category or SKUâ€¦',
+        hintText: 'Search items by name, category or SKU…',
         prefixIcon: const Icon(
           Icons.search_rounded,
           size: 20,
@@ -566,13 +562,9 @@ class _Chip extends StatelessWidget {
   }
 }
 
-// â”€â”€â”€ item card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── item card ────────────────────────────────────────────────────────────────
 
-
-
-
-
-// â”€â”€â”€ bottom sheets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── bottom sheets ────────────────────────────────────────────────────────────
 
 class _EditSheet extends StatefulWidget {
   const _EditSheet({required this.item, required this.ref});
@@ -632,7 +624,7 @@ class _EditSheetState extends State<_EditSheet> {
           const SizedBox(height: 10),
           InventoryIField(
             controller: _priceCtrl,
-            label: 'Selling Price (â‚µ)',
+            label: 'Selling Price (₵)',
             hint: '0.00',
             prefixIcon: Icons.payments_rounded,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -732,7 +724,7 @@ class _EditSheetState extends State<_EditSheet> {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _StockInSheet extends StatefulWidget {
   const _StockInSheet({required this.item, required this.ref});
@@ -760,7 +752,7 @@ class _StockInSheetState extends State<_StockInSheet> {
     return _Sheet(
       title: 'Stock In',
       subtitle:
-          '${widget.item.name} Â· currently ${widget.item.quantityOnHand} units',
+          '${widget.item.name} · currently ${widget.item.quantityOnHand} units',
       icon: Icons.add_box_rounded,
       iconColor: AppColors.forest,
       child: Column(
@@ -820,7 +812,7 @@ class _StockInSheetState extends State<_StockInSheet> {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _AdjustSheet extends StatefulWidget {
   const _AdjustSheet({required this.item, required this.ref});
@@ -848,7 +840,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
     return _Sheet(
       title: 'Adjust Stock',
       subtitle:
-          '${widget.item.name} Â· currently ${widget.item.quantityOnHand} units',
+          '${widget.item.name} · currently ${widget.item.quantityOnHand} units',
       icon: Icons.tune_rounded,
       iconColor: const Color(0xFFD97706),
       child: Column(
@@ -867,8 +859,8 @@ class _AdjustSheetState extends State<_AdjustSheet> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Use + to add and âˆ’ to remove. '
-                    'e.g. +5 adds 5 units; âˆ’3 removes 3.',
+                    'Use + to add and − to remove. '
+                    'e.g. +5 adds 5 units; −3 removes 3.',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF92400E),
@@ -881,7 +873,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
           const SizedBox(height: 12),
           InventoryIField(
             controller: _deltaCtrl,
-            label: 'Quantity Delta (+ or âˆ’)',
+            label: 'Quantity Delta (+ or −)',
             hint: 'e.g. -2 or 5',
             prefixIcon: Icons.swap_vert_rounded,
             keyboardType: const TextInputType.numberWithOptions(signed: true),
@@ -934,7 +926,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
   }
 }
 
-// â”€â”€â”€ shared sheet wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── shared sheet wrapper ────────────────────────────────────────────────────
 
 class _Sheet extends StatelessWidget {
   const _Sheet({
@@ -951,197 +943,189 @@ class _Sheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PremiumSheetFrame(
-      title: title,
-      subtitle: subtitle,
-      badge: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: iconColor, size: 20),
-      ),
-      bottomInset: MediaQuery.of(context).viewInsets.bottom,
-      child: child,
-    );
-  }
-}
-
-// â”€â”€â”€ placeholder / state cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.onAdd});
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+      decoration: const BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      padding: EdgeInsets.fromLTRB(
+          20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.mint,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              color: AppColors.forest,
-              size: 30,
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'No items yet',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add your first inventory item above.\nTrack stock, restock quickly, and keep\nlow-stock risk visible at a glance.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.5),
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 14),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Tip: fill these first',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.ink),
-            ),
-          ),
-          const SizedBox(height: 10),
-          const _HintRow(
-            icon: Icons.label_rounded,
-            text: 'Item name and default selling price',
-          ),
-          const SizedBox(height: 8),
-          const _HintRow(
-            icon: Icons.inventory_rounded,
-            text: 'Initial stock qty so your count is accurate',
-          ),
-          const SizedBox(height: 8),
-          const _HintRow(
-            icon: Icons.warning_amber_rounded,
-            text: 'Low stock threshold to get early alerts',
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: onAdd,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.forest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              icon: const Icon(Icons.add_box_rounded, size: 18),
-              label: const Text('Add First Item'),
-            ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded, color: AppColors.muted),
+              ),
+            ],
           ),
+          const SizedBox(height: 24),
+          child,
         ],
       ),
     );
   }
 }
 
-class _HintRow extends StatelessWidget {
-  const _HintRow({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-
+class _LoadingCard extends StatelessWidget {
+  const _LoadingCard();
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: AppColors.mint,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: AppColors.forest, size: 15),
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(40),
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(message, textAlign: TextAlign.center),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              text,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+      ),
+    );
+  }
+}
+
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.onAdd});
+  final VoidCallback onAdd;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          children: [
+            Opacity(
+              opacity: 0.5,
+              child: Image.asset('assets/images/inventory.png', height: 120),
             ),
-          ),
+            const SizedBox(height: 24),
+            const Text(
+              'No items yet',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Add your first product to start tracking stock and making sales.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Product'),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
 class _EmptyActiveCard extends StatelessWidget {
   const _EmptyActiveCard({required this.archivedCount});
-
   final int archivedCount;
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Text(
+          archivedCount > 0
+              ? 'No active items. All $archivedCount items are archived.'
+              : 'No active items.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.archive_outlined,
-              color: AppColors.muted,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              archivedCount == 1
-                  ? 'Your active inventory is empty. 1 archived item is still available below.'
-                  : 'Your active inventory is empty. $archivedCount archived items are still available below.',
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 13,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
+    );
+  }
+}
+
+class _NoMatchCard extends StatelessWidget {
+  const _NoMatchCard();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(40),
+        child: Text('No matches found for your search.'),
+      ),
+    );
+  }
+}
+
+class _ArchivedNoMatchCard extends StatelessWidget {
+  const _ArchivedNoMatchCard();
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Text('No archived matches.',
+            style: TextStyle(fontSize: 12, color: AppColors.muted)),
       ),
     );
   }
@@ -1154,7 +1138,6 @@ class _ArchivedSection extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
   });
-
   final int archivedCount;
   final int visibleCount;
   final bool expanded;
@@ -1162,56 +1145,29 @@ class _ArchivedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onToggle,
-      borderRadius: BorderRadius.circular(18),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.archive_outlined,
+            const Icon(Icons.archive_outlined,
+                size: 18, color: AppColors.muted),
+            const SizedBox(width: 10),
+            Text(
+              'Archived Items ($archivedCount)',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
                 color: AppColors.muted,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Archived Items',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    visibleCount == archivedCount
-                        ? '$archivedCount hidden from sales'
-                        : '$visibleCount of $archivedCount match your filters',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const Spacer(),
             Icon(
               expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
               color: AppColors.muted,
@@ -1223,247 +1179,86 @@ class _ArchivedSection extends StatelessWidget {
   }
 }
 
-class _ArchivedNoMatchCard extends StatelessWidget {
-  const _ArchivedNoMatchCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.search_off_rounded, color: AppColors.muted),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'No archived items match your current search or category filter.',
-              style: TextStyle(color: AppColors.muted),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NoMatchCard extends StatelessWidget {
-  const _NoMatchCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.search_off_rounded, color: AppColors.muted),
-          SizedBox(width: 12),
-          Text(
-            'No items match your search.',
-            style: TextStyle(color: AppColors.muted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 40),
-      child: Center(child: CircularProgressIndicator()),
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFFCA5A5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.cloud_off_rounded,
-              color: Color(0xFFDC2626), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// â”€â”€â”€ shared field widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-
-
-
-
-// ─── archive confirm sheet ────────────────────────────────────────────────────
-
 class _ArchiveConfirmSheet extends StatelessWidget {
   const _ArchiveConfirmSheet({required this.itemName});
   final String itemName;
-
   @override
   Widget build(BuildContext context) {
-    return PremiumSheetFrame(
-      title: 'Archive Item',
-      subtitle: 'This item will be hidden from new sales',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF3F4F6),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.archive_outlined,
-              color: Color(0xFF6B7280),
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Archive "$itemName"?',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.inkSoft,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.muted,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Cancel'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF6B7280),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Archive Item'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return _ConfirmSheet(
+      title: 'Archive Item?',
+      message:
+          'Are you sure you want to archive "$itemName"? It will no longer appear in the sales product list.',
+      confirmLabel: 'Archive',
+      confirmColor: AppColors.forest,
+      icon: Icons.archive_rounded,
     );
   }
 }
-
-// ─── delete confirm sheet ─────────────────────────────────────────────────────
 
 class _DeleteConfirmSheet extends StatelessWidget {
   const _DeleteConfirmSheet({required this.itemName});
   final String itemName;
+  @override
+  Widget build(BuildContext context) {
+    return _ConfirmSheet(
+      title: 'Permanently Delete?',
+      message:
+          'This will permanently remove "$itemName" and all its history. This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      confirmColor: Colors.red,
+      icon: Icons.delete_forever_rounded,
+    );
+  }
+}
+
+class _ConfirmSheet extends StatelessWidget {
+  const _ConfirmSheet({
+    required this.title,
+    required this.message,
+    required this.confirmLabel,
+    required this.confirmColor,
+    required this.icon,
+  });
+  final String title, message, confirmLabel;
+  final Color confirmColor;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumSheetFrame(
-      title: 'Delete Forever',
-      subtitle: 'This action cannot be undone',
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: AppColors.dangerSoft,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: confirmColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.delete_forever_rounded,
-              color: AppColors.danger,
-              size: 26,
-            ),
+            child: Icon(icon, color: confirmColor, size: 32),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 12),
           Text(
-            'Delete "$itemName"?',
+            message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.inkSoft,
-              height: 1.5,
-            ),
+            style: const TextStyle(color: AppColors.muted, height: 1.4),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'The item and its stock history will be removed permanently. '
-            'Your recorded sales are not affected.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.muted,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.muted,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
                   child: const Text('Cancel'),
                 ),
               ),
@@ -1471,24 +1266,18 @@ class _DeleteConfirmSheet extends StatelessWidget {
               Expanded(
                 child: FilledButton(
                   onPressed: () => Navigator.of(context).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.danger,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Delete Forever'),
+                  style: FilledButton.styleFrom(backgroundColor: confirmColor),
+                  child: Text(confirmLabel),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
-
 
 class _AddItemSheet extends StatelessWidget {
   const _AddItemSheet({
@@ -1502,101 +1291,100 @@ class _AddItemSheet extends StatelessWidget {
     required this.selectedImage,
     required this.onImageChanged,
   });
-
-  final TextEditingController nameCtrl, priceCtrl, skuCtrl, categoryCtrl, thresholdCtrl, qtyCtrl;
+  final TextEditingController nameCtrl,
+      priceCtrl,
+      skuCtrl,
+      categoryCtrl,
+      thresholdCtrl,
+      qtyCtrl;
   final VoidCallback onSave;
   final String? selectedImage;
   final ValueChanged<String?> onImageChanged;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumSheetFrame(
-      title: 'Add New Item',
-      subtitle: 'Name, price, stock & more',
-      badge: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppColors.forest.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+    return _Sheet(
+      title: 'Add New Product',
+      subtitle: 'Enter product details to add it to your inventory.',
+      icon: Icons.add_business_rounded,
+      iconColor: AppColors.forest,
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            InventoryIField(
+              controller: nameCtrl,
+              label: 'Product Name',
+              hint: 'e.g. Sachet Water',
+              prefixIcon: Icons.label_rounded,
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            InventoryIField(
+              controller: priceCtrl,
+              label: 'Selling Price (₵)',
+              hint: '0.00',
+              prefixIcon: Icons.payments_rounded,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: InventoryIField(
+                    controller: categoryCtrl,
+                    label: 'Category',
+                    hint: 'e.g. Drinks',
+                    prefixIcon: Icons.category_rounded,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InventoryIField(
+                    controller: skuCtrl,
+                    label: 'SKU / Barcode',
+                    hint: 'optional',
+                    prefixIcon: Icons.qr_code_rounded,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: InventoryIField(
+                    controller: qtyCtrl,
+                    label: 'Initial Stock',
+                    hint: '0',
+                    prefixIcon: Icons.inventory_2_rounded,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InventoryIField(
+                    controller: thresholdCtrl,
+                    label: 'Low Stock Alert',
+                    hint: 'optional',
+                    prefixIcon: Icons.warning_amber_rounded,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ProductImagePicker(
+              selected: selectedImage,
+              onChanged: onImageChanged,
+            ),
+            const SizedBox(height: 24),
+            InventorySaveBtn(
+              label: 'Save Product',
+              onTap: onSave,
+            ),
+          ],
         ),
-        child: const Icon(Icons.add_box_rounded, color: AppColors.forest, size: 20),
-      ),
-      bottomInset: MediaQuery.of(context).viewInsets.bottom,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InventoryIField(
-            controller: nameCtrl,
-            label: 'Item Name',
-            hint: 'e.g. Sachet Water, Indomie Noodles',
-            prefixIcon: Icons.label_rounded,
-          ),
-          const SizedBox(height: 10),
-          InventoryIField(
-            controller: priceCtrl,
-            label: 'Selling Price (₵)',
-            hint: 'e.g. 5.00',
-            prefixIcon: Icons.payments_rounded,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: InventoryIField(
-                  controller: qtyCtrl,
-                  label: 'Initial Qty',
-                  hint: '0',
-                  prefixIcon: Icons.inventory_rounded,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: InventoryIField(
-                  controller: thresholdCtrl,
-                  label: 'Low Stock Alert',
-                  hint: 'e.g. 10',
-                  prefixIcon: Icons.warning_amber_rounded,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: InventoryIField(
-                  controller: categoryCtrl,
-                  label: 'Category',
-                  hint: 'e.g. Drinks, Snacks',
-                  prefixIcon: Icons.category_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: InventoryIField(
-                  controller: skuCtrl,
-                  label: 'SKU / Code',
-                  hint: 'e.g. SKU-001',
-                  prefixIcon: Icons.qr_code_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ProductImagePicker(
-            selected: selectedImage,
-            onChanged: onImageChanged,
-          ),
-          const SizedBox(height: 18),
-          InventorySaveBtn(
-            label: 'Add Item to Inventory',
-            onTap: onSave,
-          ),
-        ],
       ),
     );
   }
