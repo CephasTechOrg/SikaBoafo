@@ -187,11 +187,30 @@ String humanizeSalesPaymentsError(Object error) {
   }
   if (error is DioException) {
     final detail = error.response?.data;
-    if (detail is Map<String, dynamic> && detail['detail'] is String) {
-      return detail['detail'] as String;
+    if (detail is Map<String, dynamic>) {
+      final raw = detail['detail'];
+      if (raw is String && raw.trim().isNotEmpty) {
+        return raw.trim();
+      }
+      if (raw is List && raw.isNotEmpty) {
+        final first = raw.first;
+        if (first is Map<String, dynamic>) {
+          final msg = first['msg'];
+          if (msg is String && msg.trim().isNotEmpty) {
+            return msg.trim();
+          }
+        }
+      }
+    }
+    if (detail is String && detail.trim().isNotEmpty) {
+      return detail.trim();
     }
     if (error.type == DioExceptionType.connectionError) {
       return 'Cannot reach backend. Sale saved locally.';
+    }
+    final code = error.response?.statusCode;
+    if (code != null) {
+      return 'Payment request failed (HTTP $code). ${error.message ?? ''}'.trim();
     }
     return error.message ?? 'Payment initiation failed.';
   }
