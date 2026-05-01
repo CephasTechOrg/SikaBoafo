@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS items_local (
   server_version INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
-)
+);
 ''');
     await db.execute('''
 CREATE TABLE IF NOT EXISTS inventory_movements_local (
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements_local (
   local_operation_id TEXT,
   created_at INTEGER NOT NULL,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_items_local_name ON items_local (name)',
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS sales_local (
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   created_at INTEGER NOT NULL
-)
+);
 ''');
     await db.execute('''
 CREATE TABLE IF NOT EXISTS sale_items_local (
@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
   created_at INTEGER NOT NULL,
   FOREIGN KEY (sale_id) REFERENCES sales_local(id) ON DELETE CASCADE,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE RESTRICT
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_sales_local_created_at '
