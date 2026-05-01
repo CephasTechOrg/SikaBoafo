@@ -11,6 +11,9 @@ import '../../../shared/widgets/premium_ui.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../providers/inventory_providers.dart';
+import 'widgets/inventory_header.dart';
+import 'widgets/inventory_item_card.dart';
+import 'widgets/inventory_sheets.dart';
 
 // â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -106,6 +109,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openAddItemSheet(context),
+        backgroundColor: AppColors.forest,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add_rounded),
+      ),
+    
       body: Column(
         children: [
           Container(
@@ -342,23 +353,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             padding:
                                 const EdgeInsets.fromLTRB(16, 16, 16, 100),
                             children: [
-                        _AddItemAccordion(
-                          expanded: _showForm,
-                          nameCtrl: _nameCtrl,
-                          priceCtrl: _priceCtrl,
-                          skuCtrl: _skuCtrl,
-                          categoryCtrl: _categoryCtrl,
-                          thresholdCtrl: _thresholdCtrl,
-                          qtyCtrl: _qtyCtrl,
-                          isLoading: itemsAsync.isLoading,
-                          selectedImage: _newItemUrl,
-                          onToggle: () =>
-                              setState(() => _showForm = !_showForm),
-                          onSave: _saveItem,
-                          onImageChanged: (v) =>
-                              setState(() => _newItemUrl = v),
-                        ),
-                        const SizedBox(height: 16),
+
                         _SearchBar(
                           controller: _searchCtrl,
                           onChanged: (v) => setState(() => _searchQuery = v),
@@ -417,12 +412,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           const _NoMatchCard()
                         else
                           ...filteredActive.map(
-                            (item) => _ItemCard(
+                            (item) => InventoryItemCard(
                               item: item,
-                              onEdit: () => _openEdit(item),
-                              onStockIn: () => _openStockIn(item),
-                              onAdjust: () => _openAdjust(item),
-                              onArchive: () => _archiveItem(item),
+                              onTap: () => _openItemDetail(item),
                             ),
                           ),
                         if (archivedItems.isNotEmpty) ...[
@@ -441,11 +433,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                               const _ArchivedNoMatchCard()
                             else
                               ...filteredArchived.map(
-                                (item) => _ItemCard(
+                                (item) => InventoryItemCard(
                                   item: item,
-                                  onEdit: () => _openEdit(item),
-                                  onRestore: () => _restoreItem(item),
-                                  onDelete: () => _deleteItem(item),
+                                  onTap: () => _openItemDetail(item),
                                 ),
                               ),
                           ],
@@ -720,14 +710,14 @@ class _AddItemAccordion extends StatelessWidget {
                   // Required fields label
                   const _FieldGroup(label: 'Required'),
                   const SizedBox(height: 8),
-                  _IField(
+                  InventoryIField(
                     controller: nameCtrl,
                     label: 'Item Name',
                     hint: 'e.g. Sachet Water, Indomie Noodles',
                     prefixIcon: Icons.label_rounded,
                   ),
                   const SizedBox(height: 10),
-                  _IField(
+                  InventoryIField(
                     controller: priceCtrl,
                     label: 'Selling Price (â‚µ)',
                     hint: 'e.g. 5.00',
@@ -743,7 +733,7 @@ class _AddItemAccordion extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _IField(
+                        child: InventoryIField(
                           controller: qtyCtrl,
                           label: 'Initial Qty',
                           hint: '0',
@@ -753,7 +743,7 @@ class _AddItemAccordion extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _IField(
+                        child: InventoryIField(
                           controller: thresholdCtrl,
                           label: 'Low Stock Alert',
                           hint: 'e.g. 10',
@@ -771,7 +761,7 @@ class _AddItemAccordion extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _IField(
+                        child: InventoryIField(
                           controller: categoryCtrl,
                           label: 'Category',
                           hint: 'e.g. Drinks, Snacks',
@@ -780,7 +770,7 @@ class _AddItemAccordion extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _IField(
+                        child: InventoryIField(
                           controller: skuCtrl,
                           label: 'SKU / Code',
                           hint: 'e.g. SKU-001',
@@ -1331,13 +1321,13 @@ class _EditSheetState extends State<_EditSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _IField(
+          InventoryIField(
               controller: _nameCtrl,
               label: 'Item Name',
               hint: 'e.g. Sachet Water',
               prefixIcon: Icons.label_rounded),
           const SizedBox(height: 10),
-          _IField(
+          InventoryIField(
             controller: _priceCtrl,
             label: 'Selling Price (â‚µ)',
             hint: '0.00',
@@ -1348,7 +1338,7 @@ class _EditSheetState extends State<_EditSheet> {
           Row(
             children: [
               Expanded(
-                child: _IField(
+                child: InventoryIField(
                     controller: _categoryCtrl,
                     label: 'Category',
                     hint: 'e.g. Drinks',
@@ -1356,7 +1346,7 @@ class _EditSheetState extends State<_EditSheet> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _IField(
+                child: InventoryIField(
                     controller: _skuCtrl,
                     label: 'SKU',
                     hint: 'optional',
@@ -1365,7 +1355,7 @@ class _EditSheetState extends State<_EditSheet> {
             ],
           ),
           const SizedBox(height: 10),
-          _IField(
+          InventoryIField(
             controller: _thresholdCtrl,
             label: 'Low Stock Alert Threshold',
             hint: 'e.g. 10',
@@ -1397,7 +1387,7 @@ class _EditSheetState extends State<_EditSheet> {
             ),
           ),
           const SizedBox(height: 18),
-          _SaveBtn(
+          InventorySaveBtn(
             label: _saving ? 'Saving...' : 'Save Changes',
             onTap: _saving ? null : _save,
           ),
@@ -1472,7 +1462,7 @@ class _StockInSheetState extends State<_StockInSheet> {
       iconColor: AppColors.forest,
       child: Column(
         children: [
-          _IField(
+          InventoryIField(
             controller: _qtyCtrl,
             label: 'Quantity Received',
             hint: 'e.g. 50',
@@ -1480,14 +1470,14 @@ class _StockInSheetState extends State<_StockInSheet> {
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 10),
-          _IField(
+          InventoryIField(
             controller: _reasonCtrl,
             label: 'Reason / Note (optional)',
             hint: 'e.g. Restocked from supplier',
             prefixIcon: Icons.notes_rounded,
           ),
           const SizedBox(height: 18),
-          _SaveBtn(
+          InventorySaveBtn(
             label: _saving ? 'Applying...' : 'Apply Stock In',
             color: AppColors.forest,
             onTap: _saving ? null : _save,
@@ -1586,7 +1576,7 @@ class _AdjustSheetState extends State<_AdjustSheet> {
             ),
           ),
           const SizedBox(height: 12),
-          _IField(
+          InventoryIField(
             controller: _deltaCtrl,
             label: 'Quantity Delta (+ or âˆ’)',
             hint: 'e.g. -2 or 5',
@@ -1594,14 +1584,14 @@ class _AdjustSheetState extends State<_AdjustSheet> {
             keyboardType: const TextInputType.numberWithOptions(signed: true),
           ),
           const SizedBox(height: 10),
-          _IField(
+          InventoryIField(
             controller: _reasonCtrl,
             label: 'Reason (optional)',
             hint: 'e.g. Damaged goods, manual count',
             prefixIcon: Icons.notes_rounded,
           ),
           const SizedBox(height: 18),
-          _SaveBtn(
+          InventorySaveBtn(
             label: _saving ? 'Applying...' : 'Apply Adjustment',
             color: const Color(0xFFD97706),
             onTap: _saving ? null : _save,
@@ -2030,7 +2020,7 @@ class _ErrorCard extends StatelessWidget {
 // â”€â”€â”€ shared field widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _IField extends StatelessWidget {
-  const _IField({
+  const InventoryIField({
     required this.controller,
     required this.label,
     required this.hint,
@@ -2073,7 +2063,7 @@ class _IField extends StatelessWidget {
 }
 
 class _SaveBtn extends StatelessWidget {
-  const _SaveBtn({required this.label, this.onTap, this.color});
+  const InventorySaveBtn({required this.label, this.onTap, this.color});
   final String label;
   final VoidCallback? onTap;
   final Color? color;
