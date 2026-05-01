@@ -4,33 +4,23 @@ class DashboardHeroBackdrop extends StatelessWidget {
   const DashboardHeroBackdrop({
     super.key,
     required this.swirlAssetPath,
-    this.swirlOpacity = 0.72,
-    this.topShade = 0.72,
-    this.midShade = 0.40,
-    this.shadeColor = const Color(0xFF04170A),
-    this.tintColor = const Color(0xFF0A4F24),
-    this.tintOpacity = 0.34,
   });
 
   final String swirlAssetPath;
-  final double swirlOpacity;
-  final double topShade;
-  final double midShade;
-  final Color shadeColor;
-  final Color tintColor;
-  final double tintOpacity;
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Base dark shade
-        Positioned.fill(child: Container(color: shadeColor)),
+        // 1. Deep forest base
+        Positioned.fill(
+          child: Container(color: const Color(0xFF031A0C)),
+        ),
 
-        // Swirl image (e.g. flag or abstract pattern)
+        // 2. Flag/swirl image — slightly dimmed so it's visible but not loud
         Positioned.fill(
           child: Opacity(
-            opacity: swirlOpacity,
+            opacity: 0.55,
             child: Image.asset(
               swirlAssetPath,
               fit: BoxFit.cover,
@@ -38,24 +28,53 @@ class DashboardHeroBackdrop extends StatelessWidget {
           ),
         ),
 
-        // Tint overlay
+        // 3. Rich green radial bloom — centred top-right for depth
         Positioned.fill(
           child: Container(
-            color: tintColor.withValues(alpha: tintOpacity),
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.55, -0.6),
+                radius: 1.1,
+                colors: [
+                  Color(0x881B7A44), // vivid green centre
+                  Color(0x441A5C33), // mid
+                  Color(0x00000000), // fades out
+                ],
+              ),
+            ),
           ),
         ),
 
-        // Gradient for depth
+        // 4. Main top-to-bottom gradient — keeps text readable at top,
+        //    and opens up to transparent at the bottom (where the card lifts)
         Positioned.fill(
           child: Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
+                stops: [0.0, 0.35, 0.72, 1.0],
                 colors: [
-                  shadeColor.withValues(alpha: topShade),
-                  shadeColor.withValues(alpha: midShade),
-                  Colors.transparent,
+                  Color(0xCC031A0C), // dark at the very top (status bar)
+                  Color(0x801A6840), // rich green mid-upper
+                  Color(0x3A0D4023), // lighter green lower
+                  Color(0x00000000), // fully transparent at sheet edge
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // 5. Subtle left-edge vignette for depth
+        Positioned.fill(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Color(0x44031A0C),
+                  Color(0x00000000),
                 ],
               ),
             ),

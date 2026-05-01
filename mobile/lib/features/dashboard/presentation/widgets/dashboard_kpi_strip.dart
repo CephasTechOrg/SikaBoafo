@@ -23,9 +23,9 @@ class DashboardKpiStrip extends StatelessWidget {
     final overlay = overlayAsync.valueOrNull;
 
     final lowStock = summary?.lowStockCount ?? 0;
-    final pendingSync = (overlay?.todayPendingSalesCount ?? 0);
-    final todaySales = summary?.todaySalesTotal ?? '--';
-    final todayProfit = summary?.todayEstimatedProfit ?? '--';
+    final pendingSync = overlay?.todayPendingSalesCount ?? 0;
+    final todaySales = summary?.todaySalesTotal ?? '0.00';
+    final todayProfit = summary?.todayEstimatedProfit ?? '0.00';
 
     return PremiumReveal(
       delay: const Duration(milliseconds: 100),
@@ -68,7 +68,7 @@ class DashboardKpiStrip extends StatelessWidget {
   }
 }
 
-// ─── Coins card ───────────────────────────────────────────────────────────────
+// ─── Coins / Profit card ──────────────────────────────────────────────────────
 
 class _CoinsCard extends StatelessWidget {
   const _CoinsCard({
@@ -86,8 +86,9 @@ class _CoinsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final sales = _parse(todaySales);
     final profit = _parse(todayProfit);
+    // Profit margin as 0-1 ratio for the bar chart
     final ratio = (sales > 0) ? (profit / sales).clamp(0.0, 1.0) : 0.0;
-    final pct = '${(ratio * 100).toStringAsFixed(0)}% of revenue';
+    final pct = '${(ratio * 100).toStringAsFixed(0)}% margin';
 
     return GestureDetector(
       onTap: () => onNavigate(1),
@@ -115,155 +116,86 @@ class _CoinsCard extends StatelessWidget {
             Positioned.fill(
               child: Opacity(
                 opacity: 0.06,
-                child: Image.asset('assets/images/flag.png', fit: BoxFit.cover),
+                child:
+                    Image.asset('assets/images/flag.png', fit: BoxFit.cover),
               ),
             ),
-            // Coins image — bleeds off bottom-right
+            // Coins image — anchored bottom-right, bleeds slightly off edge
             Positioned(
               right: -6,
               bottom: -14,
               width: 108,
               height: 108,
-              child: Image.asset('assets/images/coins.png', fit: BoxFit.contain),
+              child: Image.asset('assets/images/coins.png',
+                  fit: BoxFit.contain),
             ),
-            // Content
+            // Content — single column, full card minus the coins image area
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 110, 0),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 16, 118, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ── Left column: Revenue ──────────────────────
-                  Expanded(
-                    flex: 55,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "TODAY'S REVENUE",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.58),
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '₵$todaySales',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Constantia',
-                            letterSpacing: -0.5,
-                            height: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.20)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.bar_chart_rounded,
-                                  size: 11,
-                                  color: Colors.white.withValues(alpha: 0.80)),
-                              const SizedBox(width: 4),
-                              Text(
-                                'View Sales',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  Text(
+                    "TODAY'S EST. PROFIT",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.58),
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
                     ),
                   ),
-                  // Divider
-                  Container(
-                    width: 1,
-                    height: 62,
-                    color: Colors.white.withValues(alpha: 0.14),
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  const SizedBox(height: 5),
+                  // FittedBox auto-scales the number down if it grows large
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '₵$todayProfit',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Constantia',
+                        letterSpacing: -0.5,
+                        height: 1.0,
+                      ),
+                    ),
                   ),
-                  // ── Right column: Profit + mini bar chart ──────
-                  Expanded(
-                    flex: 45,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'EST. PROFIT',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.58),
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
+                  const SizedBox(height: 10),
+                  // Animated profit margin bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LayoutBuilder(
+                      builder: (ctx, bc) => Stack(
+                        children: [
+                          Container(
+                            height: 6,
+                            width: bc.maxWidth,
+                            color: Colors.white.withValues(alpha: 0.18),
                           ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '₵$todayProfit',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Constantia',
-                            letterSpacing: -0.3,
-                            height: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        // Mini animated progress bar
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LayoutBuilder(
-                            builder: (ctx, bc) => Stack(
-                              children: [
-                                Container(
-                                  height: 6,
-                                  width: bc.maxWidth,
-                                  color:
-                                      Colors.white.withValues(alpha: 0.18),
-                                ),
-                                AnimatedContainer(
-                                  duration:
-                                      const Duration(milliseconds: 700),
-                                  curve: Curves.easeOut,
-                                  height: 6,
-                                  width: bc.maxWidth * ratio,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF7FE0A0),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                ),
-                              ],
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 700),
+                            curve: Curves.easeOut,
+                            height: 6,
+                            width: bc.maxWidth * ratio,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF7FE0A0),
+                              borderRadius: BorderRadius.circular(999),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          pct,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.52),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    pct,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.52),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ],
