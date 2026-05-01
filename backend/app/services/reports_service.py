@@ -11,7 +11,12 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.constants import RECEIVABLE_STATUS_OPEN, SALE_STATUS_RECORDED
+from app.core.constants import (
+    PAYMENT_STATUS_RECORDED,
+    PAYMENT_STATUS_SUCCEEDED,
+    RECEIVABLE_STATUS_OPEN,
+    SALE_STATUS_RECORDED,
+)
 from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
@@ -222,6 +227,7 @@ class ReportsService:
             select(func.coalesce(func.sum(Sale.total_amount), Decimal("0.00"))).where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -255,6 +261,7 @@ class ReportsService:
             .where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
                 SaleItem.cost_price_snapshot.is_not(None),
@@ -328,6 +335,7 @@ class ReportsService:
             .where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -369,6 +377,7 @@ class ReportsService:
             .where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
                 Sale.created_at >= start_utc,
                 Sale.created_at < end_utc,
             )
@@ -409,6 +418,7 @@ class ReportsService:
             .where(
                 Sale.store_id == store_id,
                 Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
             )
             .order_by(Sale.created_at.desc())
             .limit(limit)
