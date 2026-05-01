@@ -32,9 +32,11 @@ class DashboardRecentActivity extends StatelessWidget {
             child: activityAsync.when(
               loading: () => const Column(
                 children: [
-                  SkeletonActivityRow(),
+                  _SkeletonActivityRow(),
                   Divider(height: 1, indent: 64),
-                  SkeletonActivityRow(),
+                  _SkeletonActivityRow(),
+                  Divider(height: 1, indent: 64),
+                  _SkeletonActivityRow(),
                 ],
               ),
               error: (e, _) => const Padding(
@@ -53,11 +55,13 @@ class DashboardRecentActivity extends StatelessWidget {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.history_rounded, color: AppColors.border, size: 40),
+                          Icon(Icons.history_rounded,
+                              color: AppColors.border, size: 40),
                           SizedBox(height: 12),
                           Text(
                             'No recent activity',
-                            style: TextStyle(color: AppColors.muted, fontSize: 13),
+                            style:
+                                TextStyle(color: AppColors.muted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -69,7 +73,8 @@ class DashboardRecentActivity extends StatelessWidget {
                     for (int i = 0; i < activity.length; i++) ...[
                       _ActivityRow(activity: activity[i]),
                       if (i < activity.length - 1)
-                        const Divider(height: 1, indent: 64, color: AppColors.border),
+                        const Divider(
+                            height: 1, indent: 68, color: AppColors.border),
                     ],
                   ],
                 );
@@ -82,67 +87,164 @@ class DashboardRecentActivity extends StatelessWidget {
   }
 }
 
+// ─── Activity type configuration ─────────────────────────────────────────────
+
+class _ActivityVisual {
+  const _ActivityVisual({
+    required this.icon,
+    required this.iconColor,
+    required this.bgColor,
+    required this.badgeLabel,
+    required this.badgeColor,
+    required this.isIncome,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color bgColor;
+  final String badgeLabel;
+  final Color badgeColor;
+  final bool isIncome;
+
+  static _ActivityVisual forType(String type) {
+    switch (type) {
+      case 'expense':
+        return const _ActivityVisual(
+          icon: Icons.outbox_rounded,
+          iconColor: Color(0xFFB54848),
+          bgColor: Color(0xFFFFF0F0),
+          badgeLabel: 'Expense',
+          badgeColor: Color(0xFFB54848),
+          isIncome: false,
+        );
+      case 'repayment':
+        return _ActivityVisual(
+          icon: Icons.account_balance_wallet_outlined,
+          iconColor: AppColors.info,
+          bgColor: AppColors.infoSoft,
+          badgeLabel: 'Repayment',
+          badgeColor: AppColors.info,
+          isIncome: true,
+        );
+      case 'stock_addition':
+        return _ActivityVisual(
+          icon: Icons.add_box_outlined,
+          iconColor: const Color(0xFFC58C02),
+          bgColor: AppColors.warningSoft,
+          badgeLabel: 'Stock',
+          badgeColor: const Color(0xFFC58C02),
+          isIncome: false,
+        );
+      case 'sale':
+      default:
+        return _ActivityVisual(
+          icon: Icons.receipt_long_outlined,
+          iconColor: AppColors.forest,
+          bgColor: AppColors.successSoft,
+          badgeLabel: 'Sale',
+          badgeColor: AppColors.forest,
+          isIncome: true,
+        );
+    }
+  }
+}
+
+// ─── Activity row ─────────────────────────────────────────────────────────────
+
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({required this.activity});
   final DashboardActivity activity;
 
   @override
   Widget build(BuildContext context) {
+    final v = _ActivityVisual.forType(activity.activityType);
     final timeStr = DateFormat.jm().format(activity.createdAt);
+    final amountStr = '${v.isIncome ? '+' : '-'}₵${activity.amount}';
+    final detailText = activity.detail.trim().isNotEmpty
+        ? activity.detail
+        : (activity.itemName?.trim().isNotEmpty == true
+            ? activity.itemName!
+            : 'Activity');
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Row(
         children: [
+          // Visual icon card
           Container(
-            width: 36,
-            height: 36,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(10),
+              color: v.bgColor,
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              activity.activityType == 'expense'
-                  ? Icons.outbox_rounded
-                  : Icons.receipt_long_outlined,
-              size: 18,
-              color: AppColors.muted,
-            ),
+            child: Icon(v.icon, size: 20, color: v.iconColor),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
+          // Title + detail
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  activity.title,
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        activity.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Type badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: v.badgeColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        v.badgeLabel,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: v.badgeColor,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  '$timeStr \u2022 ${activity.detail}',
+                  '$timeStr · $detailText',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: AppColors.muted,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          // Amount
           Text(
-            '₵${activity.amount}',
-            style: const TextStyle(
+            amountStr,
+            style: TextStyle(
               fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
+              fontWeight: FontWeight.w900,
+              color: v.isIncome ? AppColors.forest : const Color(0xFFB54848),
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -151,38 +253,39 @@ class _ActivityRow extends StatelessWidget {
   }
 }
 
-class SkeletonActivityRow extends StatelessWidget {
-  const SkeletonActivityRow({super.key});
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+class _SkeletonActivityRow extends StatelessWidget {
+  const _SkeletonActivityRow();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Row(
         children: [
-          SkeletonBox(width: 36, height: 36, borderRadius: 10),
-          SizedBox(width: 14),
+          _SkeletonBox(width: 42, height: 42, borderRadius: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(width: 100, height: 11),
+                _SkeletonBox(width: 110, height: 11),
                 SizedBox(height: 6),
-                SkeletonBox(width: 70, height: 9),
+                _SkeletonBox(width: 75, height: 9),
               ],
             ),
           ),
-          SizedBox(width: 12),
-          SkeletonBox(width: 60, height: 14),
+          SizedBox(width: 10),
+          _SkeletonBox(width: 55, height: 13),
         ],
       ),
     );
   }
 }
 
-class SkeletonBox extends StatelessWidget {
-  const SkeletonBox({
-    super.key,
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({
     required this.width,
     required this.height,
     this.borderRadius = 8,

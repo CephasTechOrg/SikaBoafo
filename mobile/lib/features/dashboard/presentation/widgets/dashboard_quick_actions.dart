@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/premium_ui.dart';
 
 class DashboardQuickActions extends StatelessWidget {
   const DashboardQuickActions({super.key, required this.onNavigate});
@@ -10,59 +9,59 @@ class DashboardQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PremiumReveal(
-      child: Row(
-        children: [
-          Expanded(
-            child: QuickTile(
-              icon: Icons.add_rounded,
-              label: 'New Sale',
-              backgroundColor: const Color(0xFF155236),
-              accentColor: const Color(0xFF1B6E4C),
-              foregroundColor: Colors.white,
-              iconColor: Colors.white,
-              iconBackgroundColor: Colors.white.withValues(alpha: 0.12),
-              borderColor: Colors.transparent,
-              onTap: () => onNavigate(1),
-            ),
+    return Row(
+      children: [
+        Expanded(
+          flex: 5,
+          child: _QuickTile(
+            icon: Icons.add_rounded,
+            label: 'New Sale',
+            backgroundColor: const Color(0xFF155236),
+            accentColor: const Color(0xFF1B6E4C),
+            foregroundColor: Colors.white,
+            iconColor: Colors.white,
+            iconBackgroundColor: Colors.white.withValues(alpha: 0.15),
+            borderColor: Colors.transparent,
+            onTap: () => onNavigate(1),
           ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: QuickTile(
-              icon: Icons.payments_outlined,
-              label: 'Collect Debt',
-              backgroundColor: AppColors.surface,
-              accentColor: const Color(0xFFFDFEFE),
-              foregroundColor: AppColors.ink,
-              iconColor: AppColors.forest,
-              iconBackgroundColor: AppColors.successSoft,
-              borderColor: AppColors.border,
-              onTap: () => context.push(AppRoute.debts.path),
-            ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 4,
+          child: _QuickTile(
+            icon: Icons.payments_outlined,
+            label: 'Collect Debt',
+            backgroundColor: AppColors.surface,
+            accentColor: const Color(0xFFFDFEFE),
+            foregroundColor: AppColors.ink,
+            iconColor: AppColors.forest,
+            iconBackgroundColor: AppColors.successSoft,
+            borderColor: AppColors.border,
+            onTap: () => context.push(AppRoute.debts.path),
           ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: QuickTile(
-              icon: Icons.inventory_2_outlined,
-              label: 'Add Stock',
-              backgroundColor: AppColors.surface,
-              accentColor: const Color(0xFFFFFEFB),
-              foregroundColor: AppColors.ink,
-              iconColor: const Color(0xFFC58C02),
-              iconBackgroundColor: AppColors.warningSoft,
-              borderColor: AppColors.border,
-              onTap: () => onNavigate(2),
-            ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 4,
+          child: _QuickTile(
+            icon: Icons.inventory_2_outlined,
+            label: 'Add Stock',
+            backgroundColor: AppColors.surface,
+            accentColor: const Color(0xFFFFFEFB),
+            foregroundColor: AppColors.ink,
+            iconColor: const Color(0xFFC58C02),
+            iconBackgroundColor: AppColors.warningSoft,
+            borderColor: AppColors.border,
+            onTap: () => onNavigate(2),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class QuickTile extends StatelessWidget {
-  const QuickTile({
-    super.key,
+class _QuickTile extends StatelessWidget {
+  const _QuickTile({
     required this.icon,
     required this.label,
     required this.backgroundColor,
@@ -89,38 +88,49 @@ class QuickTile extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
-        boxShadow: backgroundColor == AppColors.surface ? kCardShadow : null,
+        boxShadow: backgroundColor == AppColors.surface
+            ? const [
+                BoxShadow(
+                  color: Color(0x120F172A),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
                     color: iconBackgroundColor,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(7),
                   ),
-                  child: Icon(icon, color: iconColor, size: 22),
+                  child: Icon(icon, color: iconColor, size: 15),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: foregroundColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: foregroundColor,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ),
               ],

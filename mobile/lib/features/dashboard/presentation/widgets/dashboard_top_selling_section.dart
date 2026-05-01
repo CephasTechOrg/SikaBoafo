@@ -37,9 +37,11 @@ class DashboardTopSellingSection extends StatelessWidget {
             child: insightsAsync.when(
               loading: () => const Column(
                 children: [
-                  SkeletonTopSellingRow(),
-                  Divider(height: 1, indent: 60),
-                  SkeletonTopSellingRow(),
+                  _SkeletonTopRow(),
+                  Divider(height: 1, indent: 68, color: AppColors.border),
+                  _SkeletonTopRow(),
+                  Divider(height: 1, indent: 68, color: AppColors.border),
+                  _SkeletonTopRow(),
                 ],
               ),
               error: (e, _) => Padding(
@@ -59,11 +61,13 @@ class DashboardTopSellingSection extends StatelessWidget {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.analytics_outlined, color: AppColors.border, size: 40),
+                          Icon(Icons.analytics_outlined,
+                              color: AppColors.border, size: 40),
                           SizedBox(height: 12),
                           Text(
                             'No sales data yet',
-                            style: TextStyle(color: AppColors.muted, fontSize: 13),
+                            style:
+                                TextStyle(color: AppColors.muted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -73,9 +77,10 @@ class DashboardTopSellingSection extends StatelessWidget {
                 return Column(
                   children: [
                     for (int i = 0; i < top.length; i++) ...[
-                      _TopProductRow(product: top[i]),
+                      _TopProductRow(product: top[i], rank: i + 1),
                       if (i < top.length - 1)
-                        const Divider(height: 1, indent: 64, color: AppColors.border),
+                        const Divider(
+                            height: 1, indent: 68, color: AppColors.border),
                     ],
                   ],
                 );
@@ -88,57 +93,123 @@ class DashboardTopSellingSection extends StatelessWidget {
   }
 }
 
+// ─── Product row ──────────────────────────────────────────────────────────────
+
 class _TopProductRow extends StatelessWidget {
-  const _TopProductRow({required this.product});
+  const _TopProductRow({required this.product, required this.rank});
   final DashboardTopSellingItem product;
+  final int rank;
 
   @override
   Widget build(BuildContext context) {
+    // Rank-based accent colors
+    final rankColor = rank == 1
+        ? const Color(0xFFC58C02)
+        : rank == 2
+            ? AppColors.muted
+            : AppColors.forest;
+    final rankBg = rank == 1
+        ? AppColors.warningSoft
+        : rank == 2
+            ? const Color(0xFFF0F0F0)
+            : AppColors.successSoft;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.muted),
+          // Product image placeholder with rank badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  size: 20,
+                  color: AppColors.muted,
+                ),
+              ),
+              // Rank badge
+              Positioned(
+                top: -5,
+                left: -5,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: rankBg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Text(
+                    '#$rank',
+                    style: TextStyle(
+                      color: rankColor,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   product.itemName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppColors.ink,
+                    letterSpacing: -0.1,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${product.quantitySold} sold',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.successSoft,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${product.quantitySold} sold',
+                        style: const TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.forest,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Text(
             '₵${product.salesTotal}',
             style: const TextStyle(
               fontSize: 13.5,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               color: AppColors.ink,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -147,38 +218,39 @@ class _TopProductRow extends StatelessWidget {
   }
 }
 
-class SkeletonTopSellingRow extends StatelessWidget {
-  const SkeletonTopSellingRow({super.key});
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+class _SkeletonTopRow extends StatelessWidget {
+  const _SkeletonTopRow();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         children: [
-          SkeletonBox(width: 36, height: 36, borderRadius: 10),
-          SizedBox(width: 14),
+          _SkeletonBox(width: 42, height: 42, borderRadius: 11),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(width: 120, height: 11),
+                _SkeletonBox(width: 120, height: 11),
                 SizedBox(height: 6),
-                SkeletonBox(width: 60, height: 9),
+                _SkeletonBox(width: 60, height: 9),
               ],
             ),
           ),
-          SizedBox(width: 12),
-          SkeletonBox(width: 50, height: 14),
+          SizedBox(width: 10),
+          _SkeletonBox(width: 52, height: 13),
         ],
       ),
     );
   }
 }
 
-class SkeletonBox extends StatelessWidget {
-  const SkeletonBox({
-    super.key,
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({
     required this.width,
     required this.height,
     this.borderRadius = 8,
