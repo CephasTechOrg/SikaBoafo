@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
-import '../../../shared/widgets/data_freshness_label.dart';
-import '../../sales/presentation/widgets/hero_stat_chip.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../../../shared/widgets/premium_ui.dart';
@@ -18,16 +16,11 @@ import 'widgets/inventory_sheets.dart';
 // â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 int _priceToMinor(String value) {
-  final parts = value.trim().split('.');
-  final major = int.tryParse(parts[0]) ?? 0;
-  final raw = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-  return (major * 100) + (int.tryParse(raw.substring(0, 2)) ?? 0);
-}
-
-String _fmtMoney(int minor) {
-  final major = minor ~/ 100;
-  final cents = (minor % 100).toString().padLeft(2, '0');
-  return '\u20B5$major.$cents';
+  final parts = value.split('.');
+  if (parts.length == 1) return int.parse(parts[0]) * 100;
+  final major = int.parse(parts[0]) * 100;
+  final minor = int.parse(parts[1].padRight(2, '0').substring(0, 2));
+  return major + minor;
 }
 
 // â”€â”€â”€ screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -48,7 +41,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _qtyCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
 
-  bool _showForm = false;
   bool _showArchived = false;
   String _searchQuery = '';
   String? _filterCategory;
@@ -333,7 +325,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       _qtyCtrl.clear();
       if (!mounted) return;
       setState(() {
-        _showForm = false;
         _newItemUrl = null;
       });
       _msg('Item added to inventory.');
@@ -442,218 +433,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
 // â”€â”€â”€ add item accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-class _AddItemAccordion extends StatelessWidget {
-  const _AddItemAccordion({
-    required this.expanded,
-    required this.nameCtrl,
-    required this.priceCtrl,
-    required this.skuCtrl,
-    required this.categoryCtrl,
-    required this.thresholdCtrl,
-    required this.qtyCtrl,
-    required this.isLoading,
-    required this.selectedImage,
-    required this.onToggle,
-    required this.onSave,
-    required this.onImageChanged,
-  });
 
-  final bool expanded;
-  final TextEditingController nameCtrl,
-      priceCtrl,
-      skuCtrl,
-      categoryCtrl,
-      thresholdCtrl,
-      qtyCtrl;
-  final bool isLoading;
-  final String? selectedImage;
-  final VoidCallback onToggle, onSave;
-  final ValueChanged<String?> onImageChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border:
-            Border.all(color: AppColors.borderStrong.withValues(alpha: 0.45)),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: expanded
-                ? const BorderRadius.vertical(top: Radius.circular(AppRadii.sm))
-                : BorderRadius.circular(AppRadii.sm),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.add_box_rounded,
-                      color: AppColors.forest,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Add New Item',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        Text(
-                          'Name, price, stock & more',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 250),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 280),
-            crossFadeState:
-                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 16),
-
-                  // Required fields label
-                  const _FieldGroup(label: 'Required'),
-                  const SizedBox(height: 8),
-                  InventoryIField(
-                    controller: nameCtrl,
-                    label: 'Item Name',
-                    hint: 'e.g. Sachet Water, Indomie Noodles',
-                    prefixIcon: Icons.label_rounded,
-                  ),
-                  const SizedBox(height: 10),
-                  InventoryIField(
-                    controller: priceCtrl,
-                    label: 'Selling Price (â‚µ)',
-                    hint: 'e.g. 5.00',
-                    prefixIcon: Icons.payments_rounded,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Stock fields
-                  const _FieldGroup(label: 'Stock'),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InventoryIField(
-                          controller: qtyCtrl,
-                          label: 'Initial Qty',
-                          hint: '0',
-                          prefixIcon: Icons.inventory_rounded,
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: InventoryIField(
-                          controller: thresholdCtrl,
-                          label: 'Low Stock Alert',
-                          hint: 'e.g. 10',
-                          prefixIcon: Icons.warning_amber_rounded,
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Optional fields
-                  const _FieldGroup(label: 'Optional'),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InventoryIField(
-                          controller: categoryCtrl,
-                          label: 'Category',
-                          hint: 'e.g. Drinks, Snacks',
-                          prefixIcon: Icons.category_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: InventoryIField(
-                          controller: skuCtrl,
-                          label: 'SKU / Code',
-                          hint: 'e.g. SKU-001',
-                          prefixIcon: Icons.qr_code_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ProductImagePicker(
-                    selected: selectedImage,
-                    onChanged: onImageChanged,
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton.icon(
-                      onPressed: isLoading ? null : onSave,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: const Icon(Icons.save_rounded, size: 18),
-                      label: Text(
-                          isLoading ? 'Saving...' : 'Save Item to Inventory'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _FieldGroup extends StatelessWidget {
   const _FieldGroup({required this.label});
