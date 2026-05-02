@@ -111,7 +111,6 @@ You will see `(.venv)` in your prompt. Keep this active for all backend commands
 
 ```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
 ```
 
 ### 4.3 Configure the Environment File
