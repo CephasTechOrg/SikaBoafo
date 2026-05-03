@@ -102,10 +102,3 @@ class ProductsHeader extends StatelessWidget {
     );
   }
 }
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
