@@ -128,63 +128,63 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        PageView.builder(
-          controller: _pageController,
-          onPageChanged: (index) => setState(() => _currentPage = index),
-          itemCount: _slideCount,
-          itemBuilder: (context, index) {
-            return switch (index) {
-              0 => RevenueHeroSlide(
-                  padding: const EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    bottomPadding,
+        PageView(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemCount: _slideCount,
+            itemBuilder: (context, index) {
+              return switch (index) {
+                0 => RevenueHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    revenueMinor: widget.todayRevenueMinor,
+                    txns: widget.todayTxnsCount,
+                    cashMinor: widget.cashTotalMinor,
+                    momoMinor: widget.momoTotalMinor,
+                    onTap: () => _showDetails(context),
                   ),
-                  topPadding: topPadding,
-                  revenueMinor: widget.todayRevenueMinor,
-                  txns: widget.todayTxnsCount,
-                  cashMinor: widget.cashTotalMinor,
-                  momoMinor: widget.momoTotalMinor,
-                  onTap: () => _showDetails(context),
-                ),
-              1 => GreetingHeroSlide(
-                  padding: const EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    bottomPadding,
+                1 => GreetingHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    businessName: widget.businessName,
                   ),
-                  topPadding: topPadding,
-                  businessName: widget.businessName,
-                ),
-              2 => TrendHeroSlide(
-                  padding: const EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    bottomPadding,
+                2 => TrendHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    cashMinor: widget.cashTotalMinor,
+                    momoMinor: widget.momoTotalMinor,
+                    txns: widget.todayTxnsCount,
                   ),
-                  topPadding: topPadding,
-                  cashMinor: widget.cashTotalMinor,
-                  momoMinor: widget.momoTotalMinor,
-                  txns: widget.todayTxnsCount,
-                ),
-              _ => TopSellerHeroSlide(
-                  padding: const EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    bottomPadding,
+                _ => TopSellerHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    itemName: widget.topSellingItemName,
+                    qty: widget.topSellingQty,
+                    imageUrl: widget.topSellingImageUrl,
                   ),
-                  topPadding: topPadding,
-                  itemName: widget.topSellingItemName,
-                  qty: widget.topSellingQty,
-                  imageUrl: widget.topSellingImageUrl,
-                ),
-            };
-          },
-        ),
+              };
+            },
+          ),
         Positioned(
           left: 20,
           right: 20,

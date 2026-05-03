@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/product_image_catalog.dart';
-import '../../data/inventory_api.dart';
 import '../../data/inventory_repository.dart';
 
 class InventoryItemCard extends StatelessWidget {

@@ -13,9 +13,10 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 320;
+        // Keep comfortably above ItemCard intrinsic height (selected border + chips).
         final cardExtent = useSingleColumn
-            ? 262.0
-            : (constraints.maxWidth < 380 ? 286.0 : 274.0);
+            ? 274.0
+            : (constraints.maxWidth < 380 ? 298.0 : 286.0);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -72,9 +73,9 @@ class ItemCard extends StatelessWidget {
           width: isSelected ? 1.4 : 1,
         ),
         gradient: isSelected
-            ? LinearGradient(
+            ? const LinearGradient(
                 colors: [
-                  const Color(0xFFF7FCF9),
+                  Color(0xFFF7FCF9),
                   AppColors.surface,
                 ],
                 begin: Alignment.topCenter,

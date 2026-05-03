@@ -11,6 +11,7 @@ import 'package:biztrack_gh/features/inventory/data/inventory_repository.dart';
 import 'package:biztrack_gh/features/inventory/providers/inventory_providers.dart';
 import 'package:biztrack_gh/features/sales/data/sales_repository.dart';
 import 'package:biztrack_gh/features/sales/presentation/sales_screen.dart';
+import 'package:biztrack_gh/features/sales/presentation/widgets/checkout_sheet.dart';
 import 'package:biztrack_gh/features/sales/providers/sales_providers.dart';
 
 void main() {
@@ -102,7 +103,15 @@ void main() {
         await tester.tap(find.textContaining('Checkout'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.textContaining('Cash'));
+        await tester.tap(find.text('Proceed to checkout'));
+        await tester.pumpAndSettle();
+
+        // "Cash" also appears on the sales hero carousel; scope to the checkout sheet.
+        final cashInCheckout = find.descendant(
+          of: find.byType(CheckoutSheet),
+          matching: find.text('Cash'),
+        );
+        await tester.tap(cashInCheckout.first);
         await tester.pump();
 
         await tester.pumpWidget(const SizedBox.shrink());

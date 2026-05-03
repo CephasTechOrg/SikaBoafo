@@ -144,7 +144,7 @@ class SalesNewSaleView extends ConsumerWidget {
               ),
             ],
             if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
-              EmptyCard(
+              const EmptyCard(
                 icon: Icons.search_off_rounded,
                 title: 'No products found',
                 message:

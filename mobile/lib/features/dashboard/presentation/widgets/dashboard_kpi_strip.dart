@@ -22,7 +22,6 @@ class DashboardKpiStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = summaryAsync.valueOrNull;
-    final overlay = overlayAsync.valueOrNull;
 
     final lowStock = summary?.lowStockCount ?? 0;
     final debtOutstanding = summary?.debtOutstandingTotal ?? '0.00';

@@ -39,8 +39,8 @@ class InventoryHeader extends StatelessWidget {
       child: Stack(
         children: [
           // ── Background gradient ──────────────────────────────
-          Positioned.fill(
-            child: const DecoratedBox(
+          const Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -115,9 +115,11 @@ class InventoryHeader extends StatelessWidget {
 
           // ── Content ──────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 52, 20, 18),
+            // Tight vertical budget: flexible app bar can shrink to ~140px height.
+            padding: const EdgeInsets.fromLTRB(20, 46, 20, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Page title + freshness — clean, no icon box
                 Row(
@@ -133,8 +135,8 @@ class InventoryHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 3),
                       child: DataFreshnessLabel(
                         kvKey: KvCacheRepository.kInventoryTs,
                         color: AppColors.heroSubtitle,
@@ -142,7 +144,7 @@ class InventoryHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
 
                 // Hero figure — left-aligned
                 Text(
@@ -159,14 +161,14 @@ class InventoryHeader extends StatelessWidget {
                   _fmtMoney(totalValueMinor),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 38,
+                    fontSize: 34,
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Constantia',
                     letterSpacing: -0.8,
                     height: 1.0,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
 
                 // Two key stats
                 Row(

@@ -54,8 +54,8 @@ class DashboardTopSellingSection extends ConsumerWidget {
                   _SkeletonTopRow(),
                 ],
               ),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.all(24),
+              error: (e, _) => const Padding(
+                padding: EdgeInsets.all(24),
                 child: Center(
                   child: Text(
                     'Could not load insights',

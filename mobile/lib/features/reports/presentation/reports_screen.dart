@@ -22,6 +22,7 @@ import 'widgets/offline_card.dart';
 import 'widgets/reports_loading.dart';
 import 'widgets/error_view.dart';
 import 'widgets/reports_utils.dart';
+import 'widgets/debt_aging_card.dart';
 
 // ── Reports screen ────────────────────────────────────────────────────────────
 
@@ -216,6 +217,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         data: (ins) =>
                             TopItemsCard(items: ins.monthlyTopSellingItems),
                       ),
+                      const SizedBox(height: 24),
+
+                      // ── Debt aging (open receivables) ─────────────────
+                      const SectionHeader(
+                        title: 'Debt Aging',
+                        subtitle: 'Open receivables by due date',
+                      ),
+                      const SizedBox(height: 12),
+                      debtsAsync.when(
+                        loading: () => const AppSkeletonCard(lines: 4),
+                        error: (_, __) => const OfflineCard(),
+                        data: (_) => DebtAgingCard(
+                          aging: computeAging(receivables),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -349,7 +365,7 @@ class _KpiCard extends StatelessWidget {
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
                 color: AppColors.ink,
@@ -429,7 +445,7 @@ class _GrossProfitBanner extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          Text(
+          const Text(
             'Revenue minus\ncost of items sold',
             textAlign: TextAlign.right,
             style: TextStyle(
