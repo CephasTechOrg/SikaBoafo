@@ -58,4 +58,28 @@ class ExpensesController
       rethrow;
     }
   }
+
+  Future<void> updateExpense({
+    required String expenseId,
+    required String category,
+    required String amount,
+    String? note,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      await _repo.updateExpenseLocal(
+        expenseId: expenseId,
+        category: category,
+        amount: amount,
+        note: note,
+      );
+      await _repo.syncPendingQueue();
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.data(await _repo.listRecentExpenses());
+    } catch (error, stackTrace) {
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
+    }
+  }
 }

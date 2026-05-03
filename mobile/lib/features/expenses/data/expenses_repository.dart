@@ -129,6 +129,72 @@ LIMIT ?
     });
   }
 
+  Future<void> updateExpenseLocal({
+    required String expenseId,
+    required String category,
+    required String amount,
+    String? note,
+  }) async {
+    final normalizedCategory = category.trim().toLowerCase();
+    if (!allowedCategories.contains(normalizedCategory)) {
+      throw ArgumentError('Unsupported expense category: $category');
+    }
+    final amountMinor = _moneyToMinor(amount);
+    if (amountMinor <= 0) {
+      throw ArgumentError('Amount must be greater than 0.');
+    }
+
+    final db = await _appDb.database;
+    final existing = await db.query(
+      'expenses_local',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [expenseId],
+      limit: 1,
+    );
+    if (existing.isEmpty) {
+      throw ArgumentError('Expense not found.');
+    }
+
+    final sourceDeviceId = await _appDb.getOrCreateDeviceId();
+    final localOpId = _uuid.v4();
+    final normalizedAmount = _minorToMoney(amountMinor);
+    final cleanedNote = _cleanOptional(note);
+
+    await db.transaction((tx) async {
+      await tx.update(
+        'expenses_local',
+        {
+          'category': normalizedCategory,
+          'amount': normalizedAmount,
+          'note': cleanedNote,
+          'local_operation_id': localOpId,
+          'source_device_id': sourceDeviceId,
+          'status': 'pending',
+        },
+        where: 'id = ?',
+        whereArgs: [expenseId],
+      );
+
+      await _appDb.syncQueue.enqueue(
+        entityType: 'expense',
+        operation: 'update',
+        entityId: expenseId,
+        payloadJson: jsonEncode(
+          {
+            'expense_id': expenseId,
+            'category': normalizedCategory,
+            'amount': normalizedAmount,
+            'note': cleanedNote,
+          }..removeWhere((_, value) => value == null),
+        ),
+        sourceDeviceId: sourceDeviceId,
+        localOperationId: localOpId,
+        executor: tx,
+      );
+    });
+  }
+
   Future<SyncQueueRunSummary> syncPendingQueue({int limit = 100}) {
     return _syncQueueRunner.run(limit: limit);
   }

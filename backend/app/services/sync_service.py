@@ -17,7 +17,12 @@ from app.core.constants import (
     SYNC_STATUS_REJECTED,
 )
 from app.models.sync_operation import SyncOperation
-from app.schemas.expense import ExpenseCreateIn, SyncExpenseCreateIn
+from app.schemas.expense import (
+    ExpenseCreateIn,
+    ExpenseUpdateIn,
+    SyncExpenseCreateIn,
+    SyncExpenseUpdateIn,
+)
 from app.schemas.inventory import (
     ItemCreateIn,
     ItemUpdateIn,
@@ -42,7 +47,11 @@ from app.schemas.sale import (
     SyncSaleVoidIn,
 )
 from app.schemas.sync import SyncOperationIn
-from app.services.expense_service import ExpenseContextMissingError, ExpenseService
+from app.services.expense_service import (
+    ExpenseContextMissingError,
+    ExpenseNotFoundError,
+    ExpenseService,
+)
 from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
     InventoryItemNotFoundError,
@@ -180,6 +189,7 @@ class SyncService:
                 SaleNotFoundError,
                 SaleAlreadyVoidedError,
                 InsufficientStockError,
+                ExpenseNotFoundError,
             ) as exc:
                 self.db.rollback()
                 results.append(
@@ -312,6 +322,18 @@ class SyncService:
             payload = SyncExpenseCreateIn.model_validate(operation.payload)
             expense_payload = ExpenseCreateIn.model_validate(payload.model_dump())
             expense = expense_service.create_expense(
+                user_id=user_id,
+                payload=expense_payload,
+                source_device_id=device_id,
+                local_operation_id=operation.local_operation_id,
+                commit=False,
+            )
+            return expense.expense_id
+
+        if entity_type == "expense" and action_type == "update":
+            payload = SyncExpenseUpdateIn.model_validate(operation.payload)
+            expense_payload = ExpenseUpdateIn.model_validate(payload.model_dump())
+            expense = expense_service.update_expense(
                 user_id=user_id,
                 payload=expense_payload,
                 source_device_id=device_id,

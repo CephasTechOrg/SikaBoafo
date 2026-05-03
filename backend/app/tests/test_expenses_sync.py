@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
@@ -140,5 +140,59 @@ def test_sync_apply_expense_create_is_idempotent() -> None:
             assert count == 1
             sync_count = db.scalar(select(func.count()).select_from(SyncOperation))
             assert sync_count == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_sync_apply_expense_update_changes_row() -> None:
+    client, session_local, _ = _build_sqlite_test_stack()
+    expense_id = str(uuid4())
+    create_payload = {
+        "device_id": "device-expense-update-001",
+        "operations": [
+            {
+                "local_operation_id": "expense-create-for-update-001",
+                "entity_type": "expense",
+                "action_type": "create",
+                "payload": {
+                    "expense_id": expense_id,
+                    "category": "transport",
+                    "amount": "35.50",
+                    "note": "Delivery",
+                },
+            }
+        ],
+    }
+    update_payload = {
+        "device_id": "device-expense-update-001",
+        "operations": [
+            {
+                "local_operation_id": "expense-update-op-001",
+                "entity_type": "expense",
+                "action_type": "update",
+                "payload": {
+                    "expense_id": expense_id,
+                    "category": "utilities",
+                    "amount": "40.00",
+                    "note": "Power",
+                },
+            }
+        ],
+    }
+    try:
+        first = client.post("/api/v1/sync/apply", json=create_payload)
+        assert first.status_code == 200
+        assert first.json()["results"][0]["status"] == "applied"
+
+        second = client.post("/api/v1/sync/apply", json=update_payload)
+        assert second.status_code == 200
+        assert second.json()["results"][0]["status"] == "applied"
+
+        with session_local() as db:
+            row = db.scalar(select(Expense).where(Expense.id == UUID(expense_id)))
+            assert row is not None
+            assert row.category == "utilities"
+            assert row.amount == Decimal("40.00")
+            assert row.note == "Power"
     finally:
         app.dependency_overrides.clear()

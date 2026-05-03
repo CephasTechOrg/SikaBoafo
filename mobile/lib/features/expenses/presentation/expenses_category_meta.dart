@@ -96,3 +96,21 @@ String expenseSaveCategoryLabel(String category, String otherName) {
   if (t.isEmpty) return expenseMetaFor('other').label;
   return 'Other ($t)';
 }
+
+/// Splits stored [note] into fields for the edit form (`other` vs optional note).
+({String otherName, String additionalNote}) expenseNoteFieldsForEdit(
+  String category,
+  String? raw,
+) {
+  if (category != 'other' || raw == null || raw.isEmpty) {
+    return (otherName: '', additionalNote: raw?.trim() ?? '');
+  }
+  final i = raw.indexOf(kExpenseOtherNoteSep);
+  if (i < 0) {
+    return (otherName: '', additionalNote: raw.trim());
+  }
+  return (
+    otherName: raw.substring(0, i).trim(),
+    additionalNote: raw.substring(i + 1).trim(),
+  );
+}

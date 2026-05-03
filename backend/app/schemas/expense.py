@@ -39,6 +39,26 @@ class SyncExpenseCreateIn(ExpenseCreateIn):
     """Sync payload alias for expense create operations."""
 
 
+class ExpenseUpdateIn(BaseModel):
+    expense_id: UUID
+    category: str = Field(min_length=2, max_length=64)
+    amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2)
+    note: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in _ALLOWED_EXPENSE_CATEGORIES:
+            msg = f"Unsupported expense category: {value!r}"
+            raise ValueError(msg)
+        return normalized
+
+
+class SyncExpenseUpdateIn(ExpenseUpdateIn):
+    """Sync payload for expense update operations."""
+
+
 class ExpenseOut(BaseModel):
     expense_id: UUID
     category: str

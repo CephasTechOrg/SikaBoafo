@@ -12,13 +12,17 @@ from sqlalchemy.orm import Session
 
 from app.models.expense import Expense
 from app.models.store import Store
-from app.schemas.expense import ExpenseCreateIn
+from app.schemas.expense import ExpenseCreateIn, ExpenseUpdateIn
 from app.services.audit_service import log_audit
 from app.services.store_context import StoreContextError, get_merchant_and_store
 
 
 class ExpenseContextMissingError(Exception):
     """User does not have merchant/store context for recording expenses."""
+
+
+class ExpenseNotFoundError(Exception):
+    """No expense in the user's default store for the given id."""
 
 
 @dataclass(slots=True)
@@ -71,6 +75,52 @@ class ExpenseService:
             actor_user_id=user_id,
             business_id=store.merchant_id,
             action="expense.created",
+            entity_type="expense",
+            entity_id=expense.id,
+            meta={"category": expense.category, "amount": str(expense.amount)},
+        )
+        if commit:
+            self.db.commit()
+            self.db.refresh(expense)
+        else:
+            self.db.flush()
+
+        return self._to_snapshot(expense=expense)
+
+    def update_expense(
+        self,
+        *,
+        user_id: UUID,
+        payload: ExpenseUpdateIn,
+        source_device_id: str | None = None,
+        local_operation_id: str | None = None,
+        commit: bool = True,
+    ) -> ExpenseSnapshot:
+        store = self._get_default_store_for_user(user_id=user_id)
+        expense = self.db.scalar(
+            select(Expense).where(
+                Expense.id == payload.expense_id,
+                Expense.store_id == store.id,
+            )
+        )
+        if expense is None:
+            raise ExpenseNotFoundError(f"Expense {payload.expense_id} not found.")
+
+        expense.category = payload.category
+        expense.amount = payload.amount
+        expense.note = self._clean_optional(payload.note)
+        if source_device_id is not None:
+            expense.source_device_id = source_device_id
+        if local_operation_id is not None:
+            expense.local_operation_id = local_operation_id
+
+        self.db.add(expense)
+        self.db.flush()
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=store.merchant_id,
+            action="expense.updated",
             entity_type="expense",
             entity_id=expense.id,
             meta={"category": expense.category, "amount": str(expense.amount)},

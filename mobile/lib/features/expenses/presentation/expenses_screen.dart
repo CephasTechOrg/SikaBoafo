@@ -5,6 +5,7 @@ import '../../../app/theme/app_theme.dart';
 import '../data/expenses_repository.dart';
 import '../providers/expenses_providers.dart';
 import 'expenses_category_meta.dart';
+import 'widgets/expense_edit_sheet.dart';
 import 'widgets/expenses_bottom_bar.dart';
 import 'widgets/expenses_header.dart';
 import 'widgets/expenses_history_view.dart';
@@ -169,6 +170,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         expenses: expenses,
                         isLoadingEmpty:
                             expensesAsync.isLoading && expenses.isEmpty,
+                        onEditExpense: (row) async {
+                          await showExpenseEditSheet(context, record: row);
+                        },
                       ),
                   ],
                 ),

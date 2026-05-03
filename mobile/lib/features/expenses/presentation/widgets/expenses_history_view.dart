@@ -11,10 +11,12 @@ class ExpensesHistoryView extends StatelessWidget {
     super.key,
     required this.expenses,
     required this.isLoadingEmpty,
+    required this.onEditExpense,
   });
 
   final List<LocalExpenseRecord> expenses;
   final bool isLoadingEmpty;
+  final Future<void> Function(LocalExpenseRecord row) onEditExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class ExpensesHistoryView extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Latest recorded costs and sync status.',
+                      'Tap an entry to edit. Sync status updates after save.',
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -61,7 +63,12 @@ class ExpensesHistoryView extends StatelessWidget {
           else if (expenses.isEmpty)
             const _EmptyHistoryCard()
           else
-            ...expenses.map(_ExpenseHistoryTile.new),
+            ...expenses.map(
+              (row) => _ExpenseHistoryTile(
+                row,
+                onTap: () => onEditExpense(row),
+              ),
+            ),
         ],
       ),
     );
@@ -115,9 +122,10 @@ class _EmptyHistoryCard extends StatelessWidget {
 }
 
 class _ExpenseHistoryTile extends StatelessWidget {
-  const _ExpenseHistoryTile(this.row);
+  const _ExpenseHistoryTile(this.row, {required this.onTap});
 
   final LocalExpenseRecord row;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -136,104 +144,115 @@ class _ExpenseHistoryTile extends StatelessWidget {
       _ => 'Pending',
     };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
         color: AppColors.surface,
+        elevation: 0,
+        shadowColor: Colors.transparent,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: meta.bg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(meta.icon, color: meta.color, size: 22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppShadows.subtle,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          meta.label,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.ink,
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: meta.bg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(meta.icon, color: meta.color, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                meta.label,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '₵${row.amount}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: meta.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                expenseNoteDisplayLine(row.category, row.note),
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MMM d, HH:mm').format(dt.toLocal()),
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: syncColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              syncLabel,
+                              style: TextStyle(
+                                color: syncColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '₵${row.amount}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: meta.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          expenseNoteDisplayLine(row.category, row.note),
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('MMM d, HH:mm').format(dt.toLocal()),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: syncColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        syncLabel,
-                        style: TextStyle(
-                          color: syncColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

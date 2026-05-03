@@ -6,9 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
-import '../../../shared/widgets/data_freshness_label.dart';
-import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import 'widgets/debts_header.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
@@ -36,12 +35,6 @@ int _moneyToMinorLocal(String value) {
   final major = int.parse(parts[0]);
   final dec = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
   return (major * 100) + int.parse(dec);
-}
-
-String _minorToMoneyLocal(int v) {
-  final major = v ~/ 100;
-  final minor = (v % 100).toString().padLeft(2, '0');
-  return '$major.$minor';
 }
 
 // ── Screen ─────────────────────────────────────────────────────────────────
@@ -112,368 +105,225 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.shell),
-        child: Column(
-          children: [
-            // ── Hero header ───────────────────────────────────────────────
-            _buildHeader(
-              outstandingMinor: outstandingMinor,
-              overdueMinor: overdueMinor,
-              paidThisMonth: paidThisMonth,
-              customerCount: customers.length,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leading: IconButton(
+              onPressed: () => context.go(AppRoute.home.path),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 20),
             ),
-
-            const StaleBanner(
-              screenKey: 'debts',
-              kvKey: KvCacheRepository.kDebtsTs,
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: DebtsHeader(
+                outstandingMinor: outstandingMinor,
+                overdueMinor: overdueMinor,
+                paidThisMonthStr: paidThisMonth,
+                customerCount: customers.length,
+              ),
+              title: innerBoxIsScrolled
+                  ? const Text(
+                      'Debts',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
             ),
-
-            // ── Content canvas ────────────────────────────────────────────
-            Expanded(
-              child: PremiumSurface(
-                child: debtsAsync.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(e.toString(), textAlign: TextAlign.center),
-                    ),
+          ),
+        ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: debtsAsync.when(
+            loading: () => RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(debtsControllerProvider.notifier).refresh(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  const StaleBanner(
+                    screenKey: 'debts',
+                    kvKey: KvCacheRepository.kDebtsTs,
                   ),
-                  data: (_) => RefreshIndicator(
-                    onRefresh: () =>
-                        ref.read(debtsControllerProvider.notifier).refresh(),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              ),
+            ),
+            error: (e, _) => RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(debtsControllerProvider.notifier).refresh(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  const StaleBanner(
+                    screenKey: 'debts',
+                    kvKey: KvCacheRepository.kDebtsTs,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(e.toString(), textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+            data: (_) => RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(debtsControllerProvider.notifier).refresh(),
+              child: PremiumSurface(
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                  children: [
+                    const StaleBanner(
+                      screenKey: 'debts',
+                      kvKey: KvCacheRepository.kDebtsTs,
+                    ),
+                    const SizedBox(height: 10),
+                    if (_showSearch) ...[
+                      _SearchBar(
+                        onChanged: (v) =>
+                            setState(() => _searchQuery = v.trim()),
+                        onClear: () => setState(() {
+                          _searchQuery = '';
+                          _showSearch = false;
+                        }),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _QuickActionsRow(
+                      onAddCustomer: () => setState(() {
+                        _showAddCustomer = !_showAddCustomer;
+                        if (_showAddCustomer) _showCreateDebt = false;
+                      }),
+                      onCreateDebt: () => setState(() {
+                        _showCreateDebt = !_showCreateDebt;
+                        if (_showCreateDebt) _showAddCustomer = false;
+                      }),
+                      onRecordPayment: () => setState(() {
+                        _showRecordPayment = !_showRecordPayment;
+                        if (_showRecordPayment) {
+                          _showAddCustomer = false;
+                          _showCreateDebt = false;
+                        }
+                      }),
+                      onViewReports: () => context.push(AppRoute.reports.path),
+                    ),
+                    const SizedBox(height: 22),
+                    _ActionSectionsList(
+                      showAddCustomer: _showAddCustomer,
+                      showCreateDebt: _showCreateDebt,
+                      showRecordPayment: _showRecordPayment,
+                      onToggleAddCustomer: () => setState(
+                          () => _showAddCustomer = !_showAddCustomer),
+                      onToggleCreateDebt: () =>
+                          setState(() => _showCreateDebt = !_showCreateDebt),
+                      onToggleRecordPayment: () => setState(
+                          () => _showRecordPayment = !_showRecordPayment),
+                      onViewReports: () => context.push(AppRoute.reports.path),
+                      addCustomerForm: _AddCustomerForm(
+                        nameCtrl: _nameCtrl,
+                        phoneCtrl: _phoneCtrl,
+                        isBusy: isBusy,
+                        onSave: _saveCustomer,
+                      ),
+                      createDebtForm: _CreateDebtForm(
+                        customers: customers,
+                        selectedCustomerId: selectedCustomerId,
+                        amountCtrl: _amountCtrl,
+                        dueDateCtrl: _dueDateCtrl,
+                        noteCtrl: _noteCtrl,
+                        isBusy: isBusy,
+                        onCustomerChanged: (v) =>
+                            setState(() => _selectedCustomerId = v),
+                        onPickDate: _pickDueDate,
+                        onSave: () =>
+                            _saveDebt(selectedCustomerId: selectedCustomerId),
+                      ),
+                      recordPaymentForm: _RecordPaymentForm(
+                        openReceivables: receivables
+                            .where((r) =>
+                                r.status == 'open' ||
+                                r.status == 'partially_paid')
+                            .toList(growable: false),
+                        selectedReceivableId: _resolveSelectedReceivable(
+                          receivables
+                              .where((r) =>
+                                  r.status == 'open' ||
+                                  r.status == 'partially_paid')
+                              .toList(growable: false),
+                        ),
+                        amountCtrl: _repaymentAmountCtrl,
+                        paymentMethod: _repaymentMethod,
+                        isBusy: isBusy,
+                        onReceivableChanged: (v) =>
+                            setState(() => _selectedReceivableId = v),
+                        onMethodChanged: (v) =>
+                            setState(() => _repaymentMethod = v),
+                        onSave: _saveRepayment,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
                       children: [
-                        // Search bar
-                        if (_showSearch) ...[
-                          _SearchBar(
-                            onChanged: (v) =>
-                                setState(() => _searchQuery = v.trim()),
-                            onClear: () => setState(() {
-                              _searchQuery = '';
-                              _showSearch = false;
-                            }),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        const SizedBox(height: 4),
-
-                        // Quick actions label
                         const Text(
-                          'Quick Actions',
+                          'Recent Debts',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink,
                           ),
                         ),
-                        const SizedBox(height: 14),
-
-                        // Quick actions row
-                        _QuickActionsRow(
-                          onAddCustomer: () => setState(() {
-                            _showAddCustomer = !_showAddCustomer;
-                            if (_showAddCustomer) _showCreateDebt = false;
-                          }),
-                          onCreateDebt: () => setState(() {
-                            _showCreateDebt = !_showCreateDebt;
-                            if (_showCreateDebt) _showAddCustomer = false;
-                          }),
-                          onRecordPayment: () => setState(() {
-                            _showRecordPayment = !_showRecordPayment;
-                            if (_showRecordPayment) {
-                              _showAddCustomer = false;
-                              _showCreateDebt = false;
-                            }
-                          }),
-                          onViewReports: () => context.push(AppRoute.reports.path),
-                        ),
-                        const SizedBox(height: 22),
-
-                        // Action sections (grouped list card)
-                        _ActionSectionsList(
-                          showAddCustomer: _showAddCustomer,
-                          showCreateDebt: _showCreateDebt,
-                          showRecordPayment: _showRecordPayment,
-                          onToggleAddCustomer: () => setState(
-                              () => _showAddCustomer = !_showAddCustomer),
-                          onToggleCreateDebt: () => setState(
-                              () => _showCreateDebt = !_showCreateDebt),
-                          onToggleRecordPayment: () => setState(
-                              () => _showRecordPayment = !_showRecordPayment),
-                          onViewReports: () => context.push(AppRoute.reports.path),
-                          addCustomerForm: _AddCustomerForm(
-                            nameCtrl: _nameCtrl,
-                            phoneCtrl: _phoneCtrl,
-                            isBusy: isBusy,
-                            onSave: _saveCustomer,
-                          ),
-                          createDebtForm: _CreateDebtForm(
-                            customers: customers,
-                            selectedCustomerId: selectedCustomerId,
-                            amountCtrl: _amountCtrl,
-                            dueDateCtrl: _dueDateCtrl,
-                            noteCtrl: _noteCtrl,
-                            isBusy: isBusy,
-                            onCustomerChanged: (v) =>
-                                setState(() => _selectedCustomerId = v),
-                            onPickDate: _pickDueDate,
-                            onSave: () => _saveDebt(
-                                selectedCustomerId: selectedCustomerId),
-                          ),
-                          recordPaymentForm: _RecordPaymentForm(
-                            openReceivables: receivables
-                                .where((r) =>
-                                    r.status == 'open' ||
-                                    r.status == 'partially_paid')
-                                .toList(growable: false),
-                            selectedReceivableId: _resolveSelectedReceivable(
-                              receivables
-                                  .where((r) =>
-                                      r.status == 'open' ||
-                                      r.status == 'partially_paid')
-                                  .toList(growable: false),
-                            ),
-                            amountCtrl: _repaymentAmountCtrl,
-                            paymentMethod: _repaymentMethod,
-                            isBusy: isBusy,
-                            onReceivableChanged: (v) =>
-                                setState(() => _selectedReceivableId = v),
-                            onMethodChanged: (v) =>
-                                setState(() => _repaymentMethod = v),
-                            onSave: _saveRepayment,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Recent debts header
-                        Row(
-                          children: [
-                            const Text(
-                              'Recent Debts',
+                        const Spacer(),
+                        if (receivables.isNotEmpty)
+                          GestureDetector(
+                            onTap: () =>
+                                setState(() => _showSearch = !_showSearch),
+                            child: const Text(
+                              'View all \u2192',
                               style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (receivables.isNotEmpty)
-                              GestureDetector(
-                                onTap: () =>
-                                    setState(() => _showSearch = !_showSearch),
-                                child: const Text(
-                                  'View all \u2192',
-                                  style: TextStyle(
-                                    color: AppColors.forest,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        if (debtsAsync.isLoading && receivables.isEmpty)
-                          const Center(child: CircularProgressIndicator())
-                        else if (filtered.isEmpty)
-                          _EmptyDebts(hasSearch: _searchQuery.isNotEmpty)
-                        else
-                          ...filtered
-                              .take(_searchQuery.isEmpty ? 10 : filtered.length)
-                              .map(_buildDebtCard),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // \u2500\u2500\u2500 Header \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-
-  Widget _buildHeader({
-    required int outstandingMinor,
-    required int overdueMinor,
-    required String paidThisMonth,
-    required int customerCount,
-  }) {
-    return Stack(
-      children: [
-        const Positioned.fill(child: HeroBackdrop()),
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      onPressed: () => context.go(AppRoute.home.path),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Debts',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Track customers, due dates, and repayments',
-                            style: TextStyle(
-                              color: AppColors.heroSubtitle,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          DataFreshnessLabel(
-                            kvKey: KvCacheRepository.kDebtsTs,
-                            color: AppColors.heroSubtitle,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 150),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.16),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Outstanding',
-                              style: TextStyle(
-                                color: AppColors.heroSubtitle,
-                                fontSize: 11,
+                                color: AppColors.forest,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '\u20B5${_minorToMoneyLocal(outstandingMinor)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Constantia',
-                                letterSpacing: -0.6,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+                    if (debtsAsync.isLoading && receivables.isEmpty)
+                      const Center(child: CircularProgressIndicator())
+                    else if (filtered.isEmpty)
+                      _EmptyDebts(hasSearch: _searchQuery.isNotEmpty)
+                    else
+                      ...filtered
+                          .take(_searchQuery.isEmpty ? 10 : filtered.length)
+                          .map(_buildDebtCard),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildHeroChip(
-                      label: '\u20B5${_minorToMoneyLocal(overdueMinor)}',
-                      value: 'Overdue',
-                      tone: overdueMinor > 0
-                          ? const Color(0xFFF6A6A6)
-                          : Colors.white.withValues(alpha: 0.72),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildHeroChip(
-                      label: '\u20B5$paidThisMonth',
-                      value: 'Collected',
-                      tone: const Color(0xFF9AE7BF),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildHeroChip(
-                      label: '$customerCount',
-                      value: 'Customers',
-                      tone: AppColors.gold,
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  // \u2500\u2500\u2500 Debt card \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-
-  Widget _buildHeroChip({
-    required String label,
-    required String value,
-    required Color tone,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: tone,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.58),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
       ),
     );
