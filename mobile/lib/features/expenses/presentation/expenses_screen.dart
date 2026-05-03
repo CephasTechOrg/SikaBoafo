@@ -87,6 +87,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final otherOk =
         _category != 'other' || _otherNameCtrl.text.trim().isNotEmpty;
     final canSave = amountOk && otherOk;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+    const kLeadingGutter = 56.0;
+    final heroInset = canPop ? kLeadingGutter : 20.0;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -98,7 +101,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 expandedHeight: 210,
                 pinned: true,
                 stretch: true,
-                leading: ModalRoute.of(context)?.canPop == true
+                leadingWidth: canPop ? kLeadingGutter : null,
+                leading: canPop
                     ? IconButton(
                         icon: const Icon(Icons.arrow_back_ios_new_rounded,
                             color: Colors.white, size: 20),
@@ -110,6 +114,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground],
                   background: ExpensesHeader(
+                    leadingContentInset: heroInset,
                     monthMinor: monthMinor,
                     todayMinor: todayMinor,
                     todayEntryCount: todayEntryCount,
@@ -126,7 +131,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         )
                       : null,
                   centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  titlePadding: EdgeInsetsDirectional.only(
+                    start: heroInset,
+                    bottom: 16,
+                  ),
                 ),
               ),
               SliverPersistentHeader(

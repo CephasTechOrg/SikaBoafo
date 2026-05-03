@@ -8,12 +8,15 @@ import '../../../../shared/widgets/data_freshness_label.dart';
 class DebtsHeader extends StatelessWidget {
   const DebtsHeader({
     super.key,
+    required this.leadingContentInset,
     required this.outstandingMinor,
     required this.overdueMinor,
     required this.paidThisMonthStr,
     required this.customerCount,
   });
 
+  /// Left padding so hero text clears the sliver [leading] control.
+  final double leadingContentInset;
   final int outstandingMinor;
   final int overdueMinor;
   final String paidThisMonthStr;
@@ -105,7 +108,7 @@ class DebtsHeader extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 46, 20, 14),
+            padding: EdgeInsets.fromLTRB(leadingContentInset, 46, 20, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

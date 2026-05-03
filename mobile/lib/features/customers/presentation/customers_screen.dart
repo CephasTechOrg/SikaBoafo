@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
-import '../../../shared/widgets/mockup_ui.dart';
+import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/stale_banner.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
+import 'widgets/customers_header.dart';
 
 class CustomersScreen extends ConsumerWidget {
   const CustomersScreen({super.key});
@@ -15,274 +19,147 @@ class CustomersScreen extends ConsumerWidget {
     final debtsAsync = ref.watch(debtsControllerProvider);
     final customers =
         debtsAsync.valueOrNull?.customers ?? const <LocalDebtCustomer>[];
+
     final outstandingMinor = customers.fold<int>(
       0,
       (sum, customer) => sum + _parseAmount(customer.totalOutstanding),
     );
     final clearedCount =
         customers.where((c) => _parseAmount(c.totalOutstanding) == 0).length;
+    final withDebtCount =
+        customers.where((c) => _parseAmount(c.totalOutstanding) > 0).length;
+
+    const kLeadingGutter = 56.0;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: Stack(
-        children: [
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 240,
-            child: HeroBackdrop(),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                _CustomersHeader(
-                customerCount: customers.length,
-                outstandingMinor: outstandingMinor,
-                clearedCount: clearedCount,
-                onBack: () => context.pop(),
-                onRefresh: () =>
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 20),
+              onPressed: () {
+                if (ModalRoute.of(context)?.canPop ?? false) {
+                  context.pop();
+                } else {
+                  context.go(AppRoute.home.path);
+                }
+              },
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Refresh',
+                icon: const Icon(Icons.refresh_rounded,
+                    color: Colors.white, size: 22),
+                onPressed: () =>
                     ref.read(debtsControllerProvider.notifier).refresh(),
               ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: AppRadii.heroRadius,
-                  ),
-                  child: Container(
-                    color: AppColors.canvas,
-                    child: debtsAsync.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, _) => _CustomersError(
-                        message: e.toString(),
-                        onRetry: () => ref
-                            .read(debtsControllerProvider.notifier)
-                            .refresh(),
-                      ),
-                      data: (viewData) {
-                        final items = viewData.customers;
-                        return RefreshIndicator(
-                          onRefresh: () => ref
-                              .read(debtsControllerProvider.notifier)
-                              .refresh(),
-                          child: ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                            itemCount: items.isEmpty ? 1 : items.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              if (items.isEmpty) {
-                                return const _EmptyCustomers();
-                              }
-                              return _CustomerCard(customer: items[index]);
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
             ],
-          ),
-        ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CustomersHeader extends StatelessWidget {
-  const _CustomersHeader({
-    required this.customerCount,
-    required this.outstandingMinor,
-    required this.clearedCount,
-    required this.onBack,
-    required this.onRefresh,
-  });
-
-  final int customerCount;
-  final int outstandingMinor;
-  final int clearedCount;
-  final VoidCallback onBack;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _HeaderIconButton(
-                icon: Icons.arrow_back_rounded,
-                onTap: onBack,
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: CustomersHeader(
+                leadingContentInset: kLeadingGutter,
+                outstandingMinor: outstandingMinor,
+                customerCount: customers.length,
+                clearedCount: clearedCount,
+                withDebtCount: withDebtCount,
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              title: innerBoxIsScrolled
+                  ? const Text(
                       'Customers',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'View customer balances and debt relationships',
-                      style: TextStyle(
-                        color: AppColors.heroSubtitle,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
               ),
-              const SizedBox(width: 10),
-              _HeaderIconButton(
-                icon: Icons.refresh_rounded,
-                onTap: onRefresh,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatMinor(outstandingMinor),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 31,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Constantia',
-                        letterSpacing: -0.8,
-                        height: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Outstanding customer balance',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.56),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.9,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 138,
-                child: Column(
-                  children: [
-                    _HeaderMiniMetric(
-                      label: 'Customers',
-                      value: '$customerCount total',
-                      tone: const Color(0xFF9AE7BF),
-                    ),
-                    const SizedBox(height: 8),
-                    _HeaderMiniMetric(
-                      label: 'Cleared',
-                      value: '$clearedCount settled',
-                      tone: AppColors.gold,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderMiniMetric extends StatelessWidget {
-  const _HeaderMiniMetric({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              color: tone,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.58),
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  const _HeaderIconButton({
-    required this.icon,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(13),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: debtsAsync.when(
+            loading: () => RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(debtsControllerProvider.notifier).refresh(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  const StaleBanner(
+                    screenKey: 'customers',
+                    kvKey: KvCacheRepository.kDebtsTs,
+                  ),
+                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              ),
+            ),
+            error: (e, _) => RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(debtsControllerProvider.notifier).refresh(),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  const StaleBanner(
+                    screenKey: 'customers',
+                    kvKey: KvCacheRepository.kDebtsTs,
+                  ),
+                  const SizedBox(height: 24),
+                  _CustomersError(
+                    message: e.toString(),
+                    onRetry: () =>
+                        ref.read(debtsControllerProvider.notifier).refresh(),
+                  ),
+                ],
+              ),
+            ),
+            data: (viewData) {
+              final items = viewData.customers;
+              return RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(debtsControllerProvider.notifier).refresh(),
+                child: PremiumSurface(
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                    children: [
+                      const StaleBanner(
+                        screenKey: 'customers',
+                        kvKey: KvCacheRepository.kDebtsTs,
+                      ),
+                      const SizedBox(height: 10),
+                      if (items.isEmpty)
+                        const _EmptyCustomers()
+                      else
+                        ...items.map(
+                          (c) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _CustomerCard(customer: c),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }

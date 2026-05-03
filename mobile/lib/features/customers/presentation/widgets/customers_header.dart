@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Minimal hero header aligned with [InventoryHeader] — single metric + stat pills, no carousel.
-class ExpensesHeader extends StatelessWidget {
-  const ExpensesHeader({
+import '../../../../app/theme/app_theme.dart';
+import '../../../../data/local/kv_cache_repository.dart';
+import '../../../../shared/widgets/data_freshness_label.dart';
+
+/// Hero header for [CustomersScreen] (same visual language as expenses/debts).
+class CustomersHeader extends StatelessWidget {
+  const CustomersHeader({
     super.key,
     required this.leadingContentInset,
-    required this.monthMinor,
-    required this.todayMinor,
-    required this.todayEntryCount,
-    required this.monthCategoryCount,
+    required this.outstandingMinor,
+    required this.customerCount,
+    required this.clearedCount,
+    required this.withDebtCount,
   });
 
-  /// Left padding so hero text clears the sliver [leading] control (~56 when shown).
+  /// Left inset so title/metrics clear the sliver [leading] back control.
   final double leadingContentInset;
-  final int monthMinor;
-  final int todayMinor;
-  final int todayEntryCount;
-  /// Distinct expense categories used this calendar month (from local list).
-  final int monthCategoryCount;
+  final int outstandingMinor;
+  final int customerCount;
+  final int clearedCount;
+  final int withDebtCount;
 
   String _fmtMoney(int minor) {
     final major = minor ~/ 100;
@@ -98,7 +101,7 @@ class ExpensesHeader extends StatelessWidget {
             child: Opacity(
               opacity: 0.14,
               child: Icon(
-                Icons.receipt_long_rounded,
+                Icons.people_alt_rounded,
                 size: 120,
                 color: Colors.white.withValues(alpha: 0.9),
               ),
@@ -110,19 +113,31 @@ class ExpensesHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Expenses',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                    height: 1.1,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Customers',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 3),
+                      child: DataFreshnessLabel(
+                        kvKey: KvCacheRepository.kDebtsTs,
+                        color: AppColors.heroSubtitle,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'THIS MONTH',
+                  'TOTAL OUTSTANDING',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.55),
                     fontSize: 10,
@@ -132,7 +147,7 @@ class ExpensesHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _fmtMoney(monthMinor),
+                  _fmtMoney(outstandingMinor),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 34,
@@ -148,21 +163,21 @@ class ExpensesHeader extends StatelessWidget {
                   child: Row(
                     children: [
                       _StatPill(
-                        icon: Icons.today_rounded,
-                        value: _fmtMoney(todayMinor),
-                        label: 'today',
+                        icon: Icons.groups_rounded,
+                        value: '$customerCount',
+                        label: 'total',
                       ),
                       const SizedBox(width: 10),
                       _StatPill(
-                        icon: Icons.edit_note_rounded,
-                        value: '$todayEntryCount',
-                        label: 'entries today',
+                        icon: Icons.check_circle_outline_rounded,
+                        value: '$clearedCount',
+                        label: 'cleared',
                       ),
                       const SizedBox(width: 10),
                       _StatPill(
-                        icon: Icons.category_rounded,
-                        value: '$monthCategoryCount',
-                        label: 'categories',
+                        icon: Icons.account_balance_wallet_outlined,
+                        value: '$withDebtCount',
+                        label: 'with balance',
                       ),
                     ],
                   ),

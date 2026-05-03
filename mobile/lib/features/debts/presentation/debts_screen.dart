@@ -7,8 +7,8 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/widgets/premium_ui.dart';
-import 'widgets/debts_header.dart';
 import '../../../shared/widgets/stale_banner.dart';
+import 'widgets/debts_header.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 
@@ -103,6 +103,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 .contains(_searchQuery.toLowerCase()))
             .toList(growable: false);
 
+    const kLeadingGutter = 56.0;
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: NestedScrollView(
@@ -111,6 +113,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             expandedHeight: 210,
             pinned: true,
             stretch: true,
+            leadingWidth: kLeadingGutter,
             leading: IconButton(
               onPressed: () => context.go(AppRoute.home.path),
               icon: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -121,6 +124,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [StretchMode.zoomBackground],
               background: DebtsHeader(
+                leadingContentInset: kLeadingGutter,
                 outstandingMinor: outstandingMinor,
                 overdueMinor: overdueMinor,
                 paidThisMonthStr: paidThisMonth,
@@ -137,7 +141,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     )
                   : null,
               centerTitle: false,
-              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
+              ),
             ),
           ),
         ],
