@@ -85,11 +85,6 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
   static const int _slideCount = 4;
 
   @override
-  State<SalesCarousel> createState() => _SalesCarouselState();
-}
-
-class _SalesCarouselState extends State<SalesHeroCarousel> {
-  @override
   void initState() {
     super.initState();
     _pageController = PageController();
@@ -99,9 +94,10 @@ class _SalesCarouselState extends State<SalesHeroCarousel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final nextReduceMotion = MediaQuery.maybeOf(context)?.accessibleNavigation ?? false;
-    if (nextReduceMotion == _reduceMotion) return;
-    _reduceMotion = nextReduceMotion;
-    _restartTimer();
+    if (nextReduceMotion != _reduceMotion || _timer == null) {
+      _reduceMotion = nextReduceMotion;
+      _restartTimer();
+    }
   }
 
   @override
