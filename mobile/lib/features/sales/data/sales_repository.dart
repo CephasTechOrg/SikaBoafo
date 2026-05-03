@@ -199,6 +199,7 @@ LIMIT ?
           'id': saleId,
           'payment_method_label': method,
           'total_amount': _minorToMoney(totalMinor),
+          'sale_status': 'recorded',
           'local_operation_id': localOpId,
           'source_device_id': sourceDeviceId,
           'status': 'pending',
@@ -473,9 +474,6 @@ ORDER BY sl.created_at ASC
         {
           'payment_method_label': method,
           'total_amount': _minorToMoney(totalMinor),
-          'sale_status': 'recorded',
-          'voided_at': null,
-          'void_reason': null,
           'local_operation_id': localOpId,
           'status': 'pending',
         },

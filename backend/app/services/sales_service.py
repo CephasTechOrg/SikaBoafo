@@ -337,6 +337,10 @@ class SalesService:
         local_operation_id: str | None = None,
         commit: bool = True,
     ) -> SaleSnapshot:
+        # NOTE: Voiding a sale restores inventory but does NOT trigger a Paystack
+        # refund. This is intentional for the current MVP. If the sale had a
+        # confirmed mobile-money payment, the merchant must return the amount to
+        # the customer manually. The mobile app surfaces a reminder for this case.
         store = self._get_default_store_for_user(user_id=user_id)
         sale = self._load_sale_for_store(store_id=store.id, sale_id=sale_id)
         if sale.sale_status == SALE_STATUS_VOIDED:
@@ -413,7 +417,9 @@ class SalesService:
 
     def _load_balances(self, *, item_ids: list[UUID]) -> dict[UUID, InventoryBalance]:
         balances = self.db.scalars(
-            select(InventoryBalance).where(InventoryBalance.item_id.in_(item_ids))
+            select(InventoryBalance)
+            .where(InventoryBalance.item_id.in_(item_ids))
+            .with_for_update()
         ).all()
         return {balance.item_id: balance for balance in balances}
 

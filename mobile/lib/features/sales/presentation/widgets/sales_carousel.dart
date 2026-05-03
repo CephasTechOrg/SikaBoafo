@@ -77,7 +77,7 @@ class _SalesCarouselState extends State<SalesCarousel> {
                 builder: (context, child) {
                   double value = 1.0;
                   if (_pageController.position.haveDimensions) {
-                    value = _pageController.page! - index;
+                    value = (_pageController.page ?? index.toDouble()) - index;
                     value = (1 - (value.abs() * 0.1)).clamp(0.0, 1.0);
                   }
                   return Center(
@@ -287,7 +287,7 @@ class _InsightSlide extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "DAILY TREND",
+                  "TOP SELLER THIS MONTH",
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,
@@ -318,22 +318,24 @@ class _InsightSlide extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           // Product Image or Icon
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 60,
+              height: 60,
               color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              image: imageUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(imageUrl!),
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl!,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.auto_graph_rounded,
+                        color: AppColors.gold,
+                        size: 24,
+                      ),
                     )
-                  : null,
+                  : const Icon(Icons.auto_graph_rounded, color: AppColors.gold, size: 24),
             ),
-            child: imageUrl == null
-                ? const Icon(Icons.auto_graph_rounded, color: AppColors.gold, size: 24)
-                : null,
           ),
         ],
       ),

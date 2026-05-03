@@ -89,7 +89,11 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
         lines: lines,
         note: note,
       );
-      await _repo.syncPendingQueue();
+      try {
+        await _repo.syncPendingQueue();
+      } catch (_) {
+        // Sync failure is non-fatal; queue rows remain for retry.
+      }
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.data(await _loadSales());
       return saleId;
@@ -112,7 +116,11 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
         paymentMethodLabel: paymentMethodLabel,
         lines: lines,
       );
-      await _repo.syncPendingQueue();
+      try {
+        await _repo.syncPendingQueue();
+      } catch (_) {
+        // Sync failure is non-fatal; queue rows remain for retry.
+      }
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.data(await _loadSales());
     } catch (error, stackTrace) {
@@ -129,7 +137,11 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
     state = const AsyncLoading();
     try {
       await _repo.voidSaleLocal(saleId: saleId, reason: reason);
-      await _repo.syncPendingQueue();
+      try {
+        await _repo.syncPendingQueue();
+      } catch (_) {
+        // Sync failure is non-fatal; queue rows remain for retry.
+      }
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.data(await _loadSales());
     } catch (error, stackTrace) {

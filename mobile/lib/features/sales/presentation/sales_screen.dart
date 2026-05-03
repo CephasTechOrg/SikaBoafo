@@ -17,6 +17,8 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
+import 'package:dio/dio.dart';
+
 import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
@@ -160,6 +162,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverTabDelegate(
+                  activeTab: _activeTab,
                   child: Container(
                     color: AppColors.canvas,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -467,10 +470,14 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   bool _isPaystackNotConnectedError(Object error) {
-    final msg = humanizeSalesPaymentsError(error).toLowerCase();
-    return msg.contains('paystack is not connected') ||
-        msg.contains('not connected') ||
-        msg.contains('paystack connection');
+    if (error is! DioException) return false;
+    if (error.response?.statusCode != 409) return false;
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final detail = (data['detail'] as String? ?? '').toLowerCase();
+      return detail.contains('paystack') && detail.contains('connect');
+    }
+    return false;
   }
 
   Future<void> _showPaystackSetupPrompt() async {
@@ -667,8 +674,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             reason: reasonCtrl.text,
           );
       if (!mounted) return;
+      final wasMobileMoney = sale.paymentMethodLabel == 'mobile_money';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sale voided.')),
+        SnackBar(
+          content: Text(
+            wasMobileMoney
+                ? 'Sale voided. Please return the Mobile Money payment to the customer manually.'
+                : 'Sale voided.',
+          ),
+          duration: Duration(seconds: wasMobileMoney ? 6 : 3),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -742,7 +757,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 }
 
 class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
-  _SliverTabDelegate({required this.child});
+  _SliverTabDelegate({required this.activeTab, required this.child});
+  final SalesViewTab activeTab;
   final Widget child;
 
   @override
@@ -759,7 +775,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverTabDelegate oldDelegate) =>
-      oldDelegate.maxExtent != maxExtent || oldDelegate.child != child;
+      oldDelegate.activeTab != activeTab;
 }
 
 

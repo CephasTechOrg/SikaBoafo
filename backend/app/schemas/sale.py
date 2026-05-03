@@ -85,7 +85,7 @@ class SyncSaleUpdateIn(SaleUpdateIn):
 
 
 class SaleVoidIn(BaseModel):
-    reason: str | None = Field(default=None, min_length=2, max_length=255)
+    reason: str | None = Field(default=None, max_length=255)
 
     @field_validator("reason")
     @classmethod
@@ -93,6 +93,9 @@ class SaleVoidIn(BaseModel):
         if value is None:
             return None
         reason = value.strip()
+        if reason and len(reason) < 2:
+            msg = "Reason must be at least 2 characters."
+            raise ValueError(msg)
         return reason or None
 
 
