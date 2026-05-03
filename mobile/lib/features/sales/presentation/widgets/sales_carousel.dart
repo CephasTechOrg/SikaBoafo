@@ -80,7 +80,7 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
   int _currentPage = 0;
   bool _reduceMotion = false;
 
-  static const int _slideCount = 4;
+  static const int _slideCount = 3;
 
   @override
   void initState() {
@@ -144,8 +144,6 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
                   topPadding: topPadding,
                   revenueMinor: widget.todayRevenueMinor,
                   txns: widget.todayTxnsCount,
-                  cashMinor: widget.cashTotalMinor,
-                  momoMinor: widget.momoTotalMinor,
                   onTap: () => _showDetails(context),
                 ),
               1 => GreetingHeroSlide(
@@ -157,18 +155,6 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
                   ),
                   topPadding: topPadding,
                   businessName: widget.businessName,
-                ),
-              2 => TrendHeroSlide(
-                  padding: const EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    0,
-                    horizontalPadding,
-                    bottomPadding,
-                  ),
-                  topPadding: topPadding,
-                  cashMinor: widget.cashTotalMinor,
-                  momoMinor: widget.momoTotalMinor,
-                  txns: widget.todayTxnsCount,
                 ),
               _ => TopSellerHeroSlide(
                   padding: const EdgeInsets.fromLTRB(
@@ -245,8 +231,6 @@ class RevenueHeroSlide extends StatelessWidget {
     required this.topPadding,
     required this.revenueMinor,
     required this.txns,
-    required this.cashMinor,
-    required this.momoMinor,
     required this.onTap,
   });
 
@@ -254,8 +238,6 @@ class RevenueHeroSlide extends StatelessWidget {
   final double topPadding;
   final int revenueMinor;
   final int txns;
-  final int cashMinor;
-  final int momoMinor;
   final VoidCallback onTap;
 
   @override
@@ -316,28 +298,6 @@ class RevenueHeroSlide extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  HeroStatChip(
-                    icon: Icons.payments_rounded,
-                    value: SalesUiUtils.formatMinor(cashMinor, symbol: '₵'),
-                    label: 'Cash',
-                  ),
-                  HeroStatChip(
-                    icon: Icons.phone_android_rounded,
-                    value: SalesUiUtils.formatMinor(momoMinor, symbol: '₵'),
-                    label: 'Mobile Money',
-                  ),
-                  HeroStatChip(
-                    icon: Icons.receipt_long_rounded,
-                    value: '$txns',
-                    label: 'Transactions',
-                  ),
-                ],
               ),
               const Spacer(),
               Row(
@@ -469,156 +429,6 @@ class GreetingHeroSlide extends StatelessWidget {
                 'Your sales workspace is ready.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.64),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class TrendHeroSlide extends StatelessWidget {
-  const TrendHeroSlide({
-    super.key,
-    required this.padding,
-    required this.topPadding,
-    required this.cashMinor,
-    required this.momoMinor,
-    required this.txns,
-  });
-
-  final EdgeInsets padding;
-  final double topPadding;
-  final int cashMinor;
-  final int momoMinor;
-  final int txns;
-
-  @override
-  Widget build(BuildContext context) {
-    final totalMinor = cashMinor + momoMinor;
-    final cashFlex = SalesUiUtils.fraction(cashMinor, totalMinor);
-    final momoFlex = SalesUiUtils.fraction(momoMinor, totalMinor);
-    final cashPercent = (cashFlex * 100).round();
-    final momoPercent = (momoFlex * 100).round();
-
-    return _HeroSlideFrame(
-      padding: padding.copyWith(top: topPadding),
-      colors: const [
-        Color(0xFF0A2016),
-        Color(0xFF153426),
-        Color(0xFF2A5141),
-      ],
-      glowColor: const Color(0xFF6BCF98),
-      accentAlignment: const Alignment(0.90, -0.54),
-      patternIcon: Icons.insights_rounded,
-      child: Stack(
-        children: [
-          const Positioned(
-            right: 4,
-            top: 18,
-            child: _HeroCircleCluster(
-              accent: Color(0x22FFFFFF),
-              icon: Icons.show_chart_rounded,
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Today\'s mix',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.76),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                totalMinor > 0
-                    ? 'See how customers are paying today.'
-                    : 'Complete sales to unlock your payment mix.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                  height: 1.16,
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: HeroStatChip(
-                            icon: Icons.payments_rounded,
-                            value: '$cashPercent%',
-                            label: 'Cash share',
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: HeroStatChip(
-                            icon: Icons.phone_android_rounded,
-                            value: '$momoPercent%',
-                            label: 'MoMo share',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    _SplitBar(
-                      leftFraction: cashFlex,
-                      rightFraction: momoFlex,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _MixSummary(
-                            label: 'Cash',
-                            amount: SalesUiUtils.formatMinor(
-                              cashMinor,
-                              symbol: '₵',
-                            ),
-                            color: const Color(0xFFB8F0CD),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _MixSummary(
-                            label: 'Mobile Money',
-                            amount: SalesUiUtils.formatMinor(
-                              momoMinor,
-                              symbol: '₵',
-                            ),
-                            color: const Color(0xFFF4DC8B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Text(
-                txns == 0
-                    ? 'No payments recorded today yet.'
-                    : '$txns transactions included in this mix.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.68),
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),

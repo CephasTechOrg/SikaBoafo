@@ -13,10 +13,10 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 320;
-        // Keep comfortably above ItemCard intrinsic height (selected border + chips).
+        // Accommodate 2-line names + 2-row chip Wrap in the worst case.
         final cardExtent = useSingleColumn
-            ? 274.0
-            : (constraints.maxWidth < 380 ? 298.0 : 286.0);
+            ? 300.0
+            : (constraints.maxWidth < 380 ? 324.0 : 308.0);
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
