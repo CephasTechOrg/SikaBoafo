@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/product_image_catalog.dart';
 import '../../../inventory/data/inventory_repository.dart';
 
 class ItemGrid extends StatelessWidget {
@@ -13,10 +12,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 320;
-        // Accommodate 2-line names + 2-row chip Wrap in the worst case.
-        final cardExtent = useSingleColumn
-            ? 300.0
-            : (constraints.maxWidth < 380 ? 324.0 : 308.0);
+        final cardExtent = useSingleColumn ? 268.0 : 272.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -57,31 +53,21 @@ class ItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayPrice = priceOverride ?? item.defaultPrice;
     final hasOverride = priceOverride != null;
-    final isLowStock = item.quantityOnHand <= 5;
-    final stockTone = isLowStock ? AppColors.danger : AppColors.forest;
-    final stockLabel = isLowStock ? 'Low stock' : 'In stock';
+    final isOutOfStock = item.quantityOnHand == 0;
+    final isLowStock =
+        !isOutOfStock && item.quantityOnHand <= (item.lowStockThreshold ?? 5);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isSelected
               ? AppColors.forest.withValues(alpha: 0.38)
               : AppColors.border,
           width: isSelected ? 1.4 : 1,
         ),
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [
-                  Color(0xFFF7FCF9),
-                  AppColors.surface,
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              )
-            : null,
         boxShadow: isSelected
             ? [
                 ...AppShadows.card,
@@ -93,235 +79,210 @@ class ItemCard extends StatelessWidget {
               ]
             : AppShadows.subtle,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Product image ─────────────────────────────────────
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+            child: Stack(
               children: [
-                Container(
-                  height: 102,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isSelected
-                          ? [
-                              const Color(0xFFEAF7EF),
-                              const Color(0xFFF8FCF9),
-                            ]
-                          : [
-                              const Color(0xFFF8FAFC),
-                              AppColors.surfaceAlt,
-                            ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Center(
-                    child: ItemImage(
-                      imageUrl: item.imageUrl,
-                      size: 78,
-                      fallbackIcon: Icons.inventory_2_outlined,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
+                SizedBox(
+                  height: 148,
+                  width: double.infinity,
+                  child: item.imageUrl != null
+                      ? Image.network(
+                          item.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _FallbackImageBox(isSelected: isSelected),
+                        )
+                      : _FallbackImageBox(isSelected: isSelected),
                 ),
-                Positioned(
-                  left: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      isSelected ? 'In sale' : 'Ready',
-                      style: TextStyle(
-                        color: isSelected ? AppColors.forest : AppColors.inkSoft,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-                if (isLowStock || item.quantityOnHand == 0)
+                // Category badge
+                if (item.category != null)
                   Positioned(
                     top: 8,
-                    right: 8,
+                    left: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: item.quantityOnHand == 0
-                            ? AppColors.danger
-                            : AppColors.warningSoft,
+                        color: isSelected
+                            ? AppColors.forest
+                            : Colors.white.withValues(alpha: 0.93),
                         borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                          ),
+                        ],
                       ),
                       child: Text(
-                        item.quantityOnHand == 0 ? 'Out of stock' : 'Low stock',
+                        item.category!,
                         style: TextStyle(
-                          color: item.quantityOnHand == 0
+                          color: isSelected
                               ? Colors.white
-                              : AppColors.warning,
+                              : AppColors.forest,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              item.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-                color: AppColors.ink,
-                height: 1.25,
-                letterSpacing: -0.1,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: onPriceTap,
-              borderRadius: BorderRadius.circular(14),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        '₵$displayPrice',
-                        style: TextStyle(
-                          color: hasOverride
-                              ? AppColors.warning
-                              : AppColors.forestDark,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          letterSpacing: -0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 5,
-                      ),
+                // Low stock / out-of-stock dot
+                if (isOutOfStock || isLowStock)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 9,
+                      height: 9,
                       decoration: BoxDecoration(
-                        color: hasOverride
-                            ? AppColors.warningSoft
-                            : AppColors.surfaceAlt,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        hasOverride ? 'Edited' : 'Edit price',
-                        style: TextStyle(
-                          color: hasOverride
-                              ? AppColors.warning
-                              : AppColors.inkSoft,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: stockTone.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$stockLabel: ${item.quantityOnHand}',
-                    style: TextStyle(
-                      color: stockTone,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                if (qty > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.successSoft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '$qty in cart',
-                      style: const TextStyle(
-                        color: AppColors.forest,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w800,
+                        shape: BoxShape.circle,
+                        color: isOutOfStock
+                            ? AppColors.danger
+                            : AppColors.warning,
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            width: 1.5),
                       ),
                     ),
                   ),
               ],
             ),
-            const Spacer(),
-            Container(
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.successSoft : AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-              child: Row(
+          ),
+
+          // ── Info + controls ───────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleQtyBtn(
-                    icon: Icons.remove_rounded,
-                    enabled: qty > 0,
-                    onTap: onMinus,
-                  ),
-                  SizedBox(
-                    width: 30,
-                    child: Center(
-                      child: Text(
-                        '$qty',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: AppColors.ink,
-                        ),
+                  GestureDetector(
+                    onTap: onPriceTap,
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        color: AppColors.ink,
+                        height: 1.25,
+                        letterSpacing: -0.1,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  CircleQtyBtn(
-                    icon: Icons.add_rounded,
-                    enabled: qty < item.quantityOnHand,
-                    onTap: onPlus,
+                  const Spacer(),
+                  // ── Price + quantity controls ──────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: onPriceTap,
+                          child: Text(
+                            '₵$displayPrice',
+                            style: TextStyle(
+                              color: hasOverride
+                                  ? AppColors.warning
+                                  : AppColors.forestDark,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                              letterSpacing: -0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (qty > 0) ...[
+                        _SmallQtyBtn(
+                          icon: Icons.remove_rounded,
+                          onTap: onMinus,
+                        ),
+                        SizedBox(
+                          width: 26,
+                          child: Center(
+                            child: Text(
+                              '$qty',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _SmallQtyBtn(
+                          icon: Icons.add_rounded,
+                          enabled: qty < item.quantityOnHand,
+                          onTap: onPlus,
+                        ),
+                      ] else
+                        _AddButton(
+                          enabled: !isOutOfStock,
+                          onTap: onPlus,
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Private helpers ─────────────────────────────────────────────
+
+class _FallbackImageBox extends StatelessWidget {
+  const _FallbackImageBox({required this.isSelected});
+  final bool isSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isSelected ? const Color(0xFFEAF7EF) : const Color(0xFFF8FAFC),
+      child: Center(
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 48,
+          color: isSelected
+              ? AppColors.forest.withValues(alpha: 0.4)
+              : AppColors.muted.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.enabled, required this.onTap});
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: enabled ? AppColors.forest : AppColors.muted.withValues(alpha: 0.15),
+        ),
+        child: Icon(
+          Icons.add_rounded,
+          color: enabled ? Colors.white : AppColors.muted,
+          size: 20,
         ),
       ),
     );
@@ -349,20 +310,55 @@ class CircleQtyBtn extends StatelessWidget {
         child: Container(
           width: 38,
           height: 38,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            border: Border.all(
+              color: enabled ? AppColors.forest : const Color(0xFFDDDDDD),
+              width: 1.1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: enabled ? AppColors.forest : AppColors.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallQtyBtn extends StatelessWidget {
+  const _SmallQtyBtn({
+    required this.icon,
+    required this.onTap,
+    this.enabled = true,
+  });
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white,
+          color: Colors.transparent,
           border: Border.all(
-            color: enabled ? AppColors.forest : const Color(0xFFDDDDDD),
-            width: 1.1,
+            color: enabled ? AppColors.forest : AppColors.border,
+            width: 1.2,
           ),
         ),
         child: Icon(
           icon,
-          size: 18,
+          size: 15,
           color: enabled ? AppColors.forest : AppColors.muted,
         ),
-      ),
       ),
     );
   }
