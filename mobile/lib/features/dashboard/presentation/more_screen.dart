@@ -35,7 +35,7 @@ class MoreScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // ── Operations Section ───────────────────────────
-            _SectionLabel(label: 'OPERATIONS'),
+            const _SectionLabel(label: 'OPERATIONS'),
             const SizedBox(height: 12),
             _MoreTile(
               icon: Icons.receipt_long_rounded,
@@ -63,7 +63,7 @@ class MoreScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // ── Insights & Settings ──────────────────────────
-            _SectionLabel(label: 'BUSINESS MANAGEMENT'),
+            const _SectionLabel(label: 'BUSINESS MANAGEMENT'),
             const SizedBox(height: 12),
             _MoreTile(
               icon: Icons.bar_chart_rounded,

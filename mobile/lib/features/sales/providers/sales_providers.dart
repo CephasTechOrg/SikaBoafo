@@ -81,6 +81,7 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
     required String paymentMethodLabel,
     required List<SaleDraftLine> lines,
     String? note,
+    bool awaitBackendSaleForPayment = false,
   }) async {
     state = const AsyncLoading();
     try {
@@ -91,8 +92,16 @@ class SalesController extends AutoDisposeAsyncNotifier<List<LocalSaleRecord>> {
       );
       try {
         await _repo.syncPendingQueue();
+        if (awaitBackendSaleForPayment) {
+          await _repo.ensureSaleCreateSyncedToBackend(saleId);
+        }
       } catch (_) {
-        // Sync failure is non-fatal; queue rows remain for retry.
+        // Sync failure is non-fatal unless Paystack needs the server sale row.
+        if (awaitBackendSaleForPayment) {
+          await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+          state = AsyncValue.data(await _loadSales());
+          rethrow;
+        }
       }
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.data(await _loadSales());

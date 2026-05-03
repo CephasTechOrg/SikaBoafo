@@ -329,11 +329,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                       constraints: const BoxConstraints(),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
+                    const Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Debts',
                             style: TextStyle(
                               color: Colors.white,
@@ -342,15 +342,15 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                               letterSpacing: -0.2,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
+                          SizedBox(height: 4),
+                          Text(
                             'Track customers, due dates, and repayments',
                             style: TextStyle(
                               color: AppColors.heroSubtitle,
                               fontSize: 12.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           DataFreshnessLabel(
                             kvKey: KvCacheRepository.kDebtsTs,
                             color: AppColors.heroSubtitle,
@@ -1290,7 +1290,7 @@ class _CreateDebtForm extends StatelessWidget {
     return Column(
       children: [
         DropdownButtonFormField<String>(
-          value: selectedCustomerId,
+          initialValue: selectedCustomerId,
           decoration: InputDecoration(
             labelText: 'Customer',
             prefixIcon: const Icon(Icons.person_outline_rounded,
@@ -1404,7 +1404,7 @@ class _RecordPaymentForm extends StatelessWidget {
     return Column(
       children: [
         DropdownButtonFormField<String>(
-          value: selectedReceivableId,
+          initialValue: selectedReceivableId,
           decoration: InputDecoration(
             labelText: 'Open debt',
             prefixIcon: const Icon(Icons.person_outline_rounded,
@@ -1440,7 +1440,7 @@ class _RecordPaymentForm extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: paymentMethod,
+          initialValue: paymentMethod,
           decoration: InputDecoration(
             labelText: 'Payment method',
             prefixIcon: const Icon(Icons.payments_outlined,

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/providers/sync_providers.dart';
-import '../../../../shared/widgets/mockup_ui.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../../shared/widgets/sync_status_pill.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';

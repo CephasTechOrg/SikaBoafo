@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
-import '../../../data/local/kv_cache_repository.dart';
-import '../../../shared/widgets/stale_banner.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
-import '../../../shared/widgets/premium_ui.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../providers/inventory_providers.dart';
@@ -419,34 +416,6 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.height != height || oldDelegate.child != child;
 }
 
-
-// ─── add item accordion ───────────────────────────────────────────────────────
-
-
-
-class _FieldGroup extends StatelessWidget {
-  const _FieldGroup({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppColors.muted,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Expanded(child: Divider(height: 1)),
-      ],
-    );
-  }
-}
 
 // ─── search & filter ──────────────────────────────────────────────────────────
 

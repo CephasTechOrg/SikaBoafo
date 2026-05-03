@@ -349,6 +349,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             paymentMethodLabel: paymentMethodLabel,
             lines: lines,
             note: note,
+            awaitBackendSaleForPayment: true,
           );
       saleSaved = true;
       if (!mounted) return;
@@ -370,6 +371,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       if (saleSaved) {
         ref.invalidate(inventoryControllerProvider);
         _resetDraftAfterSale();
+      } else if (error is TimeoutException || error is StateError) {
+        // Local sale row exists but Paystack flow aborted mid-flight.
+        ref.invalidate(inventoryControllerProvider);
       }
       final isPaystackNotConnected = _isPaystackNotConnectedError(error);
       if (isPaystackNotConnected) {
@@ -407,6 +411,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             paymentMethodLabel: paymentMethodLabel,
             lines: lines,
             note: note,
+            awaitBackendSaleForPayment: true,
           );
       saleSaved = true;
       if (!mounted) return;
@@ -454,6 +459,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       if (saleSaved) {
         ref.invalidate(inventoryControllerProvider);
         _resetDraftAfterSale();
+      } else if (error is TimeoutException || error is StateError) {
+        ref.invalidate(inventoryControllerProvider);
       }
       final isPaystackNotConnected = _isPaystackNotConnectedError(error);
       if (isPaystackNotConnected) {

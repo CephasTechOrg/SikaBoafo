@@ -79,21 +79,25 @@ void main() {
 
       expect(find.text('ACTIVE ITEMS'), findsOneWidget);
       expect(find.text('Rice'), findsOneWidget);
-      expect(find.text('Archive'), findsOneWidget);
 
-      expect(find.text('Archived Items'), findsOneWidget);
+      await tester.tap(find.text('Rice'));
+      await tester.pumpAndSettle();
+      expect(find.text('Archive Item'), findsOneWidget);
+      await tester.tapAt(const Offset(400, 80));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Archived Items'), findsOneWidget);
       expect(find.text('Old Rice'), findsNothing);
 
-      final archivedToggle = find.ancestor(
-        of: find.text('Archived Items'),
-        matching: find.byType(InkWell),
-      );
-      await tester.ensureVisible(archivedToggle);
-      await tester.tap(archivedToggle);
+      final archivedHeader = find.textContaining('Archived Items');
+      await tester.ensureVisible(archivedHeader);
+      await tester.tap(archivedHeader);
       await tester.pumpAndSettle();
 
       expect(find.text('Old Rice'), findsOneWidget);
-      expect(find.text('Restore'), findsOneWidget);
+      await tester.tap(find.text('Old Rice'));
+      await tester.pumpAndSettle();
+      expect(find.text('Restore Item'), findsOneWidget);
     });
 
     testWidgets('shows archive validation message when stock remains',
@@ -119,7 +123,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.tap(find.text('Archive'));
+      await tester.tap(find.text('Soap'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive Item'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

@@ -6,7 +6,6 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../inventory/providers/inventory_providers.dart';
 import '../../data/dashboard_api.dart';
-import '../../providers/dashboard_providers.dart';
 
 class DashboardRecentActivity extends ConsumerWidget {
   const DashboardRecentActivity({super.key, required this.activityAsync});
@@ -133,7 +132,7 @@ class _ActivityVisual {
           isIncome: false,
         );
       case 'repayment':
-        return _ActivityVisual(
+        return const _ActivityVisual(
           icon: Icons.account_balance_wallet_outlined,
           iconColor: AppColors.info,
           bgColor: AppColors.infoSoft,
@@ -142,17 +141,17 @@ class _ActivityVisual {
           isIncome: true,
         );
       case 'stock_addition':
-        return _ActivityVisual(
+        return const _ActivityVisual(
           icon: Icons.add_box_outlined,
-          iconColor: const Color(0xFFC58C02),
+          iconColor: Color(0xFFC58C02),
           bgColor: AppColors.warningSoft,
           badgeLabel: 'Stock',
-          badgeColor: const Color(0xFFC58C02),
+          badgeColor: Color(0xFFC58C02),
           isIncome: false,
         );
       case 'sale':
       default:
-        return _ActivityVisual(
+        return const _ActivityVisual(
           icon: Icons.receipt_long_outlined,
           iconColor: AppColors.forest,
           bgColor: AppColors.successSoft,

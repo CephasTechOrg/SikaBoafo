@@ -41,9 +41,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final returnTo = sanitizeReturnTo(
       router.routeInformationProvider.value.uri.queryParameters['returnTo'],
     );
-    final lastProtected = sanitizeReturnTo(await storage.readLastProtectedRoute());
-    // We ignore lastProtected for now to ensure a fresh start at the dashboard
-    // and avoid "stuck" loops if a deep-level page has issues.
     final preferredReturnTo = returnTo;
     final hasSession = await storage.hasPersistedSession();
     if (hasSession) {

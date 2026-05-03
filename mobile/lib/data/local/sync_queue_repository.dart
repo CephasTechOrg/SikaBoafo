@@ -101,6 +101,19 @@ class SyncQueueRepository {
     );
   }
 
+  /// Latest queue row for an outbound sale create (used to verify server sync).
+  Future<Map<String, Object?>?> rowForSaleCreate(String saleId) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'sync_queue',
+      where: 'entity_id = ? AND entity_type = ? AND operation = ?',
+      whereArgs: [saleId, 'sale', 'create'],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
   Future<List<Map<String, Object?>>> pendingRows({int limit = 100}) async {
     final db = await _appDb.database;
     return db.query(

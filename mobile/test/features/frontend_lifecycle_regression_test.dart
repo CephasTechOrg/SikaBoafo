@@ -102,6 +102,9 @@ void main() {
         await tester.tap(find.textContaining('Checkout'));
         await tester.pumpAndSettle();
 
+        await tester.tap(find.text('Proceed to checkout'));
+        await tester.pumpAndSettle();
+
         await tester.tap(find.textContaining('Cash'));
         await tester.pump();
 

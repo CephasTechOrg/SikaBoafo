@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
 import '../../../data/local/app_database.dart';
+import '../../../data/local/sync_queue_repository.dart';
 import '../../../data/sync/sync_queue_runner.dart';
 
 class SaleDraftLine {
@@ -610,6 +612,52 @@ ORDER BY sl.created_at ASC
 
   Future<SyncQueueRunSummary> syncPendingQueue({int limit = 100}) {
     return _syncQueueRunner.run(limit: limit);
+  }
+
+  /// Blocks until this sale's `create` operation is applied on the backend (or
+  /// duplicate). Required before Paystack APIs that look up [saleId] on the server.
+  ///
+  /// Without this, a single [syncPendingQueue] pass may not include the sale row
+  /// (100-op batches, dependencies on pending item creates), causing "Sale not found."
+  Future<void> ensureSaleCreateSyncedToBackend(
+    String saleId, {
+    Duration budget = const Duration(seconds: 60),
+  }) async {
+    final deadline = DateTime.now().add(budget);
+    while (DateTime.now().isBefore(deadline)) {
+      await syncPendingQueue();
+      final row = await _appDb.syncQueue.rowForSaleCreate(saleId);
+      if (row == null) {
+        throw StateError(
+          'Sale sync queue row missing. Try recording the sale again.',
+        );
+      }
+      final status = (row['status'] ?? '') as String;
+      switch (status) {
+        case SyncQueueRepository.applied:
+          return;
+        case SyncQueueRepository.conflict:
+        case SyncQueueRepository.dead:
+          final detail = (row['last_error'] as String?)?.trim();
+          throw StateError(
+            detail?.isNotEmpty == true
+                ? detail!
+                : 'Sale could not sync with the server (conflict).',
+          );
+        case SyncQueueRepository.failed:
+        case SyncQueueRepository.pending:
+        case SyncQueueRepository.sending:
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          continue;
+        default:
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          continue;
+      }
+    }
+    throw TimeoutException(
+      'Sale is still syncing. Connect to the internet and try payment again '
+      '(your sale is saved on this device).',
+    );
   }
 
   List<_SaleLineAggregate> _aggregateLines(List<SaleDraftLine> lines) {

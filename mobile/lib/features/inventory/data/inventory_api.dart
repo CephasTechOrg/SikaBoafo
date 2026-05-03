@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/services/api_client.dart';
@@ -66,6 +68,13 @@ class InventoryApi {
 }
 
 String humanizeInventoryError(Object error) {
+  if (error is TimeoutException) {
+    return error.message ??
+        'Still syncing with the server. Check your connection and try again.';
+  }
+  if (error is StateError) {
+    return error.message;
+  }
   if (error is ArgumentError) {
     return error.message?.toString() ?? 'Invalid inventory input.';
   }
