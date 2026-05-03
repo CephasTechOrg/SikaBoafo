@@ -41,4 +41,24 @@ class SalesUiUtils {
   static String minorToMoney(int minor) {
     return (minor / 100).toStringAsFixed(2);
   }
+
+  static String greetingFor(DateTime moment) {
+    final hour = moment.hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  static String paymentLabel(String raw) {
+    return switch (raw) {
+      'mobile_money' => 'Mobile Money',
+      'bank_transfer' => 'Bank Transfer',
+      _ => 'Cash',
+    };
+  }
+
+  static double fraction(int value, int total) {
+    if (total <= 0) return 0;
+    return (value / total).clamp(0, 1).toDouble();
+  }
 }
