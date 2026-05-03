@@ -9,10 +9,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
-import '../../../data/local/kv_cache_repository.dart';
+
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
-import '../../../shared/widgets/stale_banner.dart';
+
 
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
@@ -62,6 +62,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(salesCartProvider);
+    final merchantAsync = ref.watch(merchantContextProvider);
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
     final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
@@ -108,6 +109,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final cashTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'cash').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
     final momoTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'mobile_money').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
 
+    // Extract top seller details
+    final topSellingMonth = dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems;
+    final topItem = topSellingMonth?.isNotEmpty == true ? topSellingMonth!.first : null;
+    final topItemName = topItem?.itemName;
+    final topItemQty = topItem?.quantitySold;
+    
+    // Find image URL for the top seller
+    String? topItemImageUrl;
+    if (topItem != null) {
+      final match = allItems.where((i) => i.id == topItem.itemId).firstOrNull;
+      topItemImageUrl = match?.imageUrl;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Stack(
@@ -116,18 +130,22 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               // ── Collapsing Hero Header ────────────────────────
               SliverAppBar(
-                expandedHeight: 210,
+                expandedHeight: 260,
                 pinned: true,
                 stretch: true,
                 backgroundColor: const Color(0xFF041C0B),
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
-                  stretchModes: const [StretchMode.zoomBackground],
+                  stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
                   background: SalesHeader(
+                    businessName: merchantAsync.valueOrNull?.businessName ?? 'My Shop',
                     todayRevenueMinor: todayRevenueMinor,
                     todayTxnsCount: todaySales.length,
                     cashTotalMinor: cashTotalMinor,
                     momoTotalMinor: momoTotalMinor,
+                    topSellingItemName: topItemName,
+                    topSellingQty: topItemQty,
+                    topSellingImageUrl: topItemImageUrl,
                   ),
                   // App Title shows only when collapsed
                   title: innerBoxIsScrolled 

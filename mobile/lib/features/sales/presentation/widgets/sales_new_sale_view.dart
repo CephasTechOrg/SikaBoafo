@@ -8,7 +8,6 @@ import 'empty_card.dart';
 import 'item_card.dart';
 import 'products_header.dart';
 import 'sales_search_bar.dart';
-import 'section_label.dart';
 
 class SalesNewSaleView extends ConsumerWidget {
   const SalesNewSaleView({
