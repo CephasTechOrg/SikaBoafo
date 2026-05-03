@@ -13,7 +13,7 @@ final appRouterProvider = Provider<GoRouter>((ref) => createAppRouter(ref));
 /// Require biometric / lock screen only after the app has been in the
 /// background at least this long. Shorter pauses (notification shade, quick
 /// app switches, brief inactive phases) keep the existing session gate.
-const Duration _kMinBackgroundForLock = Duration(seconds: 45);
+const Duration _kMinBackgroundForLock = Duration(seconds: 180);
 
 bool _isProtectedPath(String path) {
   return path == AppRoute.home.path ||
