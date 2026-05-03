@@ -1,7 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../../../../app/theme/app_theme.dart';
+import '../../../../shared/widgets/product_image_catalog.dart';
 import '../utils/sales_ui_utils.dart';
+import 'hero_stat_chip.dart';
 import 'sales_revenue_details_sheet.dart';
 
 class SalesCarousel extends StatefulWidget {
@@ -27,18 +31,77 @@ class SalesCarousel extends StatefulWidget {
   final String? topSellingImageUrl;
 
   @override
+  State<SalesCarousel> createState() => _SalesCarouselProxyState();
+}
+
+class _SalesCarouselProxyState extends State<SalesCarousel> {
+  @override
+  Widget build(BuildContext context) {
+    return SalesHeroCarousel(
+      businessName: widget.businessName,
+      todayRevenueMinor: widget.todayRevenueMinor,
+      cashTotalMinor: widget.cashTotalMinor,
+      momoTotalMinor: widget.momoTotalMinor,
+      todayTxnsCount: widget.todayTxnsCount,
+      topSellingItemName: widget.topSellingItemName,
+      topSellingQty: widget.topSellingQty,
+      topSellingImageUrl: widget.topSellingImageUrl,
+    );
+  }
+}
+
+class SalesHeroCarousel extends StatefulWidget {
+  const SalesHeroCarousel({
+    super.key,
+    required this.businessName,
+    required this.todayRevenueMinor,
+    required this.cashTotalMinor,
+    required this.momoTotalMinor,
+    required this.todayTxnsCount,
+    this.topSellingItemName,
+    this.topSellingQty,
+    this.topSellingImageUrl,
+  });
+
+  final String businessName;
+  final int todayRevenueMinor;
+  final int cashTotalMinor;
+  final int momoTotalMinor;
+  final int todayTxnsCount;
+  final String? topSellingItemName;
+  final int? topSellingQty;
+  final String? topSellingImageUrl;
+
+  @override
+  State<SalesHeroCarousel> createState() => _SalesHeroCarouselState();
+}
+
+class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
+  late final PageController _pageController;
+  Timer? _timer;
+  int _currentPage = 0;
+  bool _reduceMotion = false;
+
+  static const int _slideCount = 4;
+
+  @override
   State<SalesCarousel> createState() => _SalesCarouselState();
 }
 
-class _SalesCarouselState extends State<SalesCarousel> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-  Timer? _timer;
-
+class _SalesCarouselState extends State<SalesHeroCarousel> {
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _pageController = PageController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextReduceMotion = MediaQuery.maybeOf(context)?.accessibleNavigation ?? false;
+    if (nextReduceMotion == _reduceMotion) return;
+    _reduceMotion = nextReduceMotion;
+    _restartTimer();
   }
 
   @override
@@ -48,89 +111,120 @@ class _SalesCarouselState extends State<SalesCarousel> {
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 6), (timer) {
-      if (!mounted) return;
-      final nextPage = (_currentPage + 1) % 3;
+  void _restartTimer() {
+    _timer?.cancel();
+    if (_reduceMotion) return;
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final nextPage = (_currentPage + 1) % _slideCount;
       _pageController.animateToPage(
         nextPage,
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.fastOutSlowIn,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
       );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    final topPadding = MediaQuery.paddingOf(context).top + 14;
+    const horizontalPadding = 20.0;
+    const bottomPadding = 62.0;
+
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        SizedBox(
-          height: 140,
-          child: PageView.builder(
+        PageView(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
-            itemCount: 3,
+            itemCount: _slideCount,
             itemBuilder: (context, index) {
-              return AnimatedBuilder(
-                animation: _pageController,
-                builder: (context, child) {
-                  double value = 1.0;
-                  if (_pageController.position.haveDimensions) {
-                    value = (_pageController.page ?? index.toDouble()) - index;
-                    value = (1 - (value.abs() * 0.1)).clamp(0.0, 1.0);
-                  }
-                  return Center(
-                    child: SizedBox(
-                      height: Curves.easeOut.transform(value) * 140,
-                      width: Curves.easeOut.transform(value) * MediaQuery.of(context).size.width,
-                      child: child,
+              return switch (index) {
+                0 => RevenueHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
                     ),
-                  );
-                },
-                child: _buildSlide(index),
-              );
+                    topPadding: topPadding,
+                    revenueMinor: widget.todayRevenueMinor,
+                    txns: widget.todayTxnsCount,
+                    cashMinor: widget.cashTotalMinor,
+                    momoMinor: widget.momoTotalMinor,
+                    onTap: () => _showDetails(context),
+                  ),
+                1 => GreetingHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    businessName: widget.businessName,
+                  ),
+                2 => TrendHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    cashMinor: widget.cashTotalMinor,
+                    momoMinor: widget.momoTotalMinor,
+                    txns: widget.todayTxnsCount,
+                  ),
+                _ => TopSellerHeroSlide(
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      bottomPadding,
+                    ),
+                    topPadding: topPadding,
+                    itemName: widget.topSellingItemName,
+                    qty: widget.topSellingQty,
+                    imageUrl: widget.topSellingImageUrl,
+                  ),
+              };
             },
           ),
-        ),
-        const SizedBox(height: 8),
-        _buildExpandingDots(),
-      ],
-    );
-  }
-
-  Widget _buildSlide(int index) {
-    return switch (index) {
-      0 => _RevenueSlide(
-          revenueMinor: widget.todayRevenueMinor,
-          txns: widget.todayTxnsCount,
-          onTap: () => _showDetails(context),
-        ),
-      1 => _BusinessSlide(businessName: widget.businessName),
-      _ => _InsightSlide(
-          itemName: widget.topSellingItemName,
-          qty: widget.topSellingQty,
-          imageUrl: widget.topSellingImageUrl,
-        ),
-    };
-  }
-
-  Widget _buildExpandingDots() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
-        final active = _currentPage == index;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          height: 3,
-          width: active ? 16 : 4,
-          decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10),
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 18,
+          child: IgnorePointer(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_slideCount, (index) {
+                final active = _currentPage == index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 8,
+                  width: active ? 26 : 8,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
           ),
-        );
-      }),
+        ),
+      ],
     );
   }
 
@@ -150,68 +244,123 @@ class _SalesCarouselState extends State<SalesCarousel> {
   }
 }
 
-// ─── Revenue Slide ──────────────────────────────────────────
-
-class _RevenueSlide extends StatelessWidget {
-  const _RevenueSlide({
+class RevenueHeroSlide extends StatelessWidget {
+  const RevenueHeroSlide({
+    super.key,
+    required this.padding,
+    required this.topPadding,
     required this.revenueMinor,
     required this.txns,
+    required this.cashMinor,
+    required this.momoMinor,
     required this.onTap,
   });
 
+  final EdgeInsets padding;
+  final double topPadding;
   final int revenueMinor;
   final int txns;
+  final int cashMinor;
+  final int momoMinor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _BaseSlide(
+    return _HeroSlideFrame(
       onTap: onTap,
-      accentColor: AppColors.forest,
-      child: Row(
+      padding: padding.copyWith(top: topPadding),
+      colors: const [
+        Color(0xFF051A0E),
+        Color(0xFF0C3A24),
+        Color(0xFF1A6A43),
+      ],
+      glowColor: const Color(0xFF49D17B),
+      accentAlignment: const Alignment(0.84, -0.66),
+      patternIcon: Icons.payments_rounded,
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "TODAY'S REVENUE",
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  SalesUiUtils.formatMinor(revenueMinor, symbol: '₵'),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -1.0,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _MiniBadge(
-                  icon: Icons.bolt_rounded,
-                  label: '$txns sales',
-                  color: AppColors.gold,
-                ),
-              ],
+          const Positioned(
+            right: -8,
+            top: 16,
+            child: _HeroCircleCluster(
+              accent: Color(0x2BFFFFFF),
+              icon: Icons.bar_chart_rounded,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Today\'s revenue',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.76),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                SalesUiUtils.formatMinor(revenueMinor, symbol: '₵'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Constantia',
+                  letterSpacing: -1.1,
+                  height: 1.02,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                txns == 1
+                    ? '1 transaction recorded today'
+                    : '$txns transactions recorded today',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.76),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  HeroStatChip(
+                    icon: Icons.payments_rounded,
+                    value: SalesUiUtils.formatMinor(cashMinor, symbol: '₵'),
+                    label: 'Cash',
+                  ),
+                  HeroStatChip(
+                    icon: Icons.phone_android_rounded,
+                    value: SalesUiUtils.formatMinor(momoMinor, symbol: '₵'),
+                    label: 'Mobile Money',
+                  ),
+                  HeroStatChip(
+                    icon: Icons.receipt_long_rounded,
+                    value: '$txns',
+                    label: 'Transactions',
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  const _TrendSparkline(),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Tap to view revenue breakdown',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.84),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -219,44 +368,118 @@ class _RevenueSlide extends StatelessWidget {
   }
 }
 
-// ─── Business Slide ─────────────────────────────────────────
+class GreetingHeroSlide extends StatelessWidget {
+  const GreetingHeroSlide({
+    super.key,
+    required this.padding,
+    required this.topPadding,
+    required this.businessName,
+  });
 
-class _BusinessSlide extends StatelessWidget {
-  const _BusinessSlide({required this.businessName});
+  final EdgeInsets padding;
+  final double topPadding;
   final String businessName;
 
   @override
   Widget build(BuildContext context) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-
-    return _BaseSlide(
-      accentColor: AppColors.navy,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+    final greeting = SalesUiUtils.greetingFor(DateTime.now());
+    return _HeroSlideFrame(
+      padding: padding.copyWith(top: topPadding),
+      colors: const [
+        Color(0xFF0A2418),
+        Color(0xFF123D2C),
+        Color(0xFF224E3C),
+      ],
+      glowColor: const Color(0xFF97E1B4),
+      accentAlignment: const Alignment(0.86, -0.28),
+      patternIcon: Icons.storefront_rounded,
+      child: Stack(
         children: [
-          Text(
-            greeting.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+          Positioned(
+            right: 0,
+            bottom: 14,
+            child: _HeroMerchantIllustration(
+              accent: Colors.white.withValues(alpha: 0.13),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            businessName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.5,
-              height: 1.1,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$greeting,',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.76),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 230),
+                child: Text(
+                  businessName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    height: 1.05,
+                    letterSpacing: -0.5,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 240),
+                child: Text(
+                  'Ready to record today\'s sales?',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.touch_app_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Select products below',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Your sales workspace is ready.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.64),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -264,78 +487,253 @@ class _BusinessSlide extends StatelessWidget {
   }
 }
 
-// ─── Insight Slide ──────────────────────────────────────────
+class TrendHeroSlide extends StatelessWidget {
+  const TrendHeroSlide({
+    super.key,
+    required this.padding,
+    required this.topPadding,
+    required this.cashMinor,
+    required this.momoMinor,
+    required this.txns,
+  });
 
-class _InsightSlide extends StatelessWidget {
-  const _InsightSlide({this.itemName, this.qty, this.imageUrl});
+  final EdgeInsets padding;
+  final double topPadding;
+  final int cashMinor;
+  final int momoMinor;
+  final int txns;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMinor = cashMinor + momoMinor;
+    final cashFlex = SalesUiUtils.fraction(cashMinor, totalMinor);
+    final momoFlex = SalesUiUtils.fraction(momoMinor, totalMinor);
+    final cashPercent = (cashFlex * 100).round();
+    final momoPercent = (momoFlex * 100).round();
+
+    return _HeroSlideFrame(
+      padding: padding.copyWith(top: topPadding),
+      colors: const [
+        Color(0xFF0A2016),
+        Color(0xFF153426),
+        Color(0xFF2A5141),
+      ],
+      glowColor: const Color(0xFF6BCF98),
+      accentAlignment: const Alignment(0.90, -0.54),
+      patternIcon: Icons.insights_rounded,
+      child: Stack(
+        children: [
+          const Positioned(
+            right: 4,
+            top: 18,
+            child: _HeroCircleCluster(
+              accent: Color(0x22FFFFFF),
+              icon: Icons.show_chart_rounded,
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Today\'s mix',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.76),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                totalMinor > 0
+                    ? 'See how customers are paying today.'
+                    : 'Complete sales to unlock your payment mix.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                  height: 1.16,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: HeroStatChip(
+                            icon: Icons.payments_rounded,
+                            value: '$cashPercent%',
+                            label: 'Cash share',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: HeroStatChip(
+                            icon: Icons.phone_android_rounded,
+                            value: '$momoPercent%',
+                            label: 'MoMo share',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _SplitBar(
+                      leftFraction: cashFlex,
+                      rightFraction: momoFlex,
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MixSummary(
+                            label: 'Cash',
+                            amount: SalesUiUtils.formatMinor(
+                              cashMinor,
+                              symbol: '₵',
+                            ),
+                            color: const Color(0xFFB8F0CD),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _MixSummary(
+                            label: 'Mobile Money',
+                            amount: SalesUiUtils.formatMinor(
+                              momoMinor,
+                              symbol: '₵',
+                            ),
+                            color: const Color(0xFFF4DC8B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                txns == 0
+                    ? 'No payments recorded today yet.'
+                    : '$txns transactions included in this mix.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.68),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TopSellerHeroSlide extends StatelessWidget {
+  const TopSellerHeroSlide({
+    super.key,
+    required this.padding,
+    required this.topPadding,
+    this.itemName,
+    this.qty,
+    this.imageUrl,
+  });
+
+  final EdgeInsets padding;
+  final double topPadding;
   final String? itemName;
   final int? qty;
   final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    final name = itemName ?? 'No sales yet';
-    final count = qty ?? 0;
+    final hasTopSeller =
+        itemName != null && itemName!.trim().isNotEmpty && (qty ?? 0) > 0;
+    final safeName = itemName?.trim();
 
-    return _BaseSlide(
-      accentColor: AppColors.gold,
+    return _HeroSlideFrame(
+      padding: padding.copyWith(top: topPadding),
+      colors: const [
+        Color(0xFF132717),
+        Color(0xFF20402A),
+        Color(0xFF44634D),
+      ],
+      glowColor: const Color(0xFFD8C178),
+      accentAlignment: const Alignment(0.86, -0.56),
+      patternIcon: Icons.workspace_premium_rounded,
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "TOP SELLER THIS MONTH",
+                  'Top seller this month',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
+                    color: Colors.white.withValues(alpha: 0.76),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
-                  name,
+                  hasTopSeller
+                      ? safeName!
+                      : 'Start selling to unlock top products',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    height: 1.12,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 10),
                 Text(
-                  '$count items sold',
+                  hasTopSeller
+                      ? '${qty ?? 0} units sold so far this month'
+                      : 'Your best-selling products will appear here once you start recording sales.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
                   ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    HeroStatChip(
+                      icon: Icons.workspace_premium_rounded,
+                      value: hasTopSeller ? '${qty ?? 0}' : '0',
+                      label: 'Units sold',
+                    ),
+                    HeroStatChip(
+                      icon: Icons.insights_rounded,
+                      value: hasTopSeller ? 'Live insight' : 'Coming soon',
+                      label: 'Sales momentum',
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          // Product Image or Icon
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 60,
-              height: 60,
-              color: Colors.white.withValues(alpha: 0.1),
-              child: imageUrl != null
-                  ? Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.auto_graph_rounded,
-                        color: AppColors.gold,
-                        size: 24,
-                      ),
-                    )
-                  : const Icon(Icons.auto_graph_rounded, color: AppColors.gold, size: 24),
-            ),
+          _TopSellerVisual(
+            imageUrl: imageUrl,
+            hasTopSeller: hasTopSeller,
           ),
         ],
       ),
@@ -343,33 +741,239 @@ class _InsightSlide extends StatelessWidget {
   }
 }
 
-// ─── Helper Widgets ─────────────────────────────────────────
+class _HeroSlideFrame extends StatelessWidget {
+  const _HeroSlideFrame({
+    required this.child,
+    required this.padding,
+    required this.colors,
+    required this.glowColor,
+    required this.accentAlignment,
+    required this.patternIcon,
+    this.onTap,
+  });
 
-class _MiniBadge extends StatelessWidget {
-  const _MiniBadge({required this.icon, required this.label, required this.color});
-  final IconData icon;
+  final Widget child;
+  final EdgeInsets padding;
+  final List<Color> colors;
+  final Color glowColor;
+  final Alignment accentAlignment;
+  final IconData patternIcon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: accentAlignment,
+                    radius: 0.95,
+                    colors: [
+                      glowColor.withValues(alpha: 0.34),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.06),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.14),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -30,
+              top: 26,
+              child: Icon(
+                patternIcon,
+                size: 170,
+                color: Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+            Positioned(
+              left: -24,
+              bottom: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.04),
+                ),
+              ),
+            ),
+            Padding(
+              padding: padding,
+              child: child,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrendSparkline extends StatelessWidget {
+  const _TrendSparkline();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 54,
+      height: 18,
+      child: CustomPaint(
+        painter: _SparklinePainter(),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final points = <Offset>[
+      Offset(0, size.height * 0.78),
+      Offset(size.width * 0.20, size.height * 0.58),
+      Offset(size.width * 0.40, size.height * 0.62),
+      Offset(size.width * 0.58, size.height * 0.30),
+      Offset(size.width * 0.78, size.height * 0.42),
+      Offset(size.width, size.height * 0.12),
+    ];
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (var i = 1; i < points.length; i++) {
+      path.lineTo(points[i].dx, points[i].dy);
+    }
+    final paint = Paint()
+      ..color = const Color(0xFFE3F8EA)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, paint);
+    canvas.drawCircle(points.last, 3.5, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _SplitBar extends StatelessWidget {
+  const _SplitBar({
+    required this.leftFraction,
+    required this.rightFraction,
+  });
+
+  final double leftFraction;
+  final double rightFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasData = leftFraction > 0 || rightFraction > 0;
+    return Container(
+      height: 12,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasData
+          ? Row(
+              children: [
+                if (leftFraction > 0)
+                  Expanded(
+                    flex: (leftFraction * 1000).round().clamp(1, 1000),
+                    child: Container(color: const Color(0xFFB9F0CE)),
+                  ),
+                if (rightFraction > 0)
+                  Expanded(
+                    flex: (rightFraction * 1000).round().clamp(1, 1000),
+                    child: Container(color: const Color(0xFFF3D37B)),
+                  ),
+              ],
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _MixSummary extends StatelessWidget {
+  const _MixSummary({
+    required this.label,
+    required this.amount,
+    required this.color,
+  });
+
   final String label;
+  final String amount;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 12),
-          const SizedBox(width: 4),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
-            label,
+            amount,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -378,47 +982,177 @@ class _MiniBadge extends StatelessWidget {
   }
 }
 
-class _BaseSlide extends StatelessWidget {
-  const _BaseSlide({required this.child, this.onTap, required this.accentColor});
-  final Widget child;
-  final VoidCallback? onTap;
-  final Color accentColor;
+class _HeroCircleCluster extends StatelessWidget {
+  const _HeroCircleCluster({
+    required this.accent,
+    required this.icon,
+  });
+
+  final Color accent;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white.withValues(alpha: 0.08),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            // Background Layer
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.1),
-                      Colors.white.withValues(alpha: 0.02),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
+    return SizedBox(
+      width: 110,
+      height: 110,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accent,
+            ),
+          ),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          Icon(icon, color: Colors.white.withValues(alpha: 0.60), size: 28),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMerchantIllustration extends StatelessWidget {
+  const _HeroMerchantIllustration({required this.accent});
+
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 110,
+      height: 120,
+      child: Stack(
+        children: [
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 84,
+              height: 64,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(24),
               ),
             ),
-            // Content Layer
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: child,
+          ),
+          Positioned(
+            left: 18,
+            top: 10,
+            child: Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                shape: BoxShape.circle,
+              ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 36,
+            top: 26,
+            child: Icon(
+              Icons.storefront_rounded,
+              size: 30,
+              color: Colors.white.withValues(alpha: 0.88),
+            ),
+          ),
+          Positioned(
+            right: 18,
+            top: 14,
+            child: Icon(
+              Icons.inventory_2_rounded,
+              size: 20,
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+          Positioned(
+            right: 18,
+            bottom: 18,
+            child: Icon(
+              Icons.query_stats_rounded,
+              size: 24,
+              color: Colors.white.withValues(alpha: 0.86),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopSellerVisual extends StatelessWidget {
+  const _TopSellerVisual({
+    required this.imageUrl,
+    required this.hasTopSeller,
+  });
+
+  final String? imageUrl;
+  final bool hasTopSeller;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 100,
+      child: Column(
+        children: [
+          Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: hasTopSeller && imageUrl != null
+                    ? ClipOval(
+                        child: ItemImage(
+                          imageUrl: imageUrl,
+                          size: 72,
+                          fallbackIcon: Icons.workspace_premium_rounded,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      )
+                    : Icon(
+                        hasTopSeller
+                            ? Icons.workspace_premium_rounded
+                            : Icons.auto_graph_rounded,
+                        color: const Color(0xFFE4D08A),
+                        size: 32,
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            hasTopSeller ? 'Best performer' : 'Insight locked',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

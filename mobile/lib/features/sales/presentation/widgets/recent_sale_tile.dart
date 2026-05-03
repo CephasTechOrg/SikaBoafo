@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../data/sales_repository.dart';
-import 'sale_status_pill.dart';
+import '../utils/sales_ui_utils.dart';
 
 enum SaleAction { edit, voidSale }
 
@@ -33,113 +33,180 @@ class RecentSaleTile extends ConsumerWidget {
       _ => AppColors.muted,
     };
 
-    final fmt = DateFormat('MMM d, HH:mm');
-    final subtitle = sale.isVoided
-        ? 'Voided${sale.voidReason == null ? '' : ' | ${sale.voidReason}'} '
-            '| ${fmt.format((voidedAt ?? dt).toLocal())}'
-        : '${_paymentLabel(sale.paymentMethodLabel)} | ${fmt.format(dt.toLocal())}';
+    final dateFmt = DateFormat('MMM d');
+    final timeFmt = DateFormat('h:mm a');
+    final effectiveTime = (voidedAt ?? dt).toLocal();
+    final paymentLabel = SalesUiUtils.paymentLabel(sale.paymentMethodLabel);
+    final statusLabel = sale.isVoided
+        ? 'Voided'
+        : switch (sale.syncStatus) {
+            'applied' || 'duplicate' => 'Synced',
+            'failed' => 'Needs attention',
+            'conflict' => 'Conflict',
+            _ => 'Pending sync',
+          };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        color: sale.isVoided
+            ? const Color(0xFFF8F6F6)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: sale.isVoided
+              ? AppColors.danger.withValues(alpha: 0.16)
+              : AppColors.border,
+        ),
+        boxShadow: sale.isVoided ? AppShadows.subtle : AppShadows.card,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: sale.isVoided
-                    ? AppColors.dangerSoft
-                    : AppColors.forest.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                sale.isVoided
-                    ? Icons.block_rounded
-                    : Icons.receipt_long_rounded,
-                color: sale.isVoided ? AppColors.danger : AppColors.forest,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: sale.isVoided
+                        ? AppColors.dangerSoft
+                        : AppColors.forest.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    sale.isVoided
+                        ? Icons.block_rounded
+                        : Icons.receipt_long_rounded,
+                    color: sale.isVoided ? AppColors.danger : AppColors.forest,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          '₵${sale.totalAmount}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            decoration: sale.isVoided
-                                ? TextDecoration.lineThrough
-                                : null,
-                            letterSpacing: -0.2,
-                          ),
+                      Text(
+                        '₵${sale.totalAmount}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          color: sale.isVoided ? AppColors.inkSoft : AppColors.ink,
+                          decoration: sale.isVoided
+                              ? TextDecoration.lineThrough
+                              : null,
+                          letterSpacing: -0.4,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      SaleStatusPill(
-                        label: sale.isVoided ? 'Voided' : sale.syncStatus,
-                        color: sale.isVoided ? AppColors.danger : syncColor,
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _MetaPill(
+                            label: paymentLabel,
+                            icon: sale.paymentMethodLabel == 'mobile_money'
+                                ? Icons.phone_android_rounded
+                                : Icons.payments_rounded,
+                            tint: sale.isVoided
+                                ? AppColors.muted
+                                : AppColors.forest,
+                          ),
+                          _MetaPill(
+                            label:
+                                '${dateFmt.format(effectiveTime)} • ${timeFmt.format(effectiveTime)}',
+                            icon: Icons.schedule_rounded,
+                            tint: AppColors.inkSoft,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                      height: 1.35,
-                    ),
+                ),
+                if (!sale.isVoided)
+                  PopupMenuButton<SaleAction>(
+                    tooltip: 'Sale actions',
+                    onSelected: (SaleAction action) {
+                      if (action == SaleAction.edit) {
+                        onEdit();
+                      } else {
+                        onVoid();
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem<SaleAction>(
+                        value: SaleAction.edit,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit sale'),
+                        ),
+                      ),
+                      PopupMenuItem<SaleAction>(
+                        value: SaleAction.voidSale,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.delete_outline_rounded),
+                          title: Text('Void sale'),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+              ],
             ),
-            if (!sale.isVoided) ...[
-              const SizedBox(width: 4),
-              PopupMenuButton<SaleAction>(
-                tooltip: 'Sale actions',
-                onSelected: (SaleAction action) {
-                  if (action == SaleAction.edit) {
-                    onEdit();
-                  } else {
-                    onVoid();
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem<SaleAction>(
-                    value: SaleAction.edit,
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.edit_outlined),
-                      title: Text('Edit sale'),
-                    ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _SyncBadge(
+                  label: statusLabel,
+                  color: sale.isVoided ? AppColors.danger : syncColor,
+                ),
+                const Spacer(),
+                Text(
+                  sale.isVoided ? 'Sale disabled' : 'Recorded sale',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.muted,
                   ),
-                  PopupMenuItem<SaleAction>(
-                    value: SaleAction.voidSale,
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.delete_outline_rounded),
-                      title: Text('Void sale'),
-                    ),
+                ),
+              ],
+            ),
+            if (sale.isVoided && sale.voidReason != null && sale.voidReason!.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Reason: ${sale.voidReason!.trim()}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.inkSoft,
+                  height: 1.35,
+                ),
+              ),
+            ] else if (!sale.isVoided && sale.note != null && sale.note!.trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  sale.note!.trim(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.inkSoft,
+                    height: 1.35,
                   ),
-                ],
+                ),
               ),
             ],
           ],
@@ -147,12 +214,68 @@ class RecentSaleTile extends ConsumerWidget {
       ),
     );
   }
+}
 
-  String _paymentLabel(String raw) {
-    return switch (raw) {
-      'mobile_money' => 'Mobile Money',
-      'bank_transfer' => 'Bank Transfer',
-      _ => 'Cash',
-    };
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({
+    required this.label,
+    required this.icon,
+    required this.tint,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: tint),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: tint == AppColors.inkSoft ? AppColors.inkSoft : tint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyncBadge extends StatelessWidget {
+  const _SyncBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+    );
   }
 }

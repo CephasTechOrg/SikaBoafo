@@ -1,19 +1,14 @@
 import 'dart:async';
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
-
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
-
-
 import '../../inventory/data/inventory_api.dart';
 import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
@@ -39,8 +34,6 @@ import 'widgets/sales_new_sale_view.dart';
 import 'widgets/sales_history_view.dart';
 import 'utils/sales_ui_utils.dart';
 
-
-
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
 
@@ -49,9 +42,9 @@ class SalesScreen extends ConsumerStatefulWidget {
 }
 
 class _SalesScreenState extends ConsumerState<SalesScreen> {
-      final TextEditingController _noteCtrl = TextEditingController();
+  final TextEditingController _noteCtrl = TextEditingController();
   final TextEditingController _searchCtrl = TextEditingController();
-      SalesViewTab _activeTab = SalesViewTab.newSale;
+  SalesViewTab _activeTab = SalesViewTab.newSale;
   bool _showVoided = false;
 
   @override
@@ -69,16 +62,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final salesAsync = ref.watch(salesControllerProvider);
     final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
     final dashboardOverlayAsync = ref.watch(localDashboardOverlayProvider);
-    
+
     final allItems = (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
-            .where((item) => item.isActive)
-            .toList(growable: false);
+        .where((item) => item.isActive)
+        .toList(growable: false);
     final recentSales = salesAsync.valueOrNull ?? const <LocalSaleRecord>[];
     final isBusy = salesAsync.isLoading;
 
     final filtered = cart.searchQuery.isEmpty
         ? allItems
-        : allItems.where((i) => i.name.toLowerCase().contains(cart.searchQuery.toLowerCase()))
+        : allItems.where((i) => i.name.toLowerCase().contains(
+              cart.searchQuery.toLowerCase(),
+            ))
             .toList(growable: false);
 
     final selectedItems = <LocalInventoryItem>[];
@@ -93,8 +88,12 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       limit: 3,
     );
     final topSellingIds = {for (final row in topSellingRows) row.itemId};
-    final quickAddItems = unselectedItems.where((item) => topSellingIds.contains(item.id)).toList();
-    final regularUnselectedItems = unselectedItems.where((item) => !topSellingIds.contains(item.id)).toList();
+    final quickAddItems = unselectedItems
+        .where((item) => topSellingIds.contains(item.id))
+        .toList();
+    final regularUnselectedItems = unselectedItems
+        .where((item) => !topSellingIds.contains(item.id))
+        .toList();
     regularUnselectedItems.sort((a, b) => a.name.compareTo(b.name));
 
     final itemCount = cart.qtyByItemId.values.fold(0, (a, b) => a + b);
@@ -107,17 +106,29 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       return SalesUiUtils.isSameLocalDay(createdAt, DateTime.now());
     }).toList();
 
-    final todayRevenueMinor = todaySales.fold<int>(0, (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount));
-    final cashTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'cash').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
-    final momoTotalMinor = todaySales.where((s) => s.paymentMethodLabel == 'mobile_money').fold<int>(0, (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount));
+    final todayRevenueMinor = todaySales.fold<int>(
+      0,
+      (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount),
+    );
+    final cashTotalMinor = todaySales
+        .where((s) => s.paymentMethodLabel == 'cash')
+        .fold<int>(
+          0,
+          (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount),
+        );
+    final momoTotalMinor = todaySales
+        .where((s) => s.paymentMethodLabel == 'mobile_money')
+        .fold<int>(
+          0,
+          (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount),
+        );
 
     // Extract top seller details
     final topSellingMonth = dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems;
     final topItem = topSellingMonth?.isNotEmpty == true ? topSellingMonth!.first : null;
     final topItemName = topItem?.itemName;
     final topItemQty = topItem?.quantitySold;
-    
-    // Find image URL for the top seller
+
     String? topItemImageUrl;
     if (topItem != null) {
       final match = allItems.where((i) => i.id == topItem.itemId).firstOrNull;
@@ -130,12 +141,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         children: [
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              // ── Collapsing Hero Header ────────────────────────
               SliverAppBar(
-                expandedHeight: 260,
+                expandedHeight: 308,
                 pinned: true,
                 stretch: true,
-                backgroundColor: const Color(0xFF041C0B),
+                backgroundColor: const Color(0xFF071D11),
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
@@ -149,27 +159,28 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     topSellingQty: topItemQty,
                     topSellingImageUrl: topItemImageUrl,
                   ),
-                  // App Title shows only when collapsed
-                  title: innerBoxIsScrolled 
-                    ? const Text('Sales', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18))
+                  title: innerBoxIsScrolled
+                      ? const Text(
+                          'Sales',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        )
                     : null,
                   centerTitle: false,
                   titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
                 ),
               ),
 
-              // ── Sticky Tab Bar ────────────────────────────────
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverTabDelegate(
                   activeTab: _activeTab,
-                  child: Container(
-                    color: AppColors.canvas,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: SalesTabBar(
-                      activeTab: _activeTab,
-                      onChanged: (tab) => setState(() => _activeTab = tab),
-                    ),
+                  child: SalesTabBar(
+                    activeTab: _activeTab,
+                    onChanged: (tab) => setState(() => _activeTab = tab),
                   ),
                 ),
               ),
@@ -179,16 +190,24 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               removeTop: true,
               child: inventoryAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => Center(child: Text(humanizeInventoryError(error))),
+                error: (error, _) =>
+                    Center(child: Text(humanizeInventoryError(error))),
                 data: (_) => RefreshIndicator(
                   onRefresh: () async {
                     await Future.wait([
                       ref.read(inventoryControllerProvider.notifier).refresh(),
-                      ref.read(salesControllerProvider.notifier).refresh(includeVoided: _showVoided),
+                      ref
+                          .read(salesControllerProvider.notifier)
+                          .refresh(includeVoided: _showVoided),
                     ]);
                   },
                   child: ListView(
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, _activeTab == SalesViewTab.newSale ? 100 : 24),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      _activeTab == SalesViewTab.newSale ? 110 : 28,
+                    ),
                     children: [
                       if (_activeTab == SalesViewTab.newSale)
                         SalesNewSaleView(
@@ -205,7 +224,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           showVoided: _showVoided,
                           onShowVoidedChanged: (value) async {
                             setState(() => _showVoided = value);
-                            await ref.read(salesControllerProvider.notifier).refresh(includeVoided: value);
+                            await ref
+                                .read(salesControllerProvider.notifier)
+                                .refresh(includeVoided: value);
                           },
                           historySales: historySales,
                           buildSaleTile: _buildRecentSaleTile,
@@ -218,7 +239,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             ),
           ),
 
-          // ── Bottom Checkout Bar ──────────────────────────────
           if (_activeTab == SalesViewTab.newSale)
             Positioned(
               left: 0,
@@ -254,7 +274,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         itemCount: itemCount,
         totalAmount: totalAmount,
-        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
+        formatMajor: (val, {symbol = 'GHS '}) =>
+            SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
         onRecordCash: (method) => _recordSale(
           items: items,
           paymentMethodLabel: method,
@@ -311,7 +332,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     try {
       await ref.read(salesControllerProvider.notifier).recordSale(
-            paymentMethodLabel: paymentMethodLabel ?? ref.read(salesCartProvider).paymentMethod,
+            paymentMethodLabel:
+                paymentMethodLabel ?? ref.read(salesCartProvider).paymentMethod,
             lines: lines,
             note: note,
           );
@@ -420,7 +442,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (sheetCtx) {
-          final mode = ref.read(paystackConnectionProvider).valueOrNull?.mode.toLowerCase();
+          final mode = ref
+              .read(paystackConnectionProvider)
+              .valueOrNull
+              ?.mode
+              .toLowerCase();
           final paystackTestMode = mode == 'test';
           return PaystackMomoSheet(
             saleId: saleId,
@@ -578,14 +604,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         noteController: _noteCtrl,
         calculateTotal: _calculateTotal,
-        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
+        formatMajor: (val, {symbol = 'GHS '}) =>
+            SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
         formatMinor: SalesUiUtils.formatMinor,
         moneyToMinor: SalesUiUtils.moneyToMinor,
         onProceedToCheckout: () async {
           if (!mounted) return;
           await _showCheckoutSheet(
             items: items,
-            itemCount: ref.read(salesCartProvider).qtyByItemId.values.fold(0, (a, b) => a + b),
+            itemCount: ref
+                .read(salesCartProvider)
+                .qtyByItemId
+                .values
+                .fold(0, (a, b) => a + b),
             totalAmount: _calculateTotal(items),
             isBusy: false,
           );
@@ -596,7 +627,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     final ctrl = TextEditingController(
-        text: ref.read(salesCartProvider).priceOverrideByItemId[item.id] ?? item.defaultPrice);
+      text: ref.read(salesCartProvider).priceOverrideByItemId[item.id] ??
+          item.defaultPrice,
+    );
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -607,7 +640,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             autofocus: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}'))
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
             ],
             decoration: const InputDecoration(
               labelText: 'Unit price (GHS)',
@@ -753,7 +786,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         )
         .toList(growable: false);
   }
-
 }
 
 class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
@@ -762,22 +794,38 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
   @override
-  double get minExtent => 68;
+  double get minExtent => 78;
   @override
-  double get maxExtent => 68;
+  double get maxExtent => 78;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Pin exact height to [maxExtent]. Otherwise intrinsic height can be 1px
-    // smaller than declared extent and triggers SliverGeometry assertions.
-    return SizedBox(height: maxExtent, child: child);
+    return Container(
+      color: AppColors.canvas,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          boxShadow: overlapsContent
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: SizedBox(height: maxExtent - 20, child: child),
+      ),
+    );
   }
 
   @override
   bool shouldRebuild(_SliverTabDelegate oldDelegate) =>
       oldDelegate.activeTab != activeTab;
 }
-
 
 class _TopAgg {
   const _TopAgg({

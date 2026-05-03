@@ -36,6 +36,7 @@ class SalesNewSaleView extends ConsumerWidget {
 
     return PremiumReveal(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SalesSearchBar(
             controller: searchCtrl,
@@ -54,137 +55,167 @@ class SalesNewSaleView extends ConsumerWidget {
             selectedCount: selectedItems.length,
             totalCount: allItems.length,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           if (allItems.isEmpty)
             const EmptyCard(
               icon: Icons.inventory_2_outlined,
-              message: 'No inventory items. Add stock in Inventory first.',
+              title: 'No inventory yet',
+              message:
+                  'Add stock in Inventory first, then return here to start recording sales.',
             )
           else ...[
             if (selectedItems.isNotEmpty) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'In Cart',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
+              _SectionHeader(
+                title: 'Selected for this sale',
+                subtitle: 'Review quantities before checkout.',
+                trailing: '${selectedItems.length} items',
+              ),
+              const SizedBox(height: 10),
+              PremiumPanel(
+                child: ItemGrid(
+                  children: selectedItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: cart.qtyByItemId[item.id] ?? 0,
+                          priceOverride: cart.priceOverrideByItemId[item.id],
+                          isSelected: true,
+                          onMinus: () => cartNotifier.decrementQty(item.id),
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
                         ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${selectedItems.length} items',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  PremiumPanel(
-                    child: ItemGrid(
-                      children: selectedItems
-                          .map(
-                            (item) => ItemCard(
-                              item: item,
-                              qty: cart.qtyByItemId[item.id] ?? 0,
-                              priceOverride: cart.priceOverrideByItemId[item.id],
-                              isSelected: true,
-                              onMinus: () => cartNotifier.decrementQty(item.id),
-                              onPlus: () => cartNotifier.incrementQty(item),
-                              onPriceTap: () => onPriceTap(item),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ),
-                ],
+                      )
+                      .toList(growable: false),
+                ),
               ),
               const SizedBox(height: 16),
             ],
             if (quickAddItems.isNotEmpty) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Quick Add',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  PremiumPanel(
-                    child: ItemGrid(
-                      children: quickAddItems
-                          .map(
-                            (item) => ItemCard(
-                              item: item,
-                              qty: 0,
-                              priceOverride: null,
-                              isSelected: false,
-                              onMinus: () {},
-                              onPlus: () => cartNotifier.incrementQty(item),
-                              onPriceTap: () => onPriceTap(item),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ),
-                ],
+              const _SectionHeader(
+                title: 'Top sellers',
+                subtitle: 'Quick add frequently sold items first.',
+              ),
+              const SizedBox(height: 10),
+              PremiumPanel(
+                child: ItemGrid(
+                  children: quickAddItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: 0,
+                          priceOverride: null,
+                          isSelected: false,
+                          onMinus: () {},
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
               ),
               const SizedBox(height: 16),
             ],
             if (regularUnselectedItems.isNotEmpty) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selectedItems.isNotEmpty
-                        ? 'Add More Products'
-                        : 'Available Products',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  PremiumPanel(
-                    child: ItemGrid(
-                      children: regularUnselectedItems
-                          .map(
-                            (item) => ItemCard(
-                              item: item,
-                              qty: 0,
-                              priceOverride: null,
-                              isSelected: false,
-                              onMinus: () {},
-                              onPlus: () => cartNotifier.incrementQty(item),
-                              onPriceTap: () => onPriceTap(item),
-                            ),
-                          )
-                          .toList(growable: false),
-                    ),
-                  ),
-                ],
+              _SectionHeader(
+                title: selectedItems.isNotEmpty
+                    ? 'Add more products'
+                    : 'Available products',
+                subtitle: selectedItems.isNotEmpty
+                    ? 'You can still add more items before checkout.'
+                    : 'Products ready to be added to this sale.',
+              ),
+              const SizedBox(height: 10),
+              PremiumPanel(
+                child: ItemGrid(
+                  children: regularUnselectedItems
+                      .map(
+                        (item) => ItemCard(
+                          item: item,
+                          qty: 0,
+                          priceOverride: null,
+                          isSelected: false,
+                          onMinus: () {},
+                          onPlus: () => cartNotifier.incrementQty(item),
+                          onPriceTap: () => onPriceTap(item),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
               ),
             ],
             if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
               EmptyCard(
                 icon: Icons.search_off_rounded,
-                message: 'No items match "${cart.searchQuery}".',
+                title: 'No products found',
+                message:
+                    'Try a different search or clear the search to see all inventory items.',
               ),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              trailing!,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.inkSoft,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

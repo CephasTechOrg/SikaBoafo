@@ -25,23 +25,41 @@ class SalesHistoryView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final salesAsync = ref.watch(salesControllerProvider);
+    final visibleCount = historySales.length > 15 ? 15 : historySales.length;
 
     return PremiumReveal(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Recent Transactions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                  letterSpacing: -0.2,
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Recent transactions',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Edit or void recorded sales from the latest activity list.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
               FilterChip(
                 label: const Text('Show voided'),
                 selected: showVoided,
@@ -65,12 +83,27 @@ class SalesHistoryView extends ConsumerWidget {
           else if (historySales.isEmpty)
             EmptyCard(
               icon: Icons.receipt_long_outlined,
+              title: 'No sales recorded yet',
               message: showVoided
-                  ? 'No transactions found.'
-                  : 'No active transactions. Switch to "New Sale" to start selling.',
+                  ? 'No matching sales were found in history yet.'
+                  : 'Your recent sales will appear here after you complete your first transaction.',
             )
-          else
+          else ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                historySales.length > 15
+                    ? 'Showing the latest $visibleCount of ${historySales.length} sales'
+                    : '$visibleCount sale${visibleCount == 1 ? '' : 's'} available',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
             ...historySales.take(15).map(buildSaleTile),
+          ],
         ],
       ),
     );
