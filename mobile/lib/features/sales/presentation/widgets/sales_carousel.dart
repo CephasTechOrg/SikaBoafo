@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/product_image_catalog.dart';
 import '../utils/sales_ui_utils.dart';
 import 'hero_stat_chip.dart';
@@ -130,7 +129,7 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        PageView(
+        PageView.builder(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
             itemCount: _slideCount,

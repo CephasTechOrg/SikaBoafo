@@ -209,7 +209,7 @@ class PaystackClient:
         secret_key: str,
         reference: str,
     ) -> PaystackVerifyResult:
-        """GET /charge/{reference} — Paystack recommends this for pending charge status (e.g. MoMo)."""
+        """GET /charge/{reference} for pending charge status (Paystack; e.g. MoMo)."""
         ref = str(reference).strip()
         safe = parse.quote(ref, safe="-._=")
         url = f"{self.base_url.rstrip('/')}/charge/{safe}"

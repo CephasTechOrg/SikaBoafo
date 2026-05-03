@@ -621,7 +621,10 @@ class PaymentService:
                 needs_otp=False,
             )
 
-        if payment.status == PROVIDER_PAYMENT_FAILED or sale.payment_status == PAYMENT_STATUS_FAILED:
+        if (
+            payment.status == PROVIDER_PAYMENT_FAILED
+            or sale.payment_status == PAYMENT_STATUS_FAILED
+        ):
             msg = "Payment is no longer pending."
             raise PaymentInitiationStateError(msg)
 
