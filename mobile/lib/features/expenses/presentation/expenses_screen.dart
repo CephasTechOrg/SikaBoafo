@@ -1,69 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
-import '../../../shared/widgets/mockup_ui.dart';
-import '../../../shared/widgets/premium_ui.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 import '../data/expenses_repository.dart';
 import '../providers/expenses_providers.dart';
-
-// ─── category metadata ────────────────────────────────────────────────────────
-
-class _CatMeta {
-  const _CatMeta(this.label, this.icon, this.color, this.bg);
-  final String label;
-  final IconData icon;
-  final Color color;
-  final Color bg;
-}
-
-const _kCats = <String, _CatMeta>{
-  'inventory_purchase': _CatMeta(
-    'Inventory',
-    Icons.shopping_cart_rounded,
-    Color(0xFF0F766E),
-    Color(0xFFE6F4F1),
-  ),
-  'transport': _CatMeta(
-    'Transport',
-    Icons.directions_car_rounded,
-    Color(0xFF2563EB),
-    Color(0xFFEFF6FF),
-  ),
-  'utilities': _CatMeta(
-    'Utilities',
-    Icons.bolt_rounded,
-    Color(0xFFD97706),
-    Color(0xFFFFFBEB),
-  ),
-  'rent': _CatMeta(
-    'Rent',
-    Icons.home_rounded,
-    Color(0xFFEA580C),
-    Color(0xFFFFF7ED),
-  ),
-  'salary': _CatMeta(
-    'Salary',
-    Icons.people_rounded,
-    Color(0xFF7C3AED),
-    Color(0xFFF5F3FF),
-  ),
-  'tax': _CatMeta(
-    'Tax',
-    Icons.account_balance_rounded,
-    Color(0xFFDC2626),
-    Color(0xFFFEF2F2),
-  ),
-  'other': _CatMeta(
-    'Other',
-    Icons.receipt_long_rounded,
-    Color(0xFF6B7280),
-    Color(0xFFF9FAFB),
-  ),
-};
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
+import 'expenses_category_meta.dart';
+import 'widgets/expenses_bottom_bar.dart';
+import 'widgets/expenses_header.dart';
+import 'widgets/expenses_history_view.dart';
+import 'widgets/expenses_log_view.dart';
+import 'widgets/expenses_tab_bar.dart';
 
 int _toMinor(String value) {
   final parts = value.trim().split('.');
@@ -72,13 +19,18 @@ int _toMinor(String value) {
   return (major * 100) + (int.tryParse(raw.substring(0, 2)) ?? 0);
 }
 
-String _fmtMoney(int minor) {
-  final major = minor ~/ 100;
-  final cents = (minor % 100).toString().padLeft(2, '0');
-  return 'GHS $major.$cents';
+({String? key, int minor})? _topCategory(Map<String, int> catMinors) {
+  if (catMinors.isEmpty) return null;
+  var bestKey = catMinors.keys.first;
+  var bestVal = catMinors[bestKey] ?? 0;
+  for (final e in catMinors.entries) {
+    if (e.value > bestVal) {
+      bestVal = e.value;
+      bestKey = e.key;
+    }
+  }
+  return (key: bestKey, minor: bestVal);
 }
-
-// ─── screen ───────────────────────────────────────────────────────────────────
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -88,13 +40,22 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 }
 
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
+  ExpensesViewTab _activeTab = ExpensesViewTab.log;
   String _category = 'inventory_purchase';
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
-  bool _showForm = false;
+
+  void _onAmountChanged() => setState(() {});
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl.addListener(_onAmountChanged);
+  }
 
   @override
   void dispose() {
+    _amountCtrl.removeListener(_onAmountChanged);
     _amountCtrl.dispose();
     _noteCtrl.dispose();
     super.dispose();
@@ -104,224 +65,147 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget build(BuildContext context) {
     final expensesAsync = ref.watch(expensesControllerProvider);
     final expenses = expensesAsync.valueOrNull ?? const <LocalExpenseRecord>[];
+    final merchantAsync = ref.watch(merchantContextProvider);
 
-    // O(n) single-pass stats + category buckets
     final now = DateTime.now();
     final todayStart =
         DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
     final monthStart = DateTime(now.year, now.month).millisecondsSinceEpoch;
 
-    int todayMinor = 0, monthMinor = 0;
+    int todayMinor = 0, monthMinor = 0, todayEntryCount = 0;
     final catMinors = <String, int>{};
     for (final e in expenses) {
       final v = _toMinor(e.amount);
-      if (e.createdAtMillis >= todayStart) todayMinor += v;
+      if (e.createdAtMillis >= todayStart) {
+        todayMinor += v;
+        todayEntryCount++;
+      }
       if (e.createdAtMillis >= monthStart) monthMinor += v;
       catMinors[e.category] = (catMinors[e.category] ?? 0) + v;
     }
+
+    final top = _topCategory(catMinors);
+    final isBusy = expensesAsync.isLoading;
+    final minor = _toMinor(_amountCtrl.text);
+    final canSave = minor > 0 &&
+        RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(_amountCtrl.text.trim());
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Stack(
         children: [
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 220,
-            child: HeroBackdrop(),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                _Header(
-                  todayMinor: todayMinor,
-                  monthMinor: monthMinor,
-                  count: expenses.length,
-                  categoryCount: catMinors.length,
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                expandedHeight: 308,
+                pinned: true,
+                stretch: true,
+                leading: ModalRoute.of(context)?.canPop == true
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white, size: 20),
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      )
+                    : null,
+                backgroundColor: const Color(0xFF071D11),
+                elevation: 0,
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [
+                    StretchMode.zoomBackground,
+                    StretchMode.blurBackground,
+                  ],
+                  background: ExpensesHeader(
+                    businessName:
+                        merchantAsync.valueOrNull?.businessName ?? 'My Shop',
+                    todayMinor: todayMinor,
+                    monthMinor: monthMinor,
+                    todayEntryCount: todayEntryCount,
+                    topCategoryKey: top?.key,
+                    topCategoryMinor: top?.minor,
+                  ),
+                  title: innerBoxIsScrolled
+                      ? const Text(
+                          'Expenses',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        )
+                      : null,
+                  centerTitle: false,
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
                 ),
-                Expanded(
-                  child: PremiumSurface(
-                    child: RefreshIndicator(
-                      onRefresh: () => ref
-                          .read(expensesControllerProvider.notifier)
-                          .refresh(),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                        children: [
-                          const SizedBox(height: 4),
-                          if (catMinors.isNotEmpty) ...[
-                            _CategoryBreakdownCard(catMinors: catMinors),
-                            const SizedBox(height: 16),
-                          ],
-                          _LogExpenseCard(
-                            expanded: _showForm,
-                            category: _category,
-                            amountCtrl: _amountCtrl,
-                            noteCtrl: _noteCtrl,
-                            isLoading: expensesAsync.isLoading,
-                            onToggle: () =>
-                                setState(() => _showForm = !_showForm),
-                            onCategoryChanged: (c) =>
-                                setState(() => _category = c),
-                            onSave: _saveExpense,
-                          ),
-                          const SizedBox(height: 22),
-                          const Row(
-                            children: [
-                              Text(
-                                'Expense History',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          if (expensesAsync.isLoading && expenses.isEmpty)
-                            const _LoadingCard()
-                          else if (expenses.isEmpty)
-                            const _EmptyCard()
-                          else
-                            ...expenses.map(_buildExpenseTile),
-                        ],
-                      ),
-                    ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverExpensesTabDelegate(
+                  activeTab: _activeTab,
+                  child: ExpensesTabBar(
+                    activeTab: _activeTab,
+                    onChanged: (tab) => setState(() => _activeTab = tab),
                   ),
                 ),
-              ],
+              ),
+            ],
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: RefreshIndicator(
+                color: AppColors.forest,
+                onRefresh: () =>
+                    ref.read(expensesControllerProvider.notifier).refresh(),
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    10,
+                    16,
+                    _activeTab == ExpensesViewTab.log ? 110 : 28,
+                  ),
+                  children: [
+                    if (_activeTab == ExpensesViewTab.log)
+                      ExpensesLogView(
+                        catMinors: catMinors,
+                        category: _category,
+                        amountCtrl: _amountCtrl,
+                        noteCtrl: _noteCtrl,
+                        onCategoryChanged: (c) =>
+                            setState(() => _category = c),
+                      )
+                    else
+                      ExpensesHistoryView(
+                        expenses: expenses,
+                        isLoadingEmpty:
+                            expensesAsync.isLoading && expenses.isEmpty,
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
+          if (_activeTab == ExpensesViewTab.log)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ExpensesBottomBar(
+                amountText: _amountCtrl.text,
+                categoryLabel: expenseMetaFor(_category).label,
+                canSave: canSave,
+                isBusy: isBusy,
+                onSave: _saveExpense,
+              ),
+            ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseTile(LocalExpenseRecord row) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(row.createdAtMillis);
-    final meta = _kCats[row.category] ?? _kCats['other']!;
-    final syncColor = switch (row.syncStatus) {
-      'applied' || 'duplicate' => AppColors.success,
-      'failed' => AppColors.danger,
-      'conflict' => AppColors.amber,
-      _ => AppColors.amber,
-    };
-    final syncLabel = switch (row.syncStatus) {
-      'applied' || 'duplicate' => 'Synced',
-      'failed' => 'Failed',
-      'conflict' => 'Conflict',
-      _ => 'Pending',
-    };
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: meta.bg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(meta.icon, color: meta.color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          meta.label,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'GHS ${row.amount}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          color: meta.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          row.note?.isNotEmpty == true ? row.note! : 'No note',
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('MMM d, HH:mm').format(dt.toLocal()),
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: syncColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        syncLabel,
-                        style: TextStyle(
-                          color: syncColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
   Future<void> _saveExpense() async {
     final amount = _amountCtrl.text.trim();
-    if (amount.isEmpty) {
+    if (amount.isEmpty ||
+        !RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(amount) ||
+        _toMinor(amount) <= 0) {
       _showMsg('Enter a valid amount.');
       return;
     }
@@ -334,7 +218,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       _amountCtrl.clear();
       _noteCtrl.clear();
       if (!mounted) return;
-      setState(() => _showForm = false);
       _showMsg('Expense recorded.');
     } catch (error) {
       if (!mounted) return;
@@ -347,722 +230,43 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 }
 
-// ─── header ───────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.todayMinor,
-    required this.monthMinor,
-    required this.count,
-    required this.categoryCount,
-  });
-
-  final int todayMinor;
-  final int monthMinor;
-  final int count;
-  final int categoryCount;
+class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
+  _SliverExpensesTabDelegate({required this.activeTab, required this.child});
+  final ExpensesViewTab activeTab;
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white, size: 20),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Expenses',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Track daily spending and category pressure',
-                      style: TextStyle(
-                        color: AppColors.heroSubtitle,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 138),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Today',
-                        style: TextStyle(
-                          color: AppColors.heroSubtitle,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _fmtMoney(todayMinor).replaceFirst('GHS ', '\u20B5'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'Constantia',
-                          letterSpacing: -0.6,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroChip(
-                  label: 'This Month',
-                  value: _fmtMoney(monthMinor).replaceFirst('GHS ', '\u20B5'),
-                  tone: const Color(0xFF9AE7BF),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _HeroChip(
-                  label: 'Locked Entries',
-                  value: '$count',
-                  tone: AppColors.gold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _HeroChip(
-                  label: 'Categories',
-                  value: '$categoryCount',
-                  tone: const Color(0xFF9AE7BF),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroChip extends StatelessWidget {
-  const _HeroChip({
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final String label;
-  final String value;
-  final Color tone;
+  double get minExtent => 78;
 
   @override
-  Widget build(BuildContext context) {
+  double get maxExtent => 78;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: tone,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.58),
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── stats row ────────────────────────────────────────────────────────────────
-
-// ignore: unused_element
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({
-    required this.todayMinor,
-    required this.monthMinor,
-  });
-  final int todayMinor, monthMinor;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - 10) / 2;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: cardWidth,
-              child: _StatCard(
-                label: 'Today',
-                value: _fmtMoney(todayMinor),
-                icon: Icons.today_rounded,
-                color: AppColors.forest,
-              ),
-            ),
-            SizedBox(
-              width: cardWidth,
-              child: _StatCard(
-                label: 'This Month',
-                value: _fmtMoney(monthMinor),
-                icon: Icons.calendar_month_rounded,
-                color: const Color(0xFFD97706),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-  final String label, value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 17),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              color: AppColors.ink,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.muted, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── category breakdown card ──────────────────────────────────────────────────
-
-class _CategoryBreakdownCard extends StatelessWidget {
-  const _CategoryBreakdownCard({required this.catMinors});
-  final Map<String, int> catMinors;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = catMinors.values.fold(0, (a, b) => a + b);
-    if (total == 0) return const SizedBox.shrink();
-
-    final sorted = catMinors.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.successSoft,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.pie_chart_rounded,
-                    color: AppColors.forest, size: 17),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Spending by Category',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.ink,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...sorted.take(6).map((entry) {
-            final meta = _kCats[entry.key] ?? _kCats['other']!;
-            final pct = entry.value / total;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: meta.bg,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(meta.icon, color: meta.color, size: 17),
+      color: AppColors.canvas,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          boxShadow: overlapsContent
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              meta.label,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            Text(
-                              '${(pct * 100).toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.muted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: pct,
-                            minHeight: 6,
-                            backgroundColor: meta.bg,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(meta.color),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'GHS ${(entry.value / 100).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── log expense accordion ────────────────────────────────────────────────────
-
-class _LogExpenseCard extends StatelessWidget {
-  const _LogExpenseCard({
-    required this.expanded,
-    required this.category,
-    required this.amountCtrl,
-    required this.noteCtrl,
-    required this.isLoading,
-    required this.onToggle,
-    required this.onCategoryChanged,
-    required this.onSave,
-  });
-  final bool expanded;
-  final String category;
-  final TextEditingController amountCtrl, noteCtrl;
-  final bool isLoading;
-  final VoidCallback onToggle, onSave;
-  final ValueChanged<String> onCategoryChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: expanded
-                ? const BorderRadius.vertical(top: Radius.circular(20))
-                : BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.successSoft,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.add_rounded,
-                        color: AppColors.forest, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Log Expense',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 250),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 280),
-            crossFadeState:
-                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Category',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _CategoryPicker(
-                    selected: category,
-                    onChanged: onCategoryChanged,
-                  ),
-                  const SizedBox(height: 14),
-                  _EField(
-                    controller: amountCtrl,
-                    label: 'Amount (GHS)',
-                    hint: '0.00',
-                    prefixIcon: Icons.payments_rounded,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                  const SizedBox(height: 10),
-                  _EField(
-                    controller: noteCtrl,
-                    label: 'Note (optional)',
-                    hint: 'What was this expense for?',
-                    prefixIcon: Icons.notes_rounded,
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton.icon(
-                      onPressed: isLoading ? null : onSave,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: const Icon(Icons.save_rounded, size: 18),
-                      label: Text(isLoading ? 'Saving...' : 'Save Expense'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── category picker chips ────────────────────────────────────────────────────
-
-class _CategoryPicker extends StatelessWidget {
-  const _CategoryPicker({required this.selected, required this.onChanged});
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _kCats.entries.map((entry) {
-        final isSel = entry.key == selected;
-        final meta = entry.value;
-        return GestureDetector(
-          onTap: () => onChanged(entry.key),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-            decoration: BoxDecoration(
-              color: isSel
-                  ? meta.color.withValues(alpha: 0.14)
-                  : AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSel ? meta.color : Colors.transparent,
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  meta.icon,
-                  color: isSel ? meta.color : AppColors.muted,
-                  size: 14,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  meta.label,
-                  style: TextStyle(
-                    color: isSel ? meta.color : AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-// ─── shared helpers ───────────────────────────────────────────────────────────
-
-class _EField extends StatelessWidget {
-  const _EField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.prefixIcon,
-    this.keyboardType,
-    this.maxLines = 1,
-  });
-  final TextEditingController controller;
-  final String label, hint;
-  final IconData prefixIcon;
-  final TextInputType? keyboardType;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, size: 18),
-        filled: true,
-        fillColor: AppColors.surfaceAlt,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+                ]
+              : null,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: SizedBox(height: maxExtent - 20, child: child),
       ),
     );
   }
-}
-
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
 
   @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 36),
-      child: Center(child: CircularProgressIndicator()),
-    );
-  }
-}
-
-class _EmptyCard extends StatelessWidget {
-  const _EmptyCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(36),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.successSoft,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.receipt_long_outlined,
-                color: AppColors.forest, size: 30),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'No expenses yet',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Tap "Log Expense" above\nto record your first expense.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
+  bool shouldRebuild(_SliverExpensesTabDelegate oldDelegate) =>
+      oldDelegate.activeTab != activeTab;
 }
