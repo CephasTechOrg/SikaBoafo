@@ -55,3 +55,44 @@ const kExpenseCategories = <String, ExpenseCategoryMeta>{
 
 ExpenseCategoryMeta expenseMetaFor(String category) =>
     kExpenseCategories[category] ?? kExpenseCategories['other']!;
+
+/// Separates the custom "other" name from the optional note in [LocalExpenseRecord.note].
+const kExpenseOtherNoteSep = '\u001F';
+
+/// Builds the `note` column for local storage / sync payload.
+String? buildStoredExpenseNote({
+  required String category,
+  required String otherName,
+  required String additionalNote,
+}) {
+  if (category != 'other') {
+    final t = additionalNote.trim();
+    return t.isEmpty ? null : t;
+  }
+  final name = otherName.trim();
+  if (name.isEmpty) return null;
+  final add = additionalNote.trim();
+  if (add.isEmpty) return name;
+  return '$name$kExpenseOtherNoteSep$add';
+}
+
+/// One line for history tiles and previews (handles legacy plain notes).
+String expenseNoteDisplayLine(String category, String? note) {
+  if (note == null || note.isEmpty) return 'No note';
+  if (category != 'other') return note;
+  final i = note.indexOf(kExpenseOtherNoteSep);
+  if (i < 0) return note;
+  final name = note.substring(0, i);
+  final rest = note.substring(i + 1).trim();
+  if (rest.isEmpty) return name;
+  return '$name · $rest';
+}
+
+String expenseSaveCategoryLabel(String category, String otherName) {
+  if (category != 'other') {
+    return expenseMetaFor(category).label;
+  }
+  final t = otherName.trim();
+  if (t.isEmpty) return expenseMetaFor('other').label;
+  return 'Other ($t)';
+}

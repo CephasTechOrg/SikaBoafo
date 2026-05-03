@@ -11,6 +11,7 @@ class ExpensesLogView extends StatelessWidget {
     required this.category,
     required this.amountCtrl,
     required this.noteCtrl,
+    required this.otherNameCtrl,
     required this.onCategoryChanged,
   });
 
@@ -18,6 +19,7 @@ class ExpensesLogView extends StatelessWidget {
   final String category;
   final TextEditingController amountCtrl;
   final TextEditingController noteCtrl;
+  final TextEditingController otherNameCtrl;
   final ValueChanged<String> onCategoryChanged;
 
   @override
@@ -43,11 +45,11 @@ class ExpensesLogView extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Record spending',
                       style: TextStyle(
                         color: AppColors.ink,
@@ -56,10 +58,12 @@ class ExpensesLogView extends StatelessWidget {
                         letterSpacing: -0.2,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Pick a category, enter amount, add a note — then tap Save below.',
-                      style: TextStyle(
+                      category == 'other'
+                          ? 'For Other, name the expense, enter amount, optional note — then Save below.'
+                          : 'Pick a category, enter amount, add a note — then tap Save below.',
+                      style: const TextStyle(
                         color: AppColors.muted,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -95,6 +99,15 @@ class ExpensesLogView extends StatelessWidget {
                   selected: category,
                   onChanged: onCategoryChanged,
                 ),
+                if (category == 'other') ...[
+                  const SizedBox(height: 14),
+                  _EField(
+                    controller: otherNameCtrl,
+                    label: 'Other — what is this?',
+                    hint: 'e.g. Office supplies, Bank charges',
+                    prefixIcon: Icons.label_outline_rounded,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _EField(
                   controller: amountCtrl,

@@ -191,7 +191,7 @@ class _ExpenseHistoryTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          row.note?.isNotEmpty == true ? row.note! : 'No note',
+                          expenseNoteDisplayLine(row.category, row.note),
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,

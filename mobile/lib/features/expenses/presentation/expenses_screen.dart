@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
-import '../../dashboard/providers/dashboard_providers.dart';
 import '../data/expenses_repository.dart';
 import '../providers/expenses_providers.dart';
 import 'expenses_category_meta.dart';
@@ -19,19 +18,6 @@ int _toMinor(String value) {
   return (major * 100) + (int.tryParse(raw.substring(0, 2)) ?? 0);
 }
 
-({String? key, int minor})? _topCategory(Map<String, int> catMinors) {
-  if (catMinors.isEmpty) return null;
-  var bestKey = catMinors.keys.first;
-  var bestVal = catMinors[bestKey] ?? 0;
-  for (final e in catMinors.entries) {
-    if (e.value > bestVal) {
-      bestVal = e.value;
-      bestKey = e.key;
-    }
-  }
-  return (key: bestKey, minor: bestVal);
-}
-
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
 
@@ -44,20 +30,26 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _category = 'inventory_purchase';
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _otherNameCtrl = TextEditingController();
 
   void _onAmountChanged() => setState(() {});
+
+  void _onOtherNameChanged() => setState(() {});
 
   @override
   void initState() {
     super.initState();
     _amountCtrl.addListener(_onAmountChanged);
+    _otherNameCtrl.addListener(_onOtherNameChanged);
   }
 
   @override
   void dispose() {
     _amountCtrl.removeListener(_onAmountChanged);
+    _otherNameCtrl.removeListener(_onOtherNameChanged);
     _amountCtrl.dispose();
     _noteCtrl.dispose();
+    _otherNameCtrl.dispose();
     super.dispose();
   }
 
@@ -65,7 +57,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget build(BuildContext context) {
     final expensesAsync = ref.watch(expensesControllerProvider);
     final expenses = expensesAsync.valueOrNull ?? const <LocalExpenseRecord>[];
-    final merchantAsync = ref.watch(merchantContextProvider);
 
     final now = DateTime.now();
     final todayStart =
@@ -74,21 +65,27 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
     int todayMinor = 0, monthMinor = 0, todayEntryCount = 0;
     final catMinors = <String, int>{};
+    final monthCategories = <String>{};
     for (final e in expenses) {
       final v = _toMinor(e.amount);
       if (e.createdAtMillis >= todayStart) {
         todayMinor += v;
         todayEntryCount++;
       }
-      if (e.createdAtMillis >= monthStart) monthMinor += v;
+      if (e.createdAtMillis >= monthStart) {
+        monthMinor += v;
+        monthCategories.add(e.category);
+      }
       catMinors[e.category] = (catMinors[e.category] ?? 0) + v;
     }
 
-    final top = _topCategory(catMinors);
     final isBusy = expensesAsync.isLoading;
     final minor = _toMinor(_amountCtrl.text);
-    final canSave = minor > 0 &&
+    final amountOk = minor > 0 &&
         RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(_amountCtrl.text.trim());
+    final otherOk =
+        _category != 'other' || _otherNameCtrl.text.trim().isNotEmpty;
+    final canSave = amountOk && otherOk;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -97,7 +94,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 308,
+                expandedHeight: 210,
                 pinned: true,
                 stretch: true,
                 leading: ModalRoute.of(context)?.canPop == true
@@ -107,21 +104,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         onPressed: () => Navigator.of(context).maybePop(),
                       )
                     : null,
-                backgroundColor: const Color(0xFF071D11),
+                backgroundColor: const Color(0xFF041C0B),
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
-                  stretchModes: const [
-                    StretchMode.zoomBackground,
-                    StretchMode.blurBackground,
-                  ],
+                  stretchModes: const [StretchMode.zoomBackground],
                   background: ExpensesHeader(
-                    businessName:
-                        merchantAsync.valueOrNull?.businessName ?? 'My Shop',
-                    todayMinor: todayMinor,
                     monthMinor: monthMinor,
+                    todayMinor: todayMinor,
                     todayEntryCount: todayEntryCount,
-                    topCategoryKey: top?.key,
-                    topCategoryMinor: top?.minor,
+                    monthCategoryCount: monthCategories.length,
                   ),
                   title: innerBoxIsScrolled
                       ? const Text(
@@ -169,6 +160,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         category: _category,
                         amountCtrl: _amountCtrl,
                         noteCtrl: _noteCtrl,
+                        otherNameCtrl: _otherNameCtrl,
                         onCategoryChanged: (c) =>
                             setState(() => _category = c),
                       )
@@ -190,7 +182,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               bottom: 0,
               child: ExpensesBottomBar(
                 amountText: _amountCtrl.text,
-                categoryLabel: expenseMetaFor(_category).label,
+                categoryLabel: expenseSaveCategoryLabel(
+                  _category,
+                  _otherNameCtrl.text,
+                ),
                 canSave: canSave,
                 isBusy: isBusy,
                 onSave: _saveExpense,
@@ -209,14 +204,24 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       _showMsg('Enter a valid amount.');
       return;
     }
+    if (_category == 'other' && _otherNameCtrl.text.trim().isEmpty) {
+      _showMsg('Enter a name for this expense.');
+      return;
+    }
+    final storedNote = buildStoredExpenseNote(
+      category: _category,
+      otherName: _otherNameCtrl.text,
+      additionalNote: _noteCtrl.text,
+    );
     try {
       await ref.read(expensesControllerProvider.notifier).createExpense(
             category: _category,
             amount: amount,
-            note: _noteCtrl.text,
+            note: storedNote,
           );
       _amountCtrl.clear();
       _noteCtrl.clear();
+      _otherNameCtrl.clear();
       if (!mounted) return;
       _showMsg('Expense recorded.');
     } catch (error) {
