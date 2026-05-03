@@ -734,11 +734,14 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
+    // Pin exact height to [maxExtent]. Otherwise intrinsic height can be 1px
+    // smaller than declared extent and triggers SliverGeometry assertions.
+    return SizedBox(height: maxExtent, child: child);
   }
 
   @override
-  bool shouldRebuild(_SliverTabDelegate oldDelegate) => false;
+  bool shouldRebuild(_SliverTabDelegate oldDelegate) =>
+      oldDelegate.maxExtent != maxExtent || oldDelegate.child != child;
 }
 
 

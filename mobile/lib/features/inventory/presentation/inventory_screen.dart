@@ -409,11 +409,14 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
+    // Match paint extent to layout extent; intrinsic height is often a few px
+    // smaller than [height] (e.g. 68 vs 76), which breaks SliverGeometry.
+    return SizedBox(height: maxExtent, child: child);
   }
 
   @override
-  bool shouldRebuild(_SliverFilterDelegate oldDelegate) => oldDelegate.height != height;
+  bool shouldRebuild(_SliverFilterDelegate oldDelegate) =>
+      oldDelegate.height != height || oldDelegate.child != child;
 }
 
 
