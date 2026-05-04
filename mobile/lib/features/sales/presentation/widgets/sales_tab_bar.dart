@@ -74,7 +74,7 @@ class _SalesTabPill extends StatelessWidget {
       pillColor = selected ? Colors.white : Colors.transparent;
       textColor = selected ? AppColors.forest : Colors.white.withValues(alpha: 0.78);
     } else {
-      pillColor = selected ? AppColors.forest : Colors.transparent;
+      pillColor = selected ? const Color(0xFF0C3A24) : Colors.transparent;
       textColor = selected ? Colors.white : AppColors.inkSoft;
     }
 

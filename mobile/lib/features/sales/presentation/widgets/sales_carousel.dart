@@ -487,7 +487,7 @@ class TopSellerHeroSlide extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 9),
                 Text(
                   hasTopSeller
                       ? safeName!
