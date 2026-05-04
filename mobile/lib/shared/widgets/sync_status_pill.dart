@@ -217,6 +217,8 @@ class _FailedRow extends ConsumerWidget {
     final syncAsync = ref.watch(syncStatusControllerProvider);
     final busy = syncAsync.isLoading;
     final attempts = entry.attempts;
+    final rawError = entry.lastError ?? '';
+    final friendly = _humanizeSyncError(rawError);
 
     return Container(
       width: double.infinity,
@@ -230,39 +232,43 @@ class _FailedRow extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${entry.entityType}:${entry.operation}',
+            _humanizeOperationLabel(entry.entityType, entry.operation),
             style: const TextStyle(
               color: AppColors.ink,
               fontWeight: FontWeight.w800,
             ),
           ),
-          if (entry.lastError != null && entry.lastError!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+          if (friendly.isNotEmpty) ...[
+            const SizedBox(height: 6),
             Text(
-              entry.lastError!,
+              friendly,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
-          const SizedBox(height: 4),
-          Text(
-            entry.status,
-            style: TextStyle(
-              color: entry.status == 'conflict'
-                  ? AppColors.warning
-                  : AppColors.danger,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Row(
             children: [
+              _StatusPill(status: entry.status),
+              const SizedBox(width: 8),
               Text(
                 '$attempts attempt${attempts == 1 ? '' : 's'}',
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: Colors.grey),
+                    ?.copyWith(color: AppColors.muted),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (rawError.isNotEmpty)
+                TextButton(
+                  onPressed: () => _showErrorDetails(context, rawError),
+                  child: const Text('Details'),
+                ),
               const Spacer(),
               TextButton(
                 onPressed: busy
@@ -298,6 +304,8 @@ class _DeadRow extends ConsumerWidget {
     final controller = ref.read(syncStatusControllerProvider.notifier);
     final syncAsync = ref.watch(syncStatusControllerProvider);
     final busy = syncAsync.isLoading;
+    final rawError = entry.lastError ?? '';
+    final friendly = _humanizeSyncError(rawError);
 
     return Container(
       width: double.infinity,
@@ -311,20 +319,22 @@ class _DeadRow extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${entry.entityType}:${entry.operation}',
+            _humanizeOperationLabel(entry.entityType, entry.operation),
             style: const TextStyle(
               color: AppColors.ink,
               fontWeight: FontWeight.w800,
             ),
           ),
-          if (entry.lastError != null && entry.lastError!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+          if (friendly.isNotEmpty) ...[
+            const SizedBox(height: 6),
             Text(
-              entry.lastError!,
+              friendly,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(color: Colors.grey),
+                  ?.copyWith(color: AppColors.muted),
             ),
           ],
           const SizedBox(height: 8),
@@ -335,9 +345,14 @@ class _DeadRow extends ConsumerWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(color: Colors.grey),
+                    ?.copyWith(color: AppColors.muted),
               ),
               const Spacer(),
+              if (rawError.isNotEmpty)
+                TextButton(
+                  onPressed: () => _showErrorDetails(context, rawError),
+                  child: const Text('Details'),
+                ),
               TextButton(
                 onPressed: busy
                     ? null
@@ -350,4 +365,184 @@ class _DeadRow extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final friendly = _humanizeSyncError(message);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            friendly,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.danger,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (message.length > friendly.length) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => _showErrorDetails(context, message),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 0),
+                  minimumSize: const Size(0, 28),
+                  foregroundColor: AppColors.danger,
+                ),
+                child: const Text('View details'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isConflict = status == 'conflict';
+    final color = isConflict ? AppColors.warning : AppColors.danger;
+    final label = switch (status) {
+      'conflict' => 'Conflict',
+      'failed' => 'Failed',
+      'sending' => 'Sending',
+      _ => status,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+void _showErrorDetails(BuildContext context, String message) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Error details'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 360),
+        child: SingleChildScrollView(
+          child: SelectableText(
+            message,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 12,
+              color: AppColors.ink,
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+String _humanizeOperationLabel(String entity, String operation) {
+  final entityLabel = switch (entity) {
+    'sale' => 'Sale',
+    'item' => 'Inventory item',
+    'inventory' => 'Inventory',
+    'expense' => 'Expense',
+    'receivable' => 'Customer credit',
+    'receivable_payment' => 'Credit payment',
+    _ => entity.isEmpty ? 'Unknown' : entity,
+  };
+  final actionLabel = switch (operation) {
+    'create' => 'recording',
+    'update' => 'updating',
+    'void' => 'voiding',
+    'delete' => 'deleting',
+    _ => operation,
+  };
+  return '$entityLabel · $actionLabel';
+}
+
+String _humanizeSyncError(String raw) {
+  if (raw.isEmpty) return '';
+  final lower = raw.toLowerCase();
+
+  if (lower.contains('socketexception') ||
+      lower.contains('connection refused') ||
+      lower.contains('failed host lookup') ||
+      lower.contains('network is unreachable')) {
+    return 'No internet connection. We\'ll retry automatically when you\'re back online.';
+  }
+  if (lower.contains('timeout') || lower.contains('timed out')) {
+    return 'The server took too long to respond. Tap Retry to try again.';
+  }
+  if (lower.contains('insufficient stock')) {
+    return 'Not enough stock on hand. Update inventory and retry.';
+  }
+  if (lower.contains('item not found') ||
+      lower.contains('saleitemnotfounderror')) {
+    return 'One of the items in this sale no longer exists. Discard this entry and re-record the sale.';
+  }
+  if (lower.contains('exceeded') && lower.contains('retry attempts')) {
+    return 'Backend kept rejecting this operation. Open Details to see why, then Retry or Discard.';
+  }
+  if (lower.contains('paystack') &&
+      (lower.contains('not connect') || lower.contains('not_connected'))) {
+    return 'Paystack is not connected. Connect it in Settings before taking MoMo payments.';
+  }
+  if (lower.contains('401') || lower.contains('unauthorized')) {
+    return 'Your session has expired. Sign in again to resume syncing.';
+  }
+  if (lower.contains('409') || lower.contains('conflict')) {
+    return 'The server has a newer version of this record. Refresh and try again.';
+  }
+  if (lower.contains('500') || lower.contains('internal server error')) {
+    return 'The server hit an unexpected error. Tap Retry — if it keeps happening, contact support.';
+  }
+  if (lower.contains('for update cannot be applied') ||
+      lower.contains('featurenotsupported')) {
+    return 'Server-side database conflict. This was patched — tap Retry to re-send.';
+  }
+
+  // Fallback: return the first line, truncated, so the user never sees a wall
+  // of SQL or stack-trace.
+  final firstLine = raw.split('\n').first.trim();
+  if (firstLine.length > 180) {
+    return '${firstLine.substring(0, 180)}…';
+  }
+  return firstLine;
 }
