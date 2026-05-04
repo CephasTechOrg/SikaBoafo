@@ -416,10 +416,16 @@ class SalesService:
         return items
 
     def _load_balances(self, *, item_ids: list[UUID]) -> dict[UUID, InventoryBalance]:
+        # NOTE: `with_for_update(of=InventoryBalance)` is required because
+        # `InventoryBalance.item` is `lazy="joined"`, which produces a chain of
+        # LEFT OUTER JOINs (items -> stores -> merchants -> users). PostgreSQL
+        # rejects a plain `FOR UPDATE` against the nullable side of an outer
+        # join. Locking only the `inventory_balances` rows is what we want
+        # anyway -- the joined parent rows do not need write locks.
         balances = self.db.scalars(
             select(InventoryBalance)
             .where(InventoryBalance.item_id.in_(item_ids))
-            .with_for_update()
+            .with_for_update(of=InventoryBalance)
         ).all()
         return {balance.item_id: balance for balance in balances}
 
