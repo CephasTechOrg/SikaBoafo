@@ -123,7 +123,7 @@ class _SalesHeroCarouselState extends State<SalesHeroCarousel> {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.paddingOf(context).top + 14;
     const horizontalPadding = 20.0;
-    const bottomPadding = 62.0;
+    const bottomPadding = 44.0;
 
     return Stack(
       fit: StackFit.expand,
