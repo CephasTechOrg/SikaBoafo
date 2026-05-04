@@ -85,7 +85,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final topSellingRows = _mergeTopSelling(
       dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems ?? const [],
       dashboardOverlayAsync.valueOrNull?.monthPendingTopSelling ?? const [],
-      limit: 3,
+      limit: 4,
     );
     final topSellingIds = {for (final row in topSellingRows) row.itemId};
     final quickAddItems = unselectedItems

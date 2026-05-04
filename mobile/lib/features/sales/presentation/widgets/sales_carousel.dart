@@ -502,11 +502,13 @@ class TopSellerHeroSlide extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 Text(
                   hasTopSeller
                       ? '${qty ?? 0} units sold so far this month'
                       : 'Your best-selling products will appear here once you start recording sales.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.78),
                     fontSize: 13,
@@ -514,7 +516,7 @@ class TopSellerHeroSlide extends StatelessWidget {
                     height: 1.45,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 6),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
