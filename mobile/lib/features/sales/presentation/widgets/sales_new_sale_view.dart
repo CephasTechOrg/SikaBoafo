@@ -78,11 +78,6 @@ class SalesNewSaleView extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             if (quickAddItems.isNotEmpty) ...[
-              const _SectionHeader(
-                title: 'Top sellers',
-                subtitle: 'Quick add frequently sold items first.',
-              ),
-              const SizedBox(height: 10),
               PremiumPanel(
                 child: ItemGrid(
                   children: quickAddItems
@@ -103,15 +98,6 @@ class SalesNewSaleView extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             if (regularUnselectedItems.isNotEmpty) ...[
-              _SectionHeader(
-                title: selectedItems.isNotEmpty
-                    ? 'Add more products'
-                    : 'Available products',
-                subtitle: selectedItems.isNotEmpty
-                    ? 'You can still add more items before checkout.'
-                    : 'Products ready to be added to this sale.',
-              ),
-              const SizedBox(height: 10),
               PremiumPanel(
                 child: ItemGrid(
                   children: regularUnselectedItems
