@@ -22,6 +22,7 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
           final lastSynced = snapshot?.lastSyncedAt;
           final lastError = snapshot?.lastError;
 
+          final maxSheetHeight = MediaQuery.of(context).size.height * 0.85;
           return Padding(
             padding: EdgeInsets.fromLTRB(
               12,
@@ -29,116 +30,125 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
               12,
               MediaQuery.of(context).viewInsets.bottom + 12,
             ),
-            child: Material(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxSheetHeight),
+              child: Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(28),
+                clipBehavior: Clip.antiAlias,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Sync Status',
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _MetricCard(
-                          label: 'Backend',
-                          value: snapshot?.backendReachable == true
-                              ? 'Reachable'
-                              : 'Offline',
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Sync Status',
+                                style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 14),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                _MetricCard(
+                                  label: 'Backend',
+                                  value: snapshot?.backendReachable == true
+                                      ? 'Reachable'
+                                      : 'Offline',
+                                ),
+                                _MetricCard(
+                                  label: 'Pending',
+                                  value:
+                                      '${snapshot?.stats.pendingCount ?? 0}',
+                                ),
+                                _MetricCard(
+                                  label: 'Failed',
+                                  value:
+                                      '${snapshot?.stats.failedCount ?? 0}',
+                                ),
+                                _MetricCard(
+                                  label: 'Conflict',
+                                  value:
+                                      '${snapshot?.stats.conflictCount ?? 0}',
+                                ),
+                              ],
+                            ),
+                            if (lastSynced != null) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Last synced ${_formatTimestamp(lastSynced)}',
+                                style:
+                                    Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                            if (lastError != null && lastError.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              _ErrorBanner(message: lastError),
+                            ],
+                            if ((snapshot?.failedEntries.isNotEmpty ??
+                                false)) ...[
+                              const SizedBox(height: 16),
+                              Text('Needs Attention',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
+                              const SizedBox(height: 10),
+                              ...snapshot!.failedEntries.map(
+                                (entry) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _FailedRow(entry: entry),
+                                ),
+                              ),
+                            ],
+                            if ((snapshot?.deadEntries.isNotEmpty ??
+                                false)) ...[
+                              const SizedBox(height: 16),
+                              Text('Discarded',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
+                              const SizedBox(height: 10),
+                              ...snapshot!.deadEntries.map(
+                                (entry) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _DeadRow(entry: entry),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        _MetricCard(
-                          label: 'Pending',
-                          value: '${snapshot?.stats.pendingCount ?? 0}',
-                        ),
-                        _MetricCard(
-                          label: 'Failed',
-                          value: '${snapshot?.stats.failedCount ?? 0}',
-                        ),
-                        _MetricCard(
-                          label: 'Conflict',
-                          value: '${snapshot?.stats.conflictCount ?? 0}',
-                        ),
-                      ],
+                      ),
                     ),
-                    if (lastSynced != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        'Last synced ${_formatTimestamp(lastSynced)}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                    if (lastError != null && lastError.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Text(
-                          lastError,
-                          style: const TextStyle(
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: syncAsync.isLoading
+                                  ? null
+                                  : () async {
+                                      await controller.retryFailed();
+                                    },
+                              child: const Text('Retry Failed'),
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                    if ((snapshot?.failedEntries.isNotEmpty ?? false)) ...[
-                      const SizedBox(height: 16),
-                      Text('Needs Attention',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 10),
-                      ...snapshot!.failedEntries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _FailedRow(entry: entry),
-                        ),
-                      ),
-                    ],
-                    if ((snapshot?.deadEntries.isNotEmpty ?? false)) ...[
-                      const SizedBox(height: 16),
-                      Text('Discarded',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 10),
-                      ...snapshot!.deadEntries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: _DeadRow(entry: entry),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: syncAsync.isLoading
-                                ? null
-                                : () async {
-                                    await controller.retryFailed();
-                                  },
-                            child: const Text('Retry Failed'),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: syncAsync.isLoading
+                                  ? null
+                                  : () async {
+                                      await controller.syncNow();
+                                    },
+                              child: const Text('Sync Now'),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: syncAsync.isLoading
-                                ? null
-                                : () async {
-                                    await controller.syncNow();
-                                  },
-                            child: const Text('Sync Now'),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
