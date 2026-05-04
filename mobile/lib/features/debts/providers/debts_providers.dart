@@ -71,8 +71,11 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   Future<void> createCustomer({
     required String name,
     String? phoneNumber,
+    bool useLoadingState = true,
   }) async {
-    state = const AsyncLoading();
+    if (useLoadingState) {
+      state = const AsyncLoading();
+    }
     try {
       await _repo.createCustomerLocal(name: name, phoneNumber: phoneNumber);
       await _repo.syncPendingQueue();

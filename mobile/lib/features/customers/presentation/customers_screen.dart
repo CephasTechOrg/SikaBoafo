@@ -53,6 +53,13 @@ class CustomersScreen extends ConsumerWidget {
             ),
             actions: [
               IconButton(
+                tooltip: 'Add customer',
+                icon: const Icon(Icons.person_add_rounded,
+                    color: Colors.white, size: 22),
+                onPressed: () =>
+                    _showAddCustomerBottomSheet(context, ref),
+              ),
+              IconButton(
                 tooltip: 'Refresh',
                 icon: const Icon(Icons.refresh_rounded,
                     color: Colors.white, size: 22),
@@ -145,7 +152,10 @@ class CustomersScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 10),
                       if (items.isEmpty)
-                        const _EmptyCustomers()
+                        _EmptyCustomers(
+                          onAddCustomer: () =>
+                              _showAddCustomerBottomSheet(context, ref),
+                        )
                       else
                         ...items.map(
                           (c) => Padding(
@@ -348,7 +358,9 @@ class _CustomersError extends StatelessWidget {
 }
 
 class _EmptyCustomers extends StatelessWidget {
-  const _EmptyCustomers();
+  const _EmptyCustomers({required this.onAddCustomer});
+
+  final VoidCallback onAddCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -386,11 +398,227 @@ class _EmptyCustomers extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Create customers from the Debts screen so you can track balances and repayment history here.',
+            'Add a customer to track balances and repayment history. You can also record debts from the Debts screen.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: AppColors.muted),
           ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onAddCustomer,
+              icon: const Icon(Icons.person_add_rounded, size: 20),
+              label: const Text('Add customer'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.forestDark,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+void _showAddCustomerBottomSheet(BuildContext context, WidgetRef _) {
+  final messenger = ScaffoldMessenger.of(context);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    useSafeArea: true,
+    builder: (sheetContext) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: Consumer(
+          builder: (_, ref, __) {
+            return _AddCustomerBottomSheet(
+              onClose: () => Navigator.of(sheetContext).pop(),
+              onSuccessMessage: (msg) {
+                messenger.showSnackBar(SnackBar(content: Text(msg)));
+              },
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+class _AddCustomerBottomSheet extends ConsumerStatefulWidget {
+  const _AddCustomerBottomSheet({
+    required this.onClose,
+    required this.onSuccessMessage,
+  });
+
+  final VoidCallback onClose;
+  final void Function(String message) onSuccessMessage;
+
+  @override
+  ConsumerState<_AddCustomerBottomSheet> createState() =>
+      _AddCustomerBottomSheetState();
+}
+
+class _AddCustomerBottomSheetState
+    extends ConsumerState<_AddCustomerBottomSheet> {
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  String _humanize(Object error) {
+    if (error is ArgumentError) {
+      return error.message?.toString() ?? 'Invalid input.';
+    }
+    final s = error.toString();
+    return s.startsWith('Exception: ') ? s.substring(11) : s;
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer name must be at least 2 characters.'),
+        ),
+      );
+      return;
+    }
+    final phoneRaw = _phoneCtrl.text.trim();
+    setState(() => _saving = true);
+    try {
+      await ref.read(debtsControllerProvider.notifier).createCustomer(
+            name: name,
+            phoneNumber: phoneRaw.isEmpty ? null : phoneRaw,
+            useLoadingState: false,
+          );
+      if (!mounted) return;
+      widget.onSuccessMessage('Customer saved.');
+      widget.onClose();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_humanize(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'New customer',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Name and optional phone — same as on the Debts screen.',
+            style: TextStyle(fontSize: 13, color: AppColors.muted),
+          ),
+          const SizedBox(height: 18),
+          _CustomerFormField(
+            controller: _nameCtrl,
+            label: 'Customer name',
+            icon: Icons.person_outline_rounded,
+          ),
+          const SizedBox(height: 10),
+          _CustomerFormField(
+            controller: _phoneCtrl,
+            label: 'Phone (optional)',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: const Icon(Icons.save_rounded, size: 18),
+              label: const Text('Save customer'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.forestDark,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerFormField extends StatelessWidget {
+  const _CustomerFormField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 14, color: AppColors.ink),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: AppColors.muted, size: 20),
+        filled: true,
+        fillColor: AppColors.surfaceAlt,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
     );
   }
