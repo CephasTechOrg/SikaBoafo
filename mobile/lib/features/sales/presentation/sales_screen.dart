@@ -142,7 +142,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 260,
+                expandedHeight: 280,
                 pinned: true,
                 stretch: true,
                 backgroundColor: const Color(0xFF071D11),
