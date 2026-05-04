@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../inventory/data/inventory_repository.dart';
 import '../../providers/sales_cart_provider.dart';
 import 'empty_card.dart';
 import 'item_card.dart';
-import 'products_header.dart';
 import 'sales_search_bar.dart';
 
 class SalesNewSaleView extends ConsumerWidget {
@@ -51,11 +49,6 @@ class SalesNewSaleView extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 16),
-          ProductsHeader(
-            selectedCount: selectedItems.length,
-            totalCount: allItems.length,
-          ),
-          const SizedBox(height: 16),
           if (allItems.isEmpty)
             const EmptyCard(
               icon: Icons.inventory_2_outlined,
@@ -65,12 +58,6 @@ class SalesNewSaleView extends ConsumerWidget {
             )
           else ...[
             if (selectedItems.isNotEmpty) ...[
-              _SectionHeader(
-                title: 'Selected for this sale',
-                subtitle: 'Review quantities before checkout.',
-                trailing: '${selectedItems.length} items',
-              ),
-              const SizedBox(height: 10),
               PremiumPanel(
                 child: ItemGrid(
                   children: selectedItems
