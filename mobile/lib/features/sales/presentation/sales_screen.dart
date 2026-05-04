@@ -142,13 +142,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 280,
+                expandedHeight: 270,
                 pinned: true,
-                stretch: true,
                 backgroundColor: const Color(0xFF071D11),
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
-                  stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
                   background: SalesHeader(
                     businessName: merchantAsync.valueOrNull?.businessName ?? 'My Shop',
                     todayRevenueMinor: todayRevenueMinor,
@@ -802,15 +800,15 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
   @override
-  double get minExtent => 72;
+  double get minExtent => 78;
   @override
-  double get maxExtent => 72;
+  double get maxExtent => 78;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       color: AppColors.canvas,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
@@ -825,7 +823,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
                 ]
               : null,
         ),
-        child: child,
+        child: SizedBox(height: maxExtent - 20, child: child),
       ),
     );
   }
