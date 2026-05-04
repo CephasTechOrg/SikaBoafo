@@ -328,16 +328,34 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       return false;
     }
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
+    final method =
+        paymentMethodLabel ?? ref.read(salesCartProvider).paymentMethod;
+    final totalAmount = _calculateTotal(items);
     try {
       await ref.read(salesControllerProvider.notifier).recordSale(
-            paymentMethodLabel:
-                paymentMethodLabel ?? ref.read(salesCartProvider).paymentMethod,
+            paymentMethodLabel: method,
             lines: lines,
             note: note,
           );
       if (!mounted) return false;
       ref.invalidate(inventoryControllerProvider);
       _resetDraftAfterSale();
+      // Cash sales are confirmed locally and immediately, so we surface the
+      // success animation here. MoMo flows show their own success sheet after
+      // payment confirmation in `_recordSaleWithPaystack*`.
+      if (method == 'cash' && mounted) {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          isDismissible: false,
+          enableDrag: false,
+          builder: (_) => SaleSuccessSheet(
+            amount: totalAmount,
+            method: 'cash',
+          ),
+        );
+      }
       return true;
     } catch (error) {
       if (!mounted) return false;

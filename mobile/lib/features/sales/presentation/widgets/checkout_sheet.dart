@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../providers/sales_cart_provider.dart';
-import '../widgets/sale_success_sheet.dart';
 import '../widgets/checkout_method_button.dart';
 import '../../../inventory/data/inventory_repository.dart';
 
@@ -131,21 +130,11 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: () async {
-                      Navigator.of(context).pop();
                       ref.read(salesCartProvider.notifier).setPaymentMethod(_selectedMethod);
-                      final ok = await widget.onRecordCash(_selectedMethod);
-                      if (!context.mounted || !ok) return;
-                      await showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        isDismissible: false,
-                        enableDrag: false,
-                        builder: (_) => SaleSuccessSheet(
-                          amount: widget.totalAmount,
-                          method: 'cash',
-                        ),
-                      );
+                      Navigator.of(context).pop();
+                      // Parent (`_recordSale`) is responsible for showing the
+                      // success sheet — its context outlives this bottom sheet.
+                      await widget.onRecordCash(_selectedMethod);
                     },
                     icon: const Icon(Icons.check_circle_rounded, size: 18),
                     label: Text(
