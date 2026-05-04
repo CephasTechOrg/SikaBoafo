@@ -11,7 +11,7 @@ class ItemGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final useSingleColumn = constraints.maxWidth < 320;
+        final useSingleColumn = constraints.maxWidth < 240;
         final cardExtent = useSingleColumn ? 268.0 : 272.0;
         return GridView(
           shrinkWrap: true,

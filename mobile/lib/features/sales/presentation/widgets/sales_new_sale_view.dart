@@ -57,62 +57,56 @@ class SalesNewSaleView extends ConsumerWidget {
             )
           else ...[
             if (selectedItems.isNotEmpty) ...[
-              PremiumPanel(
-                child: ItemGrid(
-                  children: selectedItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: cart.qtyByItemId[item.id] ?? 0,
-                          priceOverride: cart.priceOverrideByItemId[item.id],
-                          isSelected: true,
-                          onMinus: () => cartNotifier.decrementQty(item.id),
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              ItemGrid(
+                children: selectedItems
+                    .map(
+                      (item) => ItemCard(
+                        item: item,
+                        qty: cart.qtyByItemId[item.id] ?? 0,
+                        priceOverride: cart.priceOverrideByItemId[item.id],
+                        isSelected: true,
+                        onMinus: () => cartNotifier.decrementQty(item.id),
+                        onPlus: () => cartNotifier.incrementQty(item),
+                        onPriceTap: () => onPriceTap(item),
+                      ),
+                    )
+                    .toList(growable: false),
               ),
               const SizedBox(height: 16),
             ],
             if (quickAddItems.isNotEmpty) ...[
-              PremiumPanel(
-                child: ItemGrid(
-                  children: quickAddItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: 0,
-                          priceOverride: null,
-                          isSelected: false,
-                          onMinus: () {},
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              ItemGrid(
+                children: quickAddItems
+                    .map(
+                      (item) => ItemCard(
+                        item: item,
+                        qty: 0,
+                        priceOverride: null,
+                        isSelected: false,
+                        onMinus: () {},
+                        onPlus: () => cartNotifier.incrementQty(item),
+                        onPriceTap: () => onPriceTap(item),
+                      ),
+                    )
+                    .toList(growable: false),
               ),
               const SizedBox(height: 16),
             ],
             if (regularUnselectedItems.isNotEmpty) ...[
-              PremiumPanel(
-                child: ItemGrid(
-                  children: regularUnselectedItems
-                      .map(
-                        (item) => ItemCard(
-                          item: item,
-                          qty: 0,
-                          priceOverride: null,
-                          isSelected: false,
-                          onMinus: () {},
-                          onPlus: () => cartNotifier.incrementQty(item),
-                          onPriceTap: () => onPriceTap(item),
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
+              ItemGrid(
+                children: regularUnselectedItems
+                    .map(
+                      (item) => ItemCard(
+                        item: item,
+                        qty: 0,
+                        priceOverride: null,
+                        isSelected: false,
+                        onMinus: () {},
+                        onPlus: () => cartNotifier.incrementQty(item),
+                        onPriceTap: () => onPriceTap(item),
+                      ),
+                    )
+                    .toList(growable: false),
               ),
             ],
             if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
