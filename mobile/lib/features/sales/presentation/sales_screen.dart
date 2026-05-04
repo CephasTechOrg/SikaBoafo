@@ -142,22 +142,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 318,
+                expandedHeight: 260,
                 pinned: true,
                 stretch: true,
                 backgroundColor: const Color(0xFF071D11),
                 elevation: 0,
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(58.0),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: SalesTabBar(
-                      activeTab: _activeTab,
-                      onChanged: (tab) => setState(() => _activeTab = tab),
-                      darkMode: true,
-                    ),
-                  ),
-                ),
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
                   background: SalesHeader(
@@ -182,6 +171,17 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     : null,
                   centerTitle: false,
                   titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                ),
+              ),
+
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabDelegate(
+                  activeTab: _activeTab,
+                  child: SalesTabBar(
+                    activeTab: _activeTab,
+                    onChanged: (tab) => setState(() => _activeTab = tab),
+                  ),
                 ),
               ),
             ],
@@ -795,6 +795,45 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 }
 
+
+class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
+  _SliverTabDelegate({required this.activeTab, required this.child});
+  final SalesViewTab activeTab;
+  final Widget child;
+
+  @override
+  double get minExtent => 72;
+  @override
+  double get maxExtent => 72;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: AppColors.canvas,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          boxShadow: overlapsContent
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabDelegate oldDelegate) =>
+      oldDelegate.activeTab != activeTab;
+}
 
 class _TopAgg {
   const _TopAgg({
