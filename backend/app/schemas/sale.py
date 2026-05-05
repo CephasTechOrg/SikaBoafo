@@ -25,6 +25,8 @@ class SaleLineIn(BaseModel):
     item_id: UUID
     quantity: int = Field(gt=0)
     unit_price: Decimal = Field(gt=0, max_digits=18, decimal_places=2)
+    variant_id: UUID | None = None
+    variant_label: str | None = Field(default=None, max_length=64)
 
 
 class SaleCreateIn(BaseModel):

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ from app.core.constants import (
     INVENTORY_MOVEMENT_STOCK_IN,
 )
 from app.models.inventory import InventoryBalance, InventoryMovement
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.sale import SaleItem
 from app.models.store import Store
 from app.schemas.inventory import ItemCreateIn, ItemUpdateIn
@@ -60,6 +60,7 @@ class InventoryItemSnapshot:
     quantity_on_hand: int
     image_url: str | None = None
     version: int = 1
+    variants: list[ItemVariant] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -114,6 +115,17 @@ class InventoryService:
             item.id = payload.item_id
         self.db.add(item)
         self.db.flush()
+
+        for idx, v in enumerate(payload.variants):
+            variant = ItemVariant(
+                id=v.variant_id or uuid4(),
+                item_id=item.id,
+                label=v.label.strip(),
+                price_override=v.price_override,
+                sort_order=v.sort_order if v.sort_order else idx,
+                is_active=v.is_active,
+            )
+            self.db.add(variant)
 
         balance = InventoryBalance(item_id=item.id, quantity_on_hand=0)
         self.db.add(balance)
@@ -174,6 +186,22 @@ class InventoryService:
             item.is_active = payload.is_active
         if payload.image_url is not None:
             item.image_url = payload.image_url
+        if payload.variants is not None:
+            existing = self.db.scalars(
+                select(ItemVariant).where(ItemVariant.item_id == item.id)
+            ).all()
+            for ev in existing:
+                self.db.delete(ev)
+            self.db.flush()
+            for idx, v in enumerate(payload.variants):
+                self.db.add(ItemVariant(
+                    id=v.variant_id or uuid4(),
+                    item_id=item.id,
+                    label=v.label.strip(),
+                    price_override=v.price_override,
+                    sort_order=v.sort_order if v.sort_order else idx,
+                    is_active=v.is_active,
+                ))
         if source_device_id is not None:
             item.source_device_id = source_device_id
         if local_operation_id is not None:
@@ -383,6 +411,7 @@ class InventoryService:
             quantity_on_hand=int(quantity_on_hand or 0),
             image_url=item.image_url,
             version=item.version,
+            variants=list(item.variants),
         )
 
     @staticmethod

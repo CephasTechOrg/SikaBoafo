@@ -12,11 +12,15 @@ class SaleDraftLine {
     required this.itemId,
     required this.quantity,
     required this.unitPrice,
+    this.variantId,
+    this.variantLabel,
   });
 
   final String itemId;
   final int quantity;
   final String unitPrice;
+  final String? variantId;
+  final String? variantLabel;
 }
 
 class SaleQuantityUpdateDraft {
@@ -160,28 +164,42 @@ LIMIT ?
     final now = DateTime.now().millisecondsSinceEpoch;
 
     await db.transaction((tx) async {
+      // Aggregate total qty per item for stock validation (variants share pool).
+      final qtyByItemId = <String, int>{};
+      for (final line in aggregatedLines) {
+        qtyByItemId[line.itemId] =
+            (qtyByItemId[line.itemId] ?? 0) + line.quantity;
+      }
+
+      // Load available stock per item once.
+      final stockByItemId = <String, int>{};
+      for (final itemId in qtyByItemId.keys) {
+        final itemRows = await tx.query(
+          'items_local',
+          columns: ['quantity_on_hand'],
+          where: 'id = ?',
+          whereArgs: [itemId],
+          limit: 1,
+        );
+        if (itemRows.isEmpty) throw ArgumentError('Item not found: $itemId');
+        stockByItemId[itemId] =
+            (itemRows.first['quantity_on_hand'] as int? ?? 0);
+      }
+
+      // Validate stock per item.
+      for (final entry in qtyByItemId.entries) {
+        final available = stockByItemId[entry.key] ?? 0;
+        if (available < entry.value) {
+          throw ArgumentError(
+            'Insufficient stock for item ${entry.key}. '
+            'Available: $available, requested: ${entry.value}.',
+          );
+        }
+      }
+
       int totalMinor = 0;
       final snapshotRows = <_SalePreparedLine>[];
       for (final line in aggregatedLines) {
-        final itemRows = await tx.query(
-          'items_local',
-          columns: ['id', 'quantity_on_hand', 'updated_at'],
-          where: 'id = ?',
-          whereArgs: [line.itemId],
-          limit: 1,
-        );
-        if (itemRows.isEmpty) {
-          throw ArgumentError('Item not found: ${line.itemId}');
-        }
-        final itemRow = itemRows.first;
-        final available = (itemRow['quantity_on_hand'] as int? ?? 0);
-        if (available < line.quantity) {
-          throw ArgumentError(
-            'Insufficient stock for item ${line.itemId}. '
-            'Available: $available, requested: ${line.quantity}.',
-          );
-        }
-
         final lineTotalMinor = line.unitPriceMinor * line.quantity;
         totalMinor += lineTotalMinor;
         snapshotRows.add(
@@ -190,7 +208,9 @@ LIMIT ?
             quantity: line.quantity,
             unitPriceMinor: line.unitPriceMinor,
             lineTotalMinor: lineTotalMinor,
-            nextQuantityOnHand: available - line.quantity,
+            nextQuantityOnHand: 0, // computed below from stock map
+            variantId: line.variantId,
+            variantLabel: line.variantLabel,
           ),
         );
       }
@@ -210,16 +230,8 @@ LIMIT ?
         },
       );
 
+      // Write sale_items_local rows (one per variant line).
       for (final line in snapshotRows) {
-        await tx.update(
-          'items_local',
-          {
-            'quantity_on_hand': line.nextQuantityOnHand,
-            'updated_at': now,
-          },
-          where: 'id = ?',
-          whereArgs: [line.itemId],
-        );
         await tx.insert(
           'sale_items_local',
           {
@@ -230,15 +242,29 @@ LIMIT ?
             'unit_price': _minorToMoney(line.unitPriceMinor),
             'line_total': _minorToMoney(line.lineTotalMinor),
             'created_at': now,
+            if (line.variantId != null) 'variant_id': line.variantId,
+            if (line.variantLabel != null) 'variant_label': line.variantLabel,
           },
+        );
+      }
+
+      // Deduct stock once per item (variants share the same pool).
+      for (final entry in qtyByItemId.entries) {
+        final newStock =
+            (stockByItemId[entry.key] ?? 0) - entry.value;
+        await tx.update(
+          'items_local',
+          {'quantity_on_hand': newStock, 'updated_at': now},
+          where: 'id = ?',
+          whereArgs: [entry.key],
         );
         await tx.insert(
           'inventory_movements_local',
           {
             'id': _uuid.v4(),
-            'item_id': line.itemId,
+            'item_id': entry.key,
             'movement_type': 'sale',
-            'quantity': -line.quantity,
+            'quantity': -entry.value,
             'reason': 'sale recorded',
             'local_operation_id': localOpId,
             'created_at': now,
@@ -260,6 +286,9 @@ LIMIT ?
                   'item_id': line.itemId,
                   'quantity': line.quantity,
                   'unit_price': _minorToMoney(line.unitPriceMinor),
+                  if (line.variantId != null) 'variant_id': line.variantId,
+                  if (line.variantLabel != null)
+                    'variant_label': line.variantLabel,
                 },
             ],
             if (note != null) 'note': note,
@@ -661,32 +690,39 @@ ORDER BY sl.created_at ASC
   }
 
   List<_SaleLineAggregate> _aggregateLines(List<SaleDraftLine> lines) {
-    final byItem = <String, _SaleLineAggregate>{};
+    // Key by itemId::variantId so lines for different variants stay separate.
+    // Lines for the same item+variant are merged (same as pre-variant behaviour).
+    final byKey = <String, _SaleLineAggregate>{};
     for (final line in lines) {
       if (line.quantity <= 0) {
         throw ArgumentError('Sale quantity must be greater than 0.');
       }
+      final key =
+          line.variantId != null ? '${line.itemId}::${line.variantId}' : line.itemId;
       final unitMinor = _moneyToMinor(line.unitPrice);
-      final existing = byItem[line.itemId];
+      final existing = byKey[key];
       if (existing == null) {
-        byItem[line.itemId] = _SaleLineAggregate(
+        byKey[key] = _SaleLineAggregate(
           itemId: line.itemId,
           quantity: line.quantity,
           unitPriceMinor: unitMinor,
+          variantId: line.variantId,
+          variantLabel: line.variantLabel,
         );
         continue;
       }
       if (existing.unitPriceMinor != unitMinor) {
         throw ArgumentError('Conflicting prices for item ${line.itemId}.');
       }
-      final mergedQty = existing.quantity + line.quantity;
-      byItem[line.itemId] = _SaleLineAggregate(
+      byKey[key] = _SaleLineAggregate(
         itemId: line.itemId,
-        quantity: mergedQty,
+        quantity: existing.quantity + line.quantity,
         unitPriceMinor: unitMinor,
+        variantId: line.variantId,
+        variantLabel: line.variantLabel,
       );
     }
-    return byItem.values.toList(growable: false);
+    return byKey.values.toList(growable: false);
   }
 
   int _moneyToMinor(String value) {
@@ -713,11 +749,15 @@ class _SaleLineAggregate {
     required this.itemId,
     required this.quantity,
     required this.unitPriceMinor,
+    this.variantId,
+    this.variantLabel,
   });
 
   final String itemId;
   final int quantity;
   final int unitPriceMinor;
+  final String? variantId;
+  final String? variantLabel;
 }
 
 class _SalePreparedLine {
@@ -727,6 +767,8 @@ class _SalePreparedLine {
     required this.unitPriceMinor,
     required this.lineTotalMinor,
     required this.nextQuantityOnHand,
+    this.variantId,
+    this.variantLabel,
   });
 
   final String itemId;
@@ -734,4 +776,6 @@ class _SalePreparedLine {
   final int unitPriceMinor;
   final int lineTotalMinor;
   final int nextQuantityOnHand;
+  final String? variantId;
+  final String? variantLabel;
 }

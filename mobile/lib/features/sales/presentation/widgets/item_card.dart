@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../inventory/data/inventory_repository.dart';
+import '../../../inventory/data/local_variant.dart';
 
 class ItemGrid extends StatelessWidget {
   const ItemGrid({super.key, required this.children});
@@ -12,7 +13,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        final cardExtent = useSingleColumn ? 268.0 : 272.0;
+        final cardExtent = useSingleColumn ? 296.0 : 300.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -39,6 +40,8 @@ class ItemCard extends StatelessWidget {
     required this.onMinus,
     required this.onPlus,
     required this.onPriceTap,
+    this.selectedVariantId,
+    this.onVariantSelected,
   });
 
   final LocalInventoryItem item;
@@ -49,13 +52,29 @@ class ItemCard extends StatelessWidget {
   final VoidCallback onPlus;
   final VoidCallback onPriceTap;
 
+  /// The variant chip that is currently selected (before or after adding).
+  final String? selectedVariantId;
+
+  /// Called when user taps a variant chip. Null when item has no variants.
+  final void Function(LocalVariant)? onVariantSelected;
+
   @override
   Widget build(BuildContext context) {
-    final displayPrice = priceOverride ?? item.defaultPrice;
-    final hasOverride = priceOverride != null;
+    // Resolve display price: variant override → cart override → item default
+    final selectedVariant = item.hasVariants && selectedVariantId != null
+        ? item.variants.where((v) => v.id == selectedVariantId).firstOrNull
+        : null;
+    final displayPrice = priceOverride ??
+        selectedVariant?.priceOverride ??
+        item.defaultPrice;
+    final hasOverride =
+        priceOverride != null || selectedVariant?.priceOverride != null;
     final isOutOfStock = item.quantityOnHand == 0;
     final isLowStock =
         !isOutOfStock && item.quantityOnHand <= (item.lowStockThreshold ?? 5);
+    // Add button is gated: items with variants require a chip selection first.
+    final canAdd =
+        !isOutOfStock && (!item.hasVariants || selectedVariantId != null);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -99,7 +118,6 @@ class ItemCard extends StatelessWidget {
                         )
                       : _FallbackImageBox(isSelected: isSelected),
                 ),
-                // Category badge
                 if (item.category != null)
                   Positioned(
                     top: 8,
@@ -122,16 +140,13 @@ class ItemCard extends StatelessWidget {
                       child: Text(
                         item.category!,
                         style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : AppColors.forest,
+                          color: isSelected ? Colors.white : AppColors.forest,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                   ),
-                // Low stock / out-of-stock dot
                 if (isOutOfStock || isLowStock)
                   Positioned(
                     top: 8,
@@ -176,6 +191,33 @@ class ItemCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+
+                  // ── Variant chips ──────────────────────────────
+                  if (item.hasVariants) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 28,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: item.variants
+                            .where((v) => v.isActive)
+                            .length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: 6),
+                        itemBuilder: (context, idx) {
+                          final activeVariants =
+                              item.variants.where((v) => v.isActive).toList();
+                          final v = activeVariants[idx];
+                          return _VariantChip(
+                            label: v.label,
+                            selected: selectedVariantId == v.id,
+                            onTap: () => onVariantSelected?.call(v),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
                   const Spacer(),
                   // ── Price + quantity controls ──────────────────
                   Row(
@@ -220,12 +262,12 @@ class ItemCard extends StatelessWidget {
                         ),
                         _SmallQtyBtn(
                           icon: Icons.add_rounded,
-                          enabled: qty < item.quantityOnHand,
+                          enabled: canAdd && qty < item.quantityOnHand,
                           onTap: onPlus,
                         ),
                       ] else
                         _AddButton(
-                          enabled: !isOutOfStock,
+                          enabled: canAdd,
                           onTap: onPlus,
                         ),
                     ],
@@ -240,7 +282,50 @@ class ItemCard extends StatelessWidget {
   }
 }
 
-// ── Private helpers ─────────────────────────────────────────────
+// ── Private helpers ──────────────────────────────────────────────────────────
+
+class _VariantChip extends StatelessWidget {
+  const _VariantChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.forest
+              : AppColors.forest.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? AppColors.forest
+                : AppColors.forest.withValues(alpha: 0.22),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.forest,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _FallbackImageBox extends StatelessWidget {
   const _FallbackImageBox({required this.isSelected});
@@ -277,7 +362,9 @@ class _AddButton extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: enabled ? AppColors.forest : AppColors.muted.withValues(alpha: 0.15),
+          color: enabled
+              ? AppColors.forest
+              : AppColors.muted.withValues(alpha: 0.15),
         ),
         child: Icon(
           Icons.add_rounded,

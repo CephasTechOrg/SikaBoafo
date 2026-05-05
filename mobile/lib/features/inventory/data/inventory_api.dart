@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 import '../../../core/services/api_client.dart';
+import 'local_variant.dart';
 
 class InventoryItemDto {
   const InventoryItemDto({
@@ -16,6 +17,7 @@ class InventoryItemDto {
     this.isActive = true,
     this.version = 1,
     this.imageUrl,
+    this.variants = const [],
   });
 
   final String itemId;
@@ -28,10 +30,13 @@ class InventoryItemDto {
   final int quantityOnHand;
   final int version;
   final String? imageUrl;
+  final List<LocalVariant> variants;
 
   factory InventoryItemDto.fromJson(Map<String, dynamic> json) {
+    final rawVariants = json['variants'] as List<dynamic>? ?? [];
+    final itemId = (json['item_id'] ?? '') as String;
     return InventoryItemDto(
-      itemId: (json['item_id'] ?? '') as String,
+      itemId: itemId,
       name: (json['name'] ?? '') as String,
       defaultPrice: '${json['default_price'] ?? '0.00'}',
       sku: json['sku'] as String?,
@@ -41,6 +46,17 @@ class InventoryItemDto {
       quantityOnHand: (json['quantity_on_hand'] ?? 0) as int,
       version: (json['version'] as int?) ?? 1,
       imageUrl: json['image_url'] as String?,
+      variants: rawVariants
+          .whereType<Map<String, dynamic>>()
+          .map((v) => LocalVariant(
+                id: (v['variant_id'] ?? '') as String,
+                itemId: itemId,
+                label: (v['label'] ?? '') as String,
+                priceOverride: v['price_override']?.toString(),
+                sortOrder: (v['sort_order'] as int?) ?? 0,
+                isActive: (v['is_active'] ?? true) as bool,
+              ))
+          .toList(growable: false),
     );
   }
 }

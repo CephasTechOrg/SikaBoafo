@@ -33,7 +33,7 @@ class ReviewSaleSheet extends ConsumerWidget {
     final itemById = {for (final item in items) item.id: item};
     final cartState = ref.watch(salesCartProvider);
     final entries = cartState.qtyByItemId.entries
-        .where((e) => e.value > 0 && itemById.containsKey(e.key))
+        .where((e) => e.value > 0 && itemById.containsKey(itemIdFromKey(e.key)))
         .toList();
     final currentCount = entries.fold(0, (s, e) => s + e.value);
     final currentTotal = calculateTotal(items);
@@ -125,12 +125,14 @@ class ReviewSaleSheet extends ConsumerWidget {
                   child: SingleChildScrollView(
                     child: Column(
                       children: entries.map((entry) {
-                        final item = itemById[entry.key]!;
+                        final item = itemById[itemIdFromKey(entry.key)]!;
                         final qty = entry.value;
                         final price =
                             cartState.priceOverrideByItemId[entry.key] ??
                                 item.defaultPrice;
                         final lineTotal = moneyToMinor(price) * qty;
+                        final variantLabel =
+                            cartState.variantLabelByKey[entry.key];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Row(
@@ -157,6 +159,17 @@ class ReviewSaleSheet extends ConsumerWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                    if (variantLabel != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        variantLabel,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.forest,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                     const SizedBox(height: 2),
                                     Text(
                                       '$qty × ₵$price',

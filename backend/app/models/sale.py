@@ -97,6 +97,13 @@ class SaleItem(UUIDPrimaryKeyMixin, Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     cost_price_snapshot: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    variant_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("item_variants.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    variant_label: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     sale: Mapped[Sale] = relationship("Sale", back_populates="lines")
     item: Mapped[Item] = relationship("Item", lazy="joined")

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../inventory/data/inventory_repository.dart';
+import '../../../inventory/data/local_variant.dart';
 import '../../providers/sales_cart_provider.dart';
 import 'empty_card.dart';
 import 'item_card.dart';
@@ -26,6 +27,53 @@ class SalesNewSaleView extends ConsumerWidget {
   final List<LocalInventoryItem> quickAddItems;
   final List<LocalInventoryItem> regularUnselectedItems;
   final Function(LocalInventoryItem) onPriceTap;
+
+  int _totalQtyForItem(SalesCartState cart, String itemId) {
+    return cart.qtyByItemId.entries
+        .where((e) => itemIdFromKey(e.key) == itemId)
+        .fold(0, (sum, e) => sum + e.value);
+  }
+
+  ItemCard _buildCard({
+    required LocalInventoryItem item,
+    required SalesCartState cart,
+    required SalesCartNotifier notifier,
+    required bool isSelected,
+    required Function(LocalInventoryItem) onPriceTap,
+  }) {
+    final pendingVariantId = cart.pendingVariantByItemId[item.id];
+    final key = cartKey(item.id, pendingVariantId);
+    final displayQty = item.hasVariants
+        ? (pendingVariantId != null
+            ? (cart.qtyByItemId[key] ?? 0)
+            : _totalQtyForItem(cart, item.id))
+        : (cart.qtyByItemId[item.id] ?? 0);
+
+    void handlePlus() {
+      if (item.hasVariants) {
+        if (pendingVariantId == null) return;
+        final variant =
+            item.variants.where((v) => v.id == pendingVariantId).firstOrNull;
+        if (variant != null) notifier.addVariantItem(item, variant);
+      } else {
+        notifier.incrementQty(item);
+      }
+    }
+
+    return ItemCard(
+      item: item,
+      qty: displayQty,
+      priceOverride: cart.priceOverrideByItemId[key],
+      isSelected: isSelected,
+      onMinus: () => notifier.decrementQty(key),
+      onPlus: handlePlus,
+      onPriceTap: () => onPriceTap(item),
+      selectedVariantId: pendingVariantId,
+      onVariantSelected: item.hasVariants
+          ? (LocalVariant v) => notifier.selectPendingVariant(item.id, v.id)
+          : null,
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -60,17 +108,13 @@ class SalesNewSaleView extends ConsumerWidget {
             if (selectedItems.isNotEmpty) ...[
               ItemGrid(
                 children: selectedItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: cart.qtyByItemId[item.id] ?? 0,
-                        priceOverride: cart.priceOverrideByItemId[item.id],
-                        isSelected: true,
-                        onMinus: () => cartNotifier.decrementQty(item.id),
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
+                    .map((item) => _buildCard(
+                          item: item,
+                          cart: cart,
+                          notifier: cartNotifier,
+                          isSelected: true,
+                          onPriceTap: onPriceTap,
+                        ))
                     .toList(growable: false),
               ),
               const SizedBox(height: 16),
@@ -78,17 +122,13 @@ class SalesNewSaleView extends ConsumerWidget {
             if (quickAddItems.isNotEmpty) ...[
               ItemGrid(
                 children: quickAddItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: 0,
-                        priceOverride: null,
-                        isSelected: false,
-                        onMinus: () {},
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
+                    .map((item) => _buildCard(
+                          item: item,
+                          cart: cart,
+                          notifier: cartNotifier,
+                          isSelected: false,
+                          onPriceTap: onPriceTap,
+                        ))
                     .toList(growable: false),
               ),
               const SizedBox(height: 16),
@@ -96,17 +136,13 @@ class SalesNewSaleView extends ConsumerWidget {
             if (regularUnselectedItems.isNotEmpty) ...[
               ItemGrid(
                 children: regularUnselectedItems
-                    .map(
-                      (item) => ItemCard(
-                        item: item,
-                        qty: 0,
-                        priceOverride: null,
-                        isSelected: false,
-                        onMinus: () {},
-                        onPlus: () => cartNotifier.incrementQty(item),
-                        onPriceTap: () => onPriceTap(item),
-                      ),
-                    )
+                    .map((item) => _buildCard(
+                          item: item,
+                          cart: cart,
+                          notifier: cartNotifier,
+                          isSelected: false,
+                          onPriceTap: onPriceTap,
+                        ))
                     .toList(growable: false),
               ),
             ],

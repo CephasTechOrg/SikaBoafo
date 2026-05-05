@@ -76,10 +76,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             ))
             .toList(growable: false);
 
+    final itemIdsWithQty = cart.qtyByItemId.entries
+        .where((e) => e.value > 0)
+        .map((e) => itemIdFromKey(e.key))
+        .toSet();
     final selectedItems = <LocalInventoryItem>[];
     final unselectedItems = <LocalInventoryItem>[];
     for (final item in filtered) {
-      ((cart.qtyByItemId[item.id] ?? 0) > 0 ? selectedItems : unselectedItems).add(item);
+      (itemIdsWithQty.contains(item.id) ? selectedItems : unselectedItems)
+          .add(item);
     }
 
     final topSellingRows = _mergeTopSelling(
@@ -306,7 +311,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     for (final entry in cart.qtyByItemId.entries) {
       final qty = entry.value;
       if (qty <= 0) continue;
-      final item = itemById[entry.key];
+      final item = itemById[itemIdFromKey(entry.key)];
       if (item == null) continue;
       final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
       totalMinor += SalesUiUtils.moneyToMinor(price) * qty;
@@ -563,11 +568,16 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     for (final entry in cart.qtyByItemId.entries) {
       final qty = entry.value;
       if (qty <= 0) continue;
-      final item = itemById[entry.key];
+      final item = itemById[itemIdFromKey(entry.key)];
       if (item == null) continue;
       final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
-      lines
-          .add(SaleDraftLine(itemId: item.id, quantity: qty, unitPrice: price));
+      lines.add(SaleDraftLine(
+        itemId: item.id,
+        quantity: qty,
+        unitPrice: price,
+        variantId: variantIdFromKey(entry.key),
+        variantLabel: cart.variantLabelByKey[entry.key],
+      ));
     }
     return lines;
   }
@@ -649,9 +659,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
+    final cart = ref.read(salesCartProvider);
+    final pendingVariantId = item.hasVariants
+        ? cart.pendingVariantByItemId[item.id]
+        : null;
+    final key = cartKey(item.id, pendingVariantId);
     final ctrl = TextEditingController(
-      text: ref.read(salesCartProvider).priceOverrideByItemId[item.id] ??
-          item.defaultPrice,
+      text: cart.priceOverrideByItemId[key] ?? item.defaultPrice,
     );
     await showDialog<void>(
       context: context,
@@ -673,7 +687,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                ref.read(salesCartProvider.notifier).removeOverride(item.id);
+                ref.read(salesCartProvider.notifier).removeOverride(key);
                 Navigator.of(ctx).pop();
               },
               child: const Text('Reset to default'),
@@ -683,7 +697,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 final raw = ctrl.text.trim();
                 final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
                 if (match == null || double.tryParse(raw) == 0) return;
-                ref.read(salesCartProvider.notifier).overridePrice(item.id, raw);
+                ref.read(salesCartProvider.notifier).overridePrice(key, raw);
                 Navigator.of(ctx).pop();
               },
               child: const Text('Apply'),

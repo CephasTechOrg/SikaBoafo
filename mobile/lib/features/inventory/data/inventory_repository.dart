@@ -7,6 +7,7 @@ import '../../../data/local/app_database.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../data/sync/sync_queue_runner.dart';
 import 'inventory_api.dart';
+import 'local_variant.dart';
 
 const archiveRequiresZeroStockMessage =
     'Adjust stock to 0 before archiving this item.';
@@ -23,6 +24,7 @@ class LocalInventoryItem {
     this.isActive = true,
     this.imageUrl,
     this.serverVersion,
+    this.variants = const [],
   });
 
   final String id;
@@ -37,6 +39,9 @@ class LocalInventoryItem {
   /// Version counter from the server, used for optimistic locking. Null means
   /// this row has not yet been synced from the server.
   final int? serverVersion;
+  final List<LocalVariant> variants;
+
+  bool get hasVariants => variants.isNotEmpty;
 
   factory LocalInventoryItem.fromRow(Map<String, Object?> row) {
     return LocalInventoryItem(
@@ -50,6 +55,22 @@ class LocalInventoryItem {
       quantityOnHand: (row['quantity_on_hand'] as int? ?? 0),
       imageUrl: row['image_url'] as String?,
       serverVersion: row['server_version'] as int?,
+    );
+  }
+
+  LocalInventoryItem withVariants(List<LocalVariant> variants) {
+    return LocalInventoryItem(
+      id: id,
+      name: name,
+      defaultPrice: defaultPrice,
+      sku: sku,
+      category: category,
+      lowStockThreshold: lowStockThreshold,
+      isActive: isActive,
+      quantityOnHand: quantityOnHand,
+      imageUrl: imageUrl,
+      serverVersion: serverVersion,
+      variants: variants,
     );
   }
 }
@@ -84,7 +105,23 @@ class InventoryRepository {
       'items_local',
       orderBy: 'name COLLATE NOCASE ASC',
     );
-    return rows.map(LocalInventoryItem.fromRow).toList(growable: false);
+    if (rows.isEmpty) return const [];
+    final items = rows.map(LocalInventoryItem.fromRow).toList();
+    final ids = items.map((i) => i.id).toList();
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final variantRows = await db.rawQuery(
+      'SELECT * FROM item_variants_local WHERE item_id IN ($placeholders) '
+      'AND is_active = 1 ORDER BY sort_order ASC',
+      ids,
+    );
+    final variantsByItemId = <String, List<LocalVariant>>{};
+    for (final vr in variantRows) {
+      final v = LocalVariant.fromRow(vr);
+      variantsByItemId.putIfAbsent(v.itemId, () => []).add(v);
+    }
+    return items
+        .map((item) => item.withVariants(variantsByItemId[item.id] ?? []))
+        .toList(growable: false);
   }
 
   Future<void> refreshFromServer() async {
@@ -111,6 +148,12 @@ class InventoryRepository {
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
+        // Replace variants for this item
+        await tx.delete('item_variants_local',
+            where: 'item_id = ?', whereArgs: [item.itemId]);
+        for (final v in item.variants) {
+          await tx.insert('item_variants_local', v.toRow(item.itemId));
+        }
       }
     });
     await _appDb.kv.putTimestamp(
@@ -125,6 +168,7 @@ class InventoryRepository {
     int? lowStockThreshold,
     int initialQuantity = 0,
     String? imageUrl,
+    List<LocalVariant> variants = const [],
   }) async {
     final cleanName = name.trim();
     if (cleanName.length < 2) {
@@ -161,6 +205,10 @@ class InventoryRepository {
           'updated_at': now,
         },
       );
+      for (int i = 0; i < variants.length; i++) {
+        await tx.insert(
+            'item_variants_local', variants[i].toRow(itemId));
+      }
       await _appDb.syncQueue.enqueue(
         entityType: 'item',
         operation: 'create',
@@ -174,6 +222,8 @@ class InventoryRepository {
             'category': _cleanOptional(category),
             'low_stock_threshold': lowStockThreshold,
             'image_url': imageUrl,
+            if (variants.isNotEmpty)
+              'variants': variants.map((v) => v.toSyncJson()).toList(),
           }..removeWhere((_, value) => value == null),
         ),
         sourceDeviceId: sourceDeviceId,
@@ -223,6 +273,8 @@ class InventoryRepository {
     required bool isActive,
     String? imageUrl,
     bool imageUrlChanged = false,
+    List<LocalVariant>? variants,
+    bool variantsChanged = false,
   }) async {
     final cleanName = name.trim();
     if (cleanName.length < 2) {
@@ -301,7 +353,16 @@ class InventoryRepository {
         updates['image_url'] = imageUrl;
       }
 
-      final hasChanges = updates.length > 1;
+      if (variantsChanged && variants != null) {
+        payload['variants'] = variants.map((v) => v.toSyncJson()).toList();
+        await tx.delete('item_variants_local',
+            where: 'item_id = ?', whereArgs: [itemId]);
+        for (int i = 0; i < variants.length; i++) {
+          await tx.insert('item_variants_local', variants[i].toRow(itemId));
+        }
+      }
+
+      final hasChanges = updates.length > 1 || variantsChanged;
       if (!hasChanges) {
         throw ArgumentError('No item changes to save.');
       }

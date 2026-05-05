@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 14;
+const _schemaVersion = 15;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -74,6 +74,9 @@ class AppDatabase {
         }
         if (oldVersion < 14) {
           await _upgradeInventorySchemaV14(db);
+        }
+        if (oldVersion < 15) {
+          await _upgradeInventorySchemaV15(db);
         }
       },
     );
@@ -156,8 +159,23 @@ CREATE TABLE IF NOT EXISTS inventory_movements_local (
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
 );
 ''');
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS item_variants_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  price_override TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
+)
+''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_items_local_name ON items_local (name)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_item_variants_item '
+      'ON item_variants_local (item_id, sort_order ASC)',
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_inventory_movements_item '
@@ -284,6 +302,36 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
       await db.execute(
         'ALTER TABLE items_local ADD COLUMN image_url TEXT',
       );
+    }
+  }
+
+  Future<void> _upgradeInventorySchemaV15(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS item_variants_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  price_override TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_item_variants_item '
+      'ON item_variants_local (item_id, sort_order ASC)',
+    );
+    final saleCols =
+        await db.rawQuery('PRAGMA table_info(sale_items_local)');
+    final saleColNames =
+        saleCols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!saleColNames.contains('variant_id')) {
+      await db
+          .execute('ALTER TABLE sale_items_local ADD COLUMN variant_id TEXT');
+    }
+    if (!saleColNames.contains('variant_label')) {
+      await db.execute(
+          'ALTER TABLE sale_items_local ADD COLUMN variant_label TEXT');
     }
   }
 
@@ -475,6 +523,7 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
       'kv_cache',
       'sale_items_local',
       'inventory_movements_local',
+      'item_variants_local',
       'receivable_payments_local',
       'sales_local',
       'expenses_local',

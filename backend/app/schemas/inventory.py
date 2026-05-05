@@ -8,6 +8,22 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class VariantIn(BaseModel):
+    variant_id: UUID | None = None
+    label: str = Field(min_length=1, max_length=64)
+    price_override: Decimal | None = Field(default=None, gt=0, max_digits=18, decimal_places=2)
+    sort_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class VariantOut(BaseModel):
+    variant_id: UUID
+    label: str
+    price_override: Decimal | None
+    sort_order: int
+    is_active: bool
+
+
 class ItemCreateIn(BaseModel):
     item_id: UUID | None = None
     name: str = Field(min_length=2, max_length=255)
@@ -18,6 +34,7 @@ class ItemCreateIn(BaseModel):
     category: str | None = Field(default=None, max_length=128)
     low_stock_threshold: int | None = Field(default=None, ge=0)
     image_url: str | None = None
+    variants: list[VariantIn] = Field(default_factory=list)
 
 
 class ItemUpdateIn(BaseModel):
@@ -30,6 +47,7 @@ class ItemUpdateIn(BaseModel):
     low_stock_threshold: int | None = Field(default=None, ge=0)
     is_active: bool | None = None
     image_url: str | None = None
+    variants: list[VariantIn] | None = None
 
     @model_validator(mode="after")
     def validate_has_changes(self) -> ItemUpdateIn:
@@ -43,6 +61,7 @@ class ItemUpdateIn(BaseModel):
             and self.low_stock_threshold is None
             and self.is_active is None
             and self.image_url is None
+            and self.variants is None
         ):
             msg = "At least one field must be provided."
             raise ValueError(msg)
@@ -95,6 +114,7 @@ class InventoryItemOut(BaseModel):
     quantity_on_hand: int
     version: int = 1
     image_url: str | None = None
+    variants: list[VariantOut] = Field(default_factory=list)
 
 
 class InventoryMutationOut(BaseModel):

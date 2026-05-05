@@ -17,6 +17,7 @@ from app.schemas.inventory import (
     ItemUpdateIn,
     StockAdjustIn,
     StockInIn,
+    VariantOut,
 )
 from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
@@ -170,6 +171,16 @@ def _to_item_out(s: InventoryItemSnapshot) -> InventoryItemOut:
         quantity_on_hand=s.quantity_on_hand,
         image_url=s.image_url,
         version=s.version,
+        variants=[
+            VariantOut(
+                variant_id=v.id,
+                label=v.label,
+                price_override=v.price_override,
+                sort_order=v.sort_order,
+                is_active=v.is_active,
+            )
+            for v in s.variants
+        ],
     )
 
 

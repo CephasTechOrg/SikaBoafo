@@ -60,6 +60,8 @@ class SaleLineSnapshot:
     unit_price: Decimal
     line_total: Decimal
     cost_price_snapshot: Decimal | None = None
+    variant_id: UUID | None = None
+    variant_label: str | None = None
 
 
 @dataclass(slots=True)
@@ -164,6 +166,8 @@ class SalesService:
                 cost_price_snapshot=(
                     self._money(cost_snapshot) if cost_snapshot is not None else None
                 ),
+                variant_id=line.variant_id,
+                variant_label=line.variant_label,
             )
             self.db.add(sale_line)
             self.db.flush()
@@ -175,6 +179,8 @@ class SalesService:
                     unit_price=sale_line.unit_price,
                     line_total=sale_line.line_total,
                     cost_price_snapshot=sale_line.cost_price_snapshot,
+                    variant_id=sale_line.variant_id,
+                    variant_label=sale_line.variant_label,
                 )
             )
 
@@ -485,6 +491,8 @@ class SalesService:
                     unit_price=line.unit_price,
                     line_total=line.line_total,
                     cost_price_snapshot=line.cost_price_snapshot,
+                    variant_id=line.variant_id,
+                    variant_label=line.variant_label,
                 )
                 for line in sale.lines
             ],
