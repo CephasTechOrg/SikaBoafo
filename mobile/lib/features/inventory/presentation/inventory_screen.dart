@@ -39,27 +39,14 @@ class InventoryScreen extends ConsumerStatefulWidget {
 }
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
-  final _nameCtrl = TextEditingController();
-  final _priceCtrl = TextEditingController();
-  final _skuCtrl = TextEditingController();
-  final _categoryCtrl = TextEditingController();
-  final _thresholdCtrl = TextEditingController();
-  final _qtyCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
 
   bool _showArchived = false;
   String _searchQuery = '';
   String? _filterCategory;
-  String? _newItemUrl;
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _priceCtrl.dispose();
-    _skuCtrl.dispose();
-    _categoryCtrl.dispose();
-    _thresholdCtrl.dispose();
-    _qtyCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -242,64 +229,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddItemSheet(
-        nameCtrl: _nameCtrl,
-        priceCtrl: _priceCtrl,
-        skuCtrl: _skuCtrl,
-        categoryCtrl: _categoryCtrl,
-        thresholdCtrl: _thresholdCtrl,
-        qtyCtrl: _qtyCtrl,
-        onSave: () {
-          Navigator.of(context).pop();
-          _saveItem();
-        },
-        selectedImage: _newItemUrl,
-        onImageChanged: (v) => setState(() => _newItemUrl = v),
-      ),
+      builder: (_) => _AddItemSheet(ref: ref),
     );
-  }
-
-  Future<void> _saveItem() async {
-    final name = _nameCtrl.text.trim();
-    final price = _priceCtrl.text.trim();
-    if (name.isEmpty || price.isEmpty) {
-      _msg('Name and price are required.');
-      return;
-    }
-    final initialQtyText = _qtyCtrl.text.trim();
-    final initialQty =
-        initialQtyText.isEmpty ? 0 : int.tryParse(initialQtyText);
-    if (initialQtyText.isNotEmpty && (initialQty == null || initialQty < 0)) {
-      _msg('Enter a valid initial stock quantity.');
-      return;
-    }
-    try {
-      await ref.read(inventoryControllerProvider.notifier).createItem(
-            name: name,
-            defaultPrice: price,
-            sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
-            category: _categoryCtrl.text.trim().isEmpty
-                ? null
-                : _categoryCtrl.text.trim(),
-            lowStockThreshold: int.tryParse(_thresholdCtrl.text.trim()),
-            initialQuantity: initialQty ?? 0,
-            imageUrl: _newItemUrl,
-          );
-      _nameCtrl.clear();
-      _priceCtrl.clear();
-      _skuCtrl.clear();
-      _categoryCtrl.clear();
-      _thresholdCtrl.clear();
-      _qtyCtrl.clear();
-      if (!mounted) return;
-      setState(() {
-        _newItemUrl = null;
-      });
-      _msg('Item added to inventory.');
-    } catch (error) {
-      if (!mounted) return;
-      _msg(humanizeInventoryError(error));
-    }
   }
 
   void _openEdit(LocalInventoryItem item) {
@@ -562,7 +493,9 @@ class _EditSheetState extends State<_EditSheet> {
   late final TextEditingController _skuCtrl;
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _thresholdCtrl;
+  final _customVariantCtrl = TextEditingController();
   late String? _imageUrl;
+  late final List<_VariantDraft> _variants;
   bool _saving = false;
 
   @override
@@ -575,6 +508,13 @@ class _EditSheetState extends State<_EditSheet> {
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
     _imageUrl = widget.item.imageUrl;
+    _variants = widget.item.variants
+        .map((v) => _VariantDraft(
+              id: v.id,
+              label: v.label,
+              priceOverride: v.priceOverride,
+            ))
+        .toList();
   }
 
   @override
@@ -584,6 +524,10 @@ class _EditSheetState extends State<_EditSheet> {
     _skuCtrl.dispose();
     _categoryCtrl.dispose();
     _thresholdCtrl.dispose();
+    _customVariantCtrl.dispose();
+    for (final v in _variants) {
+      v.dispose();
+    }
     super.dispose();
   }
 
@@ -594,80 +538,89 @@ class _EditSheetState extends State<_EditSheet> {
       subtitle: widget.item.name,
       icon: Icons.edit_rounded,
       iconColor: AppColors.forestDark,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InventoryIField(
-              controller: _nameCtrl,
-              label: 'Item Name',
-              hint: 'e.g. Sachet Water',
-              prefixIcon: Icons.label_rounded),
-          const SizedBox(height: 10),
-          InventoryIField(
-            controller: _priceCtrl,
-            label: 'Selling Price (₵)',
-            hint: '0.00',
-            prefixIcon: Icons.payments_rounded,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: InventoryIField(
-                    controller: _categoryCtrl,
-                    label: 'Category',
-                    hint: 'e.g. Drinks',
-                    prefixIcon: Icons.category_rounded),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: InventoryIField(
-                    controller: _skuCtrl,
-                    label: 'SKU',
-                    hint: 'optional',
-                    prefixIcon: Icons.qr_code_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          InventoryIField(
-            controller: _thresholdCtrl,
-            label: 'Low Stock Alert Threshold',
-            hint: 'e.g. 10',
-            prefixIcon: Icons.warning_amber_rounded,
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
-          ProductImagePicker(
-            selected: _imageUrl,
-            onChanged: (v) => setState(() => _imageUrl = v),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InventoryIField(
+                controller: _nameCtrl,
+                label: 'Item Name',
+                hint: 'e.g. Sachet Water',
+                prefixIcon: Icons.label_rounded),
+            const SizedBox(height: 10),
+            InventoryIField(
+              controller: _priceCtrl,
+              label: 'Selling Price (₵)',
+              hint: '0.00',
+              prefixIcon: Icons.payments_rounded,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
-            padding: const EdgeInsets.all(14),
-            child: Text(
-              widget.item.isActive
-                  ? 'Use the Archive item action on the inventory card to remove this item from future sales.'
-                  : 'This item is archived. Use Restore item on the inventory card to make it available for sales again.',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.muted,
-                height: 1.4,
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: InventoryIField(
+                      controller: _categoryCtrl,
+                      label: 'Category',
+                      hint: 'e.g. Drinks',
+                      prefixIcon: Icons.category_rounded),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InventoryIField(
+                      controller: _skuCtrl,
+                      label: 'SKU',
+                      hint: 'optional',
+                      prefixIcon: Icons.qr_code_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            InventoryIField(
+              controller: _thresholdCtrl,
+              label: 'Low Stock Alert Threshold',
+              hint: 'e.g. 10',
+              prefixIcon: Icons.warning_amber_rounded,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            ProductImagePicker(
+              selected: _imageUrl,
+              onChanged: (v) => setState(() => _imageUrl = v),
+            ),
+            const SizedBox(height: 16),
+            _VariantsSection(
+              variants: _variants,
+              customCtrl: _customVariantCtrl,
+              onChanged: () => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                widget.item.isActive
+                    ? 'Use the Archive item action on the inventory card to remove this item from future sales.'
+                    : 'This item is archived. Use Restore item on the inventory card to make it available for sales again.',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.muted,
+                  height: 1.4,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 18),
-          InventorySaveBtn(
-            label: _saving ? 'Saving...' : 'Save Changes',
-            onTap: _saving ? null : _save,
-          ),
-        ],
+            const SizedBox(height: 18),
+            InventorySaveBtn(
+              label: _saving ? 'Saving...' : 'Save Changes',
+              onTap: _saving ? null : _save,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -679,6 +632,29 @@ class _EditSheetState extends State<_EditSheet> {
       final threshold = thresholdText.isEmpty
           ? widget.item.lowStockThreshold
           : int.tryParse(thresholdText);
+      final variants = _variants
+          .map((d) => LocalVariant(
+                id: d.id,
+                itemId: widget.item.id,
+                label: d.label,
+                priceOverride: d.priceCtrl.text.trim().isEmpty
+                    ? null
+                    : d.priceCtrl.text.trim(),
+                sortOrder: _variants.indexOf(d),
+              ))
+          .toList();
+      final originalIds = widget.item.variants.map((v) => v.id).toSet();
+      final newIds = variants.map((v) => v.id).toSet();
+      final variantsChanged = originalIds.length != newIds.length ||
+          !originalIds.containsAll(newIds) ||
+          _variants.any((d) {
+            final orig =
+                widget.item.variants.where((v) => v.id == d.id).firstOrNull;
+            if (orig == null) return true;
+            final newPrice =
+                d.priceCtrl.text.trim().isEmpty ? null : d.priceCtrl.text.trim();
+            return orig.label != d.label || orig.priceOverride != newPrice;
+          });
       await widget.ref.read(inventoryControllerProvider.notifier).updateItem(
             itemId: widget.item.id,
             name: _nameCtrl.text,
@@ -691,6 +667,8 @@ class _EditSheetState extends State<_EditSheet> {
             isActive: widget.item.isActive,
             imageUrl: _imageUrl,
             imageUrlChanged: _imageUrl != widget.item.imageUrl,
+            variants: variants,
+            variantsChanged: variantsChanged,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -1260,27 +1238,40 @@ class _ConfirmSheet extends StatelessWidget {
   }
 }
 
-class _AddItemSheet extends StatelessWidget {
-  const _AddItemSheet({
-    required this.nameCtrl,
-    required this.priceCtrl,
-    required this.skuCtrl,
-    required this.categoryCtrl,
-    required this.thresholdCtrl,
-    required this.qtyCtrl,
-    required this.onSave,
-    required this.selectedImage,
-    required this.onImageChanged,
-  });
-  final TextEditingController nameCtrl,
-      priceCtrl,
-      skuCtrl,
-      categoryCtrl,
-      thresholdCtrl,
-      qtyCtrl;
-  final VoidCallback onSave;
-  final String? selectedImage;
-  final ValueChanged<String?> onImageChanged;
+class _AddItemSheet extends StatefulWidget {
+  const _AddItemSheet({required this.ref});
+  final WidgetRef ref;
+
+  @override
+  State<_AddItemSheet> createState() => _AddItemSheetState();
+}
+
+class _AddItemSheetState extends State<_AddItemSheet> {
+  final _nameCtrl = TextEditingController();
+  final _priceCtrl = TextEditingController();
+  final _skuCtrl = TextEditingController();
+  final _categoryCtrl = TextEditingController();
+  final _thresholdCtrl = TextEditingController();
+  final _qtyCtrl = TextEditingController();
+  final _customVariantCtrl = TextEditingController();
+  String? _imageUrl;
+  final List<_VariantDraft> _variants = [];
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _priceCtrl.dispose();
+    _skuCtrl.dispose();
+    _categoryCtrl.dispose();
+    _thresholdCtrl.dispose();
+    _qtyCtrl.dispose();
+    _customVariantCtrl.dispose();
+    for (final v in _variants) {
+      v.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1291,28 +1282,28 @@ class _AddItemSheet extends StatelessWidget {
       iconColor: AppColors.forest,
       child: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InventoryIField(
-              controller: nameCtrl,
+              controller: _nameCtrl,
               label: 'Product Name',
               hint: 'e.g. Sachet Water',
               prefixIcon: Icons.label_rounded,
             ),
             const SizedBox(height: 12),
             InventoryIField(
-              controller: priceCtrl,
+              controller: _priceCtrl,
               label: 'Selling Price (₵)',
               hint: '0.00',
               prefixIcon: Icons.payments_rounded,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: InventoryIField(
-                    controller: categoryCtrl,
+                    controller: _categoryCtrl,
                     label: 'Category',
                     hint: 'e.g. Drinks',
                     prefixIcon: Icons.category_rounded,
@@ -1321,7 +1312,7 @@ class _AddItemSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InventoryIField(
-                    controller: skuCtrl,
+                    controller: _skuCtrl,
                     label: 'SKU / Barcode',
                     hint: 'optional',
                     prefixIcon: Icons.qr_code_rounded,
@@ -1334,7 +1325,7 @@ class _AddItemSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: InventoryIField(
-                    controller: qtyCtrl,
+                    controller: _qtyCtrl,
                     label: 'Initial Stock',
                     hint: '0',
                     prefixIcon: Icons.inventory_2_rounded,
@@ -1344,7 +1335,7 @@ class _AddItemSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InventoryIField(
-                    controller: thresholdCtrl,
+                    controller: _thresholdCtrl,
                     label: 'Low Stock Alert',
                     hint: 'optional',
                     prefixIcon: Icons.warning_amber_rounded,
@@ -1355,17 +1346,321 @@ class _AddItemSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ProductImagePicker(
-              selected: selectedImage,
-              onChanged: onImageChanged,
+              selected: _imageUrl,
+              onChanged: (v) => setState(() => _imageUrl = v),
+            ),
+            const SizedBox(height: 20),
+            _VariantsSection(
+              variants: _variants,
+              customCtrl: _customVariantCtrl,
+              onChanged: () => setState(() {}),
             ),
             const SizedBox(height: 24),
             InventorySaveBtn(
-              label: 'Save Product',
-              onTap: onSave,
+              label: _saving ? 'Saving...' : 'Save Product',
+              onTap: _saving ? null : _save,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    final price = _priceCtrl.text.trim();
+    if (name.isEmpty || price.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Name and price are required.')));
+      return;
+    }
+    final initialQtyText = _qtyCtrl.text.trim();
+    final initialQty = initialQtyText.isEmpty ? 0 : int.tryParse(initialQtyText);
+    if (initialQtyText.isNotEmpty && (initialQty == null || initialQty < 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a valid initial stock quantity.')));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final variants = _variants
+          .map((d) => LocalVariant(
+                id: d.id,
+                itemId: '',
+                label: d.label,
+                priceOverride: d.priceCtrl.text.trim().isEmpty
+                    ? null
+                    : d.priceCtrl.text.trim(),
+                sortOrder: _variants.indexOf(d),
+              ))
+          .toList();
+      await widget.ref.read(inventoryControllerProvider.notifier).createItem(
+            name: name,
+            defaultPrice: price,
+            sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
+            category: _categoryCtrl.text.trim().isEmpty
+                ? null
+                : _categoryCtrl.text.trim(),
+            lowStockThreshold: int.tryParse(_thresholdCtrl.text.trim()),
+            initialQuantity: initialQty ?? 0,
+            imageUrl: _imageUrl,
+            variants: variants,
+          );
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(humanizeInventoryError(error))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+// ─── Variant helpers ──────────────────────────────────────────────────────────
+
+class _VariantDraft {
+  _VariantDraft({required this.label, String? priceOverride, String? id})
+      : id = id ?? _uuid.v4(),
+        priceCtrl = TextEditingController(text: priceOverride ?? '');
+
+  final String id;
+  final String label;
+  final TextEditingController priceCtrl;
+
+  void dispose() => priceCtrl.dispose();
+}
+
+const _kPresetLabels = ['S', 'M', 'L', 'XL', 'XXL'];
+
+class _VariantsSection extends StatelessWidget {
+  const _VariantsSection({
+    required this.variants,
+    required this.customCtrl,
+    required this.onChanged,
+  });
+
+  final List<_VariantDraft> variants;
+  final TextEditingController customCtrl;
+  final VoidCallback onChanged;
+
+  void _addLabel(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return;
+    if (variants.any((v) => v.label.toLowerCase() == trimmed.toLowerCase())) {
+      return;
+    }
+    variants.add(_VariantDraft(label: trimmed));
+    onChanged();
+  }
+
+  void _removeAt(int index) {
+    variants[index].dispose();
+    variants.removeAt(index);
+    onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeLabels = variants.map((v) => v.label.toLowerCase()).toSet();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.straighten_rounded,
+                size: 16, color: AppColors.forest),
+            const SizedBox(width: 6),
+            const Text(
+              'Sizes / Variants',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'optional',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.muted.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _kPresetLabels.map((label) {
+            final active = activeLabels.contains(label.toLowerCase());
+            return GestureDetector(
+              onTap: () {
+                if (active) {
+                  final idx = variants.indexWhere(
+                      (v) => v.label.toLowerCase() == label.toLowerCase());
+                  if (idx >= 0) _removeAt(idx);
+                } else {
+                  _addLabel(label);
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: active
+                      ? AppColors.forest
+                      : AppColors.forest.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: active
+                        ? AppColors.forest
+                        : AppColors.forest.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: active ? Colors.white : AppColors.forest,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: customCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Custom size or variant…',
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  filled: true,
+                  fillColor: AppColors.surfaceAlt,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: AppColors.forest, width: 1.4),
+                  ),
+                ),
+                onSubmitted: (v) {
+                  _addLabel(v);
+                  customCtrl.clear();
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                _addLabel(customCtrl.text);
+                customCtrl.clear();
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.forest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.add_rounded,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+          ],
+        ),
+        if (variants.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...variants.asMap().entries.map((e) {
+            final idx = e.key;
+            final draft = e.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 44),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.mint,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      draft.label,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.forest,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: draft.priceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: InputDecoration(
+                        hintText: 'Price override (optional)',
+                        prefixText: '₵ ',
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 10),
+                        filled: true,
+                        fillColor: AppColors.surfaceAlt,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: AppColors.forest, width: 1.2),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _removeAt(idx),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.close_rounded,
+                          size: 16, color: AppColors.danger),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
     );
   }
 }
