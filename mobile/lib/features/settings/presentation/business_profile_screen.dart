@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/app_components.dart';
-import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/streak_hero_header.dart';
 import 'connect_paystack_screen.dart' show paystackConnectionProvider;
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
@@ -16,6 +17,35 @@ class BusinessProfileScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<BusinessProfileScreen> createState() =>
       _BusinessProfileScreenState();
+}
+
+class _SheetCap extends StatelessWidget {
+  const _SheetCap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 28,
+      child: ColoredBox(
+        color: Color(0xFF041C0B),
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1F0F172A),
+                  blurRadius: 28,
+                  offset: Offset(0, -8),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
@@ -96,205 +126,266 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     final mc = mcAsync.valueOrNull;
     if (mc != null) _hydrate(mc);
 
-    return MockupScreenScaffold(
-      title: 'Business Profile',
-      subtitle: mc?.businessName ?? 'Store settings and payments',
-      onBack: () => context.pop(),
-      bottomNavSafeArea: true,
-      actions: [
-        MockupHeaderAction(
-          icon: Icons.group_outlined,
-          tooltip: 'Staff',
-          onTap: () => context.push(AppRoute.staff.path),
-        ),
-        MockupHeaderAction(
-          icon: Icons.payment_outlined,
-          tooltip: 'Paystack',
-          onTap: () => context.push(AppRoute.paystack.path),
-        ),
-      ],
-      body: mcAsync.when(
-        loading: () => const Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.4,
-              color: AppColors.forest,
+    const kLeadingGutter = 56.0;
+    final subtitle = mc?.businessName ?? 'Store settings and payments';
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
             ),
-          ),
-        ),
-        error: (e, _) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: AppCard(
-            elevated: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Could not load business profile',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.ink,
-                  ),
+            actions: [
+              IconButton(
+                tooltip: 'Staff',
+                icon: const Icon(Icons.group_outlined,
+                    color: Colors.white, size: 22),
+                onPressed: () => context.push(AppRoute.staff.path),
+              ),
+              IconButton(
+                tooltip: 'Paystack',
+                icon: const Icon(Icons.payment_outlined,
+                    color: Colors.white, size: 22),
+                onPressed: () => context.push(AppRoute.paystack.path),
+              ),
+            ],
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: StreakHeroHeader(
+                leadingContentInset: kLeadingGutter,
+                title: 'Business Profile',
+                subtitle: subtitle,
+                badge: const PremiumBadge(
+                  label: 'Business & store',
+                  icon: Icons.business_outlined,
+                  foreground: Colors.white,
+                  background: Color(0x24FFFFFF),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  e.toString(),
-                  style: const TextStyle(color: AppColors.muted, height: 1.35),
-                ),
-                const SizedBox(height: 12),
-                AppButton.secondary(
-                  label: 'Try again',
-                  icon: Icons.refresh_rounded,
-                  onPressed: () => ref.invalidate(merchantContextProvider),
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (_) => ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: [
-            _sectionLabel(context, 'Business'),
-            const SizedBox(height: 10),
-            _FormCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: _businessNameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                    decoration: _inputDecoration(
-                      context,
-                      label: 'Business name',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _businessTypeCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                    decoration: _inputDecoration(
-                      context,
-                      label: 'Business type',
-                      hint: 'e.g. retail, services',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  AppButton.primary(
-                    label: 'Save business',
-                    icon: Icons.check_rounded,
-                    fullWidth: true,
-                    loading: _savingBusiness,
-                    onPressed: _savingBusiness ? null : _saveBusiness,
-                  ),
-                ],
+              ),
+              title: innerBoxIsScrolled
+                  ? const Text(
+                      'Business Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
               ),
             ),
-            const SizedBox(height: 20),
-            _sectionLabel(context, 'Payments'),
-            const SizedBox(height: 10),
-            Consumer(
-              builder: (context, ref, _) {
-                final connectionAsync = ref.watch(paystackConnectionProvider);
-                final connected =
-                    connectionAsync.valueOrNull?.isConnected ?? false;
-                final mode = connectionAsync.valueOrNull?.mode;
-                return _ActionLinkTile(
-                  icon: Icons.payments_outlined,
-                  iconBg: AppColors.infoSoft,
-                  iconColor: AppColors.navy,
-                  title: 'Paystack',
-                  caption: !connectionAsync.hasValue
-                      ? 'Loading status…'
-                      : connected
-                          ? 'Connected · ${mode == 'live' ? 'Live' : 'Test'}'
-                          : 'Not connected',
-                  onTap: () => context.push(AppRoute.paystack.path),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            _sectionLabel(context, 'Default store'),
-            const SizedBox(height: 10),
-            _FormCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          ),
+          const SliverToBoxAdapter(child: _SheetCap()),
+        ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: mcAsync.when(
+              loading: () => const Center(
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: AppColors.forest,
+                  ),
+                ),
+              ),
+              error: (e, _) => Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: AppCard(
+                  elevated: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Could not load business profile',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        e.toString(),
+                        style:
+                            const TextStyle(color: AppColors.muted, height: 1.35),
+                      ),
+                      const SizedBox(height: 12),
+                      AppButton.secondary(
+                        label: 'Try again',
+                        icon: Icons.refresh_rounded,
+                        onPressed: () => ref.invalidate(merchantContextProvider),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              data: (_) => ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
                 children: [
-                  TextField(
-                    controller: _storeNameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                    decoration: _inputDecoration(
-                      context,
-                      label: 'Store name',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _storeLocationCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                    ),
-                    decoration: _inputDecoration(
-                      context,
-                      label: 'Location',
-                      hint: 'Address or area (optional)',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(_timezone),
-                    initialValue: _timezone,
-                    decoration: _inputDecoration(
-                      context,
-                      label: 'Timezone',
-                    ),
-                    dropdownColor: AppColors.surface,
-                    items: _timezoneOptions
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(
-                              value,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600),
-                            ),
+                  _sectionLabel(context, 'Business'),
+                  const SizedBox(height: 10),
+                  _FormCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _businessNameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
                           ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _timezone = value);
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Business name',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _businessTypeCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Business type',
+                            hint: 'e.g. retail, services',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        AppButton.primary(
+                          label: 'Save business',
+                          icon: Icons.check_rounded,
+                          fullWidth: true,
+                          loading: _savingBusiness,
+                          onPressed: _savingBusiness ? null : _saveBusiness,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _sectionLabel(context, 'Payments'),
+                  const SizedBox(height: 10),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final connectionAsync =
+                          ref.watch(paystackConnectionProvider);
+                      final connected =
+                          connectionAsync.valueOrNull?.isConnected ?? false;
+                      final mode = connectionAsync.valueOrNull?.mode;
+                      return _ActionLinkTile(
+                        icon: Icons.payments_outlined,
+                        iconBg: AppColors.infoSoft,
+                        iconColor: AppColors.navy,
+                        title: 'Paystack',
+                        caption: !connectionAsync.hasValue
+                            ? 'Loading status…'
+                            : connected
+                                ? 'Connected · ${mode == 'live' ? 'Live' : 'Test'}'
+                                : 'Not connected',
+                        onTap: () => context.push(AppRoute.paystack.path),
+                      );
                     },
                   ),
-                  const SizedBox(height: 16),
-                  AppButton.primary(
-                    label: 'Save store',
-                    icon: Icons.place_rounded,
-                    fullWidth: true,
-                    loading: _savingStore,
-                    onPressed: _savingStore ? null : _saveStore,
+                  const SizedBox(height: 20),
+                  _sectionLabel(context, 'Default store'),
+                  const SizedBox(height: 10),
+                  _FormCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _storeNameCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Store name',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _storeLocationCtrl,
+                          textCapitalization: TextCapitalization.words,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Location',
+                            hint: 'Address or area (optional)',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          key: ValueKey(_timezone),
+                          initialValue: _timezone,
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Timezone',
+                          ),
+                          dropdownColor: AppColors.surface,
+                          items: _timezoneOptions
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(
+                                    value,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _timezone = value);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        AppButton.primary(
+                          label: 'Save store',
+                          icon: Icons.place_rounded,
+                          fullWidth: true,
+                          loading: _savingStore,
+                          onPressed: _savingStore ? null : _saveStore,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

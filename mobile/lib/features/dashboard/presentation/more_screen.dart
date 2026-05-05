@@ -16,7 +16,6 @@ class MoreScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           children: [
-            // ── Clean Header ─────────────────────────────────
             Text(
               'More',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -34,7 +33,6 @@ class MoreScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // ── Operations Section ───────────────────────────
             const _SectionLabel(label: 'OPERATIONS'),
             const SizedBox(height: 12),
             _MoreTile(
@@ -62,7 +60,6 @@ class MoreScreen extends StatelessWidget {
 
             const SizedBox(height: 32),
 
-            // ── Insights & Settings ──────────────────────────
             const _SectionLabel(label: 'BUSINESS MANAGEMENT'),
             const SizedBox(height: 12),
             _MoreTile(

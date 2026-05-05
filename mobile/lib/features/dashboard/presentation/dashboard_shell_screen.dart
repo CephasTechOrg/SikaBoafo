@@ -19,7 +19,9 @@ import 'widgets/dashboard_hero_backdrop.dart';
 // ─── Shell ────────────────────────────────────────────────
 
 class DashboardShellScreen extends ConsumerStatefulWidget {
-  const DashboardShellScreen({super.key});
+  const DashboardShellScreen({this.initialIndex = 0, super.key});
+
+  final int initialIndex;
 
   @override
   ConsumerState<DashboardShellScreen> createState() =>
@@ -27,7 +29,13 @@ class DashboardShellScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
-  int _index = 0;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = widget.initialIndex.clamp(0, 3);
+  }
 
   Future<void> _signOut() async {
     await ref.read(sessionServiceProvider).signOut();

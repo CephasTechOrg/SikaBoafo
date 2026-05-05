@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'navigation_keys.dart';
 import '../shared/providers/core_providers.dart';
 import '../features/auth/presentation/auth_shell_screen.dart';
 import '../features/auth/presentation/set_pin_screen.dart';
@@ -27,6 +27,8 @@ enum AppRoute {
   onboarding('/onboarding'),
   setPin('/set-pin'),
   home('/home'),
+  sales('/sales'),
+  inventory('/inventory'),
   debts('/debts'),
   reports('/reports'),
   settings('/settings'),
@@ -41,10 +43,6 @@ enum AppRoute {
   const AppRoute(this.path);
   final String path;
 }
-
-final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
-    GlobalKey<ScaffoldMessengerState>();
 
 const _returnToKey = 'returnTo';
 
@@ -145,6 +143,14 @@ GoRouter createAppRouter(Ref ref) {
       GoRoute(
         path: AppRoute.home.path,
         builder: (context, state) => const DashboardShellScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.sales.path,
+        builder: (context, state) => const DashboardShellScreen(initialIndex: 1),
+      ),
+      GoRoute(
+        path: AppRoute.inventory.path,
+        builder: (context, state) => const DashboardShellScreen(initialIndex: 2),
       ),
       GoRoute(
         path: AppRoute.debts.path,

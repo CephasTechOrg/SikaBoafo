@@ -110,27 +110,45 @@ class PremiumSurface extends StatelessWidget {
   const PremiumSurface({
     required this.child,
     this.padding,
-    this.radius = AppRadii.lg,
+    this.backgroundColor = AppColors.canvas,
+    this.radius = 32,
+    this.lift = 0,
+    this.shadow = true,
     super.key,
   });
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final Color backgroundColor;
   final double radius;
+  final double lift;
+  final bool shadow;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final sheet = ClipRRect(
       borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.mist,
+          color: backgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+          boxShadow: shadow
+              ? const [
+                  BoxShadow(
+                    color: Color(0x1F0F172A),
+                    blurRadius: 28,
+                    offset: Offset(0, -8),
+                  ),
+                ]
+              : null,
         ),
         padding: padding,
         child: child,
       ),
     );
+
+    if (lift <= 0) return sheet;
+    return Transform.translate(offset: Offset(0, -lift), child: sheet);
   }
 }
 

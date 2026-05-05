@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/services/notifications_service.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../inventory/data/inventory_api.dart';
@@ -18,6 +21,7 @@ import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 import '../providers/sales_cart_provider.dart';
+import '../../settings/providers/notification_prefs_provider.dart';
 import 'widgets/sales_tab_bar.dart';
 import 'widgets/sales_bottom_bar.dart';
 import '../../settings/presentation/connect_paystack_screen.dart';
@@ -204,38 +208,41 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           .refresh(includeVoided: _showVoided),
                     ]);
                   },
-                  child: ListView(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      10,
-                      16,
-                      _activeTab == SalesViewTab.newSale ? 110 : 28,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(color: AppColors.surface),
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        10,
+                        16,
+                        _activeTab == SalesViewTab.newSale ? 110 : 28,
+                      ),
+                      children: [
+                        if (_activeTab == SalesViewTab.newSale)
+                          SalesNewSaleView(
+                            searchCtrl: _searchCtrl,
+                            allItems: allItems,
+                            filteredItems: filtered,
+                            selectedItems: selectedItems,
+                            quickAddItems: quickAddItems,
+                            regularUnselectedItems: regularUnselectedItems,
+                            onPriceTap: _showPriceOverrideDialog,
+                          )
+                        else
+                          SalesHistoryView(
+                            showVoided: _showVoided,
+                            onShowVoidedChanged: (value) async {
+                              setState(() => _showVoided = value);
+                              await ref
+                                  .read(salesControllerProvider.notifier)
+                                  .refresh(includeVoided: value);
+                            },
+                            historySales: historySales,
+                            buildSaleTile: _buildRecentSaleTile,
+                            isBusy: isBusy,
+                          ),
+                      ],
                     ),
-                    children: [
-                      if (_activeTab == SalesViewTab.newSale)
-                        SalesNewSaleView(
-                          searchCtrl: _searchCtrl,
-                          allItems: allItems,
-                          filteredItems: filtered,
-                          selectedItems: selectedItems,
-                          quickAddItems: quickAddItems,
-                          regularUnselectedItems: regularUnselectedItems,
-                          onPriceTap: _showPriceOverrideDialog,
-                        )
-                      else
-                        SalesHistoryView(
-                          showVoided: _showVoided,
-                          onShowVoidedChanged: (value) async {
-                            setState(() => _showVoided = value);
-                            await ref
-                                .read(salesControllerProvider.notifier)
-                                .refresh(includeVoided: value);
-                          },
-                          historySales: historySales,
-                          buildSaleTile: _buildRecentSaleTile,
-                          isBusy: isBusy,
-                        ),
-                    ],
                   ),
                 ),
               ),
@@ -489,6 +496,29 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       await ref
           .read(salesControllerProvider.notifier)
           .refresh(includeVoided: _showVoided);
+      if (!mounted) return;
+
+      final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+      if (prefs?.paymentEventsEnabled == true) {
+        const android = AndroidNotificationDetails(
+          'payment_events',
+          'Payment events',
+          channelDescription: 'Payment confirmation and failure alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+          color: AppColors.forest,
+        );
+        await ref.read(notificationsServiceProvider).showNow(
+              id: 2201,
+              type: AppNotificationType.paystack,
+              title: 'Payment successful',
+              body: 'Paystack · ₵ $totalAmount',
+              android: android,
+              route: AppRoute.sales.path,
+              entityId: saleId,
+            );
+      }
+
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
@@ -838,24 +868,30 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: AppColors.canvas,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          boxShadow: overlapsContent
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+    return ColoredBox(
+      // Match Sales hero background so the rounded cutouts show green.
+      color: const Color(0xFF071D11),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            boxShadow: overlapsContent
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1F0F172A),
+                      blurRadius: 28,
+                      offset: Offset(0, -8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: SizedBox(height: maxExtent - 22, child: child),
+          ),
         ),
-        child: SizedBox(height: maxExtent - 20, child: child),
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../../../shared/widgets/premium_ui.dart';
 import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
+import '../providers/debt_reminders_provider.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -109,6 +110,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final canCollect = row.status == 'open' || row.status == 'partially_paid';
     final hasPaymentLink =
         row.paymentLink != null && row.paymentLink!.isNotEmpty;
+    final remindersAsync = ref.watch(debtRemindersProvider(widget.receivableId));
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -127,6 +129,76 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             dueDate: row.dueDateIso ?? 'Not set',
             invoiceNumber: row.invoiceNumber,
             status: row.status,
+          ),
+          const SizedBox(height: 14),
+          PremiumPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const PremiumSectionHeading(
+                  title: 'Reminders',
+                  caption: 'Schedule custom reminders for this debt.',
+                ),
+                const SizedBox(height: 14),
+                remindersAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text(
+                      'Loading reminders…',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  ),
+                  error: (e, _) => Text(
+                    e.toString(),
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
+                  data: (times) {
+                    if (times.isEmpty) {
+                      return PremiumEmptyState(
+                        icon: Icons.notifications_none_rounded,
+                        title: 'No reminders set',
+                        message:
+                            'Add a reminder so you don’t miss a follow-up with this customer.',
+                        action: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () => _addReminder(context),
+                            icon: const Icon(Icons.add_alarm_rounded, size: 18),
+                            label: const Text('Add reminder'),
+                          ),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (var i = 0; i < times.length; i++) ...[
+                          _ReminderRow(
+                            when: times[i],
+                            onRemove: () => ref
+                                .read(
+                                  debtRemindersProvider(widget.receivableId)
+                                      .notifier,
+                                )
+                                .removeReminderAt(i),
+                          ),
+                          if (i != times.length - 1)
+                            const SizedBox(height: 10),
+                        ],
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _addReminder(context),
+                            icon: const Icon(Icons.add_alarm_rounded, size: 18),
+                            label: const Text('Add another reminder'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           if (canCollect) ...[
             const SizedBox(height: 14),
@@ -260,6 +332,29 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     );
   }
 
+  Future<void> _addReminder(BuildContext context) async {
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: DateTime.now(),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (time == null || !context.mounted) return;
+    final when = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    await ref
+        .read(debtRemindersProvider(widget.receivableId).notifier)
+        .addReminder(whenLocal: when);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Reminder scheduled.')),
+    );
+  }
+
   Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
     final saved = await context.push<bool>(
       '/debts/${widget.receivableId}/repayment',
@@ -377,6 +472,67 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     } finally {
       if (mounted) setState(() => _isCheckingPaymentStatus = false);
     }
+  }
+}
+
+class _ReminderRow extends StatelessWidget {
+  const _ReminderRow({required this.when, required this.onRemove});
+
+  final DateTime when;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateFormat.yMMMd().format(when);
+    final time = DateFormat.jm().format(when);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.infoSoft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.alarm_rounded,
+                color: AppColors.navy, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  date,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  time,
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onRemove,
+            tooltip: 'Remove reminder',
+            icon: const Icon(Icons.delete_outline_rounded,
+                color: AppColors.danger),
+          ),
+        ],
+      ),
+    );
   }
 }
 
