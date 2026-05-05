@@ -7,8 +7,8 @@ import 'package:dio/dio.dart';
 import '../../../app/env/app_config.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/streak_hero_header.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../data/settings_api.dart';
 
@@ -59,52 +59,105 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     final isConnected = connection?.isConnected ?? false;
     final activeModeState = _activeModeState(connection);
 
-    return MockupScreenScaffold(
-      title: 'Paystack',
-      subtitle: isConnected
-          ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
-          : 'Not connected — save credentials to start',
-      onBack: () => context.pop(),
-      bottomNavSafeArea: true,
-      body: connectionAsync.when(
-        loading: () => _buildLoadingSkeleton(),
-        error: (error, _) => _buildErrorPanel(error),
-        data: (_) => RefreshIndicator(
-          color: AppColors.forest,
-          onRefresh: () async {
-            ref.invalidate(paystackConnectionProvider);
-            await ref.read(paystackConnectionProvider.future);
-          },
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-            children: [
-              _ConnectionPill(isConnected: isConnected),
-              const SizedBox(height: 14),
-              if (isConnected) ...[
-                _StatusRows(connection: connection!),
-                const SizedBox(height: 14),
-              ],
-              _CredentialsForm(
-                accountLabelCtrl: _accountLabelCtrl,
-                publicKeyCtrl: _publicKeyCtrl,
-                secretKeyCtrl: _secretKeyCtrl,
-                mode: _mode,
-                saving: _saving,
-                disconnecting: _disconnecting,
-                isConnected: isConnected,
-                activeModeState: activeModeState,
-                onModeChanged: (value) =>
-                    setState(() => _mode = value),
-                onSave: _saving ? null : _saveConnection,
-                onDisconnect:
-                    (isConnected && !_disconnecting && !_saving)
-                        ? _disconnectConnection
-                        : null,
+    const kLeadingGutter = 56.0;
+    final subtitle = isConnected
+        ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
+        : 'Not connected — save credentials to start';
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
               ),
-              const SizedBox(height: 14),
-              const _WebhookRow(),
-            ],
+              onPressed: () => context.pop(),
+            ),
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: StreakHeroHeader(
+                leadingContentInset: kLeadingGutter,
+                title: 'Paystack',
+                subtitle: subtitle,
+                badge: const PremiumBadge(
+                  label: 'Payments',
+                  icon: Icons.payments_outlined,
+                  foreground: Colors.white,
+                  background: Color(0x24FFFFFF),
+                ),
+              ),
+              title: innerBoxIsScrolled
+                  ? const Text(
+                      'Paystack',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
+              ),
+            ),
+          ),
+        ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: PremiumSurface(
+            child: connectionAsync.when(
+              loading: () => _buildLoadingSkeleton(),
+              error: (error, _) => _buildErrorPanel(error),
+              data: (_) => RefreshIndicator(
+                color: AppColors.forest,
+                onRefresh: () async {
+                  ref.invalidate(paystackConnectionProvider);
+                  await ref.read(paystackConnectionProvider.future);
+                },
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                  children: [
+                    _ConnectionPill(isConnected: isConnected),
+                    const SizedBox(height: 14),
+                    if (isConnected) ...[
+                      _StatusRows(connection: connection!),
+                      const SizedBox(height: 14),
+                    ],
+                    _CredentialsForm(
+                      accountLabelCtrl: _accountLabelCtrl,
+                      publicKeyCtrl: _publicKeyCtrl,
+                      secretKeyCtrl: _secretKeyCtrl,
+                      mode: _mode,
+                      saving: _saving,
+                      disconnecting: _disconnecting,
+                      isConnected: isConnected,
+                      activeModeState: activeModeState,
+                      onModeChanged: (value) => setState(() => _mode = value),
+                      onSave: _saving ? null : _saveConnection,
+                      onDisconnect: (isConnected && !_disconnecting && !_saving)
+                          ? _disconnectConnection
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+                    const _WebhookRow(),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

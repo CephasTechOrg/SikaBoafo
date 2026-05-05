@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/streak_hero_header.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../data/settings_api.dart';
 
@@ -34,32 +34,88 @@ class StaffScreen extends ConsumerWidget {
     final members = staffAsync.valueOrNull ?? const <StaffMember>[];
     final activeCount = members.where((m) => m.isActive).length;
 
-    return MockupScreenScaffold(
-      title: 'Staff',
-      subtitle: '$activeCount active member${activeCount == 1 ? '' : 's'}',
-      onBack: () => context.pop(),
-      actions: [
-        MockupHeaderAction(
-          icon: Icons.person_add_rounded,
-          tooltip: 'Invite staff',
-          onTap: () => _showInviteSheet(context, ref),
-        ),
-      ],
-      bottomNavSafeArea: true,
-      body: RefreshIndicator(
-        color: AppColors.forest,
-        onRefresh: () async {
-          ref.invalidate(_staffListProvider);
-          ref.invalidate(_pendingInvitesProvider);
-        },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: [
-            _PendingInvitesSection(ref: ref),
-            const SizedBox(height: 16),
-            _ActiveStaffSection(ref: ref),
-          ],
+    const kLeadingGutter = 56.0;
+    final subtitle = '$activeCount active member${activeCount == 1 ? '' : 's'}';
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'Invite staff',
+                icon: const Icon(Icons.person_add_rounded,
+                    color: Colors.white, size: 22),
+                onPressed: () => _showInviteSheet(context, ref),
+              ),
+            ],
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: StreakHeroHeader(
+                leadingContentInset: kLeadingGutter,
+                title: 'Staff',
+                subtitle: subtitle,
+                badge: const PremiumBadge(
+                  label: 'Team access',
+                  icon: Icons.group_outlined,
+                  foreground: Colors.white,
+                  background: Color(0x24FFFFFF),
+                ),
+              ),
+              title: innerBoxIsScrolled
+                  ? const Text(
+                      'Staff',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
+              ),
+            ),
+          ),
+        ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: RefreshIndicator(
+            color: AppColors.forest,
+            onRefresh: () async {
+              ref.invalidate(_staffListProvider);
+              ref.invalidate(_pendingInvitesProvider);
+            },
+            child: PremiumSurface(
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                children: [
+                  _PendingInvitesSection(ref: ref),
+                  const SizedBox(height: 16),
+                  _ActiveStaffSection(ref: ref),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

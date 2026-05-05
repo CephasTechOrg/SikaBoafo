@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
-import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/streak_hero_header.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -284,141 +285,194 @@ class SettingsScreen extends ConsumerWidget {
     final biometricAsync = ref.watch(biometricPrefProvider);
     final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
 
-    return MockupScreenScaffold(
-      title: 'Settings',
-      subtitle: subtitle,
-      onBack: () => context.pop(),
-      bottomNavSafeArea: true,
-      body: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-        children: [
-          const _SectionLabel('Business'),
-          const SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.business_outlined,
-            iconBg: AppColors.infoSoft,
-            iconColor: AppColors.navy,
-            label: 'Business Profile',
-            caption: 'Edit name, type and store details',
-            onTap: () => context.push(AppRoute.businessProfile.path),
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.group_outlined,
-            iconBg: AppColors.successSoft,
-            iconColor: AppColors.forest,
-            label: 'Staff & Team',
-            caption: 'Invite teammates and manage access',
-            onTap: () => context.push(AppRoute.staff.path),
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.payment_outlined,
-            iconBg: AppColors.warningSoft,
-            iconColor: AppColors.warning,
-            label: 'Paystack Payments',
-            caption: 'Connect your Paystack account',
-            onTap: () => context.push(AppRoute.paystack.path),
-          ),
-          const SizedBox(height: 24),
-          const _SectionLabel('Notifications'),
-          const SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.point_of_sale_rounded,
-            iconBg: AppColors.successSoft,
-            iconColor: AppColors.success,
-            label: 'Test: Sale completed',
-            caption: 'Shows a sample “sale done” notification',
-            onTap: () => _sendTestNotification(
-              context,
-              ref,
-              id: 9101,
-              title: 'Sale recorded',
-              body: '₵ 120.00 received · Cash · 3 items',
+    const kLeadingGutter = 56.0;
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
             ),
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.inventory_2_outlined,
-            iconBg: AppColors.warningSoft,
-            iconColor: AppColors.warning,
-            label: 'Test: Low stock',
-            caption: 'Shows a sample low stock alert',
-            onTap: () => _sendTestNotification(
-              context,
-              ref,
-              id: 9102,
-              title: 'Low stock alert',
-              body: 'Sugar (1 left) · Restock soon',
-            ),
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.verified_rounded,
-            iconBg: AppColors.infoSoft,
-            iconColor: AppColors.navy,
-            label: 'Test: Payment successful',
-            caption: 'Shows a sample payment success event',
-            onTap: () => _sendTestNotification(
-              context,
-              ref,
-              id: 9103,
-              title: 'Payment successful',
-              body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
-            ),
-          ),
-          const SizedBox(height: 24),
-          const _SectionLabel('Account'),
-          const SizedBox(height: 12),
-          _SettingsTile(
-            icon: Icons.fingerprint_rounded,
-            iconBg: AppColors.surfaceAlt,
-            iconColor: AppColors.ink,
-            label: 'Biometric unlock',
-            caption: _biometricCaption(
-              availabilityAsync.valueOrNull,
-              biometricAsync,
-            ),
-            onTap: availabilityAsync.valueOrNull == BiometricAvailability.available
-                ? () => _toggleBiometric(context, ref)
-                : () {
-                    final msg = switch (availabilityAsync.valueOrNull) {
-                      BiometricAvailability.notEnrolled =>
-                        'No biometrics enrolled. Enable Face/Fingerprint in phone settings first.',
-                      BiometricAvailability.notSupported =>
-                        'Biometrics not supported on this device.',
-                      _ => 'Biometrics not available right now.',
-                    };
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(msg),
-                        behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: StreakHeroHeader(
+                leadingContentInset: kLeadingGutter,
+                title: 'Settings',
+                subtitle: subtitle,
+                badge: const PremiumBadge(
+                  label: 'Account & device',
+                  icon: Icons.tune_rounded,
+                  foreground: Colors.white,
+                  background: Color(0x24FFFFFF),
+                ),
+              ),
+              title: innerBoxIsScrolled
+                  ? const Text(
+                      'Settings',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
                       ),
-                    );
-                  },
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.logout_rounded,
-            iconBg: AppColors.dangerSoft,
-            iconColor: AppColors.danger,
-            label: 'Sign Out',
-            caption: 'End this session on this device',
-            isDestructive: true,
-            onTap: () => _signOut(context, ref),
-          ),
-          const SizedBox(height: 10),
-          _SettingsTile(
-            icon: Icons.delete_forever_rounded,
-            iconBg: AppColors.dangerSoft,
-            iconColor: AppColors.danger,
-            label: 'Delete account',
-            caption: 'Permanently delete your account access',
-            isDestructive: true,
-            onTap: () => _deleteAccount(context, ref),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
+              ),
+            ),
           ),
         ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+            children: [
+              const _SectionLabel('Business'),
+              const SizedBox(height: 12),
+              _SettingsTile(
+                icon: Icons.business_outlined,
+                iconBg: AppColors.infoSoft,
+                iconColor: AppColors.navy,
+                label: 'Business Profile',
+                caption: 'Edit name, type and store details',
+                onTap: () => context.push(AppRoute.businessProfile.path),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.group_outlined,
+                iconBg: AppColors.successSoft,
+                iconColor: AppColors.forest,
+                label: 'Staff & Team',
+                caption: 'Invite teammates and manage access',
+                onTap: () => context.push(AppRoute.staff.path),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.payment_outlined,
+                iconBg: AppColors.warningSoft,
+                iconColor: AppColors.warning,
+                label: 'Paystack Payments',
+                caption: 'Connect your Paystack account',
+                onTap: () => context.push(AppRoute.paystack.path),
+              ),
+              const SizedBox(height: 24),
+              const _SectionLabel('Notifications'),
+              const SizedBox(height: 12),
+              _SettingsTile(
+                icon: Icons.point_of_sale_rounded,
+                iconBg: AppColors.successSoft,
+                iconColor: AppColors.success,
+                label: 'Test: Sale completed',
+                caption: 'Shows a sample “sale done” notification',
+                onTap: () => _sendTestNotification(
+                  context,
+                  ref,
+                  id: 9101,
+                  title: 'Sale recorded',
+                  body: '₵ 120.00 received · Cash · 3 items',
+                ),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.inventory_2_outlined,
+                iconBg: AppColors.warningSoft,
+                iconColor: AppColors.warning,
+                label: 'Test: Low stock',
+                caption: 'Shows a sample low stock alert',
+                onTap: () => _sendTestNotification(
+                  context,
+                  ref,
+                  id: 9102,
+                  title: 'Low stock alert',
+                  body: 'Sugar (1 left) · Restock soon',
+                ),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.verified_rounded,
+                iconBg: AppColors.infoSoft,
+                iconColor: AppColors.navy,
+                label: 'Test: Payment successful',
+                caption: 'Shows a sample payment success event',
+                onTap: () => _sendTestNotification(
+                  context,
+                  ref,
+                  id: 9103,
+                  title: 'Payment successful',
+                  body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
+                ),
+              ),
+              const SizedBox(height: 24),
+              const _SectionLabel('Account'),
+              const SizedBox(height: 12),
+              _SettingsTile(
+                icon: Icons.fingerprint_rounded,
+                iconBg: AppColors.surfaceAlt,
+                iconColor: AppColors.ink,
+                label: 'Biometric unlock',
+                caption: _biometricCaption(
+                  availabilityAsync.valueOrNull,
+                  biometricAsync,
+                ),
+                onTap: availabilityAsync.valueOrNull ==
+                        BiometricAvailability.available
+                    ? () => _toggleBiometric(context, ref)
+                    : () {
+                        final msg = switch (availabilityAsync.valueOrNull) {
+                          BiometricAvailability.notEnrolled =>
+                            'No biometrics enrolled. Enable Face/Fingerprint in phone settings first.',
+                          BiometricAvailability.notSupported =>
+                            'Biometrics not supported on this device.',
+                          _ => 'Biometrics not available right now.',
+                        };
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(msg),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.logout_rounded,
+                iconBg: AppColors.dangerSoft,
+                iconColor: AppColors.danger,
+                label: 'Sign Out',
+                caption: 'End this session on this device',
+                isDestructive: true,
+                onTap: () => _signOut(context, ref),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.delete_forever_rounded,
+                iconBg: AppColors.dangerSoft,
+                iconColor: AppColors.danger,
+                label: 'Delete account',
+                caption: 'Permanently delete your account access',
+                isDestructive: true,
+                onTap: () => _deleteAccount(context, ref),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
