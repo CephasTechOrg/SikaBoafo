@@ -11,6 +11,7 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../providers/biometric_pref_provider.dart';
+import '../providers/notification_prefs_provider.dart';
 import '../../../core/services/biometric_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -284,6 +285,7 @@ class SettingsScreen extends ConsumerWidget {
     final subtitle = businessName ?? 'Manage your account';
     final biometricAsync = ref.watch(biometricPrefProvider);
     final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
+    final notifPrefsAsync = ref.watch(notificationPrefsProvider);
 
     const kLeadingGutter = 56.0;
 
@@ -375,48 +377,142 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               const _SectionLabel('Notifications'),
               const SizedBox(height: 12),
-              _SettingsTile(
-                icon: Icons.point_of_sale_rounded,
-                iconBg: AppColors.successSoft,
-                iconColor: AppColors.success,
-                label: 'Test: Sale completed',
-                caption: 'Shows a sample “sale done” notification',
-                onTap: () => _sendTestNotification(
-                  context,
-                  ref,
-                  id: 9101,
-                  title: 'Sale recorded',
-                  body: '₵ 120.00 received · Cash · 3 items',
+              notifPrefsAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 18),
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.inventory_2_outlined,
-                iconBg: AppColors.warningSoft,
-                iconColor: AppColors.warning,
-                label: 'Test: Low stock',
-                caption: 'Shows a sample low stock alert',
-                onTap: () => _sendTestNotification(
-                  context,
-                  ref,
-                  id: 9102,
-                  title: 'Low stock alert',
-                  body: 'Sugar (1 left) · Restock soon',
-                ),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.verified_rounded,
-                iconBg: AppColors.infoSoft,
-                iconColor: AppColors.navy,
-                label: 'Test: Payment successful',
-                caption: 'Shows a sample payment success event',
-                onTap: () => _sendTestNotification(
-                  context,
-                  ref,
-                  id: 9103,
-                  title: 'Payment successful',
-                  body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
+                error: (e, _) => _InlineError(message: e.toString()),
+                data: (prefs) => Column(
+                  children: [
+                    _SwitchTile(
+                      icon: Icons.sync_rounded,
+                      iconBg: AppColors.infoSoft,
+                      iconColor: AppColors.navy,
+                      label: 'Sync status',
+                      caption: 'Offline and syncing updates',
+                      value: prefs.syncStatusEnabled,
+                      onChanged: (v) => ref
+                          .read(notificationPrefsProvider.notifier)
+                          .setSyncStatusEnabled(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _SwitchTile(
+                      icon: Icons.event_note_rounded,
+                      iconBg: AppColors.warningSoft,
+                      iconColor: AppColors.warning,
+                      label: 'Debt reminders',
+                      caption: 'Custom reminders you set per debt',
+                      value: prefs.debtRemindersEnabled,
+                      onChanged: (v) => ref
+                          .read(notificationPrefsProvider.notifier)
+                          .setDebtRemindersEnabled(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _SwitchTile(
+                      icon: Icons.inventory_2_outlined,
+                      iconBg: AppColors.warningSoft,
+                      iconColor: AppColors.warning,
+                      label: 'Low stock',
+                      caption: 'Alerts when stock hits your thresholds',
+                      value: prefs.lowStockEnabled,
+                      onChanged: (v) => ref
+                          .read(notificationPrefsProvider.notifier)
+                          .setLowStockEnabled(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _SwitchTile(
+                      icon: Icons.payments_outlined,
+                      iconBg: AppColors.successSoft,
+                      iconColor: AppColors.forest,
+                      label: 'Payment events',
+                      caption: 'Paystack success/failure alerts',
+                      value: prefs.paymentEventsEnabled,
+                      onChanged: (v) => ref
+                          .read(notificationPrefsProvider.notifier)
+                          .setPaymentEventsEnabled(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _SwitchTile(
+                      icon: Icons.summarize_outlined,
+                      iconBg: AppColors.surfaceAlt,
+                      iconColor: AppColors.ink,
+                      label: 'Daily summary',
+                      caption: 'A daily snapshot of sales and activity',
+                      value: prefs.dailySummaryEnabled,
+                      onChanged: (v) => ref
+                          .read(notificationPrefsProvider.notifier)
+                          .setDailySummaryEnabled(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _SettingsTile(
+                      icon: Icons.schedule_rounded,
+                      iconBg: AppColors.surfaceAlt,
+                      iconColor: AppColors.ink,
+                      label: 'Daily summary time',
+                      caption:
+                          _formatTimeOfDay(context, prefs.dailySummaryTime),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: prefs.dailySummaryTime,
+                        );
+                        if (picked == null || !context.mounted) return;
+                        await ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setDailySummaryTime(picked);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const _SectionLabel('Notification tests'),
+                    const SizedBox(height: 12),
+                    _SettingsTile(
+                      icon: Icons.point_of_sale_rounded,
+                      iconBg: AppColors.successSoft,
+                      iconColor: AppColors.success,
+                      label: 'Test: Sale completed',
+                      caption: 'Sends a sample “sale done” notification',
+                      onTap: () => _sendTestNotification(
+                        context,
+                        ref,
+                        id: 9101,
+                        title: 'Sale recorded',
+                        body: '₵ 120.00 received · Cash · 3 items',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _SettingsTile(
+                      icon: Icons.inventory_2_outlined,
+                      iconBg: AppColors.warningSoft,
+                      iconColor: AppColors.warning,
+                      label: 'Test: Low stock',
+                      caption: 'Sends a sample low stock alert',
+                      onTap: () => _sendTestNotification(
+                        context,
+                        ref,
+                        id: 9102,
+                        title: 'Low stock alert',
+                        body: 'Sugar (1 left) · Restock soon',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _SettingsTile(
+                      icon: Icons.verified_rounded,
+                      iconBg: AppColors.infoSoft,
+                      iconColor: AppColors.navy,
+                      label: 'Test: Payment successful',
+                      caption: 'Sends a sample payment success event',
+                      onTap: () => _sendTestNotification(
+                        context,
+                        ref,
+                        id: 9103,
+                        title: 'Payment successful',
+                        body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -580,4 +676,124 @@ class _SettingsTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SwitchTile extends StatelessWidget {
+  const _SwitchTile({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.label,
+    required this.caption,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String label;
+  final String caption;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () => onChanged(!value),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      caption,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                activeThumbColor: AppColors.forest,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.dangerSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: const Color(0xFFF2C9C0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatTimeOfDay(BuildContext context, TimeOfDay t) {
+  final localizations = MaterialLocalizations.of(context);
+  return localizations.formatTimeOfDay(t, alwaysUse24HourFormat: false);
 }

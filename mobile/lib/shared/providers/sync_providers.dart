@@ -12,6 +12,7 @@ import '../../data/sync/sync_refresh_service.dart';
 import '../../features/debts/data/debts_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
 import 'core_providers.dart';
+import '../../features/settings/providers/notification_prefs_provider.dart';
 
 class SyncStatusSnapshot {
   const SyncStatusSnapshot({
@@ -84,6 +85,9 @@ class SyncStatusController
   int _consecutiveFailures = 0;
   String? _lastError;
   DateTime? _lastSyncedAt;
+  bool? _lastBackendReachable;
+  int _lastPendingCount = 0;
+  int _lastFailedCount = 0;
 
   @override
   Future<SyncStatusSnapshot> build() async {
@@ -191,7 +195,7 @@ class SyncStatusController
     final stats = await _appDb.syncQueue.stats();
     final failedEntries = await _appDb.syncQueue.failedRows();
     final deadEntries = await _appDb.syncQueue.deadRows();
-    return SyncStatusSnapshot(
+    final snapshot = SyncStatusSnapshot(
       backendReachable: backendReachable ?? false,
       isSyncing: isSyncing || stats.sendingCount > 0,
       stats: stats,
@@ -200,6 +204,61 @@ class SyncStatusController
       lastError: _lastError,
       lastSyncedAt: _lastSyncedAt,
     );
+    _maybeNotify(snapshot);
+    return snapshot;
+  }
+
+  void _maybeNotify(SyncStatusSnapshot snapshot) {
+    final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+    if (prefs == null || prefs.syncStatusEnabled != true) {
+      _lastBackendReachable = snapshot.backendReachable;
+      _lastPendingCount = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
+      _lastFailedCount = snapshot.stats.failedCount + snapshot.stats.conflictCount;
+      return;
+    }
+
+    final backendReachable = snapshot.backendReachable;
+    final pendingNow = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
+    final failedNow = snapshot.stats.failedCount + snapshot.stats.conflictCount;
+
+    final notifications = ref.read(notificationsServiceProvider);
+
+    // Offline transition
+    if (_lastBackendReachable == true && backendReachable == false) {
+      unawaited(
+        notifications.showSyncStatusNotification(
+          title: 'Offline',
+          body: 'No internet connection. Changes will sync when you’re back online.',
+          route: '/home',
+        ),
+      );
+    }
+
+    // Failures appearing
+    if (failedNow > 0 && _lastFailedCount == 0) {
+      unawaited(
+        notifications.showSyncStatusNotification(
+          title: 'Sync needs attention',
+          body: '$failedNow operation${failedNow == 1 ? '' : 's'} failed. Tap to review.',
+          route: '/home',
+        ),
+      );
+    }
+
+    // Pending work appears
+    if (pendingNow > 0 && _lastPendingCount == 0 && backendReachable) {
+      unawaited(
+        notifications.showSyncStatusNotification(
+          title: 'Sync in progress',
+          body: '$pendingNow pending update${pendingNow == 1 ? '' : 's'} will be sent shortly.',
+          route: '/home',
+        ),
+      );
+    }
+
+    _lastBackendReachable = backendReachable;
+    _lastPendingCount = pendingNow;
+    _lastFailedCount = failedNow;
   }
 
   Future<bool> _pingBackend() async {
