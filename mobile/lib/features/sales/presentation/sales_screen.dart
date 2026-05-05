@@ -851,24 +851,25 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: AppColors.canvas,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          boxShadow: overlapsContent
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
-        ),
-        child: SizedBox(height: maxExtent - 20, child: child),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+        boxShadow: overlapsContent
+            ? const [
+                BoxShadow(
+                  color: Color(0x1F0F172A),
+                  blurRadius: 28,
+                  offset: Offset(0, -8),
+                ),
+              ]
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+        child: SizedBox(height: maxExtent - 22, child: child),
       ),
     );
   }

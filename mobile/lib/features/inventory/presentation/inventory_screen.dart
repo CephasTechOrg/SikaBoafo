@@ -408,7 +408,25 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     // Match paint extent to layout extent; intrinsic height is often a few px
     // smaller than [height] (e.g. 68 vs 76), which breaks SliverGeometry.
-    return SizedBox(height: maxExtent, child: child);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      height: maxExtent,
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+        boxShadow: overlapsContent
+            ? const [
+                BoxShadow(
+                  color: Color(0x1F0F172A),
+                  blurRadius: 28,
+                  offset: Offset(0, -8),
+                ),
+              ]
+            : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
   }
 
   @override

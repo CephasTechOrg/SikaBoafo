@@ -19,6 +19,30 @@ class BusinessProfileScreen extends ConsumerStatefulWidget {
       _BusinessProfileScreenState();
 }
 
+class _SheetCap extends StatelessWidget {
+  const _SheetCap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 28,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   static const _defaultTimezones = <String>[
     'Africa/Accra',
@@ -163,13 +187,12 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: _SheetCap()),
         ],
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: PremiumSurface(
-            lift: 28,
-            child: mcAsync.when(
+          child: mcAsync.when(
               loading: () => const Center(
                 child: SizedBox(
                   width: 28,
@@ -213,7 +236,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
               ),
               data: (_) => ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
                 children: [
                   _sectionLabel(context, 'Business'),
                   const SizedBox(height: 10),
@@ -355,7 +378,6 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 ],
               ),
             ),
-          ),
         ),
       ),
     );

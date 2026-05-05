@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../../expenses/presentation/expenses_screen.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -10,76 +11,57 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-          children: [
-            // ── Clean Header ─────────────────────────────────
-            Text(
-              'More',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1.0,
-                  ),
+    return MockupScreenScaffold(
+      title: 'More',
+      subtitle: 'Manage your business operations and settings',
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+        children: [
+          // ── Operations Section ───────────────────────────
+          const _SectionLabel(label: 'OPERATIONS'),
+          const SizedBox(height: 12),
+          _MoreTile(
+            icon: Icons.receipt_long_rounded,
+            title: 'Expenses',
+            subtitle: 'Track costs and daily spending',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ExpensesScreen()),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Manage your business operations and settings',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.muted,
-                  ),
-            ),
-            const SizedBox(height: 32),
+          ),
+          const SizedBox(height: 12),
+          _MoreTile(
+            icon: Icons.handshake_rounded,
+            title: 'Debts',
+            subtitle: 'Manage receivables and repayments',
+            onTap: () => context.push(AppRoute.debts.path),
+          ),
+          const SizedBox(height: 12),
+          _MoreTile(
+            icon: Icons.people_alt_rounded,
+            title: 'Customers',
+            subtitle: 'Client directory and history',
+            onTap: () => context.push(AppRoute.customers.path),
+          ),
 
-            // ── Operations Section ───────────────────────────
-            const _SectionLabel(label: 'OPERATIONS'),
-            const SizedBox(height: 12),
-            _MoreTile(
-              icon: Icons.receipt_long_rounded,
-              title: 'Expenses',
-              subtitle: 'Track costs and daily spending',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ExpensesScreen()),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _MoreTile(
-              icon: Icons.handshake_rounded,
-              title: 'Debts',
-              subtitle: 'Manage receivables and repayments',
-              onTap: () => context.push(AppRoute.debts.path),
-            ),
-            const SizedBox(height: 12),
-            _MoreTile(
-              icon: Icons.people_alt_rounded,
-              title: 'Customers',
-              subtitle: 'Client directory and history',
-              onTap: () => context.push(AppRoute.customers.path),
-            ),
+          const SizedBox(height: 32),
 
-            const SizedBox(height: 32),
-
-            // ── Insights & Settings ──────────────────────────
-            const _SectionLabel(label: 'BUSINESS MANAGEMENT'),
-            const SizedBox(height: 12),
-            _MoreTile(
-              icon: Icons.bar_chart_rounded,
-              title: 'Reports',
-              subtitle: 'Deep insights into performance',
-              onTap: () => context.push(AppRoute.reports.path),
-            ),
-            const SizedBox(height: 12),
-            _MoreTile(
-              icon: Icons.settings_rounded,
-              title: 'Settings',
-              subtitle: 'Profile, staff, and preferences',
-              onTap: () => context.push(AppRoute.settings.path),
-            ),
-          ],
-        ),
+          // ── Insights & Settings ──────────────────────────
+          const _SectionLabel(label: 'BUSINESS MANAGEMENT'),
+          const SizedBox(height: 12),
+          _MoreTile(
+            icon: Icons.bar_chart_rounded,
+            title: 'Reports',
+            subtitle: 'Deep insights into performance',
+            onTap: () => context.push(AppRoute.reports.path),
+          ),
+          const SizedBox(height: 12),
+          _MoreTile(
+            icon: Icons.settings_rounded,
+            title: 'Settings',
+            subtitle: 'Profile, staff, and preferences',
+            onTap: () => context.push(AppRoute.settings.path),
+          ),
+        ],
       ),
     );
   }

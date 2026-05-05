@@ -338,35 +338,34 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: _SheetCap()),
         ],
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: PremiumSurface(
-            lift: 28,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
-              children: [
-                const _SectionLabel('Business'),
-                const SizedBox(height: 12),
-                _SettingsTile(
-                  icon: Icons.business_outlined,
-                  iconBg: AppColors.infoSoft,
-                  iconColor: AppColors.navy,
-                  label: 'Business Profile',
-                  caption: 'Edit name, type and store details',
-                  onTap: () => context.push(AppRoute.businessProfile.path),
-                ),
-                const SizedBox(height: 10),
-                _SettingsTile(
-                  icon: Icons.group_outlined,
-                  iconBg: AppColors.successSoft,
-                  iconColor: AppColors.forest,
-                  label: 'Staff & Team',
-                  caption: 'Invite teammates and manage access',
-                  onTap: () => context.push(AppRoute.staff.path),
-                ),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+            children: [
+              const _SectionLabel('Business'),
+              const SizedBox(height: 12),
+              _SettingsTile(
+                icon: Icons.business_outlined,
+                iconBg: AppColors.infoSoft,
+                iconColor: AppColors.navy,
+                label: 'Business Profile',
+                caption: 'Edit name, type and store details',
+                onTap: () => context.push(AppRoute.businessProfile.path),
+              ),
+              const SizedBox(height: 10),
+              _SettingsTile(
+                icon: Icons.group_outlined,
+                iconBg: AppColors.successSoft,
+                iconColor: AppColors.forest,
+                label: 'Staff & Team',
+                caption: 'Invite teammates and manage access',
+                onTap: () => context.push(AppRoute.staff.path),
+              ),
                 const SizedBox(height: 10),
                 _SettingsTile(
                   icon: Icons.payment_outlined,
@@ -568,9 +567,32 @@ class SettingsScreen extends ConsumerWidget {
                   isDestructive: true,
                   onTap: () => _deleteAccount(context, ref),
                 ),
-              ],
-            ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetCap extends StatelessWidget {
+  const _SheetCap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 28,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
         ),
       ),
     );

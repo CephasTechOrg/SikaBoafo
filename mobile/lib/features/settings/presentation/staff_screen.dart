@@ -94,6 +94,7 @@ class StaffScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: _SheetCap()),
         ],
         body: MediaQuery.removePadding(
           context: context,
@@ -104,17 +105,14 @@ class StaffScreen extends ConsumerWidget {
               ref.invalidate(_staffListProvider);
               ref.invalidate(_pendingInvitesProvider);
             },
-            child: PremiumSurface(
-              lift: 28,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
-                children: [
-                  _PendingInvitesSection(ref: ref),
-                  const SizedBox(height: 16),
-                  _ActiveStaffSection(ref: ref),
-                ],
-              ),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+              children: [
+                _PendingInvitesSection(ref: ref),
+                const SizedBox(height: 16),
+                _ActiveStaffSection(ref: ref),
+              ],
             ),
           ),
         ),
@@ -132,6 +130,30 @@ class StaffScreen extends ConsumerWidget {
           ref.invalidate(_pendingInvitesProvider);
         },
         settingsApi: ref.read(_settingsApiProvider),
+      ),
+    );
+  }
+}
+
+class _SheetCap extends StatelessWidget {
+  const _SheetCap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 28,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
       ),
     );
   }

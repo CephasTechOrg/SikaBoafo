@@ -31,6 +31,30 @@ class ConnectPaystackScreen extends ConsumerStatefulWidget {
       _ConnectPaystackScreenState();
 }
 
+class _SheetCap extends StatelessWidget {
+  const _SheetCap();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 28,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
   final TextEditingController _accountLabelCtrl = TextEditingController();
   final TextEditingController _publicKeyCtrl = TextEditingController();
@@ -113,50 +137,48 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
               ),
             ),
           ),
+          const SliverToBoxAdapter(child: _SheetCap()),
         ],
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: PremiumSurface(
-            lift: 28,
-            child: connectionAsync.when(
-              loading: () => _buildLoadingSkeleton(),
-              error: (error, _) => _buildErrorPanel(error),
-              data: (_) => RefreshIndicator(
-                color: AppColors.forest,
-                onRefresh: () async {
-                  ref.invalidate(paystackConnectionProvider);
-                  await ref.read(paystackConnectionProvider.future);
-                },
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
-                  children: [
-                    _ConnectionPill(isConnected: isConnected),
+          child: connectionAsync.when(
+            loading: () => _buildLoadingSkeleton(),
+            error: (error, _) => _buildErrorPanel(error),
+            data: (_) => RefreshIndicator(
+              color: AppColors.forest,
+              onRefresh: () async {
+                ref.invalidate(paystackConnectionProvider);
+                await ref.read(paystackConnectionProvider.future);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                children: [
+                  _ConnectionPill(isConnected: isConnected),
+                  const SizedBox(height: 14),
+                  if (isConnected) ...[
+                    _StatusRows(connection: connection!),
                     const SizedBox(height: 14),
-                    if (isConnected) ...[
-                      _StatusRows(connection: connection!),
-                      const SizedBox(height: 14),
-                    ],
-                    _CredentialsForm(
-                      accountLabelCtrl: _accountLabelCtrl,
-                      publicKeyCtrl: _publicKeyCtrl,
-                      secretKeyCtrl: _secretKeyCtrl,
-                      mode: _mode,
-                      saving: _saving,
-                      disconnecting: _disconnecting,
-                      isConnected: isConnected,
-                      activeModeState: activeModeState,
-                      onModeChanged: (value) => setState(() => _mode = value),
-                      onSave: _saving ? null : _saveConnection,
-                      onDisconnect: (isConnected && !_disconnecting && !_saving)
-                          ? _disconnectConnection
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    const _WebhookRow(),
                   ],
-                ),
+                  _CredentialsForm(
+                    accountLabelCtrl: _accountLabelCtrl,
+                    publicKeyCtrl: _publicKeyCtrl,
+                    secretKeyCtrl: _secretKeyCtrl,
+                    mode: _mode,
+                    saving: _saving,
+                    disconnecting: _disconnecting,
+                    isConnected: isConnected,
+                    activeModeState: activeModeState,
+                    onModeChanged: (value) => setState(() => _mode = value),
+                    onSave: _saving ? null : _saveConnection,
+                    onDisconnect: (isConnected && !_disconnecting && !_saving)
+                        ? _disconnectConnection
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+                  const _WebhookRow(),
+                ],
               ),
             ),
           ),
