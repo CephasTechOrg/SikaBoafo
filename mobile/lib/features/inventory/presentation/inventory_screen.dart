@@ -160,9 +160,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           removeTop: true,
           child: RefreshIndicator(
             onRefresh: () => ref.read(inventoryControllerProvider.notifier).refresh(),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-              children: [
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: AppColors.surface),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                children: [
                 Row(
                   children: [
                     Text(
@@ -206,7 +208,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     else ...filteredArchived.map((item) => InventoryItemCard(item: item, onTap: () => _openItemDetail(item))),
                   ],
                 ],
-              ],
+                ],
+              ),
             ),
           ),
         ),

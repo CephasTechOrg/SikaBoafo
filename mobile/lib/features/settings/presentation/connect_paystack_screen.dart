@@ -40,7 +40,7 @@ class _SheetCap extends StatelessWidget {
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.canvas,
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
           boxShadow: [
             BoxShadow(
@@ -142,43 +142,46 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: connectionAsync.when(
-            loading: () => _buildLoadingSkeleton(),
-            error: (error, _) => _buildErrorPanel(error),
-            data: (_) => RefreshIndicator(
-              color: AppColors.forest,
-              onRefresh: () async {
-                ref.invalidate(paystackConnectionProvider);
-                await ref.read(paystackConnectionProvider.future);
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-                children: [
-                  _ConnectionPill(isConnected: isConnected),
-                  const SizedBox(height: 14),
-                  if (isConnected) ...[
-                    _StatusRows(connection: connection!),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: connectionAsync.when(
+              loading: () => _buildLoadingSkeleton(),
+              error: (error, _) => _buildErrorPanel(error),
+              data: (_) => RefreshIndicator(
+                color: AppColors.forest,
+                onRefresh: () async {
+                  ref.invalidate(paystackConnectionProvider);
+                  await ref.read(paystackConnectionProvider.future);
+                },
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                  children: [
+                    _ConnectionPill(isConnected: isConnected),
                     const SizedBox(height: 14),
+                    if (isConnected) ...[
+                      _StatusRows(connection: connection!),
+                      const SizedBox(height: 14),
+                    ],
+                    _CredentialsForm(
+                      accountLabelCtrl: _accountLabelCtrl,
+                      publicKeyCtrl: _publicKeyCtrl,
+                      secretKeyCtrl: _secretKeyCtrl,
+                      mode: _mode,
+                      saving: _saving,
+                      disconnecting: _disconnecting,
+                      isConnected: isConnected,
+                      activeModeState: activeModeState,
+                      onModeChanged: (value) => setState(() => _mode = value),
+                      onSave: _saving ? null : _saveConnection,
+                      onDisconnect: (isConnected && !_disconnecting && !_saving)
+                          ? _disconnectConnection
+                          : null,
+                    ),
+                    const SizedBox(height: 14),
+                    const _WebhookRow(),
                   ],
-                  _CredentialsForm(
-                    accountLabelCtrl: _accountLabelCtrl,
-                    publicKeyCtrl: _publicKeyCtrl,
-                    secretKeyCtrl: _secretKeyCtrl,
-                    mode: _mode,
-                    saving: _saving,
-                    disconnecting: _disconnecting,
-                    isConnected: isConnected,
-                    activeModeState: activeModeState,
-                    onModeChanged: (value) => setState(() => _mode = value),
-                    onSave: _saving ? null : _saveConnection,
-                    onDisconnect: (isConnected && !_disconnecting && !_saving)
-                        ? _disconnectConnection
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  const _WebhookRow(),
-                ],
+                ),
               ),
             ),
           ),

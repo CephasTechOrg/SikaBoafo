@@ -105,14 +105,17 @@ class StaffScreen extends ConsumerWidget {
               ref.invalidate(_staffListProvider);
               ref.invalidate(_pendingInvitesProvider);
             },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-              children: [
-                _PendingInvitesSection(ref: ref),
-                const SizedBox(height: 16),
-                _ActiveStaffSection(ref: ref),
-              ],
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: AppColors.surface),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                children: [
+                  _PendingInvitesSection(ref: ref),
+                  const SizedBox(height: 16),
+                  _ActiveStaffSection(ref: ref),
+                ],
+              ),
             ),
           ),
         ),
@@ -144,7 +147,7 @@ class _SheetCap extends StatelessWidget {
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.canvas,
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
           boxShadow: [
             BoxShadow(

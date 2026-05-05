@@ -203,38 +203,41 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           .refresh(includeVoided: _showVoided),
                     ]);
                   },
-                  child: ListView(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      10,
-                      16,
-                      _activeTab == SalesViewTab.newSale ? 110 : 28,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(color: AppColors.surface),
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        10,
+                        16,
+                        _activeTab == SalesViewTab.newSale ? 110 : 28,
+                      ),
+                      children: [
+                        if (_activeTab == SalesViewTab.newSale)
+                          SalesNewSaleView(
+                            searchCtrl: _searchCtrl,
+                            allItems: allItems,
+                            filteredItems: filtered,
+                            selectedItems: selectedItems,
+                            quickAddItems: quickAddItems,
+                            regularUnselectedItems: regularUnselectedItems,
+                            onPriceTap: _showPriceOverrideDialog,
+                          )
+                        else
+                          SalesHistoryView(
+                            showVoided: _showVoided,
+                            onShowVoidedChanged: (value) async {
+                              setState(() => _showVoided = value);
+                              await ref
+                                  .read(salesControllerProvider.notifier)
+                                  .refresh(includeVoided: value);
+                            },
+                            historySales: historySales,
+                            buildSaleTile: _buildRecentSaleTile,
+                            isBusy: isBusy,
+                          ),
+                      ],
                     ),
-                    children: [
-                      if (_activeTab == SalesViewTab.newSale)
-                        SalesNewSaleView(
-                          searchCtrl: _searchCtrl,
-                          allItems: allItems,
-                          filteredItems: filtered,
-                          selectedItems: selectedItems,
-                          quickAddItems: quickAddItems,
-                          regularUnselectedItems: regularUnselectedItems,
-                          onPriceTap: _showPriceOverrideDialog,
-                        )
-                      else
-                        SalesHistoryView(
-                          showVoided: _showVoided,
-                          onShowVoidedChanged: (value) async {
-                            setState(() => _showVoided = value);
-                            await ref
-                                .read(salesControllerProvider.notifier)
-                                .refresh(includeVoided: value);
-                          },
-                          historySales: historySales,
-                          buildSaleTile: _buildRecentSaleTile,
-                          isBusy: isBusy,
-                        ),
-                    ],
                   ),
                 ),
               ),
@@ -854,7 +857,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
-        color: AppColors.canvas,
+        color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         boxShadow: overlapsContent
             ? const [

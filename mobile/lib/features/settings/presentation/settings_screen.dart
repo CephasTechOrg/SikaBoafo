@@ -321,29 +321,31 @@ class SettingsScreen extends ConsumerWidget {
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-            children: [
-              const _SectionLabel('Business'),
-              const SizedBox(height: 12),
-              _SettingsTile(
-                icon: Icons.business_outlined,
-                iconBg: AppColors.infoSoft,
-                iconColor: AppColors.navy,
-                label: 'Business Profile',
-                caption: 'Edit name, type and store details',
-                onTap: () => context.push(AppRoute.businessProfile.path),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.group_outlined,
-                iconBg: AppColors.successSoft,
-                iconColor: AppColors.forest,
-                label: 'Staff & Team',
-                caption: 'Invite teammates and manage access',
-                onTap: () => context.push(AppRoute.staff.path),
-              ),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+              children: [
+                const _SectionLabel('Business'),
+                const SizedBox(height: 12),
+                _SettingsTile(
+                  icon: Icons.business_outlined,
+                  iconBg: AppColors.infoSoft,
+                  iconColor: AppColors.navy,
+                  label: 'Business Profile',
+                  caption: 'Edit name, type and store details',
+                  onTap: () => context.push(AppRoute.businessProfile.path),
+                ),
+                const SizedBox(height: 10),
+                _SettingsTile(
+                  icon: Icons.group_outlined,
+                  iconBg: AppColors.successSoft,
+                  iconColor: AppColors.forest,
+                  label: 'Staff & Team',
+                  caption: 'Invite teammates and manage access',
+                  onTap: () => context.push(AppRoute.staff.path),
+                ),
                 const SizedBox(height: 10),
                 _SettingsTile(
                   icon: Icons.payment_outlined,
@@ -498,7 +500,8 @@ class SettingsScreen extends ConsumerWidget {
                   isDestructive: true,
                   onTap: () => _deleteAccount(context, ref),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

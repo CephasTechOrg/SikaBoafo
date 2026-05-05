@@ -28,7 +28,7 @@ class _SheetCap extends StatelessWidget {
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.canvas,
+          color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
           boxShadow: [
             BoxShadow(
@@ -192,7 +192,9 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: mcAsync.when(
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: mcAsync.when(
               loading: () => const Center(
                 child: SizedBox(
                   width: 28,
@@ -378,6 +380,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                 ],
               ),
             ),
+          ),
         ),
       ),
     );
