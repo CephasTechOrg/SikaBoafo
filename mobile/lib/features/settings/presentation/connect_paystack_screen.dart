@@ -118,6 +118,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
           context: context,
           removeTop: true,
           child: PremiumSurface(
+            lift: 28,
             child: connectionAsync.when(
               loading: () => _buildLoadingSkeleton(),
               error: (error, _) => _buildErrorPanel(error),
@@ -129,7 +130,7 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
                 },
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
                   children: [
                     _ConnectionPill(isConnected: isConnected),
                     const SizedBox(height: 14),

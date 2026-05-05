@@ -188,9 +188,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               onRefresh: () =>
                   ref.read(debtsControllerProvider.notifier).refresh(),
               child: PremiumSurface(
+                lift: 28,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 46, 16, 32),
                   children: [
                     const StaleBanner(
                       screenKey: 'debts',

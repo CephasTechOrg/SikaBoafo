@@ -105,9 +105,10 @@ class StaffScreen extends ConsumerWidget {
               ref.invalidate(_pendingInvitesProvider);
             },
             child: PremiumSurface(
+              lift: 28,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
                 children: [
                   _PendingInvitesSection(ref: ref),
                   const SizedBox(height: 16),

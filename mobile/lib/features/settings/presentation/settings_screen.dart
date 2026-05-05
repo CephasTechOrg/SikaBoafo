@@ -342,183 +342,185 @@ class SettingsScreen extends ConsumerWidget {
         body: MediaQuery.removePadding(
           context: context,
           removeTop: true,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-            children: [
-              const _SectionLabel('Business'),
-              const SizedBox(height: 12),
-              _SettingsTile(
-                icon: Icons.business_outlined,
-                iconBg: AppColors.infoSoft,
-                iconColor: AppColors.navy,
-                label: 'Business Profile',
-                caption: 'Edit name, type and store details',
-                onTap: () => context.push(AppRoute.businessProfile.path),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.group_outlined,
-                iconBg: AppColors.successSoft,
-                iconColor: AppColors.forest,
-                label: 'Staff & Team',
-                caption: 'Invite teammates and manage access',
-                onTap: () => context.push(AppRoute.staff.path),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.payment_outlined,
-                iconBg: AppColors.warningSoft,
-                iconColor: AppColors.warning,
-                label: 'Paystack Payments',
-                caption: 'Connect your Paystack account',
-                onTap: () => context.push(AppRoute.paystack.path),
-              ),
-              const SizedBox(height: 24),
-              const _SectionLabel('Notifications'),
-              const SizedBox(height: 12),
-              notifPrefsAsync.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 18),
-                    child: CircularProgressIndicator(),
+          child: PremiumSurface(
+            lift: 28,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
+              children: [
+                const _SectionLabel('Business'),
+                const SizedBox(height: 12),
+                _SettingsTile(
+                  icon: Icons.business_outlined,
+                  iconBg: AppColors.infoSoft,
+                  iconColor: AppColors.navy,
+                  label: 'Business Profile',
+                  caption: 'Edit name, type and store details',
+                  onTap: () => context.push(AppRoute.businessProfile.path),
+                ),
+                const SizedBox(height: 10),
+                _SettingsTile(
+                  icon: Icons.group_outlined,
+                  iconBg: AppColors.successSoft,
+                  iconColor: AppColors.forest,
+                  label: 'Staff & Team',
+                  caption: 'Invite teammates and manage access',
+                  onTap: () => context.push(AppRoute.staff.path),
+                ),
+                const SizedBox(height: 10),
+                _SettingsTile(
+                  icon: Icons.payment_outlined,
+                  iconBg: AppColors.warningSoft,
+                  iconColor: AppColors.warning,
+                  label: 'Paystack Payments',
+                  caption: 'Connect your Paystack account',
+                  onTap: () => context.push(AppRoute.paystack.path),
+                ),
+                const SizedBox(height: 24),
+                const _SectionLabel('Notifications'),
+                const SizedBox(height: 12),
+                notifPrefsAsync.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (e, _) => _InlineError(message: e.toString()),
+                  data: (prefs) => Column(
+                    children: [
+                      _SwitchTile(
+                        icon: Icons.sync_rounded,
+                        iconBg: AppColors.infoSoft,
+                        iconColor: AppColors.navy,
+                        label: 'Sync status',
+                        caption: 'Offline and syncing updates',
+                        value: prefs.syncStatusEnabled,
+                        onChanged: (v) => ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setSyncStatusEnabled(v),
+                      ),
+                      const SizedBox(height: 10),
+                      _SwitchTile(
+                        icon: Icons.event_note_rounded,
+                        iconBg: AppColors.warningSoft,
+                        iconColor: AppColors.warning,
+                        label: 'Debt reminders',
+                        caption: 'Custom reminders you set per debt',
+                        value: prefs.debtRemindersEnabled,
+                        onChanged: (v) => ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setDebtRemindersEnabled(v),
+                      ),
+                      const SizedBox(height: 10),
+                      _SwitchTile(
+                        icon: Icons.inventory_2_outlined,
+                        iconBg: AppColors.warningSoft,
+                        iconColor: AppColors.warning,
+                        label: 'Low stock',
+                        caption: 'Alerts when stock hits your thresholds',
+                        value: prefs.lowStockEnabled,
+                        onChanged: (v) => ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setLowStockEnabled(v),
+                      ),
+                      const SizedBox(height: 10),
+                      _SwitchTile(
+                        icon: Icons.payments_outlined,
+                        iconBg: AppColors.successSoft,
+                        iconColor: AppColors.forest,
+                        label: 'Payment events',
+                        caption: 'Paystack success/failure alerts',
+                        value: prefs.paymentEventsEnabled,
+                        onChanged: (v) => ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setPaymentEventsEnabled(v),
+                      ),
+                      const SizedBox(height: 10),
+                      _SwitchTile(
+                        icon: Icons.summarize_outlined,
+                        iconBg: AppColors.surfaceAlt,
+                        iconColor: AppColors.ink,
+                        label: 'Daily summary',
+                        caption: 'A daily snapshot of sales and activity',
+                        value: prefs.dailySummaryEnabled,
+                        onChanged: (v) => ref
+                            .read(notificationPrefsProvider.notifier)
+                            .setDailySummaryEnabled(v),
+                      ),
+                      const SizedBox(height: 10),
+                      _SettingsTile(
+                        icon: Icons.schedule_rounded,
+                        iconBg: AppColors.surfaceAlt,
+                        iconColor: AppColors.ink,
+                        label: 'Daily summary time',
+                        caption:
+                            _formatTimeOfDay(context, prefs.dailySummaryTime),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: prefs.dailySummaryTime,
+                          );
+                          if (picked == null || !context.mounted) return;
+                          await ref
+                              .read(notificationPrefsProvider.notifier)
+                              .setDailySummaryTime(picked);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const _SectionLabel('Notification tests'),
+                      const SizedBox(height: 12),
+                      _SettingsTile(
+                        icon: Icons.point_of_sale_rounded,
+                        iconBg: AppColors.successSoft,
+                        iconColor: AppColors.success,
+                        label: 'Test: Sale completed',
+                        caption: 'Sends a sample “sale done” notification',
+                        onTap: () => _sendTestNotification(
+                          context,
+                          ref,
+                          id: 9101,
+                          title: 'Sale recorded',
+                          body: '₵ 120.00 received · Cash · 3 items',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _SettingsTile(
+                        icon: Icons.inventory_2_outlined,
+                        iconBg: AppColors.warningSoft,
+                        iconColor: AppColors.warning,
+                        label: 'Test: Low stock',
+                        caption: 'Sends a sample low stock alert',
+                        onTap: () => _sendTestNotification(
+                          context,
+                          ref,
+                          id: 9102,
+                          title: 'Low stock alert',
+                          body: 'Sugar (1 left) · Restock soon',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _SettingsTile(
+                        icon: Icons.verified_rounded,
+                        iconBg: AppColors.infoSoft,
+                        iconColor: AppColors.navy,
+                        label: 'Test: Payment successful',
+                        caption: 'Sends a sample payment success event',
+                        onTap: () => _sendTestNotification(
+                          context,
+                          ref,
+                          id: 9103,
+                          title: 'Payment successful',
+                          body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                error: (e, _) => _InlineError(message: e.toString()),
-                data: (prefs) => Column(
-                  children: [
-                    _SwitchTile(
-                      icon: Icons.sync_rounded,
-                      iconBg: AppColors.infoSoft,
-                      iconColor: AppColors.navy,
-                      label: 'Sync status',
-                      caption: 'Offline and syncing updates',
-                      value: prefs.syncStatusEnabled,
-                      onChanged: (v) => ref
-                          .read(notificationPrefsProvider.notifier)
-                          .setSyncStatusEnabled(v),
-                    ),
-                    const SizedBox(height: 10),
-                    _SwitchTile(
-                      icon: Icons.event_note_rounded,
-                      iconBg: AppColors.warningSoft,
-                      iconColor: AppColors.warning,
-                      label: 'Debt reminders',
-                      caption: 'Custom reminders you set per debt',
-                      value: prefs.debtRemindersEnabled,
-                      onChanged: (v) => ref
-                          .read(notificationPrefsProvider.notifier)
-                          .setDebtRemindersEnabled(v),
-                    ),
-                    const SizedBox(height: 10),
-                    _SwitchTile(
-                      icon: Icons.inventory_2_outlined,
-                      iconBg: AppColors.warningSoft,
-                      iconColor: AppColors.warning,
-                      label: 'Low stock',
-                      caption: 'Alerts when stock hits your thresholds',
-                      value: prefs.lowStockEnabled,
-                      onChanged: (v) => ref
-                          .read(notificationPrefsProvider.notifier)
-                          .setLowStockEnabled(v),
-                    ),
-                    const SizedBox(height: 10),
-                    _SwitchTile(
-                      icon: Icons.payments_outlined,
-                      iconBg: AppColors.successSoft,
-                      iconColor: AppColors.forest,
-                      label: 'Payment events',
-                      caption: 'Paystack success/failure alerts',
-                      value: prefs.paymentEventsEnabled,
-                      onChanged: (v) => ref
-                          .read(notificationPrefsProvider.notifier)
-                          .setPaymentEventsEnabled(v),
-                    ),
-                    const SizedBox(height: 10),
-                    _SwitchTile(
-                      icon: Icons.summarize_outlined,
-                      iconBg: AppColors.surfaceAlt,
-                      iconColor: AppColors.ink,
-                      label: 'Daily summary',
-                      caption: 'A daily snapshot of sales and activity',
-                      value: prefs.dailySummaryEnabled,
-                      onChanged: (v) => ref
-                          .read(notificationPrefsProvider.notifier)
-                          .setDailySummaryEnabled(v),
-                    ),
-                    const SizedBox(height: 10),
-                    _SettingsTile(
-                      icon: Icons.schedule_rounded,
-                      iconBg: AppColors.surfaceAlt,
-                      iconColor: AppColors.ink,
-                      label: 'Daily summary time',
-                      caption:
-                          _formatTimeOfDay(context, prefs.dailySummaryTime),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: prefs.dailySummaryTime,
-                        );
-                        if (picked == null || !context.mounted) return;
-                        await ref
-                            .read(notificationPrefsProvider.notifier)
-                            .setDailySummaryTime(picked);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const _SectionLabel('Notification tests'),
-                    const SizedBox(height: 12),
-                    _SettingsTile(
-                      icon: Icons.point_of_sale_rounded,
-                      iconBg: AppColors.successSoft,
-                      iconColor: AppColors.success,
-                      label: 'Test: Sale completed',
-                      caption: 'Sends a sample “sale done” notification',
-                      onTap: () => _sendTestNotification(
-                        context,
-                        ref,
-                        id: 9101,
-                        title: 'Sale recorded',
-                        body: '₵ 120.00 received · Cash · 3 items',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _SettingsTile(
-                      icon: Icons.inventory_2_outlined,
-                      iconBg: AppColors.warningSoft,
-                      iconColor: AppColors.warning,
-                      label: 'Test: Low stock',
-                      caption: 'Sends a sample low stock alert',
-                      onTap: () => _sendTestNotification(
-                        context,
-                        ref,
-                        id: 9102,
-                        title: 'Low stock alert',
-                        body: 'Sugar (1 left) · Restock soon',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _SettingsTile(
-                      icon: Icons.verified_rounded,
-                      iconBg: AppColors.infoSoft,
-                      iconColor: AppColors.navy,
-                      label: 'Test: Payment successful',
-                      caption: 'Sends a sample payment success event',
-                      onTap: () => _sendTestNotification(
-                        context,
-                        ref,
-                        id: 9103,
-                        title: 'Payment successful',
-                        body: 'Paystack · ₵ 80.00 · Ref: PSK_123456',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              const _SectionLabel('Account'),
-              const SizedBox(height: 12),
-              _SettingsTile(
+                const SizedBox(height: 24),
+                const _SectionLabel('Account'),
+                const SizedBox(height: 12),
+                _SettingsTile(
                 icon: Icons.fingerprint_rounded,
                 iconBg: AppColors.surfaceAlt,
                 iconColor: AppColors.ink,
@@ -545,28 +547,29 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                         );
                       },
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.logout_rounded,
-                iconBg: AppColors.dangerSoft,
-                iconColor: AppColors.danger,
-                label: 'Sign Out',
-                caption: 'End this session on this device',
-                isDestructive: true,
-                onTap: () => _signOut(context, ref),
-              ),
-              const SizedBox(height: 10),
-              _SettingsTile(
-                icon: Icons.delete_forever_rounded,
-                iconBg: AppColors.dangerSoft,
-                iconColor: AppColors.danger,
-                label: 'Delete account',
-                caption: 'Permanently delete your account access',
-                isDestructive: true,
-                onTap: () => _deleteAccount(context, ref),
-              ),
-            ],
+                ),
+                const SizedBox(height: 10),
+                _SettingsTile(
+                  icon: Icons.logout_rounded,
+                  iconBg: AppColors.dangerSoft,
+                  iconColor: AppColors.danger,
+                  label: 'Sign Out',
+                  caption: 'End this session on this device',
+                  isDestructive: true,
+                  onTap: () => _signOut(context, ref),
+                ),
+                const SizedBox(height: 10),
+                _SettingsTile(
+                  icon: Icons.delete_forever_rounded,
+                  iconBg: AppColors.dangerSoft,
+                  iconColor: AppColors.danger,
+                  label: 'Delete account',
+                  caption: 'Permanently delete your account access',
+                  isDestructive: true,
+                  onTap: () => _deleteAccount(context, ref),
+                ),
+              ],
+            ),
           ),
         ),
       ),

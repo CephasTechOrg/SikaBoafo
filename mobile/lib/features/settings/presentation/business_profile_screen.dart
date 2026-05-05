@@ -168,6 +168,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
           context: context,
           removeTop: true,
           child: PremiumSurface(
+            lift: 28,
             child: mcAsync.when(
               loading: () => const Center(
                 child: SizedBox(
@@ -212,7 +213,7 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
               ),
               data: (_) => ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                padding: const EdgeInsets.fromLTRB(20, 46, 20, 32),
                 children: [
                   _sectionLabel(context, 'Business'),
                   const SizedBox(height: 10),

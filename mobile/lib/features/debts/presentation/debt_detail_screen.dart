@@ -143,7 +143,10 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 remindersAsync.when(
                   loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Text(
+                      'Loading reminders…',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
                   ),
                   error: (e, _) => Text(
                     e.toString(),
