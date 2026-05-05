@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/services/notifications_service.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../inventory/data/inventory_api.dart';
@@ -18,6 +21,7 @@ import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 import '../providers/sales_cart_provider.dart';
+import '../../settings/providers/notification_prefs_provider.dart';
 import 'widgets/sales_tab_bar.dart';
 import 'widgets/sales_bottom_bar.dart';
 import '../../settings/presentation/connect_paystack_screen.dart';
@@ -484,6 +488,29 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       await ref
           .read(salesControllerProvider.notifier)
           .refresh(includeVoided: _showVoided);
+      if (!mounted) return;
+
+      final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+      if (prefs?.paymentEventsEnabled == true) {
+        const android = AndroidNotificationDetails(
+          'payment_events',
+          'Payment events',
+          channelDescription: 'Payment confirmation and failure alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+          color: AppColors.forest,
+        );
+        await ref.read(notificationsServiceProvider).showNow(
+              id: 2201,
+              type: AppNotificationType.paystack,
+              title: 'Payment successful',
+              body: 'Paystack · ₵ $totalAmount',
+              android: android,
+              route: AppRoute.sales.path,
+              entityId: saleId,
+            );
+      }
+
       if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,

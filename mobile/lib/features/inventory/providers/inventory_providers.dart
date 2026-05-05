@@ -1,9 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../../../app/router.dart';
+import '../../../app/theme/app_theme.dart';
+import '../../../core/services/notifications_service.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../../settings/providers/notification_prefs_provider.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 
@@ -27,6 +32,7 @@ final inventoryControllerProvider = AsyncNotifierProvider.autoDispose<
 class InventoryController
     extends AutoDisposeAsyncNotifier<List<LocalInventoryItem>> {
   InventoryRepository get _repo => ref.read(inventoryRepositoryProvider);
+  static const _lowStockNotifyKey = 'low_stock_notified_date';
 
   @override
   Future<List<LocalInventoryItem>> build() async {
@@ -45,6 +51,7 @@ class InventoryController
       }
     }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+    await _maybeNotifyLowStock(local);
     return local;
   }
 
@@ -61,7 +68,9 @@ class InventoryController
       // Ignore network errors during refresh to keep local data visible.
     }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> createItem({
@@ -84,7 +93,9 @@ class InventoryController
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> updateItem({
@@ -111,21 +122,27 @@ class InventoryController
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> archiveItem({required String itemId}) async {
     await _repo.archiveItemLocal(itemId: itemId);
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> restoreItem({required String itemId}) async {
     await _repo.restoreItemLocal(itemId: itemId);
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> stockIn({
@@ -140,7 +157,9 @@ class InventoryController
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> adjustStock({
@@ -155,12 +174,53 @@ class InventoryController
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
   }
 
   Future<void> deleteItem({required String itemId}) async {
     await _repo.deleteItemLocal(itemId: itemId);
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-    state = AsyncValue.data(await _repo.listLocalItems());
+    final items = await _repo.listLocalItems();
+    await _maybeNotifyLowStock(items);
+    state = AsyncValue.data(items);
+  }
+
+  Future<void> _maybeNotifyLowStock(List<LocalInventoryItem> items) async {
+    final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+    if (prefs == null || prefs.lowStockEnabled != true) return;
+
+    final low = items
+        .where((i) =>
+            i.isActive &&
+            i.lowStockThreshold != null &&
+            i.quantityOnHand <= i.lowStockThreshold!)
+        .toList(growable: false);
+    if (low.isEmpty) return;
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final kv = ref.read(appDatabaseProvider).kv;
+    final last = await kv.get(_lowStockNotifyKey);
+    if (last == '"$today"') return;
+
+    const android = AndroidNotificationDetails(
+      'low_stock',
+      'Low stock',
+      channelDescription: 'Alerts when items are running low',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: AppColors.forest,
+    );
+
+    await ref.read(notificationsServiceProvider).showNow(
+          id: 3001,
+          type: AppNotificationType.lowStock,
+          title: 'Low stock',
+          body: '${low.length} item${low.length == 1 ? '' : 's'} need restocking.',
+          android: android,
+          route: AppRoute.inventory.path,
+        );
+    await kv.put(_lowStockNotifyKey, '"$today"');
   }
 }
