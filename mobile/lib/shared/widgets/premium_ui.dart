@@ -110,12 +110,14 @@ class PremiumSurface extends StatelessWidget {
   const PremiumSurface({
     required this.child,
     this.padding,
-    this.radius = AppRadii.lg,
+    this.backgroundColor = AppColors.canvas,
+    this.radius = 32,
     super.key,
   });
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
+  final Color backgroundColor;
   final double radius;
 
   @override
@@ -124,7 +126,7 @@ class PremiumSurface extends StatelessWidget {
       borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.mist,
+          color: backgroundColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
         ),
         padding: padding,
