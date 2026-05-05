@@ -854,25 +854,30 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return ColoredBox(
+      // Match Sales hero background so the rounded cutouts show green.
+      color: const Color(0xFF071D11),
+      child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
-        boxShadow: overlapsContent
-            ? const [
-                BoxShadow(
-                  color: Color(0x1F0F172A),
-                  blurRadius: 28,
-                  offset: Offset(0, -8),
-                ),
-              ]
-            : null,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-        child: SizedBox(height: maxExtent - 22, child: child),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            boxShadow: overlapsContent
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1F0F172A),
+                      blurRadius: 28,
+                      offset: Offset(0, -8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: SizedBox(height: maxExtent - 22, child: child),
+          ),
+        ),
       ),
     );
   }

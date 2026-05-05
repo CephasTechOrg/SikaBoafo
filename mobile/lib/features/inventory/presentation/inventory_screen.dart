@@ -413,19 +413,25 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
     // This avoids "layoutExtent exceeds paintExtent" assertions.
     return SizedBox(
       height: maxExtent,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x1F0F172A),
-              blurRadius: 28,
-              offset: Offset(0, -8),
+      child: ColoredBox(
+        // Match the hero/header background so the rounded cutouts show green.
+        color: const Color(0xFF041C0B),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1F0F172A),
+                  blurRadius: 28,
+                  offset: Offset(0, -8),
+                ),
+              ],
             ),
-          ],
+            child: SizedBox.expand(child: child),
+          ),
         ),
-        child: SizedBox.expand(child: child),
       ),
     );
   }

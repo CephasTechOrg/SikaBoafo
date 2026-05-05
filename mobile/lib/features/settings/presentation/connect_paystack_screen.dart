@@ -38,17 +38,22 @@ class _SheetCap extends StatelessWidget {
   Widget build(BuildContext context) {
     return const SizedBox(
       height: 28,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
+      child: ColoredBox(
+        color: Color(0xFF041C0B),
+        child: ClipRRect(
           borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x1F0F172A),
-              blurRadius: 28,
-              offset: Offset(0, -8),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x1F0F172A),
+                  blurRadius: 28,
+                  offset: Offset(0, -8),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
