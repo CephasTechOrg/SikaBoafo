@@ -6,6 +6,7 @@ import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
+import '../data/local_variant.dart';
 
 final inventoryApiProvider = Provider<InventoryApi>((ref) {
   return InventoryApi(ref.watch(apiClientProvider));
