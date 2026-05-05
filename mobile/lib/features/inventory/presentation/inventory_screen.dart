@@ -131,7 +131,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             pinned: true,
             delegate: _SliverFilterDelegate(
               child: Container(
-                color: AppColors.canvas,
+                color: Colors.transparent,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -406,26 +406,24 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Match paint extent to layout extent; intrinsic height is often a few px
-    // smaller than [height] (e.g. 68 vs 76), which breaks SliverGeometry.
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+    // Force the header to paint at the same height it lays out.
+    // This avoids "layoutExtent exceeds paintExtent" assertions.
+    return SizedBox(
       height: maxExtent,
-      decoration: BoxDecoration(
-        color: AppColors.canvas,
-        borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
-        boxShadow: overlapsContent
-            ? const [
-                BoxShadow(
-                  color: Color(0x1F0F172A),
-                  blurRadius: 28,
-                  offset: Offset(0, -8),
-                ),
-              ]
-            : null,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 28,
+              offset: Offset(0, -8),
+            ),
+          ],
+        ),
+        child: SizedBox.expand(child: child),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: child,
     );
   }
 
