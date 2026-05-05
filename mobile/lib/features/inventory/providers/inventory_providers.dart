@@ -73,6 +73,7 @@ class InventoryController
     int? lowStockThreshold,
     int initialQuantity = 0,
     String? imageUrl,
+    List<LocalVariant> variants = const [],
   }) async {
     await _repo.createItemLocal(
       name: name,
@@ -82,6 +83,7 @@ class InventoryController
       lowStockThreshold: lowStockThreshold,
       initialQuantity: initialQuantity,
       imageUrl: imageUrl,
+      variants: variants,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -98,6 +100,8 @@ class InventoryController
     required bool isActive,
     String? imageUrl,
     bool imageUrlChanged = false,
+    List<LocalVariant>? variants,
+    bool variantsChanged = false,
   }) async {
     await _repo.updateItemLocal(
       itemId: itemId,
@@ -109,6 +113,8 @@ class InventoryController
       isActive: isActive,
       imageUrl: imageUrl,
       imageUrlChanged: imageUrlChanged,
+      variants: variants,
+      variantsChanged: variantsChanged,
     );
     await _repo.syncPendingQueue();
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();

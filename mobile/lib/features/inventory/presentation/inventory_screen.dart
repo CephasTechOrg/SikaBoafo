@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
+import '../data/local_variant.dart';
 import '../providers/inventory_providers.dart';
 import 'widgets/inventory_header.dart';
 import 'widgets/inventory_item_card.dart';
 import 'widgets/inventory_sheets.dart';
+
+const _uuid = Uuid();
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
