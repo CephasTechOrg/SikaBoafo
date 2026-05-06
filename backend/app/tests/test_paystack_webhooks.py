@@ -33,7 +33,7 @@ from app.integrations.paystack.client import PaystackClientError, PaystackVerify
 from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
@@ -100,6 +100,7 @@ def _build_sqlite_receivable_stack(
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         Customer.__table__,
         Receivable.__table__,
         ReceivablePayment.__table__,
@@ -208,6 +209,7 @@ def _build_sqlite_sale_stack() -> tuple[TestClient, sessionmaker[Session], str]:
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         Customer.__table__,
         Receivable.__table__,
         ReceivablePayment.__table__,

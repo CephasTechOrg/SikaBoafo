@@ -17,7 +17,7 @@ from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
@@ -38,6 +38,7 @@ def _make_stack(
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         InventoryBalance.__table__,
         Sale.__table__,
         SaleItem.__table__,

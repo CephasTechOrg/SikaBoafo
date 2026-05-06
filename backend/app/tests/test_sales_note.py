@@ -18,7 +18,7 @@ from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.inventory import InventoryBalance, InventoryMovement
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
@@ -39,6 +39,7 @@ def _make_stack() -> tuple[TestClient, sessionmaker[Session], UUID, UUID]:
         Store.__table__,
         Customer.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         InventoryBalance.__table__,
         InventoryMovement.__table__,
         Sale.__table__,

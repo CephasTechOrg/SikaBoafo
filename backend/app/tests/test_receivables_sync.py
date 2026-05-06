@@ -16,7 +16,7 @@ from app.api.deps import get_current_user, get_db
 from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.store import Store
@@ -35,6 +35,7 @@ def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User]
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         Customer.__table__,
         Receivable.__table__,
         ReceivablePayment.__table__,

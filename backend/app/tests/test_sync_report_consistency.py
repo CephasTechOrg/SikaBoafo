@@ -18,7 +18,7 @@ from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.expense import Expense
 from app.models.inventory import InventoryBalance, InventoryMovement
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
@@ -38,6 +38,7 @@ def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User,
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         InventoryBalance.__table__,
         InventoryMovement.__table__,
         Sale.__table__,
