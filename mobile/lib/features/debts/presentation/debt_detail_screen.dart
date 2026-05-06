@@ -505,12 +505,12 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       final result = await ref
           .read(debtsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
-      
+
       // Immediately store the payment link locally
       await ref
           .read(debtsRepositoryProvider)
           .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl);
-      
+
       // Refresh to reflect the payment link in the UI
       await ref.read(debtsControllerProvider.notifier).refresh();
       await ref.refresh(receivableDetailProvider(widget.receivableId));
