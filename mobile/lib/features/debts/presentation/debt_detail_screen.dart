@@ -34,119 +34,124 @@ class DebtDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 210,
-            pinned: true,
-            stretch: true,
-            leadingWidth: kLeadingGutter,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => context.pop(),
-            ),
-            backgroundColor: const Color(0xFF041C0B),
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
-              background: StreakHeroHeader(
-                leadingContentInset: kLeadingGutter,
-                title: title,
-                subtitle: subtitle,
-                badge: const PremiumBadge(
-                  label: 'Receivable',
-                  icon: Icons.receipt_long_rounded,
-                  foreground: Colors.white,
-                  background: Color(0x24FFFFFF),
+      body: Stack(
+        children: [
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 320,
+            child: ColoredBox(color: Color(0xFF041C0B)),
+          ),
+          NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                expandedHeight: 210,
+                pinned: true,
+                stretch: true,
+                leadingWidth: kLeadingGutter,
+                leading: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  onPressed: () => context.pop(),
                 ),
-              ),
-              title: innerBoxIsScrolled
-                  ? Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
-                    )
-                  : null,
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: kLeadingGutter,
-                bottom: 16,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(
-            child: ColoredBox(
-              color: Color(0xFF041C0B),
-              child: SizedBox(height: 18),
-            ),
-          ),
-        ],
-        body: MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          child: ColoredBox(
-            color: const Color(0xFF041C0B),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: AppRadii.heroRadius,
-              ),
-              child: Container(
-                color: AppColors.surface,
-                child: detailAsync.when(
-                  loading: () => const Center(
-                    child: SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: AppColors.forest,
-                      ),
+                backgroundColor: const Color(0xFF041C0B),
+                elevation: 0,
+                flexibleSpace: FlexibleSpaceBar(
+                  stretchModes: const [StretchMode.zoomBackground],
+                  background: StreakHeroHeader(
+                    leadingContentInset: kLeadingGutter,
+                    title: title,
+                    subtitle: subtitle,
+                    badge: const PremiumBadge(
+                      label: 'Receivable',
+                      icon: Icons.receipt_long_rounded,
+                      foreground: Colors.white,
+                      background: Color(0x24FFFFFF),
                     ),
                   ),
-                  error: (error, _) => ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                    children: [
-                      _DetailErrorView(
-                        message: _humanizeError(error),
-                        onRetry: () => ref.invalidate(
-                          receivableDetailProvider(receivableId),
+                  title: innerBoxIsScrolled
+                      ? Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        )
+                      : null,
+                  centerTitle: false,
+                  titlePadding: const EdgeInsetsDirectional.only(
+                    start: kLeadingGutter,
+                    bottom: 16,
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 18),
+              ),
+            ],
+            body: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: AppRadii.heroRadius,
+                ),
+                child: Container(
+                  color: AppColors.surface,
+                  child: detailAsync.when(
+                    loading: () => const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: AppColors.forest,
                         ),
                       ),
-                    ],
-                  ),
-                  data: (detail) {
-                    if (detail == null) {
-                      return ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                        children: const [
-                          PremiumEmptyState(
-                            title: 'Debt record not found',
-                            message:
-                                'This receivable is no longer available in the active debt list.',
-                            icon: Icons.search_off_rounded,
+                    ),
+                    error: (error, _) => ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                      children: [
+                        _DetailErrorView(
+                          message: _humanizeError(error),
+                          onRetry: () => ref.invalidate(
+                            receivableDetailProvider(receivableId),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    data: (detail) {
+                      if (detail == null) {
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                          children: const [
+                            PremiumEmptyState(
+                              title: 'Debt record not found',
+                              message:
+                                  'This receivable is no longer available in the active debt list.',
+                              icon: Icons.search_off_rounded,
+                            ),
+                          ],
+                        );
+                      }
+                      return _DetailBody(
+                        detail: detail,
+                        receivableId: receivableId,
                       );
-                    }
-                    return _DetailBody(
-                      detail: detail,
-                      receivableId: receivableId,
-                    );
-                  },
+                    },
                 ),
               ),
             ),
           ),
-        ),
+          ),
+        ],
       ),
     );
   }

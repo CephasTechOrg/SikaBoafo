@@ -206,15 +206,39 @@ class DebtsApi {
   Future<PaymentInitiationDto> initiateReceivablePaymentLink(
     String receivableId,
   ) async {
-    final response = await _apiClient.dio.post<dynamic>(
+    final payload = {'receivable_id': receivableId};
+    final candidates = <String>[
+      // Current API (matches backend/app/api/v1/payments.py)
       '/payments/initiate',
-      data: {'receivable_id': receivableId},
-    );
-    final data = response.data;
-    if (data is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected payment initiation payload.');
+      // Backwards-compatible fallbacks for older deployed backends
+      '/payments/initiate-receivable',
+      '/payments/receivables/initiate',
+    ];
+
+    DioException? last404;
+    for (final path in candidates) {
+      try {
+        final response = await _apiClient.dio.post<dynamic>(path, data: payload);
+        final data = response.data;
+        if (data is! Map<String, dynamic>) {
+          throw const FormatException('Unexpected payment initiation payload.');
+        }
+        return PaymentInitiationDto.fromJson(data);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
+      }
     }
-    return PaymentInitiationDto.fromJson(data);
+
+    // If we exhausted all candidates, surface the last 404 (route not found or target missing).
+    if (last404 != null) throw last404;
+    throw DioException(
+      requestOptions: RequestOptions(path: '/payments/initiate'),
+      error: 'Payment initiation failed.',
+    );
   }
 }
 
