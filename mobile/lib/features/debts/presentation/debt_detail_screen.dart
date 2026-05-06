@@ -505,8 +505,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           .read(debtsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
       await ref.read(debtsControllerProvider.notifier).refresh();
-      ref.invalidate(receivableDetailProvider(widget.receivableId));
-      await ref.read(receivableDetailProvider(widget.receivableId).future);
+      // Use refresh() to invalidate and immediately refetch the updated data
+      await ref.refresh(receivableDetailProvider(widget.receivableId));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment link generated.')),
