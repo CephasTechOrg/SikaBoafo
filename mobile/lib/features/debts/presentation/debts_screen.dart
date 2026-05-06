@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
-import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import 'widgets/debts_header.dart';
 import '../data/debts_repository.dart';
@@ -187,12 +186,16 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             data: (_) => RefreshIndicator(
               onRefresh: () =>
                   ref.read(debtsControllerProvider.notifier).refresh(),
-              child: PremiumSurface(
-                lift: 28,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 46, 16, 32),
-                  children: [
+              child: Transform.translate(
+                offset: const Offset(0, -18),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(color: AppColors.surface),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 36, 16, 32),
+                      children: [
                     const StaleBanner(
                       screenKey: 'debts',
                       kvKey: KvCacheRepository.kDebtsTs,
@@ -327,7 +330,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                       ...filtered
                           .take(_searchQuery.isEmpty ? 10 : filtered.length)
                           .map(_buildDebtCard),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

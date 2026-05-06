@@ -155,34 +155,37 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 color: AppColors.forest,
                 onRefresh: () =>
                     ref.read(expensesControllerProvider.notifier).refresh(),
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    10,
-                    16,
-                    _activeTab == ExpensesViewTab.log ? 110 : 28,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(color: AppColors.surface),
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      _activeTab == ExpensesViewTab.log ? 110 : 28,
+                    ),
+                    children: [
+                      if (_activeTab == ExpensesViewTab.log)
+                        ExpensesLogView(
+                          catMinors: catMinors,
+                          category: _category,
+                          amountCtrl: _amountCtrl,
+                          noteCtrl: _noteCtrl,
+                          otherNameCtrl: _otherNameCtrl,
+                          onCategoryChanged: (c) =>
+                              setState(() => _category = c),
+                        )
+                      else
+                        ExpensesHistoryView(
+                          expenses: expenses,
+                          isLoadingEmpty:
+                              expensesAsync.isLoading && expenses.isEmpty,
+                          onEditExpense: (row) async {
+                            await showExpenseEditSheet(context, record: row);
+                          },
+                        ),
+                    ],
                   ),
-                  children: [
-                    if (_activeTab == ExpensesViewTab.log)
-                      ExpensesLogView(
-                        catMinors: catMinors,
-                        category: _category,
-                        amountCtrl: _amountCtrl,
-                        noteCtrl: _noteCtrl,
-                        otherNameCtrl: _otherNameCtrl,
-                        onCategoryChanged: (c) =>
-                            setState(() => _category = c),
-                      )
-                    else
-                      ExpensesHistoryView(
-                        expenses: expenses,
-                        isLoadingEmpty:
-                            expensesAsync.isLoading && expenses.isEmpty,
-                        onEditExpense: (row) async {
-                          await showExpenseEditSheet(context, record: row);
-                        },
-                      ),
-                  ],
                 ),
               ),
             ),
@@ -261,24 +264,31 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: AppColors.canvas,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: AppColors.canvas,
-          boxShadow: overlapsContent
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : null,
+    // Rounded "sheet" that visually overlaps into the hero header.
+    // We avoid painting a separate underlay color to prevent edge contrast.
+    return Transform.translate(
+      offset: const Offset(0, -12),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          color: AppColors.surface,
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              boxShadow: overlapsContent
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x1F0F172A),
+                        blurRadius: 28,
+                        offset: Offset(0, -8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: SizedBox(height: maxExtent - 32, child: child),
+          ),
         ),
-        child: SizedBox(height: maxExtent - 20, child: child),
       ),
     );
   }
