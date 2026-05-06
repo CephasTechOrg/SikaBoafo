@@ -105,6 +105,18 @@ def _build_sqlite_test_stack(
     ):
         table.create(bind=engine)
 
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """
+CREATE TABLE IF NOT EXISTS receivable_invoice_counters (
+  store_id TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  next_number INTEGER NOT NULL,
+  PRIMARY KEY (store_id, year)
+)
+"""
+        )
+
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     user_id = uuid4()
     receivable_id = uuid4()

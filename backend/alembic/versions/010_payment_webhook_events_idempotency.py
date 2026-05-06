@@ -31,7 +31,12 @@ def upgrade() -> None:
             sa.Column("event_key", sa.String(length=255), nullable=False),
             sa.Column("provider_reference", sa.String(length=255), nullable=True),
             sa.Column("payment_id", PGUUID(as_uuid=True), nullable=True),
-            sa.Column("result_status", sa.String(length=32), nullable=False, server_default="processed"),
+            sa.Column(
+                "result_status",
+                sa.String(length=32),
+                nullable=False,
+                server_default="processed",
+            ),
             sa.Column("payload", JSONB, nullable=True),
             sa.Column(
                 "created_at",

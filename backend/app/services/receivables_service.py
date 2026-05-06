@@ -8,7 +8,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select, text
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import (
@@ -353,11 +352,11 @@ class ReceivablesService:
             text(
                 """
 INSERT INTO receivable_invoice_counters (store_id, year, next_number)
-VALUES (:store_id, :year, 2)
+VALUES (:store_id, :year, 0)
 ON CONFLICT (store_id, year) DO NOTHING
 """
             ),
-            {"store_id": store_id, "year": year},
+            {"store_id": str(store_id), "year": year},
         )
 
         # Lock and increment.
@@ -370,12 +369,10 @@ WHERE store_id = :store_id AND year = :year
 RETURNING next_number
 """
             ),
-            {"store_id": store_id, "year": year},
+            {"store_id": str(store_id), "year": year},
         ).one()
 
-        # `next_number` after increment; the allocated number is one less.
-        next_number = int(row[0])
-        allocated = next_number - 1
+        allocated = int(row[0])
         return f"{prefix}{allocated:04d}"
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
