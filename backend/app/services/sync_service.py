@@ -89,6 +89,7 @@ class SyncApplyResult:
     status: str
     entity_id: UUID | None = None
     detail: str | None = None
+    server_version: int | None = None
 
 
 @dataclass(slots=True)
