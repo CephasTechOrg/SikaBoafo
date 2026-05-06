@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
 import '../../../data/local/kv_cache_repository.dart';
@@ -190,7 +191,7 @@ class _PendingInvitesSection extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 18),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (error, _) => _ErrorPanel(message: error.toString()),
+            error: (error, _) => _ErrorPanel(message: userFriendlyError(error)),
             data: (invites) {
               if (invites.isEmpty) {
                 return const _InlineEmptyState(
@@ -300,7 +301,7 @@ class _ActiveStaffSection extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (err, _) => _ErrorPanel(message: err.toString()),
+            error: (err, _) => _ErrorPanel(message: userFriendlyError(err)),
             data: (members) {
               if (members.isEmpty) {
                 return const _InlineEmptyState(

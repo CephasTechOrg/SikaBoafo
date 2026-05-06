@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../shared/utils/user_friendly_error.dart';
 import '../../data/expenses_repository.dart';
 import '../../providers/expenses_providers.dart';
 import '../expenses_category_meta.dart';
@@ -84,7 +85,7 @@ class _ExpenseEditSheetState extends ConsumerState<ExpenseEditSheet> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(content: Text(userFriendlyError(e))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

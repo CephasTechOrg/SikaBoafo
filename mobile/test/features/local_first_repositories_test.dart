@@ -122,6 +122,18 @@ CREATE TABLE items_local (
 ''');
 
         await db.execute('''
+CREATE TABLE item_variants_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  item_id TEXT NOT NULL,
+  label TEXT NOT NULL,
+  price_override TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
+);
+''');
+
+        await db.execute('''
 CREATE TABLE inventory_movements_local (
   id TEXT PRIMARY KEY NOT NULL,
   item_id TEXT NOT NULL,
@@ -130,7 +142,7 @@ CREATE TABLE inventory_movements_local (
   reason TEXT,
   local_operation_id TEXT,
   created_at INTEGER NOT NULL
-)
+);
 ''');
 
         await db.execute('''

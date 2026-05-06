@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
-import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
@@ -95,6 +95,12 @@ class CustomersScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SliverToBoxAdapter(
+            child: ColoredBox(
+              color: Color(0xFF041C0B),
+              child: SizedBox(height: 18),
+            ),
+          ),
         ],
         body: MediaQuery.removePadding(
           context: context,
@@ -129,7 +135,7 @@ class CustomersScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   _CustomersError(
-                    message: e.toString(),
+                    message: userFriendlyError(e),
                     onRetry: () =>
                         ref.read(debtsControllerProvider.notifier).refresh(),
                   ),
@@ -141,12 +147,17 @@ class CustomersScreen extends ConsumerWidget {
               return RefreshIndicator(
                 onRefresh: () =>
                     ref.read(debtsControllerProvider.notifier).refresh(),
-                child: PremiumSurface(
-                  lift: 28,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 46, 16, 32),
-                    children: [
+                child: ColoredBox(
+                  color: const Color(0xFF041C0B),
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: AppRadii.heroRadius),
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(color: AppColors.surface),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                        children: [
                       const StaleBanner(
                         screenKey: 'customers',
                         kvKey: KvCacheRepository.kDebtsTs,
@@ -164,7 +175,9 @@ class CustomersScreen extends ConsumerWidget {
                             child: _CustomerCard(customer: c),
                           ),
                         ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -483,13 +496,7 @@ class _AddCustomerBottomSheetState
     super.dispose();
   }
 
-  String _humanize(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final s = error.toString();
-    return s.startsWith('Exception: ') ? s.substring(11) : s;
-  }
+  String _humanize(Object error) => userFriendlyError(error);
 
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();

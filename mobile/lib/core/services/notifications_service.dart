@@ -62,11 +62,21 @@ class AppNotificationPayload {
 }
 
 class NotificationsService {
-  NotificationsService({FlutterLocalNotificationsPlugin? plugin})
-      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  NotificationsService({
+    FlutterLocalNotificationsPlugin? plugin,
+    Future<void> Function(ShownNotificationEvent event)? onShown,
+    Future<void> Function(AppNotificationPayload payload)? onTapped,
+  })  : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+        _onShown = onShown,
+        _onTapped = onTapped;
 
   final FlutterLocalNotificationsPlugin _plugin;
+  final Future<void> Function(ShownNotificationEvent event)? _onShown;
+  final Future<void> Function(AppNotificationPayload payload)? _onTapped;
   bool _tzReady = false;
+
+  int _defaultId() =>
+      DateTime.now().millisecondsSinceEpoch.remainder(2147483647);
 
   Future<void> init() async {
     await _initTimezone();
@@ -102,10 +112,33 @@ class NotificationsService {
   void _handleTap({required String? payload}) {
     final parsed = AppNotificationPayload.tryParse(payload);
     if (parsed == null) return;
+    _onTapped?.call(parsed);
     final ctx = rootNavigatorKey.currentContext;
     final router = ctx == null ? null : GoRouter.maybeOf(ctx);
     if (router == null) return;
     router.go(parsed.route);
+  }
+
+  Future<void> _recordShown({
+    required int notificationId,
+    required AppNotificationType type,
+    required String title,
+    required String body,
+    required String route,
+    String? entityId,
+    required String payloadJson,
+  }) async {
+    await _onShown?.call(
+      ShownNotificationEvent(
+        notificationId: notificationId,
+        type: type.name,
+        title: title,
+        body: body,
+        route: route,
+        entityId: entityId,
+        payload: jsonDecode(payloadJson),
+      ),
+    );
   }
 
   Future<bool> requestPermissionsIfNeeded() async {
@@ -149,11 +182,20 @@ class NotificationsService {
       AppNotificationPayload(type: AppNotificationType.syncStatus, route: route)
           .toJson(),
     );
-    await _plugin.show(2001, title, body, details, payload: payload);
+    final id = _defaultId();
+    await _recordShown(
+      notificationId: id,
+      type: AppNotificationType.syncStatus,
+      title: title,
+      body: body,
+      route: route,
+      payloadJson: payload,
+    );
+    await _plugin.show(id, title, body, details, payload: payload);
   }
 
   Future<void> showNow({
-    required int id,
+    int? id,
     required AppNotificationType type,
     required String title,
     required String body,
@@ -161,12 +203,22 @@ class NotificationsService {
     String route = '/home',
     String? entityId,
   }) async {
+    final notificationId = id ?? _defaultId();
     final payload = jsonEncode(
       AppNotificationPayload(type: type, route: route, entityId: entityId)
           .toJson(),
     );
+    await _recordShown(
+      notificationId: notificationId,
+      type: type,
+      title: title,
+      body: body,
+      route: route,
+      entityId: entityId,
+      payloadJson: payload,
+    );
     await _plugin.show(
-      id,
+      notificationId,
       title,
       body,
       NotificationDetails(android: android),
@@ -189,6 +241,15 @@ class NotificationsService {
     final payload = jsonEncode(
       AppNotificationPayload(type: type, route: route, entityId: entityId)
           .toJson(),
+    );
+    await _recordShown(
+      notificationId: id,
+      type: type,
+      title: title,
+      body: body,
+      route: route,
+      entityId: entityId,
+      payloadJson: payload,
     );
     final scheduled = tz.TZDateTime.from(whenLocal, tz.local);
     await _plugin.zonedSchedule(
@@ -217,6 +278,15 @@ class NotificationsService {
     final payload = jsonEncode(
       AppNotificationPayload(type: type, route: route, entityId: entityId)
           .toJson(),
+    );
+    await _recordShown(
+      notificationId: id,
+      type: type,
+      title: title,
+      body: body,
+      route: route,
+      entityId: entityId,
+      payloadJson: payload,
     );
     final now = tz.TZDateTime.now(tz.local);
     var next = tz.TZDateTime(
@@ -265,7 +335,35 @@ class NotificationsService {
       AppNotificationPayload(type: AppNotificationType.test, route: route)
           .toJson(),
     );
+    await _recordShown(
+      notificationId: id,
+      type: AppNotificationType.test,
+      title: title,
+      body: body,
+      route: route,
+      payloadJson: payload,
+    );
     await _plugin.show(id, title, body, details, payload: payload);
   }
+}
+
+class ShownNotificationEvent {
+  const ShownNotificationEvent({
+    required this.notificationId,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.route,
+    required this.payload,
+    this.entityId,
+  });
+
+  final int notificationId;
+  final String type;
+  final String title;
+  final String body;
+  final String route;
+  final String? entityId;
+  final Object payload;
 }
 

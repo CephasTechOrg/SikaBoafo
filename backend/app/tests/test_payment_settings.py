@@ -18,7 +18,7 @@ from app.core.config import get_settings
 from app.core.constants import USER_ROLE_MERCHANT_OWNER
 from app.integrations.paystack.client import PaystackClientError
 from app.main import app
-from app.models.item import Item
+from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.store import Store
@@ -47,6 +47,7 @@ def _build_sqlite_test_stack() -> tuple[TestClient, sessionmaker[Session], User]
         Merchant.__table__,
         Store.__table__,
         Item.__table__,
+        ItemVariant.__table__,
         PaymentProviderConnection.__table__,
     ):
         table.create(bind=engine)

@@ -8,6 +8,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import (
@@ -219,38 +220,56 @@ class ReceivablesService:
         store = self._get_default_store_for_user(user_id=user_id)
         customer = self._get_customer_for_store(store_id=store.id, customer_id=payload.customer_id)
         amount = self._money(payload.original_amount)
-        invoice_number = self._generate_invoice_number(store_id=store.id)
-        receivable = Receivable(
-            store_id=store.id,
-            customer_id=customer.id,
-            original_amount=amount,
-            outstanding_amount=amount,
-            due_date=payload.due_date,
-            status=RECEIVABLE_STATUS_OPEN,
-            invoice_number=invoice_number,
-            created_by_user_id=user_id,
-            source_device_id=source_device_id,
-            local_operation_id=local_operation_id,
-        )
-        if payload.receivable_id is not None:
-            receivable.id = payload.receivable_id
-        self.db.add(receivable)
-        self.db.flush()
+        # invoice_number is unique. Under concurrent creates (e.g. sync bursts),
+        # naive numbering can collide and raise a UniqueViolation; retry.
+        invoice_number: str | None = None
+        receivable: Receivable | None = None
+        for _ in range(6):
+            invoice_number = self._generate_invoice_number(store_id=store.id)
+            try:
+                # Use a SAVEPOINT so a uniqueness collision doesn't poison the whole
+                # sync transaction/session.
+                with self.db.begin_nested():
+                    receivable = Receivable(
+                        store_id=store.id,
+                        customer_id=customer.id,
+                        original_amount=amount,
+                        outstanding_amount=amount,
+                        due_date=payload.due_date,
+                        status=RECEIVABLE_STATUS_OPEN,
+                        invoice_number=invoice_number,
+                        created_by_user_id=user_id,
+                        source_device_id=source_device_id,
+                        local_operation_id=local_operation_id,
+                    )
+                    if payload.receivable_id is not None:
+                        receivable.id = payload.receivable_id
+                    self.db.add(receivable)
+                    self.db.flush()
+                break
+            except IntegrityError as exc:
+                msg = str(getattr(exc, "orig", exc))
+                if "receivables_invoice_number" not in msg and "invoice_number" not in msg:
+                    raise
+        else:
+            raise ReceivableContextMissingError(
+                "Could not allocate a unique invoice number. Please retry."
+            )
         log_audit(
             db=self.db,
             actor_user_id=user_id,
             business_id=store.merchant_id,
             action="receivable.created",
             entity_type="receivable",
-            entity_id=receivable.id,
+            entity_id=receivable.id,  # type: ignore[union-attr]
             meta={
                 "customer_id": str(customer.id),
                 "amount": str(amount),
                 "invoice_number": invoice_number,
             },
         )
-        self._finalize(entity=receivable, commit=commit)
-        return self._to_receivable_snapshot(receivable=receivable, customer=customer)
+        self._finalize(entity=receivable, commit=commit)  # type: ignore[arg-type]
+        return self._to_receivable_snapshot(receivable=receivable, customer=customer)  # type: ignore[arg-type]
 
     def record_repayment(
         self,
@@ -340,15 +359,22 @@ class ReceivablesService:
     def _generate_invoice_number(self, *, store_id: UUID) -> str:
         year = datetime.now(tz=UTC).year
         prefix = f"INV-{year}-"
-        count = self.db.scalar(
-            select(func.count())
-            .select_from(Receivable)
+        latest = self.db.scalar(
+            select(Receivable.invoice_number)
             .where(
                 Receivable.store_id == store_id,
                 Receivable.invoice_number.like(f"{prefix}%"),
             )
-        ) or 0
-        return f"{prefix}{count + 1:04d}"
+            .order_by(Receivable.invoice_number.desc())
+            .limit(1)
+        )
+        if latest is None:
+            return f"{prefix}0001"
+        try:
+            suffix = int(latest.split("-")[-1])
+        except Exception:
+            suffix = 0
+        return f"{prefix}{suffix + 1:04d}"
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         try:

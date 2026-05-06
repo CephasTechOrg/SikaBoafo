@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 15;
+const _schemaVersion = 16;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -78,6 +78,9 @@ class AppDatabase {
         if (oldVersion < 15) {
           await _upgradeInventorySchemaV15(db);
         }
+        if (oldVersion < 16) {
+          await _createNotificationsSchema(db);
+        }
       },
     );
     return _db!;
@@ -114,6 +117,7 @@ CREATE TABLE sync_queue (
     await _createSalesSchema(db);
     await _createExpenseSchema(db);
     await _createDebtSchema(db);
+    await _createNotificationsSchema(db);
   }
 
   Future<void> _createCacheSchema(Database db) async {
@@ -168,7 +172,7 @@ CREATE TABLE IF NOT EXISTS item_variants_local (
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_items_local_name ON items_local (name)',
@@ -315,7 +319,7 @@ CREATE TABLE IF NOT EXISTS item_variants_local (
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_item_variants_item '
@@ -439,6 +443,32 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_receivable_payments_receivable '
       'ON receivable_payments_local (receivable_id, created_at DESC)',
+    );
+  }
+
+  Future<void> _createNotificationsSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS notifications_local (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  notification_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  route TEXT NOT NULL,
+  entity_id TEXT,
+  payload_json TEXT,
+  created_at INTEGER NOT NULL,
+  read_at INTEGER,
+  deleted_at INTEGER
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_notifications_local_created_at '
+      'ON notifications_local (created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_notifications_local_read_at '
+      'ON notifications_local (read_at)',
     );
   }
 

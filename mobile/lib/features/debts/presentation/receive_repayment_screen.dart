@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../providers/debts_providers.dart';
@@ -218,20 +219,11 @@ class _ReceiveRepaymentScreenState
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_humanizeError(error))),
+        SnackBar(content: Text(userFriendlyError(error))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  String _humanizeError(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final message = error.toString();
-    return message.startsWith('Exception: ')
-        ? message.substring('Exception: '.length)
-        : message;
-  }
 }

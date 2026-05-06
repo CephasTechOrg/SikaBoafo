@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../inventory/presentation/inventory_screen.dart';
 import '../../sales/presentation/sales_screen.dart';
 import '../providers/dashboard_providers.dart';
@@ -146,7 +147,7 @@ class _HomeDashboard extends ConsumerWidget {
                 children: [
                   const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
                   const SizedBox(height: 16),
-                  Text(e.toString()),
+                  Text(userFriendlyError(e), textAlign: TextAlign.center),
                   TextButton(
                     onPressed: () {
                       ref.invalidate(merchantContextProvider);

@@ -137,6 +137,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                   ),
                 ),
               ),
+              // Extend the hero background slightly so the rounded sheet corners
+              // reveal the header color (no extra edge/underlay colors).
+              const SliverToBoxAdapter(
+                child: ColoredBox(
+                  color: Color(0xFF041C0B),
+                  child: SizedBox(height: 18),
+                ),
+              ),
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverExpensesTabDelegate(
@@ -264,16 +272,14 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Rounded "sheet" that visually overlaps into the hero header.
-    // We avoid painting a separate underlay color to prevent edge contrast.
-    return Transform.translate(
-      offset: const Offset(0, -12),
+    return ColoredBox(
+      color: const Color(0xFF041C0B),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
           child: DecoratedBox(
             decoration: BoxDecoration(
               boxShadow: overlapsContent
@@ -286,7 +292,7 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
                     ]
                   : null,
             ),
-            child: SizedBox(height: maxExtent - 32, child: child),
+            child: SizedBox(height: maxExtent - 22, child: child),
           ),
         ),
       ),

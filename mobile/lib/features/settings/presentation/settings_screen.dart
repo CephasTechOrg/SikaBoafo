@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
@@ -365,7 +366,7 @@ class SettingsScreen extends ConsumerWidget {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (e, _) => _InlineError(message: e.toString()),
+                  error: (e, _) => _InlineError(message: userFriendlyError(e)),
                   data: (prefs) => Column(
                     children: [
                       _SwitchTile(

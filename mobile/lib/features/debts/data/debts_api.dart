@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
+import '../../../app/env/app_config.dart';
 import '../../../core/services/api_client.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 
 class DebtCustomerDto {
   const DebtCustomerDto({
@@ -206,31 +208,35 @@ class DebtsApi {
   Future<PaymentInitiationDto> initiateReceivablePaymentLink(
     String receivableId,
   ) async {
-    final response = await _apiClient.dio.post<dynamic>(
-      '/payments/initiate',
-      data: {'receivable_id': receivableId},
-    );
-    final data = response.data;
-    if (data is! Map<String, dynamic>) {
-      throw const FormatException('Unexpected payment initiation payload.');
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/payments/initiate',
+        data: {'receivable_id': receivableId},
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected payment initiation payload.');
+      }
+      return PaymentInitiationDto.fromJson(data);
+    } on DioException catch (e) {
+      // If the route itself is missing, it's almost always an environment mismatch:
+      // the app is pointing at a backend deployment that doesn't match this repo.
+      if (e.response?.statusCode == 404) {
+        final expected = AppConfig.apiV1('/payments/initiate');
+        throw DioException(
+          requestOptions: e.requestOptions,
+          response: e.response,
+          type: e.type,
+          error:
+              'Endpoint not found (404). Expected backend route: $expected. '
+              'Check API_BASE_URL points to the backend from this codebase.',
+        );
+      }
+      rethrow;
     }
-    return PaymentInitiationDto.fromJson(data);
   }
 }
 
 String humanizeDebtsApiError(Object error) {
-  if (error is FormatException) {
-    return error.message;
-  }
-  if (error is DioException) {
-    final detail = error.response?.data;
-    if (detail is Map<String, dynamic> && detail['detail'] is String) {
-      return detail['detail'] as String;
-    }
-    if (error.type == DioExceptionType.connectionError) {
-      return 'Cannot reach backend. Working offline.';
-    }
-    return error.message ?? 'Debt sync request failed.';
-  }
-  return 'Debt sync request failed.';
+  return userFriendlyError(error);
 }
