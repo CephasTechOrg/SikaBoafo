@@ -216,7 +216,7 @@ class ItemCard extends StatelessWidget {
                         },
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                   ] else
                     const Spacer(),
                   // ── Price + quantity controls ──────────────────
