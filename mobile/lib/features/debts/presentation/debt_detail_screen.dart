@@ -513,7 +513,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
       // Refresh to reflect the payment link in the UI
       await ref.read(debtsControllerProvider.notifier).refresh();
-      await ref.refresh(receivableDetailProvider(widget.receivableId));
+      // Invalidate the provider so it refetches with the updated payment link
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment link generated.')),
