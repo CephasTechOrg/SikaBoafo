@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../app/env/app_config.dart';
 import '../../../core/services/api_client.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 
 class DebtCustomerDto {
   const DebtCustomerDto({
@@ -237,18 +238,5 @@ class DebtsApi {
 }
 
 String humanizeDebtsApiError(Object error) {
-  if (error is FormatException) {
-    return error.message;
-  }
-  if (error is DioException) {
-    final detail = error.response?.data;
-    if (detail is Map<String, dynamic> && detail['detail'] is String) {
-      return detail['detail'] as String;
-    }
-    if (error.type == DioExceptionType.connectionError) {
-      return 'Cannot reach backend. Working offline.';
-    }
-    return error.message ?? 'Debt sync request failed.';
-  }
-  return 'Debt sync request failed.';
+  return userFriendlyError(error);
 }

@@ -226,26 +226,28 @@ class ReceivablesService:
         receivable: Receivable | None = None
         for _ in range(6):
             invoice_number = self._generate_invoice_number(store_id=store.id)
-            receivable = Receivable(
-                store_id=store.id,
-                customer_id=customer.id,
-                original_amount=amount,
-                outstanding_amount=amount,
-                due_date=payload.due_date,
-                status=RECEIVABLE_STATUS_OPEN,
-                invoice_number=invoice_number,
-                created_by_user_id=user_id,
-                source_device_id=source_device_id,
-                local_operation_id=local_operation_id,
-            )
-            if payload.receivable_id is not None:
-                receivable.id = payload.receivable_id
-            self.db.add(receivable)
             try:
-                self.db.flush()
+                # Use a SAVEPOINT so a uniqueness collision doesn't poison the whole
+                # sync transaction/session.
+                with self.db.begin_nested():
+                    receivable = Receivable(
+                        store_id=store.id,
+                        customer_id=customer.id,
+                        original_amount=amount,
+                        outstanding_amount=amount,
+                        due_date=payload.due_date,
+                        status=RECEIVABLE_STATUS_OPEN,
+                        invoice_number=invoice_number,
+                        created_by_user_id=user_id,
+                        source_device_id=source_device_id,
+                        local_operation_id=local_operation_id,
+                    )
+                    if payload.receivable_id is not None:
+                        receivable.id = payload.receivable_id
+                    self.db.add(receivable)
+                    self.db.flush()
                 break
             except IntegrityError as exc:
-                self.db.rollback()
                 msg = str(getattr(exc, "orig", exc))
                 if "receivables_invoice_number" not in msg and "invoice_number" not in msg:
                     raise
