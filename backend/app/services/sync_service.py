@@ -130,7 +130,7 @@ class SyncService:
                 continue
 
             try:
-                entity_id = self._dispatch_operation(
+                entity_id, server_version = self._dispatch_operation(
                     inventory_service=inventory_service,
                     expense_service=expense_service,
                     receivables_service=receivables_service,
@@ -157,6 +157,7 @@ class SyncService:
                         action_type=operation.action_type,
                         status=SYNC_STATUS_APPLIED,
                         entity_id=entity_id,
+                        server_version=server_version,
                     )
                 )
             except (
@@ -226,7 +227,7 @@ class SyncService:
         user_id: UUID,
         device_id: str,
         operation: SyncOperationIn,
-    ) -> UUID:
+    ) -> tuple[UUID, int | None]:
         entity_type = operation.entity_type.strip().lower()
         action_type = operation.action_type.strip().lower()
 
@@ -239,7 +240,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return item.item_id
+            return item.item_id, item.version
 
         if entity_type == "item" and action_type == "update":
             payload = SyncItemUpdateIn.model_validate(operation.payload)
@@ -255,7 +256,7 @@ class SyncService:
                 version=payload.version,
                 commit=False,
             )
-            return item.item_id
+            return item.item_id, item.version
 
         if entity_type == "inventory" and action_type == "stock_in":
             payload = SyncStockInIn.model_validate(operation.payload)
@@ -267,7 +268,7 @@ class SyncService:
                 balance_version=payload.balance_version,
                 commit=False,
             )
-            return mutation.item.item_id
+            return mutation.item.item_id, None
 
         if entity_type == "inventory" and action_type == "adjust":
             payload = SyncStockAdjustIn.model_validate(operation.payload)
@@ -279,7 +280,7 @@ class SyncService:
                 balance_version=payload.balance_version,
                 commit=False,
             )
-            return mutation.item.item_id
+            return mutation.item.item_id, None
 
         if entity_type == "sale" and action_type == "create":
             payload = SyncSaleCreateIn.model_validate(operation.payload)
@@ -291,7 +292,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return sale.sale_id
+            return sale.sale_id, None
 
         if entity_type == "sale" and action_type == "update":
             payload = SyncSaleUpdateIn.model_validate(operation.payload)
@@ -304,7 +305,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return sale.sale_id
+            return sale.sale_id, None
 
         if entity_type == "sale" and action_type == "void":
             payload = SyncSaleVoidIn.model_validate(operation.payload)
@@ -317,7 +318,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return sale.sale_id
+            return sale.sale_id, None
 
         if entity_type == "expense" and action_type == "create":
             payload = SyncExpenseCreateIn.model_validate(operation.payload)
@@ -329,7 +330,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return expense.expense_id
+            return expense.expense_id, None
 
         if entity_type == "expense" and action_type == "update":
             payload = SyncExpenseUpdateIn.model_validate(operation.payload)
@@ -341,7 +342,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return expense.expense_id
+            return expense.expense_id, None
 
         if entity_type == "customer" and action_type == "create":
             payload = SyncCustomerCreateIn.model_validate(operation.payload)
@@ -353,7 +354,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return customer.customer_id
+            return customer.customer_id, None
 
         if entity_type == "receivable" and action_type == "create":
             payload = SyncReceivableCreateIn.model_validate(operation.payload)
@@ -365,7 +366,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return receivable.receivable_id
+            return receivable.receivable_id, None
 
         if entity_type == "receivable_payment" and action_type == "create":
             payload = SyncReceivablePaymentCreateIn.model_validate(operation.payload)
@@ -377,7 +378,7 @@ class SyncService:
                 local_operation_id=operation.local_operation_id,
                 commit=False,
             )
-            return repayment.payment_id
+            return repayment.payment_id, None
 
         msg = f"Unsupported operation: {entity_type}:{action_type}"
         raise UnsupportedSyncOperationError(msg)
