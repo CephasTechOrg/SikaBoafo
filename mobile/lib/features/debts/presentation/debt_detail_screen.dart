@@ -646,7 +646,10 @@ class _BalanceHero extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [Color(0xFF173A75), Color(0xFF0E2245)],
+          colors: [
+            Color(0xFF0E3B21),
+            Color(0xFF041C0B),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -661,7 +664,7 @@ class _BalanceHero extends StatelessWidget {
                 child: Text(
                   'Outstanding Balance',
                   style: TextStyle(
-                    color: Color(0xFFD9E6FF),
+                    color: Color(0xFFD6F5E4),
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),

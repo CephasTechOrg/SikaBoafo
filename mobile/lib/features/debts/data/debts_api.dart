@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../app/env/app_config.dart';
 import '../../../core/services/api_client.dart';
 
 class DebtCustomerDto {
@@ -206,39 +207,32 @@ class DebtsApi {
   Future<PaymentInitiationDto> initiateReceivablePaymentLink(
     String receivableId,
   ) async {
-    final payload = {'receivable_id': receivableId};
-    final candidates = <String>[
-      // Current API (matches backend/app/api/v1/payments.py)
-      '/payments/initiate',
-      // Backwards-compatible fallbacks for older deployed backends
-      '/payments/initiate-receivable',
-      '/payments/receivables/initiate',
-    ];
-
-    DioException? last404;
-    for (final path in candidates) {
-      try {
-        final response = await _apiClient.dio.post<dynamic>(path, data: payload);
-        final data = response.data;
-        if (data is! Map<String, dynamic>) {
-          throw const FormatException('Unexpected payment initiation payload.');
-        }
-        return PaymentInitiationDto.fromJson(data);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 404) {
-          last404 = e;
-          continue;
-        }
-        rethrow;
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/payments/initiate',
+        data: {'receivable_id': receivableId},
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw const FormatException('Unexpected payment initiation payload.');
       }
+      return PaymentInitiationDto.fromJson(data);
+    } on DioException catch (e) {
+      // If the route itself is missing, it's almost always an environment mismatch:
+      // the app is pointing at a backend deployment that doesn't match this repo.
+      if (e.response?.statusCode == 404) {
+        final expected = AppConfig.apiV1('/payments/initiate');
+        throw DioException(
+          requestOptions: e.requestOptions,
+          response: e.response,
+          type: e.type,
+          error:
+              'Endpoint not found (404). Expected backend route: $expected. '
+              'Check API_BASE_URL points to the backend from this codebase.',
+        );
+      }
+      rethrow;
     }
-
-    // If we exhausted all candidates, surface the last 404 (route not found or target missing).
-    if (last404 != null) throw last404;
-    throw DioException(
-      requestOptions: RequestOptions(path: '/payments/initiate'),
-      error: 'Payment initiation failed.',
-    );
   }
 }
 
