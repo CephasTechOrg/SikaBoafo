@@ -467,6 +467,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     );
     if (confirmed != true || !context.mounted) return;
     try {
+      // If this debt was created offline and hasn't reached the backend yet,
+      // cancel will return "not found". Sync first to ensure it exists server-side.
+      if (widget.detail.record.syncStatus != 'applied') {
+        await ref.read(debtsRepositoryProvider).syncPendingQueue();
+      }
       await ref.read(debtsApiProvider).cancelReceivable(widget.receivableId);
       if (!context.mounted) return;
       ref.invalidate(receivableDetailProvider(widget.receivableId));
@@ -479,8 +484,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     } catch (error) {
       if (!context.mounted) return;
       final msg = _humanizeError(error);
+      final hint = widget.detail.record.syncStatus != 'applied'
+          ? ' (Try syncing first)'
+          : '';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        SnackBar(content: Text('$msg$hint')),
       );
     }
   }
