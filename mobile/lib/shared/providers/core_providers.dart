@@ -10,6 +10,7 @@ import '../../core/services/notifications_service.dart';
 import '../../core/services/session_service.dart';
 import '../../core/services/secure_token_storage.dart';
 import '../../data/local/app_database.dart';
+import '../../features/notifications/providers/notifications_inbox_providers.dart';
 
 final secureTokenStorageProvider = Provider<SecureTokenStorage>((ref) {
   return SecureTokenStorage();
@@ -20,7 +21,24 @@ final biometricServiceProvider = Provider<BiometricService>((ref) {
 });
 
 final notificationsServiceProvider = Provider<NotificationsService>((ref) {
-  return NotificationsService();
+  return NotificationsService(
+    onShown: (event) async {
+      await ref.read(notificationsInboxControllerProvider.notifier).record(
+            notificationId: event.notificationId,
+            type: event.type,
+            title: event.title,
+            body: event.body,
+            route: event.route,
+            entityId: event.entityId,
+            payload: event.payload,
+          );
+    },
+    onTapped: (payload) async {
+      // Best-effort: update unread badge when user taps from system tray.
+      // Inbox row matching by route/entity can be done later if needed.
+      ref.invalidate(unreadNotificationsCountProvider);
+    },
+  );
 });
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {

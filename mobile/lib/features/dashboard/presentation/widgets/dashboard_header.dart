@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/providers/sync_providers.dart';
 import '../../../../shared/widgets/premium_ui.dart';
 import '../../../../shared/widgets/sync_status_pill.dart';
+import '../../../../app/router.dart';
+import '../../../notifications/providers/notifications_inbox_providers.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
@@ -148,15 +153,7 @@ class DashboardHeader extends ConsumerWidget {
                 },
               ),
               const SizedBox(width: 8),
-              DashboardHeaderBtn(
-                icon: Icons.notifications_outlined,
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Notifications coming soon'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                ),
-              ),
+              const _NotificationsHeaderButton(),
             ],
           ),
           const SizedBox(height: 22),
@@ -232,6 +229,50 @@ class DashboardHeader extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NotificationsHeaderButton extends ConsumerWidget {
+  const _NotificationsHeaderButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(unreadNotificationsCountRefreshProvider);
+    final unread = unreadAsync.valueOrNull ?? 0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Tooltip(
+          message: unread == 0 ? 'No unread notifications' : '$unread unread',
+          child: DashboardHeaderBtn(
+            icon: Icons.notifications_outlined,
+            onTap: () => context.push(AppRoute.notifications.path),
+          ),
+        ),
+        if (unread > 0)
+          Positioned(
+            top: -6,
+            right: -6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Text(
+                unread > 99 ? '99+' : '$unread',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

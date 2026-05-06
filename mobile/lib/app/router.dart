@@ -15,6 +15,7 @@ import '../features/customers/presentation/customers_screen.dart';
 import '../features/debts/presentation/debt_detail_screen.dart';
 import '../features/debts/presentation/debts_screen.dart';
 import '../features/debts/presentation/receive_repayment_screen.dart';
+import '../features/notifications/presentation/notifications_inbox_screen.dart';
 import '../features/settings/presentation/connect_paystack_screen.dart';
 import '../features/settings/presentation/business_profile_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -38,7 +39,8 @@ enum AppRoute {
   customers('/customers'),
   customerDetail('/customers/:id'),
   debtDetail('/debts/:id'),
-  receiveRepayment('/debts/:id/repayment');
+  receiveRepayment('/debts/:id/repayment'),
+  notifications('/notifications');
 
   const AppRoute(this.path);
   final String path;
@@ -202,6 +204,10 @@ GoRouter createAppRouter(Ref ref) {
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoute.notifications.path,
+        builder: (context, state) => const NotificationsInboxScreen(),
       ),
     ],
   );
