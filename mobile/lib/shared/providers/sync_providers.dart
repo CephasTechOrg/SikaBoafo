@@ -11,6 +11,7 @@ import '../../data/sync/sync_queue_runner.dart';
 import '../../data/sync/sync_refresh_service.dart';
 import '../../features/debts/data/debts_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
+import '../utils/user_friendly_error.dart';
 import 'core_providers.dart';
 import '../../features/settings/providers/notification_prefs_provider.dart';
 
@@ -274,13 +275,7 @@ class SyncStatusController
   }
 
   String _humanizeError(Object error) {
-    if (error is DioException) {
-      return error.message ?? 'Sync request failed.';
-    }
-    final message = error.toString();
-    return message.startsWith('Exception: ')
-        ? message.substring('Exception: '.length)
-        : message;
+    return userFriendlyError(error);
   }
 
   Future<void> _maybePruneApplied() async {

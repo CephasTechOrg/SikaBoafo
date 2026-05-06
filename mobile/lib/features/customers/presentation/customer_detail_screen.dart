@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/mockup_ui.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
 
@@ -81,7 +82,7 @@ class CustomerDetailScreen extends ConsumerWidget {
                           loading: () =>
                               const Center(child: CircularProgressIndicator()),
                           error: (e, _) => _DetailError(
-                            message: e.toString(),
+                            message: userFriendlyError(e),
                             onRetry: () => ref.invalidate(
                                 _customerDetailProvider(customerId)),
                           ),

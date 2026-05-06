@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import 'widgets/debts_header.dart';
 import '../data/debts_repository.dart';
@@ -185,7 +186,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     kvKey: KvCacheRepository.kDebtsTs,
                   ),
                   const SizedBox(height: 24),
-                  Text(e.toString(), textAlign: TextAlign.center),
+                  Text(userFriendlyError(e), textAlign: TextAlign.center),
                 ],
               ),
             ),
@@ -602,13 +603,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     }
   }
 
-  String _humanize(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final s = error.toString();
-    return s.startsWith('Exception: ') ? s.substring(11) : s;
-  }
+  String _humanize(Object error) => userFriendlyError(error);
 
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

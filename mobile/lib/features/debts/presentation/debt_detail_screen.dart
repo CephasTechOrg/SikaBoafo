@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
@@ -973,15 +974,7 @@ class _DetailErrorView extends StatelessWidget {
   }
 }
 
-String _humanizeError(Object error) {
-  if (error is ArgumentError) {
-    return error.message?.toString() ?? 'Invalid input.';
-  }
-  final message = error.toString();
-  return message.startsWith('Exception: ')
-      ? message.substring('Exception: '.length)
-      : message;
-}
+String _humanizeError(Object error) => userFriendlyError(error);
 
 String _labelizePaymentMethod(String value) {
   return switch (value) {

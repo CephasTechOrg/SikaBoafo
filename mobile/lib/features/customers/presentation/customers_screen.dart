@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/providers/debts_providers.dart';
@@ -134,7 +135,7 @@ class CustomersScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   _CustomersError(
-                    message: e.toString(),
+                    message: userFriendlyError(e),
                     onRetry: () =>
                         ref.read(debtsControllerProvider.notifier).refresh(),
                   ),
@@ -495,13 +496,7 @@ class _AddCustomerBottomSheetState
     super.dispose();
   }
 
-  String _humanize(Object error) {
-    if (error is ArgumentError) {
-      return error.message?.toString() ?? 'Invalid input.';
-    }
-    final s = error.toString();
-    return s.startsWith('Exception: ') ? s.substring(11) : s;
-  }
+  String _humanize(Object error) => userFriendlyError(error);
 
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
