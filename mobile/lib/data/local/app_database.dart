@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS item_variants_local (
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_items_local_name ON items_local (name)',
@@ -315,7 +315,7 @@ CREATE TABLE IF NOT EXISTS item_variants_local (
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE CASCADE
-)
+);
 ''');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_item_variants_item '

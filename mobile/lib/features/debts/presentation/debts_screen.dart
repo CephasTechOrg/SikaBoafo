@@ -146,6 +146,12 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               ),
             ),
           ),
+          const SliverToBoxAdapter(
+            child: ColoredBox(
+              color: Color(0xFF041C0B),
+              child: SizedBox(height: 18),
+            ),
+          ),
         ],
         body: MediaQuery.removePadding(
           context: context,
@@ -186,42 +192,43 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             data: (_) => RefreshIndicator(
               onRefresh: () =>
                   ref.read(debtsControllerProvider.notifier).refresh(),
-              child: Transform.translate(
-                offset: const Offset(0, -18),
+              child: ColoredBox(
+                color: const Color(0xFF041C0B),
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+                  borderRadius:
+                      const BorderRadius.vertical(top: AppRadii.heroRadius),
                   child: DecoratedBox(
                     decoration: const BoxDecoration(color: AppColors.surface),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 36, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
                       children: [
-                    const StaleBanner(
-                      screenKey: 'debts',
-                      kvKey: KvCacheRepository.kDebtsTs,
-                    ),
-                    const SizedBox(height: 10),
-                    if (_showSearch) ...[
-                      _SearchBar(
-                        onChanged: (v) =>
-                            setState(() => _searchQuery = v.trim()),
-                        onClear: () => setState(() {
-                          _searchQuery = '';
-                          _showSearch = false;
-                        }),
+                      const StaleBanner(
+                        screenKey: 'debts',
+                        kvKey: KvCacheRepository.kDebtsTs,
                       ),
-                      const SizedBox(height: 16),
-                    ],
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
+                      const SizedBox(height: 10),
+                      if (_showSearch) ...[
+                        _SearchBar(
+                          onChanged: (v) =>
+                              setState(() => _searchQuery = v.trim()),
+                          onClear: () => setState(() {
+                            _searchQuery = '';
+                            _showSearch = false;
+                          }),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 14),
                     _QuickActionsRow(
                       onAddCustomer: () => setState(() {
                         _showAddCustomer = !_showAddCustomer;

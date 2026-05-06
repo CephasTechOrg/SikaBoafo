@@ -69,44 +69,47 @@ class CustomerDetailScreen extends ConsumerWidget {
                       ref.invalidate(_customerDetailProvider(customerId)),
                 ),
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: AppRadii.heroRadius,
-                    ),
-                    child: Container(
-                      color: AppColors.canvas,
-                      child: detailAsync.when(
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => _DetailError(
-                          message: e.toString(),
-                          onRetry: () => ref.invalidate(
-                              _customerDetailProvider(customerId)),
-                        ),
-                        data: (data) {
-                          final customer = data.customer;
-                          if (customer == null) {
-                            return const Center(
-                              child: Text('Customer not found.'),
-                            );
-                          }
-                          return RefreshIndicator(
-                            color: AppColors.forest,
-                            onRefresh: () async => ref.invalidate(
+                  child: ColoredBox(
+                    color: const Color(0xFF041C0B),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: AppRadii.heroRadius,
+                      ),
+                      child: Container(
+                        color: AppColors.surface,
+                        child: detailAsync.when(
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (e, _) => _DetailError(
+                            message: e.toString(),
+                            onRetry: () => ref.invalidate(
                                 _customerDetailProvider(customerId)),
-                            child: ListView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                              children: [
-                                _CustomerInfoCard(customer: customer),
-                                const SizedBox(height: 18),
-                                _ReceivablesSection(
-                                    receivables: data.receivables),
-                              ],
-                            ),
-                          );
-                        },
+                          ),
+                          data: (data) {
+                            final customer = data.customer;
+                            if (customer == null) {
+                              return const Center(
+                                child: Text('Customer not found.'),
+                              );
+                            }
+                            return RefreshIndicator(
+                              color: AppColors.forest,
+                              onRefresh: () async => ref.invalidate(
+                                  _customerDetailProvider(customerId)),
+                              child: ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                                children: [
+                                  _CustomerInfoCard(customer: customer),
+                                  const SizedBox(height: 18),
+                                  _ReceivablesSection(
+                                      receivables: data.receivables),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ),
