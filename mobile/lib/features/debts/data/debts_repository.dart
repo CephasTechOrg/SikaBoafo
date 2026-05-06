@@ -322,6 +322,23 @@ ORDER BY p.created_at DESC
     );
   }
 
+  Future<void> updateReceivablePaymentLink(
+    String receivableId,
+    String paymentLink,
+  ) async {
+    final db = await _appDb.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.update(
+      'receivables_local',
+      {
+        'payment_link': paymentLink,
+        'updated_at': now,
+      },
+      where: 'id = ?',
+      whereArgs: [receivableId],
+    );
+  }
+
   Future<void> createCustomerLocal({
     required String name,
     String? phoneNumber,

@@ -502,11 +502,17 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       if (widget.detail.record.syncStatus != 'applied') {
         await ref.read(debtsRepositoryProvider).syncPendingQueue();
       }
-      await ref
+      final result = await ref
           .read(debtsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
+      
+      // Immediately store the payment link locally
+      await ref
+          .read(debtsRepositoryProvider)
+          .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl);
+      
+      // Refresh to reflect the payment link in the UI
       await ref.read(debtsControllerProvider.notifier).refresh();
-      // Use refresh() to invalidate and immediately refetch the updated data
       await ref.refresh(receivableDetailProvider(widget.receivableId));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
