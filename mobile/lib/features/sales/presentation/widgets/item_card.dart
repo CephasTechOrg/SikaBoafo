@@ -194,7 +194,7 @@ class ItemCard extends StatelessWidget {
 
                   // ── Variant chips ──────────────────────────────
                   if (item.hasVariants) ...[
-                    const SizedBox(height: 8),
+                    const Spacer(),
                     SizedBox(
                       height: 28,
                       child: ListView.separated(
@@ -216,9 +216,9 @@ class ItemCard extends StatelessWidget {
                         },
                       ),
                     ),
-                  ],
-
-                  const Spacer(),
+                    const SizedBox(height: 6),
+                  ] else
+                    const Spacer(),
                   // ── Price + quantity controls ──────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
