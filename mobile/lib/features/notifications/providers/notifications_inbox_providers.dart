@@ -74,12 +74,10 @@ final unreadNotificationsCountProvider = FutureProvider<int>((ref) async {
   return ref.read(notificationsInboxRepositoryProvider).unreadCount();
 });
 
-final unreadNotificationsCountRefreshProvider =
-    StreamProvider<int>((ref) async* {
-  // Cheap polling to keep header badge fresh without wiring DB triggers.
-  while (true) {
-    yield await ref.read(notificationsInboxRepositoryProvider).unreadCount();
-    await Future<void>.delayed(const Duration(seconds: 2));
-  }
+final unreadNotificationsCountLiveProvider = Provider<int>((ref) {
+  final listAsync = ref.watch(notificationsInboxControllerProvider);
+  final items = listAsync.valueOrNull;
+  if (items == null) return 0;
+  return items.where((n) => !n.isRead).length;
 });
 

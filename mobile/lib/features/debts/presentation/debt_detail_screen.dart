@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -147,10 +149,10 @@ class DebtDetailScreen extends ConsumerWidget {
                         receivableId: receivableId,
                       );
                     },
+                  ),
                 ),
               ),
             ),
-          ),
           ),
         ],
       ),
@@ -188,7 +190,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final canCollect = row.status == 'open' || row.status == 'partially_paid';
     final hasPaymentLink =
         row.paymentLink != null && row.paymentLink!.isNotEmpty;
-    final remindersAsync = ref.watch(debtRemindersProvider(widget.receivableId));
+    final remindersAsync =
+        ref.watch(debtRemindersProvider(widget.receivableId));
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -259,8 +262,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                                 )
                                 .removeReminderAt(i),
                           ),
-                          if (i != times.length - 1)
-                            const SizedBox(height: 10),
+                          if (i != times.length - 1) const SizedBox(height: 10),
                         ],
                         const SizedBox(height: 14),
                         SizedBox(
@@ -423,7 +425,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       initialTime: TimeOfDay.now(),
     );
     if (time == null || !context.mounted) return;
-    final when = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final when =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
     await ref
         .read(debtRemindersProvider(widget.receivableId).notifier)
         .addReminder(whenLocal: when);
@@ -467,6 +470,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     );
     if (confirmed != true || !context.mounted) return;
     try {
+      // If this debt was created offline and hasn't reached the backend yet,
+      // cancel will return "not found". Sync first to ensure it exists server-side.
+      if (widget.detail.record.syncStatus != 'applied') {
+        await ref.read(debtsRepositoryProvider).syncPendingQueue();
+      }
       await ref.read(debtsApiProvider).cancelReceivable(widget.receivableId);
       if (!context.mounted) return;
       ref.invalidate(receivableDetailProvider(widget.receivableId));
@@ -479,8 +487,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     } catch (error) {
       if (!context.mounted) return;
       final msg = _humanizeError(error);
+      final hint = widget.detail.record.syncStatus != 'applied'
+          ? ' (Try syncing first)'
+          : '';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
+        SnackBar(content: Text('$msg$hint')),
       );
     }
   }
@@ -493,12 +504,21 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       if (widget.detail.record.syncStatus != 'applied') {
         await ref.read(debtsRepositoryProvider).syncPendingQueue();
       }
-      await ref
+      final result = await ref
           .read(debtsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
+
+      // Immediately store the payment link locally
+      unawaited(
+        ref
+            .read(debtsRepositoryProvider)
+            .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl),
+      );
+
+      // Refresh to reflect the payment link in the UI
       await ref.read(debtsControllerProvider.notifier).refresh();
+      // Invalidate the provider so it refetches with the updated payment link
       ref.invalidate(receivableDetailProvider(widget.receivableId));
-      await ref.read(receivableDetailProvider(widget.receivableId).future);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment link generated.')),

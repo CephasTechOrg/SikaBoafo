@@ -133,7 +133,17 @@ void main() {
 
     await tester.tap(find.text('Generate Link'));
     await tester.pump();
-    await tester.pumpAndSettle();
+    // Avoid pumpAndSettle here because transient UI (SnackBar animations)
+    // can keep frames scheduled and cause timeouts. Instead, pump a few
+    // frames until async work completes.
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (fakeController.refreshCalls >= 1 &&
+          fakeApi.initiateCalls >= 1 &&
+          find.text('Payment link ready').evaluate().isNotEmpty) {
+        break;
+      }
+    }
 
     expect(fakeApi.initiateCalls, 1);
     expect(fakeController.refreshCalls, 1);

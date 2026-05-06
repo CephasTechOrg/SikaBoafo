@@ -7,8 +7,7 @@ from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import (
@@ -220,41 +219,23 @@ class ReceivablesService:
         store = self._get_default_store_for_user(user_id=user_id)
         customer = self._get_customer_for_store(store_id=store.id, customer_id=payload.customer_id)
         amount = self._money(payload.original_amount)
-        # invoice_number is unique. Under concurrent creates (e.g. sync bursts),
-        # naive numbering can collide and raise a UniqueViolation; retry.
-        invoice_number: str | None = None
-        receivable: Receivable | None = None
-        for _ in range(6):
-            invoice_number = self._generate_invoice_number(store_id=store.id)
-            try:
-                # Use a SAVEPOINT so a uniqueness collision doesn't poison the whole
-                # sync transaction/session.
-                with self.db.begin_nested():
-                    receivable = Receivable(
-                        store_id=store.id,
-                        customer_id=customer.id,
-                        original_amount=amount,
-                        outstanding_amount=amount,
-                        due_date=payload.due_date,
-                        status=RECEIVABLE_STATUS_OPEN,
-                        invoice_number=invoice_number,
-                        created_by_user_id=user_id,
-                        source_device_id=source_device_id,
-                        local_operation_id=local_operation_id,
-                    )
-                    if payload.receivable_id is not None:
-                        receivable.id = payload.receivable_id
-                    self.db.add(receivable)
-                    self.db.flush()
-                break
-            except IntegrityError as exc:
-                msg = str(getattr(exc, "orig", exc))
-                if "receivables_invoice_number" not in msg and "invoice_number" not in msg:
-                    raise
-        else:
-            raise ReceivableContextMissingError(
-                "Could not allocate a unique invoice number. Please retry."
-            )
+        invoice_number = self._allocate_invoice_number(store_id=store.id)
+        receivable = Receivable(
+            store_id=store.id,
+            customer_id=customer.id,
+            original_amount=amount,
+            outstanding_amount=amount,
+            due_date=payload.due_date,
+            status=RECEIVABLE_STATUS_OPEN,
+            invoice_number=invoice_number,
+            created_by_user_id=user_id,
+            source_device_id=source_device_id,
+            local_operation_id=local_operation_id,
+        )
+        if payload.receivable_id is not None:
+            receivable.id = payload.receivable_id
+        self.db.add(receivable)
+        self.db.flush()
         log_audit(
             db=self.db,
             actor_user_id=user_id,
@@ -356,25 +337,43 @@ class ReceivablesService:
         self.db.refresh(receivable)
         return self._to_receivable_snapshot(receivable=receivable)
 
-    def _generate_invoice_number(self, *, store_id: UUID) -> str:
+    def _allocate_invoice_number(self, *, store_id: UUID) -> str:
+        """Allocate next invoice number without collisions (Postgres row lock).
+
+        Uses table `receivable_invoice_counters(store_id, year, next_number)`:
+        - First allocation inserts next_number=2 and returns 1
+        - Next allocations lock the row and increment atomically
+        """
         year = datetime.now(tz=UTC).year
         prefix = f"INV-{year}-"
-        latest = self.db.scalar(
-            select(Receivable.invoice_number)
-            .where(
-                Receivable.store_id == store_id,
-                Receivable.invoice_number.like(f"{prefix}%"),
-            )
-            .order_by(Receivable.invoice_number.desc())
-            .limit(1)
+
+        # Ensure the counter row exists (idempotent).
+        self.db.execute(
+            text(
+                """
+INSERT INTO receivable_invoice_counters (store_id, year, next_number)
+VALUES (:store_id, :year, 0)
+ON CONFLICT (store_id, year) DO NOTHING
+"""
+            ),
+            {"store_id": str(store_id), "year": year},
         )
-        if latest is None:
-            return f"{prefix}0001"
-        try:
-            suffix = int(latest.split("-")[-1])
-        except Exception:
-            suffix = 0
-        return f"{prefix}{suffix + 1:04d}"
+
+        # Lock and increment.
+        row = self.db.execute(
+            text(
+                """
+UPDATE receivable_invoice_counters
+SET next_number = next_number + 1
+WHERE store_id = :store_id AND year = :year
+RETURNING next_number
+"""
+            ),
+            {"store_id": str(store_id), "year": year},
+        ).one()
+
+        allocated = int(row[0])
+        return f"{prefix}{allocated:04d}"
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         try:

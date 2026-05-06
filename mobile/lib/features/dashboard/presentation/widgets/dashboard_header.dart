@@ -238,8 +238,7 @@ class _NotificationsHeaderButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unreadAsync = ref.watch(unreadNotificationsCountRefreshProvider);
-    final unread = unreadAsync.valueOrNull ?? 0;
+    final unread = ref.watch(unreadNotificationsCountLiveProvider);
 
     return Stack(
       clipBehavior: Clip.none,
