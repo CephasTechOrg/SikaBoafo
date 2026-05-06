@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:biztrack_gh/core/services/api_client.dart';
 import 'package:biztrack_gh/core/services/secure_token_storage.dart';
@@ -344,4 +345,197 @@ void main() {
     expect(results[1].applied, 1);
     expect(appDb.queue.rowById(1)['status'], SyncQueueRepository.applied);
   });
+
+  group('server_version writeback', () {
+    late Database _db;
+
+    setUp(() async {
+      sqfliteFfiInit();
+      _db = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          version: 1,
+          onCreate: (db, _) async {
+            await db.execute('''
+CREATE TABLE items_local (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT,
+  default_price TEXT,
+  server_version INTEGER,
+  quantity_on_hand INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT 0
+)''');
+          },
+        ),
+      );
+    });
+
+    tearDown(() async {
+      await _db.close();
+    });
+
+    _SqliteFakeAppDatabase _makeDb(List<Map<String, Object?>> rows) =>
+        _SqliteFakeAppDatabase(rows, _db);
+
+    test('item create apply writes server_version=1 to items_local', () async {
+      const itemId = 'item-create-abc';
+      await _db.insert('items_local', {
+        'id': itemId,
+        'name': 'Palm Oil',
+        'default_price': '20.00',
+        'quantity_on_hand': 0,
+        'is_active': 1,
+        'created_at': 0,
+        'updated_at': 0,
+      });
+
+      final runner = SyncQueueRunner(
+        appDb: _makeDb([
+          _queueRow(
+            id: 1,
+            deviceId: 'dev-1',
+            opId: 'op-item-create',
+            entityType: 'item',
+            operation: 'create',
+          ),
+        ]),
+        syncApi: _FakeSyncApi((_, __) async => [
+              const SyncApplyResult(
+                localOperationId: 'op-item-create',
+                status: 'applied',
+                entityId: itemId,
+                serverVersion: 1,
+              ),
+            ]),
+      );
+
+      final summary = await runner.run();
+
+      expect(summary.applied, 1);
+      expect(summary.failed, 0);
+      final rows =
+          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+      expect(rows.first['server_version'], 1);
+    });
+
+    test('item update apply writes incremented server_version to items_local',
+        () async {
+      const itemId = 'item-update-def';
+      await _db.insert('items_local', {
+        'id': itemId,
+        'name': 'Palm Oil',
+        'default_price': '20.00',
+        'server_version': 1,
+        'quantity_on_hand': 0,
+        'is_active': 1,
+        'created_at': 0,
+        'updated_at': 0,
+      });
+
+      final runner = SyncQueueRunner(
+        appDb: _makeDb([
+          _queueRow(
+            id: 1,
+            deviceId: 'dev-1',
+            opId: 'op-item-update',
+            entityType: 'item',
+            operation: 'update',
+          ),
+        ]),
+        syncApi: _FakeSyncApi((_, __) async => [
+              const SyncApplyResult(
+                localOperationId: 'op-item-update',
+                status: 'applied',
+                entityId: itemId,
+                serverVersion: 2,
+              ),
+            ]),
+      );
+
+      await runner.run();
+
+      final rows =
+          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+      expect(rows.first['server_version'], 2);
+    });
+
+    test('non-item entity apply does not touch items_local', () async {
+      // Uses plain _FakeAppDatabase — calling database on it would throw,
+      // so if this test passes it proves the runner never hits the DB for sales.
+      final runner = SyncQueueRunner(
+        appDb: _FakeAppDatabase([
+          _queueRow(
+            id: 1,
+            deviceId: 'dev-1',
+            opId: 'op-sale-create',
+            entityType: 'sale',
+            operation: 'create',
+          ),
+        ]),
+        syncApi: _FakeSyncApi((_, __) async => [
+              const SyncApplyResult(
+                localOperationId: 'op-sale-create',
+                status: 'applied',
+                entityId: 'sale-xyz',
+              ),
+            ]),
+      );
+
+      final summary = await runner.run();
+      expect(summary.applied, 1);
+      expect(summary.failed, 0);
+    });
+
+    test('item apply without serverVersion leaves existing version unchanged',
+        () async {
+      const itemId = 'item-no-version-ghi';
+      await _db.insert('items_local', {
+        'id': itemId,
+        'name': 'Sugar',
+        'default_price': '8.00',
+        'server_version': 3,
+        'quantity_on_hand': 0,
+        'is_active': 1,
+        'created_at': 0,
+        'updated_at': 0,
+      });
+
+      final runner = SyncQueueRunner(
+        appDb: _makeDb([
+          _queueRow(
+            id: 1,
+            deviceId: 'dev-1',
+            opId: 'op-item-dup',
+            entityType: 'item',
+            operation: 'update',
+          ),
+        ]),
+        syncApi: _FakeSyncApi((_, __) async => [
+              const SyncApplyResult(
+                localOperationId: 'op-item-dup',
+                status: 'duplicate',
+                entityId: itemId,
+                // no serverVersion — duplicate responses omit it
+              ),
+            ]),
+      );
+
+      await runner.run();
+
+      final rows =
+          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+      expect(rows.first['server_version'], 3);
+    });
+  });
+}
+
+class _SqliteFakeAppDatabase extends _FakeAppDatabase {
+  _SqliteFakeAppDatabase(super.initialRows, this._inMemDb);
+
+  final Database _inMemDb;
+
+  @override
+  Future<Database> get database async => _inMemDb;
 }

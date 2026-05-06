@@ -247,6 +247,209 @@ def test_sync_apply_is_idempotent_for_inventory_operations() -> None:
         app.dependency_overrides.clear()
 
 
+def test_sync_apply_item_create_returns_server_version() -> None:
+    client, _, _ = _build_sqlite_test_stack()
+    item_id = str(uuid4())
+    try:
+        resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": "device-version-check-01",
+                "operations": [
+                    {
+                        "local_operation_id": "op-version-create-001",
+                        "entity_type": "item",
+                        "action_type": "create",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Kerosene",
+                            "default_price": "12.00",
+                        },
+                    }
+                ],
+            },
+        )
+        assert resp.status_code == 200
+        result = resp.json()["results"][0]
+        assert result["status"] == "applied"
+        assert result["entity_id"] == item_id
+        assert result["server_version"] == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_sync_apply_sequential_item_updates_same_device_do_not_conflict() -> None:
+    """Regression: same-device sequential edits must not produce false version conflicts.
+
+    server_version is returned per apply so the client can persist the new
+    version immediately — no stale send on the next edit.
+    """
+    client, _, _ = _build_sqlite_test_stack()
+    item_id = str(uuid4())
+    device_id = "device-same-device-seq-01"
+    try:
+        # Step 1: create — server version becomes 1
+        create_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_id,
+                "operations": [
+                    {
+                        "local_operation_id": "op-seq-create-001",
+                        "entity_type": "item",
+                        "action_type": "create",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Palm Oil",
+                            "default_price": "20.00",
+                        },
+                    }
+                ],
+            },
+        )
+        assert create_resp.status_code == 200
+        create_result = create_resp.json()["results"][0]
+        assert create_result["status"] == "applied"
+        v1 = create_result["server_version"]
+        assert v1 == 1
+
+        # Step 2: first update — client sends back the version it just received
+        update1_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_id,
+                "operations": [
+                    {
+                        "local_operation_id": "op-seq-update-002",
+                        "entity_type": "item",
+                        "action_type": "update",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Palm Oil 1L",
+                            "default_price": "22.00",
+                            "version": v1,
+                        },
+                    }
+                ],
+            },
+        )
+        assert update1_resp.status_code == 200
+        update1_result = update1_resp.json()["results"][0]
+        assert update1_result["status"] == "applied"
+        v2 = update1_result["server_version"]
+        assert v2 == 2
+
+        # Step 3: second update — uses v2 from previous response (not the stale v1)
+        # Before the fix, the client would keep sending v1, hitting a false conflict.
+        update2_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_id,
+                "operations": [
+                    {
+                        "local_operation_id": "op-seq-update-003",
+                        "entity_type": "item",
+                        "action_type": "update",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Palm Oil 1L Premium",
+                            "default_price": "25.00",
+                            "version": v2,
+                        },
+                    }
+                ],
+            },
+        )
+        assert update2_resp.status_code == 200
+        update2_result = update2_resp.json()["results"][0]
+        assert update2_result["status"] == "applied"
+        assert update2_result["server_version"] == 3
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_sync_apply_item_update_conflicts_when_version_is_genuinely_stale() -> None:
+    """True cross-device version conflicts must still be detected after the fix."""
+    client, _, _ = _build_sqlite_test_stack()
+    item_id = str(uuid4())
+    device_a = "device-conflict-a-01"
+    device_b = "device-conflict-b-01"
+    try:
+        # Device A creates item — version becomes 1
+        create_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_a,
+                "operations": [
+                    {
+                        "local_operation_id": "op-conflict-create-001",
+                        "entity_type": "item",
+                        "action_type": "create",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Sugar",
+                            "default_price": "8.00",
+                        },
+                    }
+                ],
+            },
+        )
+        assert create_resp.status_code == 200
+        assert create_resp.json()["results"][0]["server_version"] == 1
+
+        # Device B updates with version=1 → server becomes version 2
+        update_b_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_b,
+                "operations": [
+                    {
+                        "local_operation_id": "op-conflict-update-b-001",
+                        "entity_type": "item",
+                        "action_type": "update",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Sugar 1kg",
+                            "default_price": "9.00",
+                            "version": 1,
+                        },
+                    }
+                ],
+            },
+        )
+        assert update_b_resp.status_code == 200
+        assert update_b_resp.json()["results"][0]["status"] == "applied"
+        assert update_b_resp.json()["results"][0]["server_version"] == 2
+
+        # Device A also tries version=1 — server is now at 2, so this is a genuine conflict
+        update_a_resp = client.post(
+            "/api/v1/sync/apply",
+            json={
+                "device_id": device_a,
+                "operations": [
+                    {
+                        "local_operation_id": "op-conflict-update-a-001",
+                        "entity_type": "item",
+                        "action_type": "update",
+                        "payload": {
+                            "item_id": item_id,
+                            "name": "Sugar Refined",
+                            "default_price": "10.00",
+                            "version": 1,
+                        },
+                    }
+                ],
+            },
+        )
+        assert update_a_resp.status_code == 200
+        result = update_a_resp.json()["results"][0]
+        assert result["status"] == "conflict"
+        assert "expected v1" in result["detail"]
+        assert "found v2" in result["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_sync_apply_rejects_unknown_operation() -> None:
     client, session_local, _ = _build_sqlite_test_stack()
     try:
