@@ -36,6 +36,7 @@ def apply_sync_operations(
                 status=r.status,
                 entity_id=r.entity_id,
                 detail=r.detail,
+                server_version=r.server_version,
             )
             for r in results
         ]

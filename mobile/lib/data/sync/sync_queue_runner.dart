@@ -142,6 +142,18 @@ class SyncQueueRunner {
 
           if (result.status == 'applied' || result.status == 'duplicate') {
             await _appDb.syncQueue.markApplied(queueId);
+            final entityType = entityTypeByQueueId[queueId] ?? '';
+            if (entityType == 'item' &&
+                result.serverVersion != null &&
+                result.entityId != null) {
+              final db = await _appDb.database;
+              await db.update(
+                'items_local',
+                {'server_version': result.serverVersion},
+                where: 'id = ?',
+                whereArgs: [result.entityId],
+              );
+            }
             statusByOperationId[result.localOperationId] = result.status;
             applied += 1;
             continue;

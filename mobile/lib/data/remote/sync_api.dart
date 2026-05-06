@@ -27,12 +27,14 @@ class SyncApplyResult {
     required this.status,
     this.entityId,
     this.detail,
+    this.serverVersion,
   });
 
   final String localOperationId;
   final String status;
   final String? entityId;
   final String? detail;
+  final int? serverVersion;
 
   factory SyncApplyResult.fromJson(Map<String, dynamic> json) {
     return SyncApplyResult(
@@ -40,6 +42,7 @@ class SyncApplyResult {
       status: (json['status'] ?? '') as String,
       entityId: json['entity_id'] as String?,
       detail: json['detail'] as String?,
+      serverVersion: json['server_version'] as int?,
     );
   }
 }
