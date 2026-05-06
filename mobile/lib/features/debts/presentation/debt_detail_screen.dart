@@ -6,8 +6,8 @@ import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/sync_providers.dart';
-import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
+import '../../../shared/widgets/streak_hero_header.dart';
 import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
@@ -26,55 +26,127 @@ class DebtDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(receivableDetailProvider(receivableId));
     final detail = detailAsync.valueOrNull;
 
-    return MockupScreenScaffold(
-      title: detail?.record.customerName ?? 'Debt Detail',
-      subtitle: detail == null
-          ? 'Review balance, repayment history, and debt status'
-          : _statusLabel(detail.record.status),
-      onBack: () => context.pop(),
-      bottomNavSafeArea: true,
-      body: detailAsync.when(
-        loading: () => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: const [
-            PremiumPanel(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(child: CircularProgressIndicator()),
+    const kLeadingGutter = 56.0;
+    final title = detail?.record.customerName ?? 'Debt Detail';
+    final subtitle = detail == null
+        ? 'Review balance, repayment history, and debt status'
+        : _statusLabel(detail.record.status);
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 210,
+            pinned: true,
+            stretch: true,
+            leadingWidth: kLeadingGutter,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
               ),
+              onPressed: () => context.pop(),
             ),
-          ],
-        ),
-        error: (error, _) => ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: [
-            _DetailErrorView(
-              message: _humanizeError(error),
-              onRetry: () => ref.invalidate(
-                receivableDetailProvider(receivableId),
-              ),
-            ),
-          ],
-        ),
-        data: (detail) {
-          if (detail == null) {
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-              children: const [
-                PremiumEmptyState(
-                  title: 'Debt record not found',
-                  message:
-                      'This receivable is no longer available in the active debt list.',
-                  icon: Icons.search_off_rounded,
+            backgroundColor: const Color(0xFF041C0B),
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground],
+              background: StreakHeroHeader(
+                leadingContentInset: kLeadingGutter,
+                title: title,
+                subtitle: subtitle,
+                badge: const PremiumBadge(
+                  label: 'Receivable',
+                  icon: Icons.receipt_long_rounded,
+                  foreground: Colors.white,
+                  background: Color(0x24FFFFFF),
                 ),
-              ],
-            );
-          }
-          return _DetailBody(
-            detail: detail,
-            receivableId: receivableId,
-          );
-        },
+              ),
+              title: innerBoxIsScrolled
+                  ? Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    )
+                  : null,
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: kLeadingGutter,
+                bottom: 16,
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: ColoredBox(
+              color: Color(0xFF041C0B),
+              child: SizedBox(height: 18),
+            ),
+          ),
+        ],
+        body: MediaQuery.removePadding(
+          context: context,
+          removeTop: true,
+          child: ColoredBox(
+            color: const Color(0xFF041C0B),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: AppRadii.heroRadius,
+              ),
+              child: Container(
+                color: AppColors.surface,
+                child: detailAsync.when(
+                  loading: () => const Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        color: AppColors.forest,
+                      ),
+                    ),
+                  ),
+                  error: (error, _) => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                    children: [
+                      _DetailErrorView(
+                        message: _humanizeError(error),
+                        onRetry: () => ref.invalidate(
+                          receivableDetailProvider(receivableId),
+                        ),
+                      ),
+                    ],
+                  ),
+                  data: (detail) {
+                    if (detail == null) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                        children: const [
+                          PremiumEmptyState(
+                            title: 'Debt record not found',
+                            message:
+                                'This receivable is no longer available in the active debt list.',
+                            icon: Icons.search_off_rounded,
+                          ),
+                        ],
+                      );
+                    }
+                    return _DetailBody(
+                      detail: detail,
+                      receivableId: receivableId,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -410,6 +482,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   Future<void> _generatePaymentLink(BuildContext context) async {
     setState(() => _isGeneratingPaymentLink = true);
     try {
+      // Ensure this receivable exists on the backend before link initiation.
+      // If it's still pending locally, the backend will respond "not found".
+      if (widget.detail.record.syncStatus != 'applied') {
+        await ref.read(debtsRepositoryProvider).syncPendingQueue();
+      }
       await ref
           .read(debtsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
@@ -422,8 +499,12 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       );
     } catch (error) {
       if (!context.mounted) return;
+      final msg = humanizeDebtsApiError(error);
+      final hint = widget.detail.record.syncStatus != 'applied'
+          ? ' (Try syncing first)'
+          : '';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(humanizeDebtsApiError(error))),
+        SnackBar(content: Text('$msg$hint')),
       );
     } finally {
       if (mounted) {
