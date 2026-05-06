@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -507,9 +509,11 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           .initiateReceivablePaymentLink(widget.receivableId);
 
       // Immediately store the payment link locally
-      await ref
-          .read(debtsRepositoryProvider)
-          .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl);
+      unawaited(
+        ref
+            .read(debtsRepositoryProvider)
+            .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl),
+      );
 
       // Refresh to reflect the payment link in the UI
       await ref.read(debtsControllerProvider.notifier).refresh();
