@@ -147,10 +147,10 @@ class DebtDetailScreen extends ConsumerWidget {
                         receivableId: receivableId,
                       );
                     },
+                  ),
                 ),
               ),
             ),
-          ),
           ),
         ],
       ),
@@ -188,7 +188,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final canCollect = row.status == 'open' || row.status == 'partially_paid';
     final hasPaymentLink =
         row.paymentLink != null && row.paymentLink!.isNotEmpty;
-    final remindersAsync = ref.watch(debtRemindersProvider(widget.receivableId));
+    final remindersAsync =
+        ref.watch(debtRemindersProvider(widget.receivableId));
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -259,8 +260,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                                 )
                                 .removeReminderAt(i),
                           ),
-                          if (i != times.length - 1)
-                            const SizedBox(height: 10),
+                          if (i != times.length - 1) const SizedBox(height: 10),
                         ],
                         const SizedBox(height: 14),
                         SizedBox(
@@ -423,7 +423,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       initialTime: TimeOfDay.now(),
     );
     if (time == null || !context.mounted) return;
-    final when = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final when =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
     await ref
         .read(debtRemindersProvider(widget.receivableId).notifier)
         .addReminder(whenLocal: when);
