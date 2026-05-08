@@ -43,7 +43,7 @@ class DashboardKpiStrip extends StatelessWidget {
               Expanded(
                 child: _StatCard(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'Debt Outstanding',
+                  label: 'Unpaid Debt',
                   value: '₵$debtOutstanding',
                   color: AppColors.ink,
                   backgroundColor: AppColors.surfaceAlt,
@@ -296,6 +296,8 @@ class _StatCard extends StatelessWidget {
                     children: [
                       Text(
                         value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -306,6 +308,8 @@ class _StatCard extends StatelessWidget {
                       const SizedBox(height: 1),
                       Text(
                         label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
