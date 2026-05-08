@@ -392,6 +392,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     var saleSaved = false;
+    bool loadingShown = false;
+
+    if (mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        useRootNavigator: true,
+        builder: (_) => const _PaymentLoadingDialog(message: 'Generating QR code...'),
+      );
+      loadingShown = true;
+    }
+
     try {
       final saleId = await ref
           .read(salesControllerProvider.notifier)
@@ -408,6 +420,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           await ref.read(salesPaymentsApiProvider).initiateSalePayment(saleId);
       if (!mounted) return;
 
+      if (loadingShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingShown = false;
+      }
+
       ref.invalidate(inventoryControllerProvider);
       _resetDraftAfterSale();
       await _showPaystackLinkDialog(
@@ -417,6 +434,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         currency: initiated.currency,
       );
     } catch (error) {
+      if (loadingShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingShown = false;
+      }
+      
       if (!mounted) return;
       if (saleSaved) {
         ref.invalidate(inventoryControllerProvider);
@@ -454,6 +476,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
     final note = _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim();
     var saleSaved = false;
+    bool loadingShown = false;
+
+    if (mounted) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        useRootNavigator: true,
+        builder: (_) => const _PaymentLoadingDialog(message: 'Setting up payment...'),
+      );
+      loadingShown = true;
+    }
+
     try {
       final saleId = await ref
           .read(salesControllerProvider.notifier)
@@ -465,6 +499,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           );
       saleSaved = true;
       if (!mounted) return;
+
+      if (loadingShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingShown = false;
+      }
 
       ref.invalidate(inventoryControllerProvider);
       _resetDraftAfterSale();
@@ -532,6 +571,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         ),
       );
     } catch (error) {
+      if (loadingShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        loadingShown = false;
+      }
+
       if (!mounted) return;
       if (saleSaved) {
         ref.invalidate(inventoryControllerProvider);
@@ -921,3 +965,55 @@ class _TopAgg {
         totalMinor: totalMinor ?? this.totalMinor,
       );
 }
+
+class _PaymentLoadingDialog extends StatelessWidget {
+  const _PaymentLoadingDialog({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppShadows.elevated,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    color: AppColors.forest,
+                    strokeWidth: 3.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
