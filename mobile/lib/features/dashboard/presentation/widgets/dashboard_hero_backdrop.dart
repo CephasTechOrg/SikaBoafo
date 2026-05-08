@@ -1,12 +1,56 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-class DashboardHeroBackdrop extends StatelessWidget {
+class DashboardHeroBackdrop extends StatefulWidget {
   const DashboardHeroBackdrop({
     super.key,
-    required this.swirlAssetPath,
   });
 
-  final String swirlAssetPath;
+  @override
+  State<DashboardHeroBackdrop> createState() => _DashboardHeroBackdropState();
+}
+
+class _DashboardHeroBackdropState extends State<DashboardHeroBackdrop> {
+  Timer? _timer;
+  int _currentIndex = 0;
+  bool _reduceMotion = false;
+
+  final List<String> _images = const [
+    'assets/images/map.png',
+    'assets/images/independence.png',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextReduceMotion = MediaQuery.maybeOf(context)?.accessibleNavigation ?? false;
+    if (nextReduceMotion != _reduceMotion || _timer == null) {
+      _reduceMotion = nextReduceMotion;
+      _restartTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _restartTimer() {
+    _timer?.cancel();
+    if (_reduceMotion) return;
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = (_currentIndex + 1) % _images.length;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +61,19 @@ class DashboardHeroBackdrop extends StatelessWidget {
           child: Container(color: const Color(0xFF031A0C)),
         ),
 
-        // 2. Flag/swirl image — slightly dimmed so it's visible but not loud
+        // 2. Rotating flag/swirl image — slightly dimmed so it's visible but not loud
         Positioned.fill(
           child: Opacity(
             opacity: 0.55,
-            child: Image.asset(
-              swirlAssetPath,
-              fit: BoxFit.cover,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 800),
+              child: Image.asset(
+                _images[_currentIndex],
+                key: ValueKey<String>(_images[_currentIndex]),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
             ),
           ),
         ),

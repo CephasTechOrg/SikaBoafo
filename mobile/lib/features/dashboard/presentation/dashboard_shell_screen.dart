@@ -165,9 +165,7 @@ class _HomeDashboard extends ConsumerWidget {
                   right: 0,
                   top: 0,
                   height: heroHeight,
-                  child: const DashboardHeroBackdrop(
-                    swirlAssetPath: 'assets/images/flag.png',
-                  ),
+                  child: const DashboardHeroBackdrop(),
                 ),
                 Positioned(
                   left: 0,

@@ -58,12 +58,11 @@ class DashboardApi {
     ]);
   }
 
-  Future<MerchantContext> fetchContext() async {
-    final cached =
-        await _cache?.getIfFresh(_cacheContextKey, maxAge: _contextTtl);
+  Stream<MerchantContext> streamContext() async* {
+    final cached = await _cache?.get(_cacheContextKey);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
-      if (body != null) return MerchantContext.fromJson(body);
+      if (body != null) yield MerchantContext.fromJson(body);
     }
     try {
       final response =
@@ -73,18 +72,17 @@ class DashboardApi {
         throw const FormatException('Unexpected dashboard context payload.');
       }
       await _cache?.put(_cacheContextKey, jsonEncode(body));
-      return MerchantContext.fromJson(body);
+      yield MerchantContext.fromJson(body);
     } on DioException {
-      rethrow;
+      if (cached == null) rethrow;
     }
   }
 
-  Future<DashboardSummary> fetchSummary() async {
-    final cached =
-        await _cache?.getIfFresh(_cacheSummaryKey, maxAge: _summaryTtl);
+  Stream<DashboardSummary> streamSummary() async* {
+    final cached = await _cache?.get(_cacheSummaryKey);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
-      if (body != null) return DashboardSummary.fromJson(body);
+      if (body != null) yield DashboardSummary.fromJson(body);
     }
     try {
       final response = await _apiClient.dio.get<dynamic>('/reports/summary');
@@ -93,19 +91,18 @@ class DashboardApi {
         throw const FormatException('Unexpected dashboard summary payload.');
       }
       await _cache?.put(_cacheSummaryKey, jsonEncode(body));
-      return DashboardSummary.fromJson(body);
+      yield DashboardSummary.fromJson(body);
     } on DioException {
-      rethrow;
+      if (cached == null) rethrow;
     }
   }
 
-  Future<List<DashboardActivity>> fetchRecentActivity({int limit = 8}) async {
-    final cached =
-        await _cache?.getIfFresh(_cacheRecentActivityKey, maxAge: _activityTtl);
+  Stream<List<DashboardActivity>> streamRecentActivity({int limit = 8}) async* {
+    final cached = await _cache?.get(_cacheRecentActivityKey);
     if (cached != null) {
       final body = _tryDecodeList(cached);
       if (body != null) {
-        return body
+        yield body
             .whereType<Map<String, dynamic>>()
             .map(DashboardActivity.fromJson)
             .toList(growable: false);
@@ -121,21 +118,20 @@ class DashboardApi {
         throw const FormatException('Unexpected recent activity payload.');
       }
       await _cache?.put(_cacheRecentActivityKey, jsonEncode(body));
-      return body
+      yield body
           .whereType<Map<String, dynamic>>()
           .map(DashboardActivity.fromJson)
           .toList(growable: false);
     } on DioException {
-      rethrow;
+      if (cached == null) rethrow;
     }
   }
 
-  Future<DashboardInsights> fetchInsights({int topN = 5}) async {
-    final cached =
-        await _cache?.getIfFresh(_cacheInsightsKey, maxAge: _insightsTtl);
+  Stream<DashboardInsights> streamInsights({int topN = 5}) async* {
+    final cached = await _cache?.get(_cacheInsightsKey);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
-      if (body != null) return DashboardInsights.fromJson(body);
+      if (body != null) yield DashboardInsights.fromJson(body);
     }
     try {
       final response = await _apiClient.dio.get<dynamic>(
@@ -147,9 +143,9 @@ class DashboardApi {
         throw const FormatException('Unexpected dashboard insights payload.');
       }
       await _cache?.put(_cacheInsightsKey, jsonEncode(body));
-      return DashboardInsights.fromJson(body);
+      yield DashboardInsights.fromJson(body);
     } on DioException {
-      rethrow;
+      if (cached == null) rethrow;
     }
   }
 

@@ -309,21 +309,21 @@ String minorToMoney(int value) {
 }
 
 final merchantContextProvider =
-    FutureProvider.autoDispose<MerchantContext>((ref) async {
-  return ref.watch(dashboardApiProvider).fetchContext();
+    StreamProvider.autoDispose<MerchantContext>((ref) {
+  return ref.watch(dashboardApiProvider).streamContext();
 });
 
 final dashboardSummaryProvider =
-    FutureProvider.autoDispose<DashboardSummary>((ref) async {
-  return ref.watch(dashboardApiProvider).fetchSummary();
+    StreamProvider.autoDispose<DashboardSummary>((ref) {
+  return ref.watch(dashboardApiProvider).streamSummary();
 });
 
 final dashboardRecentActivityProvider =
-    FutureProvider.autoDispose<List<DashboardActivity>>((ref) async {
-  return ref.watch(dashboardApiProvider).fetchRecentActivity();
+    StreamProvider.autoDispose<List<DashboardActivity>>((ref) {
+  return ref.watch(dashboardApiProvider).streamRecentActivity();
 });
 
 final dashboardInsightsProvider =
-    FutureProvider.autoDispose<DashboardInsights>((ref) async {
-  return ref.watch(dashboardApiProvider).fetchInsights();
+    StreamProvider.autoDispose<DashboardInsights>((ref) {
+  return ref.watch(dashboardApiProvider).streamInsights();
 });
