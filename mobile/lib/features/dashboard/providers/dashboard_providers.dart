@@ -188,7 +188,7 @@ WHERE s.sale_status != ?
   AND COALESCE(q.status, s.status) IN (?, ?, ?)
 GROUP BY si.item_id, item_name
 ORDER BY qty DESC, total_real DESC
-LIMIT 10
+LIMIT 3
 ''',
     ['voided', startOfMonth, 'pending', 'failed', 'sending'],
   );

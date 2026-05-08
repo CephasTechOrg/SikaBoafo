@@ -127,7 +127,7 @@ class DashboardApi {
     }
   }
 
-  Stream<DashboardInsights> streamInsights({int topN = 5}) async* {
+  Stream<DashboardInsights> streamInsights({int topN = 3}) async* {
     final cached = await _cache?.get(_cacheInsightsKey);
     if (cached != null) {
       final body = _tryDecodeMap(cached);
