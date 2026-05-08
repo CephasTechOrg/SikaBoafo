@@ -54,3 +54,11 @@ Thumbs.db
 
 # devtools
 devtools_*.yaml
+.claude/
+.agent/
+.agent.json 
+
+.codex/
+.claude
+.claude/claude-agents.json
+.claude/brain.json
