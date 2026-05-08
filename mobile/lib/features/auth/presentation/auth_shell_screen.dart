@@ -642,20 +642,63 @@ class _AuthHeroImage extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/businesswoman.png',
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-          ),
-          // Dark gradient only at the top so the logo stays readable
+          // Base gradient
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xAA000000), Colors.transparent],
-                begin: Alignment.topCenter,
-                end: Alignment(0, 0.55),
+                colors: [
+                  Color(0xFF041C0B),
+                  Color(0xFF083A1A),
+                  Color(0xFF0F5A30),
+                  Color(0xFF196E3D),
+                ],
+                stops: [0.0, 0.28, 0.62, 1.0],
+                begin: Alignment.bottomLeft,
+                end: Alignment.topRight,
               ),
             ),
+          ),
+          // Radial highlight
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0.68, -0.72),
+                radius: 0.92,
+                colors: [
+                  const Color(0xFF27A84E).withValues(alpha: 0.40),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 1.0],
+              ),
+            ),
+          ),
+          // Darken bottom edge
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF010A04).withValues(alpha: 0.28),
+                  Colors.transparent,
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+            ),
+          ),
+          const Positioned(
+            left: -42,
+            top: -38,
+            child: _AuthSoftCircle(size: 120, opacity: 0.14),
+          ),
+          const Positioned(
+            right: -54,
+            top: 24,
+            child: _AuthSoftCircle(size: 160, opacity: 0.10),
+          ),
+          const Positioned(
+            right: 22,
+            bottom: -48,
+            child: _AuthSoftCircle(size: 140, opacity: 0.12),
           ),
           const SafeArea(
             bottom: false,
@@ -744,3 +787,23 @@ class _InlineError extends StatelessWidget {
     );
   }
 }
+
+class _AuthSoftCircle extends StatelessWidget {
+  const _AuthSoftCircle({required this.size, required this.opacity});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.mint.withValues(alpha: opacity),
+      ),
+    );
+  }
+}
+
