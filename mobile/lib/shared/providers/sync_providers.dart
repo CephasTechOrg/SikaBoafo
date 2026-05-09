@@ -67,13 +67,16 @@ final syncQueueRunnerProvider = Provider<SyncQueueRunner>((ref) {
   );
 });
 
+// NOT autoDispose: the sync controller is a global background service.
+// Making it autoDispose means it rebuilds (and re-pings) on every tab switch,
+// causing a false 'Offline' flash while the fresh ping is in-flight.
 final syncStatusControllerProvider =
-    AsyncNotifierProvider.autoDispose<SyncStatusController, SyncStatusSnapshot>(
+    AsyncNotifierProvider<SyncStatusController, SyncStatusSnapshot>(
   SyncStatusController.new,
 );
 
 class SyncStatusController
-    extends AutoDisposeAsyncNotifier<SyncStatusSnapshot> {
+    extends AsyncNotifier<SyncStatusSnapshot> {
   static const _minInterval = Duration(seconds: 20);
   static const _maxInterval = Duration(minutes: 5);
 
@@ -87,6 +90,9 @@ class SyncStatusController
   String? _lastError;
   DateTime? _lastSyncedAt;
   bool? _lastBackendReachable;
+  // Tracks the last confirmed reachability result across rebuilds so the
+  // UI never defaults to 'Offline' before the first ping has returned.
+  bool? _lastKnownReachable;
   int _lastPendingCount = 0;
   int _lastFailedCount = 0;
 
@@ -151,6 +157,9 @@ class SyncStatusController
     _busy = true;
     try {
       final reachable = await _pingBackend();
+      // Persist the confirmed result so _readSnapshot can use it as a
+      // reliable default while the next ping is in-flight.
+      _lastKnownReachable = reachable;
       if (attemptSync && reachable) {
         if (keepSyncingStateWhileRunning) {
           final beforeSync = await _readSnapshot(
@@ -197,7 +206,11 @@ class SyncStatusController
     final failedEntries = await _appDb.syncQueue.failedRows();
     final deadEntries = await _appDb.syncQueue.deadRows();
     final snapshot = SyncStatusSnapshot(
-      backendReachable: backendReachable ?? false,
+      // Use _lastKnownReachable as the default if backendReachable is not
+      // provided. This prevents a false 'Offline' indicator while the first
+      // ping of a session is still in-flight. Only show false if we have
+      // confirmed unreachability or no prior knowledge at all.
+      backendReachable: backendReachable ?? _lastKnownReachable ?? false,
       isSyncing: isSyncing || stats.sendingCount > 0,
       stats: stats,
       failedEntries: failedEntries,
