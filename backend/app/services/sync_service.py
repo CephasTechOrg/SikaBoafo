@@ -54,6 +54,8 @@ from app.services.expense_service import (
 )
 from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
+    InvalidItemArchiveError,
+    ItemHasSalesHistoryError,
     InventoryItemNotFoundError,
     InventoryService,
     MerchantContextMissingError,
@@ -183,6 +185,8 @@ class SyncService:
             except (
                 InventoryItemNotFoundError,
                 InvalidInventoryAdjustmentError,
+                InvalidItemArchiveError,
+                ItemHasSalesHistoryError,
                 OptimisticLockError,
                 CustomerNotFoundError,
                 ReceivableNotFoundError,
