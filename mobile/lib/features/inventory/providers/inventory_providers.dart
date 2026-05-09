@@ -37,10 +37,20 @@ class InventoryController
 
   @override
   Future<List<LocalInventoryItem>> build() async {
+    // Only attempt a network sync if there are actually pending or failed
+    // operations in the queue. stats() is a single cheap SQLite GROUP BY —
+    // skipping the network call on every tab mount when nothing is queued
+    // saves bandwidth and avoids unnecessary loading state flicker.
     try {
-      await _repo.syncPendingQueue();
+      final queueStats = await ref
+          .read(appDatabaseProvider)
+          .syncQueue
+          .stats();
+      if (queueStats.actionableCount > 0) {
+        await _repo.syncPendingQueue();
+      }
     } catch (_) {
-      // Ignore initial sync failures; queue stays for retry.
+      // Ignore sync failures; queue stays for retry.
     }
     var local = await _repo.listLocalItems();
     if (local.isEmpty) {
