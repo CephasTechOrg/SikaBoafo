@@ -460,7 +460,7 @@ class _HeroStatChip extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  color: alert ? AppColors.dangerDark : Colors.white,
+                  color: alert ? AppColors.danger : Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   height: 1.1,
