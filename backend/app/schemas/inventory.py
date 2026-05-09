@@ -51,18 +51,11 @@ class ItemUpdateIn(BaseModel):
 
     @model_validator(mode="after")
     def validate_has_changes(self) -> ItemUpdateIn:
-        if (
-            self.name is None
-            and self.default_price is None
-            and self.cost_price is None
-            and self.unit is None
-            and self.sku is None
-            and self.category is None
-            and self.low_stock_threshold is None
-            and self.is_active is None
-            and self.image_url is None
-            and self.variants is None
-        ):
+        # Use model_fields_set: if the client sent at least one field (even
+        # explicitly null to clear it), the request is valid. Checking values
+        # for None would reject {"low_stock_threshold": null} which is a
+        # legitimate "clear this threshold" intent.
+        if not self.model_fields_set:
             msg = "At least one field must be provided."
             raise ValueError(msg)
         return self
