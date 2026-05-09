@@ -23,7 +23,8 @@ class SyncQueueRunSummary {
 }
 
 class SyncQueueRunner {
-  const SyncQueueRunner({
+  // NOT const: _activeRun must be a mutable instance field (see below).
+  SyncQueueRunner({
     required AppDatabase appDb,
     required SyncApi syncApi,
     SyncRefreshService? refreshService,
@@ -34,7 +35,18 @@ class SyncQueueRunner {
   final AppDatabase _appDb;
   final SyncApi _syncApi;
   final SyncRefreshService? _refreshService;
-  static Future<SyncQueueRunSummary>? _activeRun;
+
+  // Instance field, NOT static.
+  //
+  // Why not static: a static field is shared across every instance of this
+  // class, including ones created in tests. When a test ends with an active run
+  // future still referenced, the next test's call to run() returns the stale
+  // (already-completed) future and appears to hang or skip work silently.
+  //
+  // An instance field is safe because syncQueueRunnerProvider is a non-autoDispose
+  // singleton Provider — the app always uses a single SyncQueueRunner instance,
+  // so the dedup behaviour is identical in production but test-isolated.
+  Future<SyncQueueRunSummary>? _activeRun;
 
   Future<SyncQueueRunSummary> run({int limit = 100}) async {
     final existingRun = _activeRun;
