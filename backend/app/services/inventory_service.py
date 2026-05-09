@@ -161,19 +161,26 @@ class InventoryService:
                 f"(expected v{version}, found v{item.version})."
             )
             raise OptimisticLockError(msg)
+        # Use model_fields_set to distinguish "field not sent" (omitted) from
+        # "field explicitly set to null" (clear the value). Without this, every
+        # nullable field's default of None would make it impossible to clear a
+        # previously-set threshold, cost price, unit, etc.
+        sent = payload.model_fields_set
+
         if payload.name is not None:
             item.name = payload.name.strip()
         if payload.default_price is not None:
             item.default_price = payload.default_price
-        if payload.cost_price is not None:
-            item.cost_price = payload.cost_price
-        if payload.unit is not None:
+        if "cost_price" in sent:
+            item.cost_price = payload.cost_price  # allows explicit null to clear
+        if "unit" in sent:
             item.unit = self._clean_optional(payload.unit)
-        if payload.sku is not None:
+        if "sku" in sent:
             item.sku = self._clean_optional(payload.sku)
-        if payload.category is not None:
+        if "category" in sent:
             item.category = self._clean_optional(payload.category)
-        if payload.low_stock_threshold is not None:
+        if "low_stock_threshold" in sent:
+            # Allows explicit null to remove a previously set threshold.
             item.low_stock_threshold = payload.low_stock_threshold
         if payload.is_active is not None:
             if (
@@ -184,7 +191,7 @@ class InventoryService:
                 msg = "Adjust stock to 0 before archiving this item."
                 raise InvalidItemArchiveError(msg)
             item.is_active = payload.is_active
-        if payload.image_url is not None:
+        if "image_url" in sent:
             item.image_url = payload.image_url
         if payload.variants is not None:
             existing = self.db.scalars(

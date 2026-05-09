@@ -291,13 +291,17 @@ LIMIT 6
 
 int _moneyToMinor(String value) {
   final raw = value.trim();
-  final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
+  // Support negative amounts (e.g. refunds stored as "-5.00").
+  final isNegative = raw.startsWith('-');
+  final unsigned = isNegative ? raw.substring(1) : raw;
+  final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(unsigned);
   if (match == null) return 0;
-  final parts = raw.split('.');
+  final parts = unsigned.split('.');
   final major = int.tryParse(parts[0]) ?? 0;
   final decimal = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
   final minor = int.tryParse(decimal) ?? 0;
-  return (major * 100) + minor;
+  final result = (major * 100) + minor;
+  return isNegative ? -result : result;
 }
 
 String minorToMoney(int value) {
