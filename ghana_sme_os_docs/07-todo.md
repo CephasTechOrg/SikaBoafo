@@ -172,9 +172,9 @@ Status: `[x] ✅` *(merchant-owned credential architecture implemented)*
 `payment_provider_connections` now stores merchant-level Paystack state for **both test and live modes**: active `mode`, `account_label`, per-mode `public_key`, encrypted `secret_key`, last4 mask, verification timestamps, and `is_connected` for the active verified mode. Owner-only APIs/UI now use write-only secret submission with backend verification on save.
 
 ### A.13 `notifications`
-Status: `[ ] ❌` **Entire table missing.**
+Status: `[~] 🚧` *(Mobile service and local types implemented)*
 
-Required for §5 messaging. Schema per doc: `business_id, customer_id, channel, template_name, message_body, status, external_reference, related_type, related_id, sent_at`.
+Required for §5 messaging. Current state: `NotificationsService` in mobile handles local `syncStatus`, `paystack`, `lowStock`, and `dailySummary` types. Backend notification table still missing.
 
 ### A.14 `audit_logs`
 File: `backend/app/models/audit_log.py` · Status: `[x] ✅` *(M1 complete)*
@@ -287,7 +287,7 @@ Per `06-ui-design.md` "Main Screens Needed":
 | 3.11 | Invoices | `[ ] ❌` | — | See §C.2 decision |
 | 3.12 | Payments (Paystack) | `[~] 🚧` | `models/payment.py`, `services/payment_service.py`, `api/v1/payments.py`, `api/v1/webhooks.py` | M4 Step 2-7 plus merchant-owned credential refactor are built: initiation/webhooks now use merchant-specific encrypted secrets with payment-level mode snapshots. Remaining: notifications and optional provider abstraction cleanup. |
 | 3.13 | payment_provider_connections | `[x] ✅` | `models/payment_provider_connection.py` + migrations 009/012 | Merchant-owned test/live credentials now persist encrypted at rest with verify-on-save and active-mode connection status. |
-| 3.14 | Notifications | `[ ] ❌` | — | Phase 5 |
+| 3.14 | Notifications | `[~] 🚧` | `mobile/lib/core/services/notifications_service.dart` | Local notifications active; backend table/SMS/WhatsApp pending |
 | 3.15 | Audit logs | `[x] ✅` | `models/audit_log.py`, `services/audit_service.py` | M1: writes on every mutation |
 | 3.16 | Expenses | `[x] ✅` | `models/expense.py` | Ahead of docs |
 | 3.17 | Reports | `[x] ✅` | `services/reports_service.py` | Missing: staff activity. **M3**: gross profit via cost_price snapshot added ✅ |
@@ -603,5 +603,5 @@ Original list vs. current reality:
 
 ## One-Paragraph Summary
 
-BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are complete. M4 now includes Paystack connection, merchant-owned encrypted credentials with verify-on-save, receivable initiation+webhooks, sale/debt payment-link flows with webhook settlement, mobile payment-status polling for both flows, partial-payment hardening, and a full UX/navigation consistency sweep (all `maybePop` calls replaced with GoRouter `context.pop()`, QR checkout sheet in sales, Paystack status badge in Business Settings, human-readable error messages throughout settings); auth OTP is now locally generated/verified by BizTrack with Arkesel reduced to SMS transport. The next critical slice is notifications, then **M5** (WhatsApp/SMS receipts and reminders), then **M6** merchant validation and launch prep.
+BizTrack has the **foundation of the Ghana SME OS already working**: auth, tenancy via merchant+store, inventory with movement audit trail, sales, debts, expenses, reports, plus offline sync. M1-M3 are complete. M4-M5 items are progressing: Paystack credentials are encrypted with verify-on-save; payment-link settlement is wired; and **local notifications** are now active for sync status, low stock, and successful checkouts (Cash/Card/MoMo). Sync is now significantly more robust with a 2-ping offline debounce (~40s), a persistent status controller to eliminate tab-switch flicker, and verified conflict handling for item archives. The next critical slice is backend-driven SMS/WhatsApp templates (Phase 5), then merchant validation and launch prep.
 

@@ -40,6 +40,7 @@ class ItemCard extends StatelessWidget {
     required this.onMinus,
     required this.onPlus,
     required this.onPriceTap,
+    required this.onTap,
     this.selectedVariantId,
     this.onVariantSelected,
   });
@@ -51,6 +52,7 @@ class ItemCard extends StatelessWidget {
   final VoidCallback onMinus;
   final VoidCallback onPlus;
   final VoidCallback onPriceTap;
+  final VoidCallback onTap;
 
   /// The variant chip that is currently selected (before or after adding).
   final String? selectedVariantId;
@@ -73,10 +75,11 @@ class ItemCard extends StatelessWidget {
     final isLowStock =
         !isOutOfStock && item.quantityOnHand <= (item.lowStockThreshold ?? 5);
     // Add button is gated: items with variants require a chip selection first.
-    final canAdd =
-        !isOutOfStock && (!item.hasVariants || selectedVariantId != null);
+    final canAdd = !isOutOfStock;
 
-    return AnimatedContainer(
+    return GestureDetector(
+      onTap: canAdd ? onTap : null,
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -278,8 +281,9 @@ class ItemCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ── Private helpers ──────────────────────────────────────────────────────────

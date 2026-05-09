@@ -118,8 +118,46 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
     state = state.copyWith(qtyByItemId: newMap);
   }
 
+  /// Smart increment: handles variants if needed.
+  void smartIncrement(LocalInventoryItem item) {
+    if (!item.hasVariants) {
+      incrementQty(item);
+      return;
+    }
+
+    final pendingId = state.pendingVariantByItemId[item.id];
+    if (pendingId != null) {
+      final v = item.variants.where((v) => v.id == pendingId).firstOrNull;
+      if (v != null) {
+        addVariantItem(item, v);
+        return;
+      }
+    }
+
+    // Fallback: if no variant is pending, but item is already in cart, increment the first existing variant line.
+    final existingKey = state.qtyByItemId.keys
+        .where((k) => itemIdFromKey(k) == item.id)
+        .firstOrNull;
+    if (existingKey != null) {
+      final current = state.qtyByItemId[existingKey] ?? 0;
+      if (_totalQtyForItem(item.id) >= item.quantityOnHand) return;
+      final newMap = Map<String, int>.from(state.qtyByItemId);
+      newMap[existingKey] = current + 1;
+      state = state.copyWith(qtyByItemId: newMap);
+      return;
+    }
+
+    // Final fallback: select the first active variant and add it.
+    final firstV = item.variants.where((v) => v.isActive).firstOrNull;
+    if (firstV != null) {
+      selectPendingVariant(item.id, firstV.id);
+      addVariantItem(item, firstV);
+    }
+  }
+
   void decrementQty(String key) {
     final current = state.qtyByItemId[key] ?? 0;
+    if (current == 0) return;
     final newMap = Map<String, int>.from(state.qtyByItemId);
     if (current <= 1) {
       newMap.remove(key);
@@ -127,6 +165,26 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
       newMap[key] = current - 1;
     }
     state = state.copyWith(qtyByItemId: newMap);
+  }
+
+  /// Decrements the current pending variant, or the first found variant for this item.
+  /// This ensures "minus" button always works on grouped item cards.
+  void decrementAnyVariant(String itemId) {
+    final pendingId = state.pendingVariantByItemId[itemId];
+    final key = cartKey(itemId, pendingId);
+
+    if (state.qtyByItemId.containsKey(key)) {
+      decrementQty(key);
+      return;
+    }
+
+    // Fallback: decrement the first variant of this item found in the cart
+    final fallbackKey = state.qtyByItemId.keys
+        .where((k) => itemIdFromKey(k) == itemId)
+        .firstOrNull;
+    if (fallbackKey != null) {
+      decrementQty(fallbackKey);
+    }
   }
 
   void overridePrice(String key, String priceStr) {

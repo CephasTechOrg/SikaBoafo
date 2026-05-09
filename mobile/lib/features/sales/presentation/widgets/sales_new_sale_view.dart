@@ -49,24 +49,15 @@ class SalesNewSaleView extends ConsumerWidget {
             : _totalQtyForItem(cart, item.id))
         : (cart.qtyByItemId[item.id] ?? 0);
 
-    void handlePlus() {
-      if (item.hasVariants) {
-        if (pendingVariantId == null) return;
-        final variant =
-            item.variants.where((v) => v.id == pendingVariantId).firstOrNull;
-        if (variant != null) notifier.addVariantItem(item, variant);
-      } else {
-        notifier.incrementQty(item);
-      }
-    }
 
     return ItemCard(
       item: item,
       qty: displayQty,
       priceOverride: cart.priceOverrideByItemId[key],
       isSelected: isSelected,
-      onMinus: () => notifier.decrementQty(key),
-      onPlus: handlePlus,
+      onMinus: () => notifier.decrementAnyVariant(item.id),
+      onPlus: () => notifier.smartIncrement(item),
+      onTap: () => notifier.smartIncrement(item),
       onPriceTap: () => onPriceTap(item),
       selectedVariantId: pendingVariantId,
       onVariantSelected: item.hasVariants
