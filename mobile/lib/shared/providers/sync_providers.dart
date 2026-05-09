@@ -95,6 +95,10 @@ class SyncStatusController
   bool? _lastKnownReachable;
   int _lastPendingCount = 0;
   int _lastFailedCount = 0;
+  // How many consecutive pings have returned unreachable. The offline
+  // notification is only fired after 2 consecutive failures (~40 s) to avoid
+  // alerting on transient blips (e.g. brief Wi-Fi hand-off).
+  int _consecutiveOfflinePings = 0;
 
   @override
   Future<SyncStatusSnapshot> build() async {
@@ -160,6 +164,12 @@ class SyncStatusController
       // Persist the confirmed result so _readSnapshot can use it as a
       // reliable default while the next ping is in-flight.
       _lastKnownReachable = reachable;
+      if (reachable) {
+        // Reset the offline counter as soon as we're back.
+        _consecutiveOfflinePings = 0;
+      } else {
+        _consecutiveOfflinePings++;
+      }
       if (attemptSync && reachable) {
         if (keepSyncingStateWhileRunning) {
           final beforeSync = await _readSnapshot(
@@ -237,12 +247,17 @@ class SyncStatusController
 
     final notifications = ref.read(notificationsServiceProvider);
 
-    // Offline transition
-    if (_lastBackendReachable == true && backendReachable == false) {
+    // Offline transition — only notify after 2 consecutive offline pings
+    // (~40 s) to avoid alerting on transient blips (Wi-Fi hand-off, brief
+    // mobile dead-zone, etc). Once the notification fires, don't repeat it
+    // on further poll ticks while still offline.
+    if (_lastBackendReachable != false &&
+        backendReachable == false &&
+        _consecutiveOfflinePings >= 2) {
       unawaited(
         notifications.showSyncStatusNotification(
           title: 'Offline',
-          body: 'No internet connection. Changes will sync when you’re back online.',
+          body: 'Can\'t reach the server. Changes will sync when you\'re back online.',
           route: '/home',
         ),
       );

@@ -368,6 +368,27 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           ),
         );
       }
+      // Notify for all non-Paystack sales (cash, card, etc.).
+      // Paystack sales fire their own notification after payment confirmation.
+      final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+      if (mounted && prefs?.paymentEventsEnabled == true) {
+        const android = AndroidNotificationDetails(
+          'payment_events',
+          'Payment events',
+          channelDescription: 'Payment confirmation and failure alerts',
+          importance: Importance.high,
+          priority: Priority.high,
+          color: AppColors.forest,
+        );
+        await ref.read(notificationsServiceProvider).showNow(
+              id: 2202,
+              type: AppNotificationType.paystack,
+              title: 'Sale recorded',
+              body: '${method.isNotEmpty ? _friendlyMethod(method) : 'Sale'} · ₵$totalAmount',
+              android: android,
+              route: AppRoute.sales.path,
+            );
+      }
       return true;
     } catch (error) {
       if (!mounted) return false;
