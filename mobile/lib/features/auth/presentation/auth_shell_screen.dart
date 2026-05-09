@@ -58,7 +58,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
     if (!mounted) return;
     // Backend may not reliably send `onboarding_required` for brand new accounts.
     // Treat “new user” or “no merchant yet” as needing onboarding.
-    if (session.onboardingRequired || session.isNewUser || session.merchantId == null) {
+    if (session.onboardingRequired ||
+        session.isNewUser ||
+        session.merchantId == null) {
       context.go(buildRouteLocation(AppRoute.onboarding, returnTo: returnTo));
     } else if (forceSetPin || !session.pinSet) {
       context.go(buildRouteLocation(AppRoute.setPin, returnTo: returnTo));
@@ -247,11 +249,12 @@ class _EntryViewMockup extends StatelessWidget {
                     Text(
                       'Your business,\nsimplified.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w900,
-                            height: 1.08,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.displayMedium?.copyWith(
+                                color: AppColors.ink,
+                                fontWeight: FontWeight.w900,
+                                height: 1.08,
+                              ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -281,11 +284,12 @@ class _EntryViewMockup extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'ENTERPRISE WORKSPACE V2.4',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.muted,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.7,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.7,
+                                  ),
                         ),
                       ],
                     ),
@@ -335,36 +339,49 @@ class _PinSignInView extends StatelessWidget {
           Expanded(
             flex: 6,
             child: _AuthSettingsHeroHeader(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: onBack,
-                      icon: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: onBack,
+                            icon: const Icon(Icons.arrow_back_rounded,
+                                color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const MockupAppMark(size: 66),
+                        const SizedBox(height: 14),
+                        Text(
+                          'SikaBoafo',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Welcome back',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.75),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const MockupAppMark(size: 66),
-                  const SizedBox(height: 14),
-                  Text(
-                    'SikaBoafo',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Welcome back',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -438,7 +455,10 @@ class _PinSignInView extends StatelessWidget {
                         Center(
                           child: Text(
                             'NEW TO SIKABOAFO?',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
                                   color: AppColors.muted,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.8,
@@ -501,36 +521,49 @@ class _OtpVerifyView extends StatelessWidget {
           Expanded(
             flex: 6,
             child: _AuthSettingsHeroHeader(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: onBack,
-                      icon: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white),
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: onBack,
+                            icon: const Icon(Icons.arrow_back_rounded,
+                                color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const MockupAppMark(size: 72),
+                        const SizedBox(height: 14),
+                        Text(
+                          'SikaBoafo',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const MockupAppMark(size: 72),
-                  const SizedBox(height: 14),
-                  Text(
-                    'SikaBoafo',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -562,10 +595,11 @@ class _OtpVerifyView extends StatelessWidget {
                         const SizedBox(height: 18),
                         Text(
                           'Enter the 6-digit code sent to your phone',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppColors.inkSoft,
-                                height: 1.45,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.inkSoft,
+                                    height: 1.45,
+                                  ),
                         ),
                         const SizedBox(height: 12),
                         OtpCodeInputRow(
@@ -584,7 +618,8 @@ class _OtpVerifyView extends StatelessWidget {
                         Center(
                           child: TextButton(
                             onPressed: otpRequested ? onRequestOrResend : null,
-                            child: const Text('Didn’t receive code? Resend OTP'),
+                            child:
+                                const Text('Didn’t receive code? Resend OTP'),
                           ),
                         ),
                         if (error != null && error!.isNotEmpty) ...[
@@ -598,7 +633,8 @@ class _OtpVerifyView extends StatelessWidget {
                             final codeComplete =
                                 codeCtrl.text.trim().length >= 6;
                             return AppButton(
-                              label: loading ? 'Verifying…' : 'Verify & Continue',
+                              label:
+                                  loading ? 'Verifying…' : 'Verify & Continue',
                               onPressed: (!otpRequested || !codeComplete)
                                   ? null
                                   : onVerify,
@@ -813,10 +849,8 @@ class _InlineError extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppColors.danger, fontWeight: FontWeight.w700),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.danger, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -843,4 +877,3 @@ class _AuthSoftCircle extends StatelessWidget {
     );
   }
 }
-
