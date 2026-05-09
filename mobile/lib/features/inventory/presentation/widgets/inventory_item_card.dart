@@ -17,7 +17,8 @@ class InventoryItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasThreshold = item.lowStockThreshold != null;
-    final bool isLow = hasThreshold && item.quantityOnHand <= item.lowStockThreshold!;
+    final bool isLow =
+        hasThreshold && item.quantityOnHand <= item.lowStockThreshold!;
     final bool isOut = item.quantityOnHand <= 0;
     final bool hasIssue = isLow || isOut;
     final Color statusColor = isOut ? AppColors.danger : AppColors.warning;
@@ -157,7 +158,8 @@ class InventoryItemCard extends StatelessWidget {
                         ),
                         const Text(
                           'units',
-                          style: TextStyle(fontSize: 10, color: AppColors.muted),
+                          style:
+                              TextStyle(fontSize: 10, color: AppColors.muted),
                         ),
                         if (hasIssue) ...[
                           const SizedBox(height: 5),
@@ -183,7 +185,7 @@ class InventoryItemCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (hasThreshold)
+              if (hasThreshold && hasIssue)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
                   child: ClipRRect(

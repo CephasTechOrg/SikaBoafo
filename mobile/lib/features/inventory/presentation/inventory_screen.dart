@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -8,7 +9,7 @@ import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../data/local_variant.dart';
 import '../providers/inventory_providers.dart';
-import 'widgets/inventory_header.dart';
+import 'widgets/inventory_carousel.dart';
 import 'widgets/inventory_item_card.dart';
 import 'widgets/inventory_sheets.dart';
 
@@ -22,7 +23,8 @@ int _priceToMinor(String? value) {
     final parts = value.split('.');
     if (parts.length == 1) return (int.tryParse(parts[0]) ?? 0) * 100;
     final major = (int.tryParse(parts[0]) ?? 0) * 100;
-    final minor = (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0);
+    final minor =
+        (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0);
     return major + minor;
   } catch (_) {
     return 0;
@@ -63,7 +65,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final categories = <String>{};
     for (final item in activeItems) {
       totalValueMinor += _priceToMinor(item.defaultPrice) * item.quantityOnHand;
-      if (item.lowStockThreshold != null && item.quantityOnHand <= item.lowStockThreshold!) {
+      if (item.lowStockThreshold != null &&
+          item.quantityOnHand <= item.lowStockThreshold!) {
         lowStockCount++;
       }
     }
@@ -77,7 +80,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           item.name.toLowerCase().contains(q) ||
           (item.category?.toLowerCase().contains(q) ?? false) ||
           (item.sku?.toLowerCase().contains(q) ?? false);
-      final matchCat = _filterCategory == null || item.category == _filterCategory;
+      final matchCat =
+          _filterCategory == null || item.category == _filterCategory;
       return matchQuery && matchCat;
     }
 
@@ -96,22 +100,35 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           // ── Collapsing Hero Header ────────────────────────
           SliverAppBar(
-            expandedHeight: 210,
+            expandedHeight: 270,
             pinned: true,
-            stretch: true,
             backgroundColor: const Color(0xFF041C0B),
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
-              background: InventoryHeader(
-                totalValueMinor: totalValueMinor,
-                activeItemsCount: activeItems.length,
-                lowStockCount: lowStockCount,
-                categoriesCount: categories.length,
+              background: DecoratedBox(
+                decoration: const BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x160F172A),
+                      blurRadius: 30,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: InventoryCarousel(
+                  totalValueMinor: totalValueMinor,
+                  activeItemsCount: activeItems.length,
+                  lowStockCount: lowStockCount,
+                  categoriesCount: categories.length,
+                ),
               ),
-              title: innerBoxIsScrolled 
-                ? const Text('Inventory', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18))
-                : null,
+              title: innerBoxIsScrolled
+                  ? const Text('Inventory',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18))
+                  : null,
               centerTitle: false,
               titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
             ),
@@ -121,25 +138,31 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           SliverPersistentHeader(
             pinned: true,
             delegate: _SliverFilterDelegate(
-              child: Container(
-                color: Colors.transparent,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _SearchBar(
-                      controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _searchQuery = v),
+              child: ClipRRect(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    color: AppColors.canvas.withValues(alpha: 0.85),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _SearchBar(
+                          controller: _searchCtrl,
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        ),
+                        if (categories.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _CategoryFilter(
+                            categories: categories.toList()..sort(),
+                            selected: _filterCategory,
+                            onChanged: (c) =>
+                                setState(() => _filterCategory = c),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (categories.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      _CategoryFilter(
-                        categories: categories.toList()..sort(),
-                        selected: _filterCategory,
-                        onChanged: (c) => setState(() => _filterCategory = c),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
               height: 76.0 + (categories.isNotEmpty ? 44.0 : 0.0),
@@ -150,55 +173,67 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           context: context,
           removeTop: true,
           child: RefreshIndicator(
-            onRefresh: () => ref.read(inventoryControllerProvider.notifier).refresh(),
+            onRefresh: () =>
+                ref.read(inventoryControllerProvider.notifier).refresh(),
             child: DecoratedBox(
               decoration: const BoxDecoration(color: AppColors.surface),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                 children: [
-                Row(
-                  children: [
-                    Text(
-                      filteredActive.isEmpty && q.isNotEmpty ? 'NO MATCHES' : 'ACTIVE ITEMS',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppColors.muted, letterSpacing: 0.5),
-                    ),
-                    const Spacer(),
-                    if (items.isNotEmpty)
+                  Row(
+                    children: [
                       Text(
-                        '${filteredActive.length} of ${activeItems.length}',
-                        style: const TextStyle(color: AppColors.mutedSoft, fontSize: 11),
+                        filteredActive.isEmpty && q.isNotEmpty
+                            ? 'NO MATCHES'
+                            : 'ACTIVE ITEMS',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: AppColors.muted,
+                            letterSpacing: 0.5),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (itemsAsync.isLoading && items.isEmpty)
-                  const _LoadingCard()
-                else if (itemsAsync.hasError)
-                  _ErrorCard(message: humanizeInventoryError(itemsAsync.error!))
-                else if (items.isEmpty)
-                  _EmptyCard(onAdd: () => _openAddItemSheet(context))
-                else if (filteredActive.isEmpty && activeItems.isEmpty)
-                  _EmptyActiveCard(archivedCount: archivedItems.length)
-                else if (filteredActive.isEmpty)
-                  const _NoMatchCard()
-                else
-                  ...filteredActive.map((item) => InventoryItemCard(item: item, onTap: () => _openItemDetail(item))),
-                
-                if (archivedItems.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  _ArchivedSection(
-                    archivedCount: archivedItems.length,
-                    visibleCount: filteredArchived.length,
-                    expanded: _showArchived,
-                    onToggle: () => setState(() => _showArchived = !_showArchived),
+                      const Spacer(),
+                      if (items.isNotEmpty)
+                        Text(
+                          '${filteredActive.length} of ${activeItems.length}',
+                          style: const TextStyle(
+                              color: AppColors.mutedSoft, fontSize: 11),
+                        ),
+                    ],
                   ),
-                  if (_showArchived) ...[
-                    const SizedBox(height: 10),
-                    if (filteredArchived.isEmpty) const _ArchivedNoMatchCard()
-                    else ...filteredArchived.map((item) => InventoryItemCard(item: item, onTap: () => _openItemDetail(item))),
+                  const SizedBox(height: 8),
+                  if (itemsAsync.isLoading && items.isEmpty)
+                    const _LoadingCard()
+                  else if (itemsAsync.hasError)
+                    _ErrorCard(
+                        message: humanizeInventoryError(itemsAsync.error!))
+                  else if (items.isEmpty)
+                    _EmptyCard(onAdd: () => _openAddItemSheet(context))
+                  else if (filteredActive.isEmpty && activeItems.isEmpty)
+                    _EmptyActiveCard(archivedCount: archivedItems.length)
+                  else if (filteredActive.isEmpty)
+                    const _NoMatchCard()
+                  else
+                    ...filteredActive.map((item) => InventoryItemCard(
+                        item: item, onTap: () => _openItemDetail(item))),
+                  if (archivedItems.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _ArchivedSection(
+                      archivedCount: archivedItems.length,
+                      visibleCount: filteredArchived.length,
+                      expanded: _showArchived,
+                      onToggle: () =>
+                          setState(() => _showArchived = !_showArchived),
+                    ),
+                    if (_showArchived) ...[
+                      const SizedBox(height: 10),
+                      if (filteredArchived.isEmpty)
+                        const _ArchivedNoMatchCard()
+                      else
+                        ...filteredArchived.map((item) => InventoryItemCard(
+                            item: item, onTap: () => _openItemDetail(item))),
+                    ],
                   ],
-                ],
                 ],
               ),
             ),
@@ -343,7 +378,8 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     // Force the header to paint at the same height it lays out.
     // This avoids "layoutExtent exceeds paintExtent" assertions.
     return SizedBox(
@@ -375,7 +411,6 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_SliverFilterDelegate oldDelegate) =>
       oldDelegate.height != height || oldDelegate.child != child;
 }
-
 
 // ─── search & filter ──────────────────────────────────────────────────────────
 
@@ -676,8 +711,9 @@ class _EditSheetState extends State<_EditSheet> {
             final orig =
                 widget.item.variants.where((v) => v.id == d.id).firstOrNull;
             if (orig == null) return true;
-            final newPrice =
-                d.priceCtrl.text.trim().isEmpty ? null : d.priceCtrl.text.trim();
+            final newPrice = d.priceCtrl.text.trim().isEmpty
+                ? null
+                : d.priceCtrl.text.trim();
             return orig.label != d.label || orig.priceOverride != newPrice;
           });
       await widget.ref.read(inventoryControllerProvider.notifier).updateItem(
@@ -1325,7 +1361,8 @@ class _AddItemSheetState extends State<_AddItemSheet> {
               label: 'Selling Price (₵)',
               hint: '0.00',
               prefixIcon: Icons.payments_rounded,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
             const SizedBox(height: 12),
             Row(
@@ -1399,15 +1436,16 @@ class _AddItemSheetState extends State<_AddItemSheet> {
     final name = _nameCtrl.text.trim();
     final price = _priceCtrl.text.trim();
     if (name.isEmpty || price.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Name and price are required.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Name and price are required.')));
       return;
     }
     final initialQtyText = _qtyCtrl.text.trim();
-    final initialQty = initialQtyText.isEmpty ? 0 : int.tryParse(initialQtyText);
+    final initialQty =
+        initialQtyText.isEmpty ? 0 : int.tryParse(initialQtyText);
     if (initialQtyText.isNotEmpty && (initialQty == null || initialQty < 0)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a valid initial stock quantity.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a valid initial stock quantity.')));
       return;
     }
     setState(() => _saving = true);
@@ -1572,8 +1610,8 @@ class _VariantsSection extends StatelessWidget {
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: 'Custom size or variant…',
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   filled: true,
                   fillColor: AppColors.surfaceAlt,
                   border: OutlineInputBorder(
@@ -1586,8 +1624,8 @@ class _VariantsSection extends StatelessWidget {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: AppColors.forest, width: 1.4),
+                    borderSide:
+                        const BorderSide(color: AppColors.forest, width: 1.4),
                   ),
                 ),
                 onSubmitted: (v) {
@@ -1626,8 +1664,8 @@ class _VariantsSection extends StatelessWidget {
                 children: [
                   Container(
                     constraints: const BoxConstraints(minWidth: 44),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.mint,
                       borderRadius: BorderRadius.circular(8),
@@ -1645,8 +1683,8 @@ class _VariantsSection extends StatelessWidget {
                   Expanded(
                     child: TextField(
                       controller: draft.priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         hintText: 'Price override (optional)',
                         prefixText: '₵ ',
