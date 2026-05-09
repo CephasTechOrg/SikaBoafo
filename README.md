@@ -373,3 +373,76 @@ Keep **routers thin**, **services explicit**, and **types/schemas** at system ed
 ## Status
 
 Active development (2026-04-24): M1-M3 delivered and stabilized; M4 Paystack integration is in progress (Step 1 connection settings, Step 2 receivable payment-link initiation, and Step 3 webhook verification/settlement with idempotency hardening completed).
+
+---
+
+## App Screens
+
+A visual walkthrough of the SikaBoafo mobile experience — built offline-first for Ghanaian merchants.
+
+<br/>
+
+### Onboarding & Authentication
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screens/main_login.jpg" width="260" alt="Welcome Screen"/><br/>
+      <b>Welcome Screen</b><br/>
+      <sub>The first screen a new user sees. Clean hero layout with the SikaBoafo brand, a merchant photo, and direct paths to Sign In or Create Account.</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screens/login_signup_page.jpg" width="260" alt="Sign In Screen"/><br/>
+      <b>Sign In</b><br/>
+      <sub>Phone number + secure PIN authentication. Includes Forgot PIN recovery flow and a quick path to account creation for new users.</sub>
+    </td>
+  </tr>
+</table>
+
+<br/>
+
+### Core App Screens
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/dashboard.jpg" width="220" alt="Dashboard"/><br/>
+      <b>Dashboard</b><br/>
+      <sub>The merchant command center. Live sales today, estimated profit, unpaid debts, low stock count, and top-selling products — all at a glance.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/sales.jpg" width="220" alt="Sales Screen"/><br/>
+      <b>Sales</b><br/>
+      <sub>Browse and search your product catalog. Add items to cart with a tap. Premium auto-scrolling header shows the top seller of the month with live sales momentum.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/more_page.jpg" width="220" alt="More Screen"/><br/>
+      <b>More</b><br/>
+      <sub>Centralized hub for all secondary operations: Expenses, Debts, Customers, Reports, and Settings — organized into logical groups.</sub>
+    </td>
+  </tr>
+</table>
+
+<br/>
+
+### Sales & Payment Flow
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screens/checkout_page.jpg" width="260" alt="Order Review"/><br/>
+      <b>Order Review & Checkout</b><br/>
+      <sub>A bottom-sheet order summary showing line items, total, and an optional note field before proceeding to payment. Clean and distraction-free.</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="mobile/assets/screens/QR_payment.jpg" width="260" alt="Scan to Pay"/><br/>
+      <b>Scan to Pay (Paystack)</b><br/>
+      <sub>Live Paystack QR code displayed for the customer to scan. Includes a shareable payment link, real-time payment status polling, and automatic confirmation.</sub>
+    </td>
+  </tr>
+</table>
+
+<br/>
+
+> **Built for Ghana.** SikaBoafo works fully offline — record a sale, update stock, or log a debt even with no internet. Everything syncs automatically when connectivity returns.
+
