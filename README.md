@@ -25,6 +25,7 @@ Core value:
 - `architecture.md`
 - `folderstructure.md`
 - `todo.md`
+- `docs/product/ai_strategy.md` — AI integration strategy, feature roadmap, and guardrails
 
 UI reference asset:
 
