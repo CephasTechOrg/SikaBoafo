@@ -334,8 +334,7 @@ class _PinSignInView extends StatelessWidget {
         children: [
           Expanded(
             flex: 6,
-            child: MockupHeroHeader(
-              waveHeight: 56,
+            child: _AuthSettingsHeroHeader(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -501,8 +500,7 @@ class _OtpVerifyView extends StatelessWidget {
         children: [
           Expanded(
             flex: 6,
-            child: MockupHeroHeader(
-              waveHeight: 56,
+            child: _AuthSettingsHeroHeader(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -632,8 +630,9 @@ class _OtpVerifyView extends StatelessWidget {
   }
 }
 
-class _AuthHeroImage extends StatelessWidget {
-  const _AuthHeroImage();
+class _AuthSettingsHeroHeader extends StatelessWidget {
+  const _AuthSettingsHeroHeader({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -699,6 +698,44 @@ class _AuthHeroImage extends StatelessWidget {
             right: 22,
             bottom: -48,
             child: _AuthSoftCircle(size: 140, opacity: 0.12),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24 + 18),
+              child: child,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AuthHeroImage extends StatelessWidget {
+  const _AuthHeroImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: _AuthWaveClipper(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/businesswoman.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+          // Dark gradient only at the top so the logo stays readable
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xAA000000), Colors.transparent],
+                begin: Alignment.topCenter,
+                end: Alignment(0, 0.55),
+              ),
+            ),
           ),
           const SafeArea(
             bottom: false,
