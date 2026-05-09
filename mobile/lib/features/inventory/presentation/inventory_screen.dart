@@ -147,9 +147,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _SearchBar(
+          _SearchBar(
                           controller: _searchCtrl,
-                          onChanged: (v) => setState(() => _searchQuery = v),
+                          onChanged: (v) => setState(() {
+                            _searchQuery = v;
+                            // Clearing the search bar also resets the category
+                            // filter — an empty search with a hidden category
+                            // filter is invisible to the user and causes
+                            // confusing "no results" states.
+                            if (v.isEmpty) _filterCategory = null;
+                          }),
                         ),
                         if (categories.isNotEmpty) ...[
                           const SizedBox(height: 8),
