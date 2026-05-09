@@ -248,8 +248,12 @@ class SyncService:
 
         if entity_type == "item" and action_type == "update":
             payload = SyncItemUpdateIn.model_validate(operation.payload)
+            # exclude_unset=True ensures model_fields_set on the resulting
+            # ItemUpdateIn only contains fields the client explicitly sent,
+            # not all fields defaulting to None. This is required for the
+            # model_fields_set-based nullable-field clearing to work correctly.
             update_payload = ItemUpdateIn.model_validate(
-                payload.model_dump(exclude={"item_id", "version"})
+                payload.model_dump(exclude={"item_id", "version"}, exclude_unset=True)
             )
             item = inventory_service.update_item(
                 user_id=user_id,
