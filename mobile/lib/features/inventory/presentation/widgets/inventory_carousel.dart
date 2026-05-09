@@ -35,6 +35,13 @@ class _InventoryCarouselState extends State<InventoryCarousel> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    // Start the timer immediately on first mount with the current reduce-motion
+    // state. We do this here rather than waiting for didChangeDependencies so
+    // there's a single, clear start point. didChangeDependencies will restart
+    // it if the accessibility setting changes later.
+    _reduceMotion =
+        WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.reduceMotion;
+    _restartTimer();
   }
 
   @override
@@ -42,7 +49,10 @@ class _InventoryCarouselState extends State<InventoryCarousel> {
     super.didChangeDependencies();
     final nextReduceMotion =
         MediaQuery.maybeOf(context)?.accessibleNavigation ?? false;
-    if (nextReduceMotion != _reduceMotion || _timer == null) {
+    // Only restart the timer when the setting actually changes — not on every
+    // dependency rebuild. The null check was removed because initState now
+    // guarantees the timer is always started on first mount.
+    if (nextReduceMotion != _reduceMotion) {
       _reduceMotion = nextReduceMotion;
       _restartTimer();
     }
