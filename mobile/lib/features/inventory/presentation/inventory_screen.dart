@@ -147,7 +147,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-          _SearchBar(
+                        _SearchBar(
                           controller: _searchCtrl,
                           onChanged: (v) => setState(() {
                             _searchQuery = v;

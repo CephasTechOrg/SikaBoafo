@@ -202,7 +202,7 @@ class _StockValueSlide extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'TOTAL STOCK VALUE',
+            'TOTAL RETAIL VALUE',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.76),
               fontSize: 10,
@@ -226,7 +226,7 @@ class _StockValueSlide extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            'Your business equity in stock',
+            'Value if all stock sold at listed price',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.76),
               fontSize: 13,
