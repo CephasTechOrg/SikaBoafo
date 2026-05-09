@@ -399,6 +399,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
   }
 
+  static String _friendlyMethod(String method) {
+    return switch (method.toLowerCase()) {
+      'cash' => 'Cash',
+      'card' => 'Card',
+      'mobile_money' || 'momo' => 'Mobile Money',
+      _ => method,
+    };
+  }
+
   Future<void> _recordSaleWithPaystackLink({
     required List<LocalInventoryItem> items,
     required String paymentMethodLabel,
