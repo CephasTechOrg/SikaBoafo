@@ -166,6 +166,35 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 pinned: true,
                 backgroundColor: const Color(0xFF071D11),
                 elevation: 0,
+                centerTitle: false,
+                title: innerBoxIsScrolled
+                    ? const Text(
+                        'Sales',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      )
+                    : null,
+                actions: innerBoxIsScrolled
+                    ? [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20),
+                          child: Center(
+                            child: Text(
+                              SalesUiUtils.formatMinor(todayRevenueMinor, symbol: '₵'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 17,
+                                fontFamily: 'Constantia',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]
+                    : null,
                 flexibleSpace: FlexibleSpaceBar(
                   background: SalesHeader(
                     businessName: merchantAsync.valueOrNull?.businessName ?? 'My Shop',
@@ -177,18 +206,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     topSellingQty: topItemQty,
                     topSellingImageUrl: topItemImageUrl,
                   ),
-                  title: innerBoxIsScrolled
-                      ? const Text(
-                          'Sales',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                          ),
-                        )
-                    : null,
-                  centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
                 ),
               ),
 
@@ -202,6 +219,30 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
                 ),
               ),
+              if (_activeTab == SalesViewTab.newSale)
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverSearchDelegate(
+                    controller: _searchCtrl,
+                    hasQuery: cart.searchQuery.isNotEmpty,
+                    onChanged: (q) =>
+                        ref.read(salesCartProvider.notifier).setSearchQuery(q),
+                    onClear: () {
+                      _searchCtrl.clear();
+                      ref.read(salesCartProvider.notifier).setSearchQuery('');
+                    },
+                  ),
+                ),
+              if (_activeTab == SalesViewTab.newSale && categories.length >= 2)
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverCategoryDelegate(
+                    categories: categories,
+                    selectedCategory: cart.selectedCategory,
+                    onSelected: (cat) =>
+                        ref.read(salesCartProvider.notifier).setCategory(cat),
+                  ),
+                ),
             ],
             body: MediaQuery.removePadding(
               context: context,
@@ -231,7 +272,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                       children: [
                         if (_activeTab == SalesViewTab.newSale)
                           SalesNewSaleView(
-                            searchCtrl: _searchCtrl,
                             allItems: allItems,
                             filteredItems: filtered,
                             selectedItems: selectedItems,
@@ -1005,6 +1045,142 @@ class _TopAgg {
         qty: qty ?? this.qty,
         totalMinor: totalMinor ?? this.totalMinor,
       );
+}
+
+class _SliverSearchDelegate extends SliverPersistentHeaderDelegate {
+  _SliverSearchDelegate({
+    required this.controller,
+    required this.hasQuery,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final bool hasQuery;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  static const double _height = 58;
+
+  @override
+  double get minExtent => _height;
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return ColoredBox(
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: SalesSearchBar(
+          controller: controller,
+          hasQuery: hasQuery,
+          onChanged: onChanged,
+          onClear: onClear,
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverSearchDelegate old) => old.hasQuery != hasQuery;
+}
+
+class _SliverCategoryDelegate extends SliverPersistentHeaderDelegate {
+  _SliverCategoryDelegate({
+    required this.categories,
+    required this.selectedCategory,
+    required this.onSelected,
+  });
+
+  final List<String> categories;
+  final String? selectedCategory;
+  final ValueChanged<String?> onSelected;
+
+  static const double _height = 50;
+
+  @override
+  double get minExtent => _height;
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return ColoredBox(
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: categories.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _CategoryChip(
+                label: 'All',
+                selected: selectedCategory == null,
+                onTap: () => onSelected(null),
+              );
+            }
+            final cat = categories[index - 1];
+            return _CategoryChip(
+              label: cat,
+              selected: selectedCategory == cat,
+              onTap: () => onSelected(selectedCategory == cat ? null : cat),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverCategoryDelegate old) =>
+      old.selectedCategory != selectedCategory ||
+      old.categories.length != categories.length;
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.forest
+              : AppColors.forest.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? AppColors.forest
+                : AppColors.forest.withValues(alpha: 0.22),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.forest,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PaymentLoadingDialog extends StatelessWidget {
