@@ -68,26 +68,24 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final dashboardInsightsAsync = ref.watch(dashboardInsightsProvider);
     final dashboardOverlayAsync = ref.watch(localDashboardOverlayProvider);
 
-    final allItems = (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
-        .where((item) => item.isActive)
-        .toList(growable: false);
+    final allItems =
+        (inventoryAsync.valueOrNull ?? const <LocalInventoryItem>[])
+            .where((item) => item.isActive)
+            .toList(growable: false);
     final recentSales = salesAsync.valueOrNull ?? const <LocalSaleRecord>[];
     final isBusy = salesAsync.isLoading;
 
     // Sorted unique categories for the chip bar (only items with a category set).
-    final categories = (allItems
-            .map((i) => i.category)
-            .whereType<String>()
-            .toSet()
-            .toList()
-          ..sort())
-        .toList(growable: false);
+    final categories =
+        (allItems.map((i) => i.category).whereType<String>().toSet().toList()
+              ..sort())
+            .toList(growable: false);
 
     final filtered = allItems.where((i) {
       final matchesSearch = cart.searchQuery.isEmpty ||
           i.name.toLowerCase().contains(cart.searchQuery.toLowerCase());
-      final matchesCategory = cart.selectedCategory == null ||
-          i.category == cart.selectedCategory;
+      final matchesCategory =
+          cart.selectedCategory == null || i.category == cart.selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList(growable: false);
 
@@ -122,7 +120,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final visibleSales = recentSales.where((sale) => !sale.isVoided).toList();
     final historySales = _showVoided ? recentSales : visibleSales;
     final todaySales = visibleSales.where((sale) {
-      final createdAt = DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
+      final createdAt =
+          DateTime.fromMillisecondsSinceEpoch(sale.createdAtMillis).toLocal();
       return SalesUiUtils.isSameLocalDay(createdAt, DateTime.now());
     }).toList();
 
@@ -130,12 +129,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       0,
       (sum, sale) => sum + SalesUiUtils.parseTotal(sale.totalAmount),
     );
-    final cashTotalMinor = todaySales
-        .where((s) => s.paymentMethodLabel == 'cash')
-        .fold<int>(
-          0,
-          (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount),
-        );
+    final cashTotalMinor =
+        todaySales.where((s) => s.paymentMethodLabel == 'cash').fold<int>(
+              0,
+              (sum, s) => sum + SalesUiUtils.parseTotal(s.totalAmount),
+            );
     final momoTotalMinor = todaySales
         .where((s) => s.paymentMethodLabel == 'mobile_money')
         .fold<int>(
@@ -144,8 +142,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         );
 
     // Extract top seller details
-    final topSellingMonth = dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems;
-    final topItem = topSellingMonth?.isNotEmpty == true ? topSellingMonth!.first : null;
+    final topSellingMonth =
+        dashboardInsightsAsync.valueOrNull?.monthlyTopSellingItems;
+    final topItem =
+        topSellingMonth?.isNotEmpty == true ? topSellingMonth!.first : null;
     final topItemName = topItem?.itemName;
     final topItemQty = topItem?.quantitySold;
 
@@ -183,7 +183,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                           padding: const EdgeInsets.only(right: 20),
                           child: Center(
                             child: Text(
-                              SalesUiUtils.formatMinor(todayRevenueMinor, symbol: '₵'),
+                              SalesUiUtils.formatMinor(todayRevenueMinor,
+                                  symbol: '₵'),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -197,7 +198,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     : null,
                 flexibleSpace: FlexibleSpaceBar(
                   background: SalesHeader(
-                    businessName: merchantAsync.valueOrNull?.businessName ?? 'My Shop',
+                    businessName:
+                        merchantAsync.valueOrNull?.businessName ?? 'My Shop',
                     todayRevenueMinor: todayRevenueMinor,
                     todayTxnsCount: todaySales.length,
                     cashTotalMinor: cashTotalMinor,
@@ -208,7 +210,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
                 ),
               ),
-
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverTabDelegate(
@@ -325,7 +326,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ),
             ),
           ),
-
           if (_activeTab == SalesViewTab.newSale)
             Positioned(
               left: 0,
@@ -361,8 +361,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         itemCount: itemCount,
         totalAmount: totalAmount,
-        formatMajor: (val, {symbol = 'GHS '}) =>
-            SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
+        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(
+            SalesUiUtils.parseTotal(val),
+            symbol: symbol),
         onRecordCash: (method) => _recordSale(
           items: items,
           paymentMethodLabel: method,
@@ -461,7 +462,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               id: 2202,
               type: AppNotificationType.paystack,
               title: 'Sale recorded',
-              body: '${method.isNotEmpty ? _friendlyMethod(method) : 'Sale'} · ₵$totalAmount',
+              body:
+                  '${method.isNotEmpty ? _friendlyMethod(method) : 'Sale'} · ₵$totalAmount',
               android: android,
               route: AppRoute.sales.path,
             );
@@ -506,7 +508,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         context: context,
         barrierDismissible: false,
         useRootNavigator: true,
-        builder: (_) => const _PaymentLoadingDialog(message: 'Generating QR code...'),
+        builder: (_) =>
+            const _PaymentLoadingDialog(message: 'Generating QR code...'),
       );
       loadingShown = true;
     }
@@ -545,7 +548,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         Navigator.of(context, rootNavigator: true).pop();
         loadingShown = false;
       }
-      
+
       if (!mounted) return;
       if (saleSaved) {
         ref.invalidate(inventoryControllerProvider);
@@ -590,7 +593,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         context: context,
         barrierDismissible: false,
         useRootNavigator: true,
-        builder: (_) => const _PaymentLoadingDialog(message: 'Setting up payment...'),
+        builder: (_) =>
+            const _PaymentLoadingDialog(message: 'Setting up payment...'),
       );
       loadingShown = true;
     }
@@ -818,8 +822,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         noteController: _noteCtrl,
         calculateTotal: _calculateTotal,
-        formatMajor: (val, {symbol = 'GHS '}) =>
-            SalesUiUtils.formatMinor(SalesUiUtils.parseTotal(val), symbol: symbol),
+        formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(
+            SalesUiUtils.parseTotal(val),
+            symbol: symbol),
         formatMinor: SalesUiUtils.formatMinor,
         moneyToMinor: SalesUiUtils.moneyToMinor,
         onProceedToCheckout: () async {
@@ -841,9 +846,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     final cart = ref.read(salesCartProvider);
-    final pendingVariantId = item.hasVariants
-        ? cart.pendingVariantByItemId[item.id]
-        : null;
+    final pendingVariantId =
+        item.hasVariants ? cart.pendingVariantByItemId[item.id] : null;
     final key = cartKey(item.id, pendingVariantId);
     final ctrl = TextEditingController(
       text: cart.priceOverrideByItemId[key] ?? item.defaultPrice,
@@ -1015,7 +1019,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 }
 
-
 class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   _SliverTabDelegate({required this.activeTab, required this.child});
   final SalesViewTab activeTab;
@@ -1027,7 +1030,8 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => 78;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return ColoredBox(
       // Match Sales hero background so the rounded cutouts show green.
       color: const Color(0xFF071D11),
@@ -1174,4 +1178,3 @@ class _PaymentLoadingDialog extends StatelessWidget {
     );
   }
 }
-

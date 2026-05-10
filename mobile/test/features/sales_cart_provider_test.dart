@@ -37,7 +37,8 @@ void main() {
 
     notifier.addVariantItem(item, variant);
     expect(container.read(salesCartProvider).qtyByItemId[key], 1);
-    expect(container.read(salesCartProvider).priceOverrideByItemId[key], '10.50');
+    expect(
+        container.read(salesCartProvider).priceOverrideByItemId[key], '10.50');
     expect(container.read(salesCartProvider).variantLabelByKey[key], '50kg');
 
     notifier.decrementQty(key);
@@ -47,4 +48,3 @@ void main() {
     expect(state.variantLabelByKey.containsKey(key), isFalse);
   });
 }
-

@@ -250,8 +250,7 @@ LIMIT ?
 
       // Deduct stock once per item (variants share the same pool).
       for (final entry in qtyByItemId.entries) {
-        final newStock =
-            (stockByItemId[entry.key] ?? 0) - entry.value;
+        final newStock = (stockByItemId[entry.key] ?? 0) - entry.value;
         await tx.update(
           'items_local',
           {'quantity_on_hand': newStock, 'updated_at': now},
@@ -429,7 +428,8 @@ ORDER BY sl.created_at ASC
         final itemId = (row['item_id'] ?? '') as String;
         lineCountByItemId[itemId] = (lineCountByItemId[itemId] ?? 0) + 1;
       }
-      final hasSplitVariants = lineCountByItemId.values.any((count) => count > 1);
+      final hasSplitVariants =
+          lineCountByItemId.values.any((count) => count > 1);
       if (hasSplitVariants) {
         throw ArgumentError(
           'This sale contains multiple variants for the same item and cannot be edited yet. '
@@ -725,8 +725,9 @@ ORDER BY sl.created_at ASC
       if (line.quantity <= 0) {
         throw ArgumentError('Sale quantity must be greater than 0.');
       }
-      final key =
-          line.variantId != null ? '${line.itemId}::${line.variantId}' : line.itemId;
+      final key = line.variantId != null
+          ? '${line.itemId}::${line.variantId}'
+          : line.itemId;
       final unitMinor = _moneyToMinor(line.unitPrice);
       final existing = byKey[key];
       if (existing == null) {
