@@ -6,12 +6,10 @@ import '../../../inventory/data/local_variant.dart';
 import '../../providers/sales_cart_provider.dart';
 import 'empty_card.dart';
 import 'item_card.dart';
-import 'sales_search_bar.dart';
 
 class SalesNewSaleView extends ConsumerWidget {
   const SalesNewSaleView({
     super.key,
-    required this.searchCtrl,
     required this.allItems,
     required this.filteredItems,
     required this.selectedItems,
@@ -20,7 +18,6 @@ class SalesNewSaleView extends ConsumerWidget {
     required this.onPriceTap,
   });
 
-  final TextEditingController searchCtrl;
   final List<LocalInventoryItem> allItems;
   final List<LocalInventoryItem> filteredItems;
   final List<LocalInventoryItem> selectedItems;
@@ -75,19 +72,6 @@ class SalesNewSaleView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SalesSearchBar(
-            controller: searchCtrl,
-            hasQuery: cart.searchQuery.isNotEmpty,
-            onChanged: (v) {
-              searchCtrl.value = searchCtrl.value.copyWith(text: v.trim());
-              ref.read(salesCartProvider.notifier).setSearchQuery(v.trim());
-            },
-            onClear: () {
-              searchCtrl.clear();
-              ref.read(salesCartProvider.notifier).setSearchQuery('');
-            },
-          ),
-          const SizedBox(height: 16),
           if (allItems.isEmpty)
             const EmptyCard(
               icon: Icons.inventory_2_outlined,
@@ -137,12 +121,16 @@ class SalesNewSaleView extends ConsumerWidget {
                     .toList(growable: false),
               ),
             ],
-            if (filteredItems.isEmpty && cart.searchQuery.isNotEmpty)
-              const EmptyCard(
+            if (filteredItems.isEmpty &&
+                (cart.searchQuery.isNotEmpty ||
+                    cart.selectedCategory != null))
+              EmptyCard(
                 icon: Icons.search_off_rounded,
                 title: 'No products found',
-                message:
-                    'Try a different search or clear the search to see all inventory items.',
+                message: cart.selectedCategory != null &&
+                        cart.searchQuery.isEmpty
+                    ? 'No items in this category. Tap "All" to clear the filter.'
+                    : 'Try a different search or clear the filter to see all items.',
               ),
           ],
         ],

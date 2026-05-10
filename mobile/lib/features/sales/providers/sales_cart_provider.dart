@@ -27,6 +27,7 @@ class SalesCartState {
     this.pendingVariantByItemId = const {},
     this.searchQuery = '',
     this.paymentMethod = 'cash',
+    this.selectedCategory,
   });
 
   /// Keyed by cartKey (itemId or itemId::variantId).
@@ -45,6 +46,12 @@ class SalesCartState {
   final String searchQuery;
   final String paymentMethod;
 
+  /// Active category filter. Null means "All".
+  final String? selectedCategory;
+
+  // Sentinel so copyWith can distinguish "not passed" from "explicitly null".
+  static const _kUnset = Object();
+
   SalesCartState copyWith({
     Map<String, int>? qtyByItemId,
     Map<String, String>? priceOverrideByItemId,
@@ -52,6 +59,7 @@ class SalesCartState {
     Map<String, String?>? pendingVariantByItemId,
     String? searchQuery,
     String? paymentMethod,
+    Object? selectedCategory = _kUnset,
   }) {
     return SalesCartState(
       qtyByItemId: qtyByItemId ?? this.qtyByItemId,
@@ -62,6 +70,9 @@ class SalesCartState {
           pendingVariantByItemId ?? this.pendingVariantByItemId,
       searchQuery: searchQuery ?? this.searchQuery,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      selectedCategory: identical(selectedCategory, _kUnset)
+          ? this.selectedCategory
+          : selectedCategory as String?,
     );
   }
 }
@@ -199,6 +210,10 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
 
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
+  }
+
+  void setCategory(String? category) {
+    state = state.copyWith(selectedCategory: category);
   }
 
   void clearCart() {

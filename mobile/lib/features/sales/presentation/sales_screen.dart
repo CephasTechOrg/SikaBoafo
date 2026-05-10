@@ -22,6 +22,7 @@ import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
 import '../providers/sales_cart_provider.dart';
 import '../../settings/providers/notification_prefs_provider.dart';
+import 'widgets/sales_search_bar.dart';
 import 'widgets/sales_tab_bar.dart';
 import 'widgets/sales_bottom_bar.dart';
 import '../../settings/presentation/connect_paystack_screen.dart';
@@ -73,12 +74,22 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     final recentSales = salesAsync.valueOrNull ?? const <LocalSaleRecord>[];
     final isBusy = salesAsync.isLoading;
 
-    final filtered = cart.searchQuery.isEmpty
-        ? allItems
-        : allItems.where((i) => i.name.toLowerCase().contains(
-              cart.searchQuery.toLowerCase(),
-            ))
-            .toList(growable: false);
+    // Sorted unique categories for the chip bar (only items with a category set).
+    final categories = (allItems
+            .map((i) => i.category)
+            .whereType<String>()
+            .toSet()
+            .toList()
+          ..sort())
+        .toList(growable: false);
+
+    final filtered = allItems.where((i) {
+      final matchesSearch = cart.searchQuery.isEmpty ||
+          i.name.toLowerCase().contains(cart.searchQuery.toLowerCase());
+      final matchesCategory = cart.selectedCategory == null ||
+          i.category == cart.selectedCategory;
+      return matchesSearch && matchesCategory;
+    }).toList(growable: false);
 
     final itemIdsWithQty = cart.qtyByItemId.entries
         .where((e) => e.value > 0)

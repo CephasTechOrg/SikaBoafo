@@ -13,7 +13,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        final cardExtent = useSingleColumn ? 296.0 : 300.0;
+        final cardExtent = useSingleColumn ? 216.0 : 220.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -110,7 +110,7 @@ class ItemCard extends StatelessWidget {
             child: Stack(
               children: [
                 SizedBox(
-                  height: 148,
+                  height: 96,
                   width: double.infinity,
                   child: item.imageUrl != null
                       ? Image.network(
@@ -175,7 +175,7 @@ class ItemCard extends StatelessWidget {
           // ── Info + controls ───────────────────────────────────
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
