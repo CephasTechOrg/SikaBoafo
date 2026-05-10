@@ -335,6 +335,22 @@ ORDER BY sl.created_at ASC
     if (lineRows.isEmpty) {
       return null;
     }
+    // Variant sales currently store multiple rows for the same item_id.
+    // Edit flow and backend sale-update contract are item-level only, so
+    // editing those sales can corrupt quantities. Block until line-level
+    // update contract is implemented end-to-end.
+    final lineCountByItemId = <String, int>{};
+    for (final row in lineRows) {
+      final itemId = (row['item_id'] ?? '') as String;
+      lineCountByItemId[itemId] = (lineCountByItemId[itemId] ?? 0) + 1;
+    }
+    final hasSplitVariants = lineCountByItemId.values.any((count) => count > 1);
+    if (hasSplitVariants) {
+      throw ArgumentError(
+        'This sale contains multiple variants for the same item and cannot be edited yet. '
+        'Void and re-record the sale.',
+      );
+    }
 
     final lines = lineRows.map((row) {
       final quantity = (row['quantity'] as int? ?? 0);
@@ -407,6 +423,18 @@ ORDER BY sl.created_at ASC
       );
       if (lineRows.isEmpty) {
         throw StateError('Cannot edit sale without line items.');
+      }
+      final lineCountByItemId = <String, int>{};
+      for (final row in lineRows) {
+        final itemId = (row['item_id'] ?? '') as String;
+        lineCountByItemId[itemId] = (lineCountByItemId[itemId] ?? 0) + 1;
+      }
+      final hasSplitVariants = lineCountByItemId.values.any((count) => count > 1);
+      if (hasSplitVariants) {
+        throw ArgumentError(
+          'This sale contains multiple variants for the same item and cannot be edited yet. '
+          'Void and re-record the sale.',
+        );
       }
 
       final existingByItem = <String, Map<String, Object?>>{};

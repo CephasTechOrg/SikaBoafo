@@ -669,6 +669,64 @@ void main() {
     await appDb.close();
   });
 
+  test('sales edit is blocked for variant-split lines on same item', () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = SalesRepository(
+      appDb: appDb,
+      syncQueueRunner: _unusedRunner(appDb),
+    );
+
+    await db.insert('items_local', {
+      'id': 'item-1',
+      'name': 'Rice',
+      'default_price': '10.00',
+      'sku': null,
+      'category': 'food',
+      'low_stock_threshold': 2,
+      'is_active': 1,
+      'quantity_on_hand': 20,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    await repo.createSaleLocal(
+      paymentMethodLabel: 'cash',
+      lines: const [
+        SaleDraftLine(
+          itemId: 'item-1',
+          quantity: 1,
+          unitPrice: '10.00',
+          variantId: 'v-1',
+          variantLabel: 'Small',
+        ),
+        SaleDraftLine(
+          itemId: 'item-1',
+          quantity: 2,
+          unitPrice: '12.00',
+          variantId: 'v-2',
+          variantLabel: 'Large',
+        ),
+      ],
+    );
+
+    final saleRows = await db.query('sales_local');
+    final saleId = saleRows.first['id'] as String;
+
+    expect(
+      () => repo.loadSaleEditable(saleId: saleId),
+      throwsA(
+        isA<ArgumentError>().having(
+          (e) => e.message?.toString() ?? '',
+          'message',
+          contains('cannot be edited yet'),
+        ),
+      ),
+    );
+
+    await appDb.close();
+  });
+
   test('sales local-first void restores stock and enqueues void operation',
       () async {
     final db = await _openInMemoryDatabase();

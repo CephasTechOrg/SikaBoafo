@@ -891,9 +891,18 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _showEditSaleDialog(LocalSaleRecord sale) async {
-    final editable = await ref
-        .read(salesControllerProvider.notifier)
-        .loadSaleEditable(saleId: sale.saleId);
+    LocalSaleEditable? editable;
+    try {
+      editable = await ref
+          .read(salesControllerProvider.notifier)
+          .loadSaleEditable(saleId: sale.saleId);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(humanizeInventoryError(error))),
+      );
+      return;
+    }
     if (editable == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

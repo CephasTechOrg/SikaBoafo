@@ -170,12 +170,21 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
     final current = state.qtyByItemId[key] ?? 0;
     if (current == 0) return;
     final newMap = Map<String, int>.from(state.qtyByItemId);
+    final newOverrides = Map<String, String>.from(state.priceOverrideByItemId);
+    final newLabels = Map<String, String>.from(state.variantLabelByKey);
     if (current <= 1) {
       newMap.remove(key);
+      // Keep derived cart maps in sync when the line disappears.
+      newOverrides.remove(key);
+      newLabels.remove(key);
     } else {
       newMap[key] = current - 1;
     }
-    state = state.copyWith(qtyByItemId: newMap);
+    state = state.copyWith(
+      qtyByItemId: newMap,
+      priceOverrideByItemId: newOverrides,
+      variantLabelByKey: newLabels,
+    );
   }
 
   /// Decrements the current pending variant, or the first found variant for this item.
@@ -274,14 +283,7 @@ final salesCartTotalProvider = Provider.autoDispose<String>((ref) {
     final item = itemById[iId];
     if (item == null) continue;
     final overrideStr = cart.priceOverrideByItemId[entry.key];
-    int unitPriceMinor;
-    if (overrideStr != null) {
-      final d = double.tryParse(overrideStr.replaceAll(',', '')) ?? 0.0;
-      unitPriceMinor = (d * 100).round();
-    } else {
-      final d = double.tryParse(item.defaultPrice.replaceAll(',', '')) ?? 0.0;
-      unitPriceMinor = (d * 100).round();
-    }
+    final unitPriceMinor = _moneyToMinorSafe(overrideStr ?? item.defaultPrice);
     totalMinor += unitPriceMinor * qty;
   }
 
@@ -292,3 +294,13 @@ final salesCartItemCountProvider = Provider.autoDispose<int>((ref) {
   final cart = ref.watch(salesCartProvider);
   return cart.qtyByItemId.values.fold(0, (a, b) => a + b);
 });
+
+int _moneyToMinorSafe(String value) {
+  final raw = value.trim().replaceAll(',', '');
+  final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
+  if (match == null) return 0;
+  final parts = raw.split('.');
+  final major = int.tryParse(parts[0]) ?? 0;
+  final decimals = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
+  return (major * 100) + (int.tryParse(decimals) ?? 0);
+}
