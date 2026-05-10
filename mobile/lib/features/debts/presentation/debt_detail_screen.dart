@@ -1221,7 +1221,7 @@ class _ReceiveRepaymentSheetState
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _method,
+            initialValue: _method,
             decoration: InputDecoration(
               labelText: 'Payment method',
               prefixIcon: const Icon(
