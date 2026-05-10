@@ -49,6 +49,7 @@ class DebtsScreen extends ConsumerStatefulWidget {
 class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   String _searchQuery = '';
   bool _showSearch = false;
+  bool _showAll = false;
   String _activeTab = 'all';
 
   @override
@@ -223,26 +224,46 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                               ),
                             ),
                             const Spacer(),
-                            if (receivables.isNotEmpty)
-                              GestureDetector(
-                                onTap: () =>
-                                    setState(() => _showSearch = !_showSearch),
-                                child: const Text(
-                                  'View all →',
-                                  style: TextStyle(
-                                    color: AppColors.forest,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                            if (receivables.isNotEmpty) ...[
+                              IconButton(
+                                onPressed: () => setState(
+                                    () => _showSearch = !_showSearch),
+                                icon: Icon(
+                                  _showSearch
+                                      ? Icons.search_off_rounded
+                                      : Icons.search_rounded,
+                                  color: AppColors.muted,
+                                  size: 20,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                              ),
+                              if (!_showAll)
+                                GestureDetector(
+                                  onTap: () =>
+                                      setState(() => _showAll = true),
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 8),
+                                    child: Text(
+                                      'View all →',
+                                      style: TextStyle(
+                                        color: AppColors.forest,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 10),
                         _TabFilter(
                           activeTab: _activeTab,
-                          onTabChanged: (t) =>
-                              setState(() => _activeTab = t),
+                          onTabChanged: (t) => setState(() {
+                            _activeTab = t;
+                            _showAll = false;
+                          }),
                         ),
                         const SizedBox(height: 12),
                         if (debtsAsync.isLoading && receivables.isEmpty)
@@ -254,7 +275,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           )
                         else
                           ...filtered
-                              .take(_searchQuery.isEmpty && _activeTab == 'all'
+                              .take(!_showAll && _searchQuery.isEmpty && _activeTab == 'all'
                                   ? 10
                                   : filtered.length)
                               .map(_buildDebtCard),

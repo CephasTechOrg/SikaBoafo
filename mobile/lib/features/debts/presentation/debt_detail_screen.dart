@@ -216,10 +216,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const PremiumSectionHeading(
-                  title: 'Reminders',
-                  caption: 'Schedule custom reminders for this debt.',
-                ),
+                const PremiumSectionHeading(title: 'Reminders'),
                 const SizedBox(height: 14),
                 remindersAsync.when(
                   loading: () => const Padding(
@@ -235,19 +232,29 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                   ),
                   data: (times) {
                     if (times.isEmpty) {
-                      return PremiumEmptyState(
-                        icon: Icons.notifications_none_rounded,
-                        title: 'No reminders set',
-                        message:
-                            'Add a reminder so you don’t miss a follow-up with this customer.',
-                        action: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: () => _addReminder(context),
-                            icon: const Icon(Icons.add_alarm_rounded, size: 18),
-                            label: const Text('Add reminder'),
+                      return Row(
+                        children: [
+                          const Icon(
+                            Icons.notifications_none_rounded,
+                            size: 18,
+                            color: AppColors.muted,
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              ‘No reminders set’,
+                              style: TextStyle(
+                                  color: AppColors.muted, fontSize: 13),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _addReminder(context),
+                            icon: const Icon(Icons.add_alarm_rounded, size: 16),
+                            label: const Text(‘Add’),
+                            style: TextButton.styleFrom(
+                                foregroundColor: AppColors.forest),
+                          ),
+                        ],
                       );
                     }
                     return Column(
