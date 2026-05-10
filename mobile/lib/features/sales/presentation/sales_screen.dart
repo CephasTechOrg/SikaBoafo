@@ -915,7 +915,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => EditSaleSheet(sale: sale, editable: editable),
+      builder: (_) => EditSaleSheet(sale: sale, editable: editable!),
     );
   }
 

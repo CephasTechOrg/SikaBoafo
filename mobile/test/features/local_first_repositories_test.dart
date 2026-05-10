@@ -713,8 +713,8 @@ void main() {
     final saleRows = await db.query('sales_local');
     final saleId = saleRows.first['id'] as String;
 
-    expect(
-      () => repo.loadSaleEditable(saleId: saleId),
+    await expectLater(
+      repo.loadSaleEditable(saleId: saleId),
       throwsA(
         isA<ArgumentError>().having(
           (e) => e.message?.toString() ?? '',
