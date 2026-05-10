@@ -13,7 +13,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        final cardExtent = useSingleColumn ? 216.0 : 220.0;
+        final cardExtent = useSingleColumn ? 240.0 : 240.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

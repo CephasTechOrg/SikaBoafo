@@ -238,70 +238,86 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   },
                   child: DecoratedBox(
                     decoration: const BoxDecoration(color: AppColors.surface),
-                    child: CustomScrollView(
-                      slivers: [
+                    child: ListView(
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        0,
+                        16,
+                        _activeTab == SalesViewTab.newSale ? 110 : 28,
+                      ),
+                      children: [
                         if (_activeTab == SalesViewTab.newSale) ...[
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _SliverSearchDelegate(
-                              controller: _searchCtrl,
-                              hasQuery: cart.searchQuery.isNotEmpty,
-                              onChanged: (q) => ref
+                          const SizedBox(height: 8),
+                          SalesSearchBar(
+                            controller: _searchCtrl,
+                            hasQuery: cart.searchQuery.isNotEmpty,
+                            onChanged: (q) => ref
+                                .read(salesCartProvider.notifier)
+                                .setSearchQuery(q),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              ref
                                   .read(salesCartProvider.notifier)
-                                  .setSearchQuery(q),
-                              onClear: () {
-                                _searchCtrl.clear();
-                                ref
-                                    .read(salesCartProvider.notifier)
-                                    .setSearchQuery('');
-                              },
-                            ),
+                                  .setSearchQuery('');
+                            },
                           ),
-                          if (categories.length >= 2)
-                            SliverPersistentHeader(
-                              pinned: true,
-                              delegate: _SliverCategoryDelegate(
-                                categories: categories,
-                                selectedCategory: cart.selectedCategory,
-                                onSelected: (cat) => ref
-                                    .read(salesCartProvider.notifier)
-                                    .setCategory(cat),
-                              ),
-                            ),
-                          SliverPadding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 10, 16, 110),
-                            sliver: SliverToBoxAdapter(
-                              child: SalesNewSaleView(
-                                allItems: allItems,
-                                filteredItems: filtered,
-                                selectedItems: selectedItems,
-                                quickAddItems: quickAddItems,
-                                regularUnselectedItems: regularUnselectedItems,
-                                onPriceTap: _showPriceOverrideDialog,
-                              ),
-                            ),
-                          ),
-                        ] else ...[
-                          SliverPadding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 10, 16, 28),
-                            sliver: SliverToBoxAdapter(
-                              child: SalesHistoryView(
-                                showVoided: _showVoided,
-                                onShowVoidedChanged: (value) async {
-                                  setState(() => _showVoided = value);
-                                  await ref
-                                      .read(salesControllerProvider.notifier)
-                                      .refresh(includeVoided: value);
+                          if (categories.length >= 2) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 38,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: categories.length + 1,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  if (index == 0) {
+                                    return _CategoryChip(
+                                      label: 'All',
+                                      selected: cart.selectedCategory == null,
+                                      onTap: () => ref
+                                          .read(salesCartProvider.notifier)
+                                          .setCategory(null),
+                                    );
+                                  }
+                                  final cat = categories[index - 1];
+                                  return _CategoryChip(
+                                    label: cat,
+                                    selected: cart.selectedCategory == cat,
+                                    onTap: () => ref
+                                        .read(salesCartProvider.notifier)
+                                        .setCategory(
+                                          cart.selectedCategory == cat
+                                              ? null
+                                              : cat,
+                                        ),
+                                  );
                                 },
-                                historySales: historySales,
-                                buildSaleTile: _buildRecentSaleTile,
-                                isBusy: isBusy,
                               ),
                             ),
+                          ],
+                          const SizedBox(height: 10),
+                          SalesNewSaleView(
+                            allItems: allItems,
+                            filteredItems: filtered,
+                            selectedItems: selectedItems,
+                            quickAddItems: quickAddItems,
+                            regularUnselectedItems: regularUnselectedItems,
+                            onPriceTap: _showPriceOverrideDialog,
                           ),
-                        ],
+                        ] else
+                          SalesHistoryView(
+                            showVoided: _showVoided,
+                            onShowVoidedChanged: (value) async {
+                              setState(() => _showVoided = value);
+                              await ref
+                                  .read(salesControllerProvider.notifier)
+                                  .refresh(includeVoided: value);
+                            },
+                            historySales: historySales,
+                            buildSaleTile: _buildRecentSaleTile,
+                            isBusy: isBusy,
+                          ),
                       ],
                     ),
                   ),
@@ -1055,100 +1071,6 @@ class _TopAgg {
         qty: qty ?? this.qty,
         totalMinor: totalMinor ?? this.totalMinor,
       );
-}
-
-class _SliverSearchDelegate extends SliverPersistentHeaderDelegate {
-  _SliverSearchDelegate({
-    required this.controller,
-    required this.hasQuery,
-    required this.onChanged,
-    required this.onClear,
-  });
-
-  final TextEditingController controller;
-  final bool hasQuery;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  static const double _height = 58;
-
-  @override
-  double get minExtent => _height;
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return ColoredBox(
-      color: AppColors.surface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: SalesSearchBar(
-          controller: controller,
-          hasQuery: hasQuery,
-          onChanged: onChanged,
-          onClear: onClear,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverSearchDelegate old) => old.hasQuery != hasQuery;
-}
-
-class _SliverCategoryDelegate extends SliverPersistentHeaderDelegate {
-  _SliverCategoryDelegate({
-    required this.categories,
-    required this.selectedCategory,
-    required this.onSelected,
-  });
-
-  final List<String> categories;
-  final String? selectedCategory;
-  final ValueChanged<String?> onSelected;
-
-  static const double _height = 50;
-
-  @override
-  double get minExtent => _height;
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return ColoredBox(
-      color: AppColors.surface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: categories.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return _CategoryChip(
-                label: 'All',
-                selected: selectedCategory == null,
-                onTap: () => onSelected(null),
-              );
-            }
-            final cat = categories[index - 1];
-            return _CategoryChip(
-              label: cat,
-              selected: selectedCategory == cat,
-              onTap: () => onSelected(selectedCategory == cat ? null : cat),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverCategoryDelegate old) =>
-      old.selectedCategory != selectedCategory ||
-      old.categories.length != categories.length;
 }
 
 class _CategoryChip extends StatelessWidget {
