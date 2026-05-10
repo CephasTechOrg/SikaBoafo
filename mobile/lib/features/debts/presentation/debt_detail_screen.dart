@@ -289,20 +289,28 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           ),
           if (canCollect) ...[
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                SizedBox(
-                  width: 180,
-                  child: FilledButton.icon(
-                    onPressed: () => _openRepaymentScreen(context, ref),
-                    icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Receive Payment'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _openRepaymentScreen(context, ref),
+                icon: const Icon(Icons.payments_outlined),
+                label: const Text(
+                  'Receive Payment',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.forest,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
                   ),
                 ),
-                SizedBox(
-                  width: 190,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _isGeneratingPaymentLink
                         ? null
@@ -321,8 +329,8 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: 150,
+                const SizedBox(width: 10),
+                Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _confirmCancel(context, ref),
                     icon: const Icon(
@@ -353,11 +361,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const PremiumSectionHeading(
-                  title: 'Customer',
-                  caption:
-                      'Identity, contact, and sync information for this debt owner.',
-                ),
+                const PremiumSectionHeading(title: 'Customer'),
                 const SizedBox(height: 16),
                 _InfoRow(label: 'Name', value: row.customerName),
                 const SizedBox(height: 12),
@@ -368,15 +372,9 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Created',
-                  value: _formatDateTime(
+                  value: DateFormat('d MMM yyyy').format(
                     DateTime.fromMillisecondsSinceEpoch(row.createdAtMillis),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _InfoRow(
-                  label: 'Sync',
-                  value: row.syncStatus,
-                  valueColor: _syncColor(row.syncStatus),
                 ),
               ],
             ),
@@ -388,8 +386,22 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               children: [
                 PremiumSectionHeading(
                   title: 'Repayment History',
-                  caption:
-                      '${widget.detail.paymentCount} payment${widget.detail.paymentCount == 1 ? '' : 's'} recorded for this debt.',
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.forest.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '${widget.detail.paymentCount}',
+                      style: const TextStyle(
+                        color: AppColors.forest,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (widget.detail.payments.isEmpty)
@@ -925,10 +937,7 @@ class _PaymentLinkPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PremiumSectionHeading(
-            title: 'Payment link ready',
-            caption: 'Share this link with the customer to collect digitally.',
-          ),
+          const PremiumSectionHeading(title: 'Payment link ready'),
           const SizedBox(height: 10),
           SelectableText(
             paymentLink,
