@@ -8,6 +8,11 @@ import '../../providers/sales_cart_provider.dart';
 
 /// Order review sheet — shows cart contents, note field, total, and proceeds
 /// to checkout when the user is satisfied.
+///
+/// The sheet caps its height at 88% of the screen so the action buttons are
+/// always visible regardless of how many items are in the cart or whether the
+/// keyboard is open. The middle section (item list + total + note) scrolls
+/// independently when the content overflows.
 class ReviewSaleSheet extends ConsumerWidget {
   const ReviewSaleSheet({
     super.key,
@@ -39,306 +44,321 @@ class ReviewSaleSheet extends ConsumerWidget {
     final currentTotal = calculateTotal(items);
     final hasItems = currentCount > 0;
     final viewBottom = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
 
     return SafeArea(
       top: false,
       child: Padding(
         padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + viewBottom),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: AppShadows.elevated,
+        // Cap sheet height so the action buttons are never pushed off screen.
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: screenHeight * 0.88,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderStrong,
-                    borderRadius: BorderRadius.circular(999),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: AppShadows.elevated,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Drag handle (fixed) ──────────────────────────────────
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderStrong,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              // Header row
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.forest.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 18),
+
+                // ── Header row (fixed) ───────────────────────────────────
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.forest.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long_rounded,
+                        color: AppColors.forest,
+                        size: 18,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.receipt_long_rounded,
-                      color: AppColors.forest,
-                      size: 18,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Order Review',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          Text(
+                            '$currentCount ${currentCount == 1 ? 'item' : 'items'} · ${formatMajor(currentTotal, symbol: '₵')}',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                      color: AppColors.muted,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ── Scrollable body (item list + total + note) ───────────
+                Expanded(
+                  child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Order Review',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        Text(
-                          '$currentCount ${currentCount == 1 ? 'item' : 'items'} · ${formatMajor(currentTotal, symbol: '₵')}',
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                    color: AppColors.muted,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Item rows (scrollable if many items)
-              if (hasItems)
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.38,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: entries.map((entry) {
-                        final item = itemById[itemIdFromKey(entry.key)]!;
-                        final qty = entry.value;
-                        final price =
-                            cartState.priceOverrideByItemId[entry.key] ??
-                                item.defaultPrice;
-                        final lineTotal = moneyToMinor(price) * qty;
-                        final variantLabel =
-                            cartState.variantLabelByKey[entry.key];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              ItemImage(
-                                imageUrl: item.imageUrl,
-                                size: 40,
-                                fallbackIcon: Icons.inventory_2_outlined,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.name,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.ink,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                        // Item rows
+                        if (hasItems)
+                          ...entries.map((entry) {
+                            final item = itemById[itemIdFromKey(entry.key)]!;
+                            final qty = entry.value;
+                            final price =
+                                cartState.priceOverrideByItemId[entry.key] ??
+                                    item.defaultPrice;
+                            final lineTotal = moneyToMinor(price) * qty;
+                            final variantLabel =
+                                cartState.variantLabelByKey[entry.key];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  ItemImage(
+                                    imageUrl: item.imageUrl,
+                                    size: 40,
+                                    fallbackIcon: Icons.inventory_2_outlined,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.name,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.ink,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (variantLabel != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            variantLabel,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.forest,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$qty × ₵$price',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.muted,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    if (variantLabel != null) ...[
-                                      const SizedBox(height: 2),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
                                       Text(
-                                        variantLabel,
+                                        formatMinor(lineTotal, symbol: '₵'),
                                         style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.forest,
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.ink,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      GestureDetector(
+                                        onTap: () {
+                                          ref
+                                              .read(salesCartProvider.notifier)
+                                              .removeItem(entry.key);
+                                        },
+                                        child: const Text(
+                                          'Remove',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.danger,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '$qty × ₵$price',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.muted,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    formatMinor(lineTotal, symbol: '₵'),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.ink,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: () {
-                                      ref
-                                          .read(salesCartProvider.notifier)
-                                          .removeItem(entry.key);
-                                    },
-                                    child: const Text(
-                                      'Remove',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.danger,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
                                   ),
                                 ],
                               ),
+                            );
+                          })
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.shopping_cart_outlined,
+                                    color: AppColors.muted, size: 20),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'Cart is empty',
+                                  style: TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Total row
+                        if (hasItems) ...[
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Divider(color: AppColors.border, height: 1),
+                          ),
+                          Row(
+                            children: [
+                              const Text(
+                                'Total',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                formatMajor(currentTotal, symbol: '₵'),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.forest,
+                                  fontFamily: 'Constantia',
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
                             ],
                           ),
-                        );
-                      }).toList(),
+                        ],
+
+                        // Note field
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Note (optional)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: TextField(
+                            controller: noteController,
+                            maxLines: 2,
+                            maxLength: 500,
+                            decoration: const InputDecoration(
+                              hintText: 'Add a note for this sale…',
+                              contentPadding: EdgeInsets.all(12),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              counterStyle: TextStyle(fontSize: 9),
+                            ),
+                          ),
+                        ),
+                        // Extra space so the last field isn't right against the buttons
+                        const SizedBox(height: 4),
+                      ],
                     ),
                   ),
-                )
-              else
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Row(
-                    children: [
-                      Icon(Icons.shopping_cart_outlined,
-                          color: AppColors.muted, size: 20),
-                      SizedBox(width: 10),
-                      Text(
-                        'Cart is empty',
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              // Total row
-              if (hasItems) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Divider(color: AppColors.border, height: 1),
-                ),
+
+                // ── Action buttons (always visible, fixed at bottom) ─────
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Text(
-                      'Total',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.forest,
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(color: AppColors.forest),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text('Keep editing'),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      formatMajor(currentTotal, symbol: '₵'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.forest,
-                        fontFamily: 'Constantia',
-                        letterSpacing: -0.3,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: hasItems
+                            ? () {
+                                Navigator.of(context).pop();
+                                onProceedToCheckout();
+                              }
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.forest,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text('Proceed to checkout'),
                       ),
                     ),
                   ],
                 ),
               ],
-              const SizedBox(height: 16),
-              // Note field
-              const Text(
-                'Note (optional)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: TextField(
-                  controller: noteController,
-                  maxLines: 2,
-                  maxLength: 500,
-                  decoration: const InputDecoration(
-                    hintText: 'Add a note for this sale…',
-                    contentPadding: EdgeInsets.all(12),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    counterStyle: TextStyle(fontSize: 9),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.forest,
-                        minimumSize: const Size.fromHeight(48),
-                        side: const BorderSide(color: AppColors.forest),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Keep editing'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: hasItems
-                          ? () {
-                              Navigator.of(context).pop();
-                              onProceedToCheckout();
-                            }
-                          : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Proceed to checkout'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),

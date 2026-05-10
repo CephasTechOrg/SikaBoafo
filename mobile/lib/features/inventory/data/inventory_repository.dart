@@ -453,14 +453,13 @@ class InventoryRepository {
     await db.transaction((tx) async {
       final itemRows = await tx.query(
         'items_local',
-        columns: ['quantity_on_hand', 'server_version'],
+        columns: ['quantity_on_hand'],
         where: 'id = ?',
         whereArgs: [itemId],
         limit: 1,
       );
       if (itemRows.isEmpty) throw ArgumentError('Item not found.');
       final current = (itemRows.first['quantity_on_hand'] as int? ?? 0);
-      final serverVersion = itemRows.first['server_version'] as int?;
       final next = current + quantity;
       await tx.update(
         'items_local',
@@ -489,7 +488,6 @@ class InventoryRepository {
             'item_id': itemId,
             'quantity': quantity,
             'reason': _cleanOptional(reason),
-            if (serverVersion != null) 'balance_version': serverVersion,
           }..removeWhere((_, value) => value == null),
         ),
         sourceDeviceId: sourceDeviceId,
@@ -515,14 +513,13 @@ class InventoryRepository {
     await db.transaction((tx) async {
       final itemRows = await tx.query(
         'items_local',
-        columns: ['quantity_on_hand', 'server_version'],
+        columns: ['quantity_on_hand'],
         where: 'id = ?',
         whereArgs: [itemId],
         limit: 1,
       );
       if (itemRows.isEmpty) throw ArgumentError('Item not found.');
       final current = (itemRows.first['quantity_on_hand'] as int? ?? 0);
-      final serverVersion = itemRows.first['server_version'] as int?;
       final next = current + quantityDelta;
       if (next < 0) {
         throw ArgumentError('Adjustment would make stock negative.');
@@ -554,7 +551,6 @@ class InventoryRepository {
             'item_id': itemId,
             'quantity_delta': quantityDelta,
             'reason': _cleanOptional(reason),
-            if (serverVersion != null) 'balance_version': serverVersion,
           }..removeWhere((_, value) => value == null),
         ),
         sourceDeviceId: sourceDeviceId,
