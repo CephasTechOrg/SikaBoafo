@@ -1156,48 +1156,63 @@ class _ReceiveRepaymentSheetState
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           detailAsync.when(
-            loading: () => const Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
+            loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
             data: (detail) {
               if (detail == null) return const SizedBox.shrink();
               final row = detail.record;
               return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const LinearGradient(
-                    colors: [AppColors.forestDark, AppColors.forest],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: const Color(0xFF041C0B),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      row.customerName,
-                      style: const TextStyle(
-                        color: Color(0xFFD7F3EA),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.customerName,
+                            style: const TextStyle(
+                              color: Color(0xFFB8DECA),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '₵${row.outstandingAmount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₵${row.outstandingAmount} outstanding',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'Outstanding',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -1205,14 +1220,14 @@ class _ReceiveRepaymentSheetState
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           TextField(
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             autofocus: true,
             decoration: InputDecoration(
               labelText: 'Amount received',
-              hintText: 'e.g. 25.00',
+              hintText: '0.00',
               prefixText: '₵ ',
               prefixIcon: const Icon(
                 Icons.attach_money_rounded,
@@ -1220,14 +1235,19 @@ class _ReceiveRepaymentSheetState
                 size: 20,
               ),
               filled: true,
-              fillColor: AppColors.surfaceAlt,
+              fillColor: AppColors.canvas,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide:
+                    const BorderSide(color: AppColors.forest, width: 1.5),
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1244,14 +1264,19 @@ class _ReceiveRepaymentSheetState
                 size: 20,
               ),
               filled: true,
-              fillColor: AppColors.surfaceAlt,
+              fillColor: AppColors.canvas,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide:
+                    const BorderSide(color: AppColors.forest, width: 1.5),
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),

@@ -238,7 +238,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                                 visualDensity: VisualDensity.compact,
                                 padding: EdgeInsets.zero,
                               ),
-                              if (!_showAll)
+                              if (!_showAll && filtered.length > 10)
                                 GestureDetector(
                                   onTap: () =>
                                       setState(() => _showAll = true),
@@ -1090,116 +1090,157 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
             _selectedCustomerName = null;
           }),
           decoration: InputDecoration(
-            hintText: 'Search or type a new name…',
+            hintText: 'Search or enter a customer name…',
             prefixIcon: const Icon(
               Icons.search_rounded,
               color: AppColors.muted,
               size: 20,
             ),
             filled: true,
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.canvas,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              borderSide:
+                  const BorderSide(color: AppColors.forest, width: 1.5),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
         ),
-        const SizedBox(height: 12),
-        if (matches.isNotEmpty)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 200),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: matches.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1, color: AppColors.border),
-              itemBuilder: (_, idx) {
-                final c = matches[idx];
-                final isSelected = _selectedCustomerId == c.customerId;
-                return InkWell(
-                  onTap: () => _onCustomerTap(c),
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.forest
-                                : AppColors.surfaceAlt,
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            c.name.isNotEmpty
-                                ? c.name[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppColors.forest,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            c.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ),
-                        if (isSelected)
-                          const Icon(
-                            Icons.check_rounded,
-                            color: AppColors.forest,
-                            size: 18,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+        const SizedBox(height: 10),
+        if (matches.isNotEmpty) ...[
+          const Text(
+            'Existing customers',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+              letterSpacing: 0.3,
             ),
-          )
-        else if (showNewOption) ...[
+          ),
+          const SizedBox(height: 6),
           Container(
-            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.successSoft,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(
-                color: AppColors.success.withValues(alpha: 0.3),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: matches.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: AppColors.border),
+                itemBuilder: (_, idx) {
+                  final c = matches[idx];
+                  final isSelected = _selectedCustomerId == c.customerId;
+                  return InkWell(
+                    onTap: () => _onCustomerTap(c),
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.forest
+                                  : AppColors.canvas,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              c.name.isNotEmpty
+                                  ? c.name[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AppColors.forest,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              c.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.forest,
+                              size: 18,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
+            ),
+          ),
+        ] else if (showNewOption) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.forest.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              border:
+                  Border.all(color: AppColors.forest.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.person_add_rounded,
-                  color: AppColors.success,
-                  size: 18,
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.forest.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_add_rounded,
+                      color: AppColors.forest, size: 16),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Create new: “${_searchCtrl.text.trim()}”',
-                    style: const TextStyle(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'New customer',
+                        style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        _searchCtrl.text.trim(),
+                        style: const TextStyle(
+                          color: AppColors.forest,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1210,30 +1251,35 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
-              hintText: 'Phone (optional)',
+              labelText: 'Phone number (optional)',
               prefixIcon: const Icon(
                 Icons.phone_outlined,
                 color: AppColors.muted,
                 size: 20,
               ),
               filled: true,
-              fillColor: AppColors.surfaceAlt,
+              fillColor: AppColors.canvas,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: const BorderSide(color: AppColors.borderStrong),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide:
+                    const BorderSide(color: AppColors.forest, width: 1.5),
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             ),
           ),
         ] else if (widget.customers.isEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
-            'No customers yet — type a name above to create one.',
+            'Type a name above to add a new customer.',
             style: TextStyle(color: AppColors.muted, fontSize: 13),
           ),
         ],
@@ -1312,8 +1358,8 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           autofocus: true,
           decoration: InputDecoration(
-            labelText: 'Amount',
-            hintText: 'e.g. 150.00',
+            labelText: 'Amount owed',
+            hintText: '0.00',
             prefixText: '₵ ',
             prefixIcon: const Icon(
               Icons.attach_money_rounded,
@@ -1321,14 +1367,19 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
               size: 20,
             ),
             filled: true,
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.canvas,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              borderSide:
+                  const BorderSide(color: AppColors.forest, width: 1.5),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1347,14 +1398,19 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
               size: 20,
             ),
             filled: true,
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.canvas,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              borderSide:
+                  const BorderSide(color: AppColors.forest, width: 1.5),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1372,14 +1428,19 @@ class _NewDebtSheetState extends ConsumerState<_NewDebtSheet> {
               size: 20,
             ),
             filled: true,
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.canvas,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: const BorderSide(color: AppColors.borderStrong),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              borderSide:
+                  const BorderSide(color: AppColors.forest, width: 1.5),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
