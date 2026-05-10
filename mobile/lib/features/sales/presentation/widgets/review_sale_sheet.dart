@@ -230,14 +230,14 @@ class ReviewSaleSheet extends ConsumerWidget {
                             );
                           })
                         else
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
                             child: Row(
                               children: [
-                                const Icon(Icons.shopping_cart_outlined,
+                                Icon(Icons.shopping_cart_outlined,
                                     color: AppColors.muted, size: 20),
-                                const SizedBox(width: 10),
-                                const Text(
+                                SizedBox(width: 10),
+                                Text(
                                   'Cart is empty',
                                   style: TextStyle(
                                     color: AppColors.muted,
