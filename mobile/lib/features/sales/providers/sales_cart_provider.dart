@@ -223,6 +223,7 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
       variantLabelByKey: const {},
       pendingVariantByItemId: const {},
       paymentMethod: 'cash',
+      selectedCategory: null,
     );
   }
 
