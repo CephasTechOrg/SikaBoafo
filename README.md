@@ -1,449 +1,134 @@
 # SikaBoafo
 
-SikaBoafo is a mobile-first, offline-first financial inventory system for micro and small businesses. It helps merchants record sales, manage inventory, track expenses, manage debts, understand profit, and grow into digital payment collection.
+**Merchant OS for Ghanaian microbusinesses — offline-first, built for daily operations.**
 
-## Product idea
+SikaBoafo replaces pen-and-paper bookkeeping with a structured mobile app. Merchants record sales, manage stock, track debts, log expenses, and collect payments digitally — even without internet. Everything syncs automatically when connectivity returns.
 
-This is not just a bookkeeping app.
-
-SikaBoafo is a **merchant operating system** for daily business control.
-
-Core value:
-
-- record sales quickly
-- track stock reliably
-- manage customer debts
-- understand daily performance
-- continue working even without internet
-- prepare for digital payments and future finance
+> **43 active test users** · Flutter + FastAPI + PostgreSQL · Paystack payments
 
 ---
 
-## Current documentation
+## Navigation
 
-- `project_description.md`
-- `architecture.md`
-- `folderstructure.md`
-- `todo.md`
-- `docs/product/ai_strategy.md` — AI integration strategy, feature roadmap, and guardrails
-
-UI reference asset:
-
-- `docs/mockups/sikaboafo_mockups_v1.png`
-
-**Documentation terms:** **Payment stages** (1–3) describe the Paystack rollout. **Product milestones** (M2–M5) in `project_description.md` describe broader feature waves—do not mix those numbers with payment stages.
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Documentation](#documentation)
+- [Status](#status)
 
 ---
 
-## Recommended stack
+## Screenshots
 
-### Mobile
-
-- Flutter
-- Riverpod
-- GoRouter
-- Dio
-- SQLite
-
-### Backend
-
-- FastAPI
-- SQLAlchemy 2.x
-- Alembic
-- PostgreSQL
-- Redis
-- Celery or Dramatiq
-
-### Admin
-
-- Next.js
-- TypeScript
-
-### Infra
-
-- AWS
-- S3
-- RDS PostgreSQL
-- Managed Redis
-
-### Payments
-
-- **Paystack** is the digital payment provider for collection, webhooks, and (later) QR and reconciliation features supported by Paystack in Ghana.
-
----
-
-## Project structure (high level)
-
-Repository root (e.g. this repo):
-
-```text
-./
-  mobile/
-  backend/
-  admin/
-  docs/
-  scripts/
-  infra/
-```
-
-See `folderstructure.md` for the complete startup-ready structure.
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/main_login.jpg" width="210" alt="Welcome Screen"/><br/>
+      <b>Welcome</b><br/>
+      <sub>Clean entry point with direct paths to Sign In or Create Account.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/login_signup_page.jpg" width="210" alt="Sign In"/><br/>
+      <b>Sign In</b><br/>
+      <sub>Phone number + PIN authentication with Forgot PIN recovery.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/dashboard.jpg" width="210" alt="Dashboard"/><br/>
+      <b>Dashboard</b><br/>
+      <sub>Live KPIs — today's sales, estimated profit, unpaid debts, and low-stock alerts.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/sales.jpg" width="210" alt="Sales"/><br/>
+      <b>Sales</b><br/>
+      <sub>Product catalog with variant chips, cart management, and one-tap checkout.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/checkout_page.jpg" width="210" alt="Checkout"/><br/>
+      <b>Checkout</b><br/>
+      <sub>Order review with line items, total, and payment method selection.</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="mobile/assets/screens/QR_payment.jpg" width="210" alt="QR Payment"/><br/>
+      <b>Scan to Pay</b><br/>
+      <sub>Live Paystack QR with shareable link and real-time confirmation.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="3">
+      <img src="mobile/assets/screens/more_page.jpg" width="210" alt="More"/><br/>
+      <b>More</b><br/>
+      <sub>Hub for Expenses, Debts, Customers, Reports, and Settings.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## If you are starting the project now
+## Features
 
-Do **not** rush ahead of the data model. The point of going step by step is to keep **schemas, sync fields, and boundaries** correct so you do not rewrite piles of code later.
+| Module | What it does |
+|---|---|
+| **Dashboard** | Real-time KPI strip — sales today, profit, overdue debts, low-stock count, top sellers |
+| **Sales** | POS with product variants, cart editing, Paystack QR and mobile-money checkout |
+| **Inventory** | Stock tracking with low-stock alerts, movement history, and product image support |
+| **Debts** | Receivables with due dates, payment links, automated reminders, and repayment history |
+| **Expenses** | 7 expense categories with monthly summaries and category breakdowns |
+| **Reports** | Daily / weekly / monthly revenue, top customers, top items, and payment method splits |
 
-**First work (in order):**
-
-1. **Repo and docs** — Finish `todo.md` §0–§3: root layout per `folderstructure.md`, `.gitignore`, formatting/lint config, `docs/mockups/`, optional `docs/product/` and `docs/architecture/` stubs.
-2. **Backend skeleton** — `todo.md` §4.1–§4.2: FastAPI app, config, health route, versioned API shell (no business logic dump in routers).
-3. **Data model first** — Before most endpoints: SQLAlchemy models and **Alembic migrations** for core tables (users, merchants, stores, then items/inventory, sales, expenses, customers/receivables as you add modules). Include **sync/idempotency columns** (`device_id`, `local_operation_id`, etc.) on every syncable entity from the start (`architecture.md` §7.3, §8).
-4. **Seed and verify** — `seed_dev.py`, run migrations, prove DB shape with real inserts.
-5. **Mobile shell** — `todo.md` §5: Flutter app, env, Riverpod, GoRouter, Dio, theme; **sketch SQLite tables** to match server-shaped entities + sync queue before heavy UI.
-6. **Connect and auth** — API client, tokens, then auth + onboarding (`todo.md` §6–§7).
-7. **MVP modules in order** — Inventory → Sales → Expenses → Debts → Dashboard/Reports (`todo.md` §8–§12), with **local-first + sync queue** wired as you go (`todo.md` §13).
-8. **Harden sync** — Idempotency, retries, conflict handling per `architecture.md` §8.3.
-9. **Admin and Paystack** — When MVP capture is solid: internal admin, then payment stage 2 (`todo.md` §14–§15, §21).
-
-**Code quality:** Follow **`architecture.md` §4.6–§4.8** (data-first, efficient boundaries, purposeful comments). The goal is maintainable, boring-in-a-good-way code—not the smallest possible first draft.
+Additional: customer profiles, staff management, biometric + PIN security, push notifications, offline-first sync.
 
 ---
 
-## How to start the project (summary)
+## Architecture
 
-1. Repository structure, tooling, and docs (`todo.md` §0–§3).
-2. Backend foundation **with migrations driven by a deliberate schema** (`todo.md` §4).
-3. Seed data and local verification.
-4. Mobile app shell **with SQLite/sync design aligned to the server model** (`todo.md` §5).
-5. Connect mobile to backend; implement offline storage and sync (`todo.md` §13).
-6. Build MVP modules one by one (`todo.md` §8–§12).
+| Layer | Stack |
+|---|---|
+| Mobile | Flutter · Riverpod · GoRouter · SQLite (14 tables, offline-first) |
+| Backend | FastAPI · PostgreSQL · Redis — 50 endpoints across 13 modules |
+| Sync | Idempotent device-keyed queue — multi-device safe, no duplicate writes |
+| Payments | Paystack QR · mobile money · payment links · webhook reconciliation |
+| Infra | Render (backend) · AWS S3 (assets) |
+
+The mobile app writes locally first via an idempotent sync queue keyed on `source_device_id + local_operation_id`. Operations are replayed to the backend when connectivity returns — duplicate replays are safely ignored.
 
 ---
 
-## Backend startup guide
-
-### 1. Create backend folder and environment
+## Getting Started
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
+git clone https://github.com/CephasTechOrg/SikaBoafo.git
+cd SikaBoafo
 ```
 
-On Windows PowerShell:
+Full setup instructions (backend + mobile + local infrastructure):
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+→ [`docs/development/SETUP.md`](docs/development/SETUP.md)
 
-### 2. Install dependencies
+USB reverse forwarding for physical Android device testing:
 
-```bash
-pip install -r requirements.txt
-```
+→ [`docs/development/USB_REVERSE_QUICK_START.md`](docs/development/USB_REVERSE_QUICK_START.md)
 
-### 3. Create environment file
+Dev tooling and bootstrap scripts:
 
-Create `.env` with required variables such as:
-
-```env
-APP_ENV=local
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/biztrack
-REDIS_URL=redis://localhost:6379/0
-SECRET_KEY=change-me
-PAYSTACK_SECRET_KEY=change-me-later
-PAYSTACK_PUBLIC_KEY=change-me-later
-```
-
-### 4. Run database migrations
-
-```bash
-alembic upgrade head
-```
-
-### 5. Seed local development data
-
-```bash
-python scripts/seed_dev.py
-```
-
-### 6. Start backend API
-
-```bash
-uvicorn app.main:app --reload
-```
-
-### 7. Start worker process
-
-Example if using Celery:
-
-```bash
-celery -A app.workers.celery_app worker --loglevel=info
-```
+→ [`scripts/`](scripts/)
 
 ---
 
-## Mobile startup guide
+## Documentation
 
-### 1. Create Flutter app or enter mobile folder
-
-```bash
-cd mobile
-flutter pub get
-```
-
-### 2. Run code generation if used later
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
-
-### 3. Start app
-
-```bash
-flutter run
-```
-
-### 4. Recommended early setup tasks
-
-- configure app flavors/environments
-- configure Riverpod
-- configure routing
-- configure Dio API client
-- configure SQLite local database
-- configure secure token storage
-
----
-
-## Local development services
-
-Recommended local stack:
-
-- PostgreSQL
-- Redis
-- FastAPI app
-- worker process
-- Flutter app
-
-Optional:
-
-- Docker Compose for backend infrastructure (`infra/docker/docker-compose.local.yml`)
-
----
-
-## Reliability Verification Runbook (MVP Gate)
-
-Use this before merging major changes to auth, sync, sales/expenses/debts, or reports.
-
-### 1) Mobile reliability tests
-
-From `mobile/`:
-
-```bash
-flutter test \
-  test/core/services/api_client_test.dart \
-  test/data/sync/sync_queue_runner_test.dart \
-  test/features/local_first_repositories_test.dart
-```
-
-Expected result: all tests pass.
-
-What this verifies:
-
-- session-expiry handling (401 -> clear session -> redirect)
-- sync queue status transitions (applied/duplicate/failed/conflict)
-- local-first writes for expenses, sales/inventory, and debts
-
-### 2) Backend sync/report consistency tests
-
-From `backend/` (venv active):
-
-```powershell
-python -m pytest \
-  app/tests/test_sync_report_consistency.py \
-  app/tests/test_reports_summary.py \
-  app/tests/test_sales_sync.py \
-  app/tests/test_expenses_sync.py \
-  app/tests/test_inventory_sync.py \
-  app/tests/test_receivables_sync.py -q
-```
-
-Expected result: all tests pass.
-
-What this verifies:
-
-- duplicate sync replay does not duplicate business records
-- replayed sync operations do not inflate dashboard/report totals
-- inventory and debt conflict paths are handled safely
-
-### 3) Device connectivity check (Android phone)
-
-If testing on physical Android under restricted Wi-Fi, use USB reverse.
-See `docs/development/MOBILE_BACKEND_DEBUGGING.md` and `USB_REVERSE_QUICK_START.md`.
-
-### 4) Recovery flow when auth/sync looks stuck
-
-1. Confirm backend is running and health endpoint returns OK.
-2. Confirm phone tunnel/network path is active (USB reverse or LAN path).
-3. Trigger a protected endpoint from app UI.
-4. If token is stale, app should auto-redirect to auth with session-expired message.
-5. Sign in again and re-check dashboard + recent activity.
-
-If step 4 fails, re-run the mobile reliability tests above before shipping.
-
----
-
-## MVP feature list
-
-- phone number + **PIN** sign-in (SMS OTP only for signup / Forgot PIN — see `docs/auth/pin-and-otp-flow.md`)
-- merchant onboarding
-- dashboard
-- record sale
-- record expense
-- inventory management
-- debt tracking
-- daily / weekly / monthly summaries
-- offline save and sync foundation
-
----
-
-## Payment rollout plan (Paystack)
-
-Digital money movement is implemented **only through Paystack** (API, redirects/checkout as applicable, and **verified webhooks**). The app never treats a payment as final until the backend confirms it via Paystack.
-
-### Stage 1
-
-Record payment method labels only (cash, mobile money, bank transfer). No live Paystack charge.
-
-### Stage 2
-
-**Paystack live collection:** initiate Paystack transactions from the app, customer pays via Paystack-supported channels, backend confirms via Paystack webhooks and updates `payments` / linked sale or receivable.
-
-### Stage 3
-
-**Deep operations:** receipts, reconciliation, refunds where supported, Paystack-backed QR or other flows available in the stack, settlement visibility, future finance hooks.
-
----
-
-## Offline-first explanation
-
-Offline mode is for business continuity.
-
-The app should still allow:
-
-- recording a cash sale
-- recording an expense
-- updating stock
-- creating a debt
-- viewing recent business data
-
-even when internet is weak.
-
-When internet returns, the app syncs queued operations to the backend.
-
----
-
-## Design and UI workflow
-
-The generated mockups are part of the source of truth for implementation direction.
-
-Use the mockup asset in `docs/mockups/` as the initial visual reference while refining the design system and screen specs.
-
----
-
-## Development approach
-
-The best **feature** order after the backend shell and data model exist:
-
-- auth
-- merchant/store setup
-- inventory
-- sales
-- expenses
-- debts
-- dashboard
-- reports
-- offline sync hardening
-- Paystack integration (payment stage 2+)
-
-Keep **routers thin**, **services explicit**, and **types/schemas** at system edges so data structures stay the single source of truth for behavior.
+| Path | Contents |
+|---|---|
+| [`ghana_sme_os_docs/`](ghana_sme_os_docs/) | Architecture, database schema, API contracts, Paystack integration, UI design |
+| [`docs/development/`](docs/development/) | Setup guide, USB debugging, mobile backend debugging |
+| [`docs/product/`](docs/product/) | AI strategy, feature roadmap |
+| [`docs/auth/`](docs/auth/) | PIN + OTP flow design |
+| [`scripts/`](scripts/) | Bootstrap and dev tooling |
 
 ---
 
 ## Status
 
-Active development (2026-04-24): M1-M3 delivered and stabilized; M4 Paystack integration is in progress (Step 1 connection settings, Step 2 receivable payment-link initiation, and Step 3 webhook verification/settlement with idempotency hardening completed).
-
----
-
-## App Screens
-
-A visual walkthrough of the SikaBoafo mobile experience — built offline-first for Ghanaian merchants.
-
-<br/>
-
-### Onboarding & Authentication
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="mobile/assets/screens/main_login.jpg" width="260" alt="Welcome Screen"/><br/>
-      <b>Welcome Screen</b><br/>
-      <sub>The first screen a new user sees. Clean hero layout with the SikaBoafo brand, a merchant photo, and direct paths to Sign In or Create Account.</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="mobile/assets/screens/login_signup_page.jpg" width="260" alt="Sign In Screen"/><br/>
-      <b>Sign In</b><br/>
-      <sub>Phone number + secure PIN authentication. Includes Forgot PIN recovery flow and a quick path to account creation for new users.</sub>
-    </td>
-  </tr>
-</table>
-
-<br/>
-
-### Core App Screens
-
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <img src="mobile/assets/screens/dashboard.jpg" width="220" alt="Dashboard"/><br/>
-      <b>Dashboard</b><br/>
-      <sub>The merchant command center. Live sales today, estimated profit, unpaid debts, low stock count, and top-selling products — all at a glance.</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="mobile/assets/screens/sales.jpg" width="220" alt="Sales Screen"/><br/>
-      <b>Sales</b><br/>
-      <sub>Browse and search your product catalog. Add items to cart with a tap. Premium auto-scrolling header shows the top seller of the month with live sales momentum.</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="mobile/assets/screens/more_page.jpg" width="220" alt="More Screen"/><br/>
-      <b>More</b><br/>
-      <sub>Centralized hub for all secondary operations: Expenses, Debts, Customers, Reports, and Settings — organized into logical groups.</sub>
-    </td>
-  </tr>
-</table>
-
-<br/>
-
-### Sales & Payment Flow
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="mobile/assets/screens/checkout_page.jpg" width="260" alt="Order Review"/><br/>
-      <b>Order Review & Checkout</b><br/>
-      <sub>A bottom-sheet order summary showing line items, total, and an optional note field before proceeding to payment. Clean and distraction-free.</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="mobile/assets/screens/QR_payment.jpg" width="260" alt="Scan to Pay"/><br/>
-      <b>Scan to Pay (Paystack)</b><br/>
-      <sub>Live Paystack QR code displayed for the customer to scan. Includes a shareable payment link, real-time payment status polling, and automatic confirmation.</sub>
-    </td>
-  </tr>
-</table>
-
-<br/>
-
-> **Built for Ghana.** SikaBoafo works fully offline — record a sale, update stock, or log a debt even with no internet. Everything syncs automatically when connectivity returns.
-
+Active development · M1–M3 complete and stable · Paystack integration live (QR, mobile money, payment links, webhook settlement) · 43 active test users in Ghana.
