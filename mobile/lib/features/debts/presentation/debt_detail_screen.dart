@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -242,7 +242,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
-                              ‘No reminders set’,
+                              'No reminders set',
                               style: TextStyle(
                                   color: AppColors.muted, fontSize: 13),
                             ),
@@ -250,7 +250,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           TextButton.icon(
                             onPressed: () => _addReminder(context),
                             icon: const Icon(Icons.add_alarm_rounded, size: 16),
-                            label: const Text(‘Add’),
+                            label: const Text('Add'),
                             style: TextButton.styleFrom(
                                 foregroundColor: AppColors.forest),
                           ),
@@ -884,12 +884,10 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.label,
     required this.value,
-    this.valueColor = AppColors.ink,
   });
 
   final String label;
   final String value;
-  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -907,8 +905,8 @@ class _InfoRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: TextStyle(
-              color: valueColor,
+            style: const TextStyle(
+              color: AppColors.ink,
               fontWeight: FontWeight.w700,
             ),
           ),
