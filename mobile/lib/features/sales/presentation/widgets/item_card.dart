@@ -13,7 +13,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        final cardExtent = useSingleColumn ? 240.0 : 240.0;
+        final cardExtent = useSingleColumn ? 268.0 : 268.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -110,7 +110,7 @@ class ItemCard extends StatelessWidget {
             child: Stack(
               children: [
                 SizedBox(
-                  height: 96,
+                  height: 116,
                   width: double.infinity,
                   child: item.imageUrl != null
                       ? Image.network(
@@ -248,16 +248,17 @@ class ItemCard extends StatelessWidget {
                       if (qty > 0) ...[
                         _SmallQtyBtn(
                           icon: Icons.remove_rounded,
+                          size: 28,
                           onTap: onMinus,
                         ),
                         SizedBox(
-                          width: 26,
+                          width: 22,
                           child: Center(
                             child: Text(
                               '$qty',
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
-                                fontSize: 14,
+                                fontSize: 13,
                                 color: AppColors.ink,
                               ),
                             ),
@@ -265,6 +266,7 @@ class ItemCard extends StatelessWidget {
                         ),
                         _SmallQtyBtn(
                           icon: Icons.add_rounded,
+                          size: 28,
                           enabled: canAdd && qty < item.quantityOnHand,
                           onTap: onPlus,
                         ),
@@ -425,18 +427,20 @@ class _SmallQtyBtn extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.enabled = true,
+    this.size = 30,
   });
   final IconData icon;
   final VoidCallback onTap;
   final bool enabled;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        width: 30,
-        height: 30,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.transparent,
@@ -447,7 +451,7 @@ class _SmallQtyBtn extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: 15,
+          size: size * 0.5,
           color: enabled ? AppColors.forest : AppColors.muted,
         ),
       ),
