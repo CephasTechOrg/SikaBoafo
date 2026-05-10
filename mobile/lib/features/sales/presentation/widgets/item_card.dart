@@ -13,7 +13,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        final cardExtent = useSingleColumn ? 252.0 : 252.0;
+        final cardExtent = useSingleColumn ? 256.0 : 256.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -109,13 +109,16 @@ class ItemCard extends StatelessWidget {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
             child: Stack(
               children: [
-                SizedBox(
+                Container(
                   height: 96,
                   width: double.infinity,
+                  color: isSelected
+                      ? const Color(0xFFEAF7EF)
+                      : const Color(0xFFF8FAFC),
                   child: item.imageUrl != null
                       ? Image.network(
                           item.imageUrl!,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) =>
                               _FallbackImageBox(isSelected: isSelected),
                         )
@@ -195,9 +198,9 @@ class ItemCard extends StatelessWidget {
                     ),
                   ),
 
-                  // ── Variant chips ──────────────────────────────
+                  // ── Spacer + chip slot (always 38px) ──────────
+                  const Spacer(),
                   if (item.hasVariants) ...[
-                    const Spacer(),
                     SizedBox(
                       height: 28,
                       child: ListView.separated(
@@ -221,7 +224,7 @@ class ItemCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                   ] else
-                    const Spacer(),
+                    const SizedBox(height: 38),
                   // ── Price + quantity controls ──────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
