@@ -219,30 +219,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   ),
                 ),
               ),
-              if (_activeTab == SalesViewTab.newSale)
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverSearchDelegate(
-                    controller: _searchCtrl,
-                    hasQuery: cart.searchQuery.isNotEmpty,
-                    onChanged: (q) =>
-                        ref.read(salesCartProvider.notifier).setSearchQuery(q),
-                    onClear: () {
-                      _searchCtrl.clear();
-                      ref.read(salesCartProvider.notifier).setSearchQuery('');
-                    },
-                  ),
-                ),
-              if (_activeTab == SalesViewTab.newSale && categories.length >= 2)
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverCategoryDelegate(
-                    categories: categories,
-                    selectedCategory: cart.selectedCategory,
-                    onSelected: (cat) =>
-                        ref.read(salesCartProvider.notifier).setCategory(cat),
-                  ),
-                ),
             ],
             body: MediaQuery.removePadding(
               context: context,
@@ -262,36 +238,70 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   },
                   child: DecoratedBox(
                     decoration: const BoxDecoration(color: AppColors.surface),
-                    child: ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        10,
-                        16,
-                        _activeTab == SalesViewTab.newSale ? 110 : 28,
-                      ),
-                      children: [
-                        if (_activeTab == SalesViewTab.newSale)
-                          SalesNewSaleView(
-                            allItems: allItems,
-                            filteredItems: filtered,
-                            selectedItems: selectedItems,
-                            quickAddItems: quickAddItems,
-                            regularUnselectedItems: regularUnselectedItems,
-                            onPriceTap: _showPriceOverrideDialog,
-                          )
-                        else
-                          SalesHistoryView(
-                            showVoided: _showVoided,
-                            onShowVoidedChanged: (value) async {
-                              setState(() => _showVoided = value);
-                              await ref
-                                  .read(salesControllerProvider.notifier)
-                                  .refresh(includeVoided: value);
-                            },
-                            historySales: historySales,
-                            buildSaleTile: _buildRecentSaleTile,
-                            isBusy: isBusy,
+                    child: CustomScrollView(
+                      slivers: [
+                        if (_activeTab == SalesViewTab.newSale) ...[
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: _SliverSearchDelegate(
+                              controller: _searchCtrl,
+                              hasQuery: cart.searchQuery.isNotEmpty,
+                              onChanged: (q) => ref
+                                  .read(salesCartProvider.notifier)
+                                  .setSearchQuery(q),
+                              onClear: () {
+                                _searchCtrl.clear();
+                                ref
+                                    .read(salesCartProvider.notifier)
+                                    .setSearchQuery('');
+                              },
+                            ),
                           ),
+                          if (categories.length >= 2)
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _SliverCategoryDelegate(
+                                categories: categories,
+                                selectedCategory: cart.selectedCategory,
+                                onSelected: (cat) => ref
+                                    .read(salesCartProvider.notifier)
+                                    .setCategory(cat),
+                              ),
+                            ),
+                          SliverPadding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 10, 16, 110),
+                            sliver: SliverToBoxAdapter(
+                              child: SalesNewSaleView(
+                                allItems: allItems,
+                                filteredItems: filtered,
+                                selectedItems: selectedItems,
+                                quickAddItems: quickAddItems,
+                                regularUnselectedItems: regularUnselectedItems,
+                                onPriceTap: _showPriceOverrideDialog,
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          SliverPadding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 10, 16, 28),
+                            sliver: SliverToBoxAdapter(
+                              child: SalesHistoryView(
+                                showVoided: _showVoided,
+                                onShowVoidedChanged: (value) async {
+                                  setState(() => _showVoided = value);
+                                  await ref
+                                      .read(salesControllerProvider.notifier)
+                                      .refresh(includeVoided: value);
+                                },
+                                historySales: historySales,
+                                buildSaleTile: _buildRecentSaleTile,
+                                isBusy: isBusy,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
