@@ -169,6 +169,8 @@ CREATE TABLE sale_items_local (
   quantity INTEGER NOT NULL,
   unit_price TEXT NOT NULL,
   line_total TEXT NOT NULL,
+  variant_id TEXT,
+  variant_label TEXT,
   created_at INTEGER NOT NULL
 )
 ''');
