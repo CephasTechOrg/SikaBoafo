@@ -14,7 +14,6 @@ import '../features/customers/presentation/customer_detail_screen.dart';
 import '../features/customers/presentation/customers_screen.dart';
 import '../features/debts/presentation/debt_detail_screen.dart';
 import '../features/debts/presentation/debts_screen.dart';
-import '../features/debts/presentation/receive_repayment_screen.dart';
 import '../features/notifications/presentation/notifications_inbox_screen.dart';
 import '../features/settings/presentation/connect_paystack_screen.dart';
 import '../features/settings/presentation/business_profile_screen.dart';
@@ -39,7 +38,6 @@ enum AppRoute {
   customers('/customers'),
   customerDetail('/customers/:id'),
   debtDetail('/debts/:id'),
-  receiveRepayment('/debts/:id/repayment'),
   notifications('/notifications');
 
   const AppRoute(this.path);
@@ -195,15 +193,6 @@ GoRouter createAppRouter(Ref ref) {
           final id = state.pathParameters['id'] ?? '';
           return DebtDetailScreen(receivableId: id);
         },
-        routes: [
-          GoRoute(
-            path: 'repayment',
-            builder: (context, state) {
-              final id = state.pathParameters['id'] ?? '';
-              return ReceiveRepaymentScreen(receivableId: id);
-            },
-          ),
-        ],
       ),
       GoRoute(
         path: AppRoute.notifications.path,

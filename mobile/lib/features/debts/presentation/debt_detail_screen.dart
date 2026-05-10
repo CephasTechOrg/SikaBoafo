@@ -437,8 +437,12 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 
   Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
-    final saved = await context.push<bool>(
-      '/debts/${widget.receivableId}/repayment',
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          _ReceiveRepaymentSheet(receivableId: widget.receivableId),
     );
     if (saved != true || !context.mounted) return;
     ref.invalidate(receivableDetailProvider(widget.receivableId));
@@ -1038,4 +1042,251 @@ Color _syncColor(String status) {
     'sending' => AppColors.sky,
     _ => AppColors.warning,
   };
+}
+
+// ── Receive repayment bottom sheet ──────────────────────────────────────────
+
+class _ReceiveRepaymentSheet extends ConsumerStatefulWidget {
+  const _ReceiveRepaymentSheet({required this.receivableId});
+  final String receivableId;
+
+  @override
+  ConsumerState<_ReceiveRepaymentSheet> createState() =>
+      _ReceiveRepaymentSheetState();
+}
+
+class _ReceiveRepaymentSheetState
+    extends ConsumerState<_ReceiveRepaymentSheet> {
+  final _amountCtrl = TextEditingController();
+  String _method = 'cash';
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(debtsControllerProvider.notifier).recordRepayment(
+            receivableId: widget.receivableId,
+            amount: _amountCtrl.text,
+            paymentMethodLabel: _method,
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_humanizeError(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detailAsync = ref.watch(receivableDetailProvider(widget.receivableId));
+    final viewBottom = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + viewBottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.borderStrong,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.forest.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.payments_outlined,
+                  color: AppColors.forest,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Receive Payment',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close_rounded),
+                color: AppColors.muted,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          detailAsync.when(
+            loading: () => const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (detail) {
+              if (detail == null) return const SizedBox.shrink();
+              final row = detail.record;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: const LinearGradient(
+                    colors: [AppColors.forestDark, AppColors.forest],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.customerName,
+                      style: const TextStyle(
+                        color: Color(0xFFD7F3EA),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '₵${row.outstandingAmount} outstanding',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Amount received',
+              hintText: 'e.g. 25.00',
+              prefixText: '₵ ',
+              prefixIcon: const Icon(
+                Icons.attach_money_rounded,
+                color: AppColors.muted,
+                size: 20,
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceAlt,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _method,
+            decoration: InputDecoration(
+              labelText: 'Payment method',
+              prefixIcon: const Icon(
+                Icons.payments_outlined,
+                color: AppColors.muted,
+                size: 20,
+              ),
+              filled: true,
+              fillColor: AppColors.surfaceAlt,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'cash', child: Text('Cash')),
+              DropdownMenuItem(
+                value: 'mobile_money',
+                child: Text('Mobile Money'),
+              ),
+              DropdownMenuItem(
+                value: 'bank_transfer',
+                child: Text('Bank Transfer'),
+              ),
+            ],
+            onChanged: (v) {
+              if (v != null) setState(() => _method = v);
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: const Text(
+                'Save Payment',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.forest,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

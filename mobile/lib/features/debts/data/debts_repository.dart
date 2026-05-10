@@ -339,7 +339,7 @@ ORDER BY p.created_at DESC
     );
   }
 
-  Future<void> createCustomerLocal({
+  Future<String> createCustomerLocal({
     required String name,
     String? phoneNumber,
   }) async {
@@ -388,6 +388,7 @@ ORDER BY p.created_at DESC
         executor: tx,
       );
     });
+    return customerId;
   }
 
   Future<String> getPaidThisMonth() async {
