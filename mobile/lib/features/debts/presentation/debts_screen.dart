@@ -37,6 +37,20 @@ int _moneyToMinorLocal(String value) {
   return (major * 100) + int.parse(dec);
 }
 
+String _fmtAmountStr(String v) {
+  final d = double.tryParse(v) ?? 0;
+  return d.toStringAsFixed(2);
+}
+
+String _fmtDueDate(String? iso) {
+  if (iso == null || iso.isEmpty) return 'No due date';
+  try {
+    return 'Due ${DateFormat('d MMM yyyy').format(DateTime.parse(iso))}';
+  } catch (_) {
+    return 'Due $iso';
+  }
+}
+
 // ── Screen ─────────────────────────────────────────────────────────────────
 
 class DebtsScreen extends ConsumerStatefulWidget {
@@ -279,6 +293,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                                   ? 10
                                   : filtered.length)
                               .map(_buildDebtCard),
+                        const SizedBox(height: 8),
                       ],
                     ),
                   ),
@@ -312,9 +327,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             .join()
             .toUpperCase();
 
-    final dueLabel = row.dueDateIso != null && row.dueDateIso!.isNotEmpty
-        ? 'Due ${row.dueDateIso}'
-        : 'No due date';
+    final dueLabel = _fmtDueDate(row.dueDateIso);
 
     return GestureDetector(
       onTap: () => _openDebtDetail(row.receivableId),
@@ -398,7 +411,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '₵${row.outstandingAmount}',
+                  '₵${_fmtAmountStr(row.outstandingAmount)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
@@ -450,6 +463,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     return switch (_activeTab) {
       'overdue' =>
         records.where((r) => _receivableStatus(r) == 'overdue').toList(),
+      'partial' =>
+        records.where((r) => r.status == 'partially_paid').toList(),
       'settled' => records.where((r) => r.status == 'settled').toList(),
       _ => records,
     };
@@ -639,20 +654,24 @@ class _QuickActionsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _QuickTile(
-          icon: Icons.add_card_rounded,
-          label: 'New Debt',
-          backgroundColor: AppColors.forest,
-          foregroundColor: Colors.white,
-          onTap: onNewDebt,
+        Expanded(
+          child: _QuickTile(
+            icon: Icons.add_card_rounded,
+            label: 'New Debt',
+            backgroundColor: AppColors.forest,
+            foregroundColor: Colors.white,
+            onTap: onNewDebt,
+          ),
         ),
         const SizedBox(width: 10),
-        _QuickTile(
-          icon: Icons.bar_chart_rounded,
-          label: 'Reports',
-          backgroundColor: AppColors.surfaceAlt,
-          foregroundColor: AppColors.inkSoft,
-          onTap: onViewReports,
+        Expanded(
+          child: _QuickTile(
+            icon: Icons.bar_chart_rounded,
+            label: 'Reports',
+            backgroundColor: AppColors.surfaceAlt,
+            foregroundColor: AppColors.inkSoft,
+            onTap: onViewReports,
+          ),
         ),
       ],
     );
@@ -683,7 +702,7 @@ class _QuickTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -696,14 +715,14 @@ class _QuickTile extends StatelessWidget {
                 : AppShadows.card,
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: foregroundColor, size: 18),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: foregroundColor,
                 ),
@@ -729,29 +748,39 @@ class _TabFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _TabPill(
-          label: 'All',
-          tab: 'all',
-          activeTab: activeTab,
-          onTap: onTabChanged,
-        ),
-        const SizedBox(width: 8),
-        _TabPill(
-          label: 'Overdue',
-          tab: 'overdue',
-          activeTab: activeTab,
-          onTap: onTabChanged,
-        ),
-        const SizedBox(width: 8),
-        _TabPill(
-          label: 'Settled',
-          tab: 'settled',
-          activeTab: activeTab,
-          onTap: onTabChanged,
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _TabPill(
+            label: 'All',
+            tab: 'all',
+            activeTab: activeTab,
+            onTap: onTabChanged,
+          ),
+          const SizedBox(width: 8),
+          _TabPill(
+            label: 'Overdue',
+            tab: 'overdue',
+            activeTab: activeTab,
+            onTap: onTabChanged,
+          ),
+          const SizedBox(width: 8),
+          _TabPill(
+            label: 'Partial',
+            tab: 'partial',
+            activeTab: activeTab,
+            onTap: onTabChanged,
+          ),
+          const SizedBox(width: 8),
+          _TabPill(
+            label: 'Settled',
+            tab: 'settled',
+            activeTab: activeTab,
+            onTap: onTabChanged,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -847,18 +876,40 @@ class _EmptyDebts extends StatelessWidget {
   Widget build(BuildContext context) {
     final String title;
     final String message;
+    final IconData icon;
+    final Color iconColor;
+    final Color iconBg;
+
     if (hasSearch) {
       title = 'No debts match your search.';
       message = 'Try a different name or clear the search.';
+      icon = Icons.search_off_rounded;
+      iconColor = AppColors.muted;
+      iconBg = AppColors.surfaceAlt;
     } else if (activeTab == 'overdue') {
       title = 'No overdue debts.';
       message = 'All debts are current — great news!';
+      icon = Icons.check_circle_outline_rounded;
+      iconColor = AppColors.success;
+      iconBg = AppColors.successSoft;
+    } else if (activeTab == 'partial') {
+      title = 'No partially paid debts.';
+      message = 'Partially paid debts will appear here.';
+      icon = Icons.timelapse_rounded;
+      iconColor = AppColors.warning;
+      iconBg = AppColors.warningSoft;
     } else if (activeTab == 'settled') {
       title = 'No settled debts yet.';
-      message = 'Settled debts will appear here.';
+      message = 'Settled debts will appear here once paid.';
+      icon = Icons.receipt_long_rounded;
+      iconColor = AppColors.muted;
+      iconBg = AppColors.surfaceAlt;
     } else {
       title = 'No debts recorded yet.';
       message = 'Tap “New Debt” to get started.';
+      icon = Icons.add_card_rounded;
+      iconColor = AppColors.forest;
+      iconBg = AppColors.successSoft;
     }
 
     return Container(
@@ -874,12 +925,11 @@ class _EmptyDebts extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            decoration: const BoxDecoration(
-              color: AppColors.successSoft,
+            decoration: BoxDecoration(
+              color: iconBg,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.group_outlined,
-                color: AppColors.success, size: 28),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
           const SizedBox(height: 14),
           Text(

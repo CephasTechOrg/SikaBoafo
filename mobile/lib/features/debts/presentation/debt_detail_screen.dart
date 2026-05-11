@@ -207,7 +207,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             outstanding: outstanding,
             original: original,
             paid: '\u20B5$paymentTotal',
-            dueDate: row.dueDateIso ?? 'Not set',
+            dueDate: _formatDueDate(row.dueDateIso),
             invoiceNumber: row.invoiceNumber,
             status: row.status,
           ),
@@ -870,7 +870,7 @@ class _PaymentCard extends StatelessWidget {
             ),
           ),
           PremiumStatusPill(
-            label: payment.syncStatus,
+            label: _humanizeSyncStatus(payment.syncStatus),
             foreground: syncColor,
             background: syncColor.withValues(alpha: 0.12),
           ),
@@ -1023,7 +1023,24 @@ String _labelizePaymentMethod(String value) {
 }
 
 String _formatDateTime(DateTime value) =>
-    DateFormat('yyyy-MM-dd HH:mm').format(value);
+    DateFormat('d MMM yyyy, h:mm a').format(value);
+
+String _formatDueDate(String? iso) {
+  if (iso == null || iso.isEmpty) return 'Not set';
+  try {
+    return DateFormat('d MMM yyyy').format(DateTime.parse(iso));
+  } catch (_) {
+    return iso;
+  }
+}
+
+String _humanizeSyncStatus(String s) => switch (s) {
+      'applied' || 'duplicate' => 'Synced',
+      'sending' => 'Syncing…',
+      'failed' => 'Failed',
+      'conflict' => 'Conflict',
+      _ => 'Pending',
+    };
 
 String _formatMoney(String value) {
   final parsed = double.tryParse(value) ?? 0;
@@ -1059,6 +1076,62 @@ Color _syncColor(String status) {
 }
 
 // ── Receive repayment bottom sheet ──────────────────────────────────────────
+
+class _MethodChip extends StatelessWidget {
+  const _MethodChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.forest.withValues(alpha: 0.10)
+                : AppColors.canvas,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            border: Border.all(
+              color: selected ? AppColors.forest : AppColors.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: selected ? AppColors.forest : AppColors.muted,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? AppColors.forest : AppColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ReceiveRepaymentSheet extends ConsumerStatefulWidget {
   const _ReceiveRepaymentSheet({required this.receivableId});
@@ -1188,7 +1261,7 @@ class _ReceiveRepaymentSheetState
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '₵${row.outstandingAmount}',
+                            '₵${_formatMoney(row.outstandingAmount)}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 22,
@@ -1253,48 +1326,40 @@ class _ReceiveRepaymentSheetState
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             ),
           ),
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            initialValue: _method,
-            decoration: InputDecoration(
-              labelText: 'Payment method',
-              prefixIcon: const Icon(
-                Icons.payments_outlined,
-                color: AppColors.muted,
-                size: 20,
-              ),
-              filled: true,
-              fillColor: AppColors.canvas,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.borderStrong),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide: const BorderSide(color: AppColors.borderStrong),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-                borderSide:
-                    const BorderSide(color: AppColors.forest, width: 1.5),
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          const SizedBox(height: 14),
+          const Text(
+            'Payment method',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
-            items: const [
-              DropdownMenuItem(value: 'cash', child: Text('Cash')),
-              DropdownMenuItem(
-                value: 'mobile_money',
-                child: Text('Mobile Money'),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _MethodChip(
+                label: 'Cash',
+                icon: Icons.money_rounded,
+                selected: _method == 'cash',
+                onTap: () => setState(() => _method = 'cash'),
               ),
-              DropdownMenuItem(
-                value: 'bank_transfer',
-                child: Text('Bank Transfer'),
+              const SizedBox(width: 8),
+              _MethodChip(
+                label: 'MoMo',
+                icon: Icons.smartphone_rounded,
+                selected: _method == 'mobile_money',
+                onTap: () => setState(() => _method = 'mobile_money'),
+              ),
+              const SizedBox(width: 8),
+              _MethodChip(
+                label: 'Bank',
+                icon: Icons.account_balance_rounded,
+                selected: _method == 'bank_transfer',
+                onTap: () => setState(() => _method = 'bank_transfer'),
               ),
             ],
-            onChanged: (v) {
-              if (v != null) setState(() => _method = v);
-            },
           ),
           const SizedBox(height: 16),
           SizedBox(
