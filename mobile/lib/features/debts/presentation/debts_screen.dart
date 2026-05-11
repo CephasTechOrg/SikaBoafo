@@ -7,6 +7,7 @@ import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
+import 'utils/debts_ui_tokens.dart';
 import 'utils/debts_ui_utils.dart';
 import 'widgets/debts_empty_state.dart';
 import 'widgets/debts_header.dart';
