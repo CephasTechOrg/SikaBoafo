@@ -408,7 +408,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                       for (var i = 0;
                           i < widget.detail.payments.length;
                           i++) ...[
-                        _PaymentCard(payment: widget.detail.payments[i]),
+                        DebtPaymentCard(payment: widget.detail.payments[i]),
                         if (i != widget.detail.payments.length - 1)
                           const SizedBox(height: 10),
                       ],
