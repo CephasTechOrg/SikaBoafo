@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -12,10 +9,11 @@ import '../../../shared/providers/sync_providers.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
 import '../data/debts_api.dart';
-import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import '../providers/debt_reminders_provider.dart';
 import 'utils/debts_ui_tokens.dart';
+import 'widgets/debt_payment_sheet.dart';
+import 'widgets/debt_paystack_qr_sheet.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -70,6 +68,7 @@ class DebtDetailScreen extends ConsumerWidget {
                     leadingContentInset: kLeadingGutter,
                     title: title,
                     subtitle: subtitle,
+                    gradient: DebtTokens.heroGradient,
                     badge: const PremiumBadge(
                       label: 'Receivable',
                       icon: Icons.receipt_long_rounded,
@@ -175,8 +174,6 @@ class _DetailBody extends ConsumerStatefulWidget {
 }
 
 class _DetailBodyState extends ConsumerState<_DetailBody> {
-  bool _isGeneratingPaymentLink = false;
-  bool _isCheckingPaymentStatus = false;
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +290,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () => _openRepaymentScreen(context, ref),
+                onPressed: () => _openPaymentSheet(context),
                 icon: const Icon(Icons.payments_outlined),
                 label: const Text(
                   'Receive Payment',
@@ -303,72 +300,41 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                   backgroundColor: AppColors.forest,
                   minimumSize: const Size.fromHeight(54),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
+                    borderRadius:
+                        BorderRadius.circular(DebtTokens.buttonRadius),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isGeneratingPaymentLink
-                        ? null
-                        : () => _generatePaymentLink(context),
-                    icon: _isGeneratingPaymentLink
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.link_rounded),
-                    label: Text(
-                      _isGeneratingPaymentLink
-                          ? 'Generating...'
-                          : 'Generate Link',
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(DebtTokens.buttonRadius),
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmCancel(context, ref),
+                icon: const Icon(
+                  Icons.cancel_outlined,
+                  color: AppColors.danger,
+                ),
+                label: const Text(
+                  'Cancel Debt',
+                  style: TextStyle(color: AppColors.danger),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(DebtTokens.buttonRadius),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _confirmCancel(context, ref),
-                    icon: const Icon(
-                      Icons.cancel_outlined,
-                      color: AppColors.danger,
-                    ),
-                    label: const Text(
-                      'Cancel Debt',
-                      style: TextStyle(color: AppColors.danger),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(DebtTokens.buttonRadius),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
           if (hasPaymentLink) ...[
             const SizedBox(height: 12),
             _PaymentLinkPanel(
               paymentLink: row.paymentLink!,
-              isCheckingStatus: _isCheckingPaymentStatus,
-              onCheckStatusPressed:
-                  canCollect ? () => _checkPaymentStatus(context) : null,
-              onCopyPressed: () => _copyPaymentLink(context, row.paymentLink!),
+              receivableId: widget.receivableId,
+              onPaymentConfirmed: _onPaymentConfirmed,
             ),
           ],
           const SizedBox(height: 20),
@@ -476,20 +442,36 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     );
   }
 
-  Future<void> _openRepaymentScreen(BuildContext context, WidgetRef ref) async {
-    final saved = await showModalBottomSheet<bool>(
+  Future<void> _openPaymentSheet(BuildContext context) async {
+    final row = widget.detail.record;
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) =>
-          _ReceiveRepaymentSheet(receivableId: widget.receivableId),
+      builder: (_) => DebtPaymentSheet(
+        receivableId: widget.receivableId,
+        customerName: row.customerName,
+        outstandingAmount: row.outstandingAmount,
+        syncStatus: row.syncStatus,
+        existingPaymentLink: row.paymentLink,
+        onRepaymentSaved: () {
+          ref.invalidate(receivableDetailProvider(widget.receivableId));
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Repayment saved.')),
+          );
+        },
+        onPaymentConfirmed: _onPaymentConfirmed,
+      ),
     );
-    if (saved != true || !context.mounted) return;
+  }
+
+  void _onPaymentConfirmed() {
+    ref.read(debtsControllerProvider.notifier).refresh();
     ref.invalidate(receivableDetailProvider(widget.receivableId));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Repayment saved.')),
+      const SnackBar(content: Text('Payment confirmed!')),
     );
   }
 
@@ -542,90 +524,6 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     }
   }
 
-  Future<void> _generatePaymentLink(BuildContext context) async {
-    setState(() => _isGeneratingPaymentLink = true);
-    try {
-      // Ensure this receivable exists on the backend before link initiation.
-      // If it's still pending locally, the backend will respond "not found".
-      if (widget.detail.record.syncStatus != 'applied') {
-        await ref.read(debtsRepositoryProvider).syncPendingQueue();
-      }
-      final result = await ref
-          .read(debtsApiProvider)
-          .initiateReceivablePaymentLink(widget.receivableId);
-
-      // Immediately store the payment link locally
-      unawaited(
-        ref
-            .read(debtsRepositoryProvider)
-            .updateReceivablePaymentLink(widget.receivableId, result.checkoutUrl),
-      );
-
-      // Refresh to reflect the payment link in the UI
-      await ref.read(debtsControllerProvider.notifier).refresh();
-      // Invalidate the provider so it refetches with the updated payment link
-      ref.invalidate(receivableDetailProvider(widget.receivableId));
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment link generated.')),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      final msg = humanizeDebtsApiError(error);
-      final hint = widget.detail.record.syncStatus != 'applied'
-          ? ' (Try syncing first)'
-          : '';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$msg$hint')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isGeneratingPaymentLink = false);
-      }
-    }
-  }
-
-  Future<void> _copyPaymentLink(
-      BuildContext context, String paymentLink) async {
-    await Clipboard.setData(ClipboardData(text: paymentLink));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment link copied.')),
-    );
-  }
-
-  Future<void> _checkPaymentStatus(BuildContext context) async {
-    if (_isCheckingPaymentStatus) return;
-    setState(() => _isCheckingPaymentStatus = true);
-    try {
-      final latest = await ref
-          .read(debtsApiProvider)
-          .fetchReceivableById(widget.receivableId);
-      await ref.read(debtsControllerProvider.notifier).refresh();
-      ref.invalidate(receivableDetailProvider(widget.receivableId));
-      await ref.read(receivableDetailProvider(widget.receivableId).future);
-      if (!context.mounted) return;
-
-      final isTerminal = latest.status == 'settled' ||
-          latest.status == 'cancelled' ||
-          latest.status == 'partially_paid';
-      final status = _statusLabel(latest.status);
-      final outstanding = latest.outstandingAmount;
-      final message = isTerminal
-          ? 'Status updated: $status • Outstanding: ₵$outstanding'
-          : 'Status: $status • Outstanding: ₵$outstanding. If the customer just paid, confirmation may take a moment.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(humanizeDebtsApiError(error))),
-      );
-    } finally {
-      if (mounted) setState(() => _isCheckingPaymentStatus = false);
-    }
-  }
 }
 
 class _ReminderRow extends StatelessWidget {
@@ -1062,15 +960,13 @@ class _InfoRow extends StatelessWidget {
 class _PaymentLinkPanel extends StatelessWidget {
   const _PaymentLinkPanel({
     required this.paymentLink,
-    required this.isCheckingStatus,
-    required this.onCheckStatusPressed,
-    required this.onCopyPressed,
+    required this.receivableId,
+    required this.onPaymentConfirmed,
   });
 
   final String paymentLink;
-  final bool isCheckingStatus;
-  final VoidCallback? onCheckStatusPressed;
-  final VoidCallback onCopyPressed;
+  final String receivableId;
+  final VoidCallback onPaymentConfirmed;
 
   @override
   Widget build(BuildContext context) {
@@ -1078,46 +974,85 @@ class _PaymentLinkPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PremiumSectionHeading(title: 'Payment link ready'),
-          const SizedBox(height: 10),
-          SelectableText(
-            paymentLink,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.muted,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
+          Row(
             children: [
-              OutlinedButton.icon(
-                onPressed: onCheckStatusPressed,
-                icon: isCheckingStatus
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded),
-                label: Text(isCheckingStatus ? 'Checking...' : 'Check Status'),
+              const Expanded(
+                child: PremiumSectionHeading(title: 'Payment link ready'),
               ),
-              OutlinedButton.icon(
-                onPressed: onCopyPressed,
-                icon: const Icon(Icons.copy_rounded),
-                label: const Text('Copy Link'),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
               ),
             ],
           ),
-          if (onCheckStatusPressed != null)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                'After customer pays, use Check Status to refresh this debt.',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
+          const SizedBox(height: 8),
+          SelectableText(
+            paymentLink,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              height: 1.4,
             ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _copyLink(context),
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _viewQr(context),
+                  icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                  label: const Text('View QR'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.forest,
+                    minimumSize: const Size.fromHeight(40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _copyLink(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: paymentLink));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Payment link copied.')),
+    );
+  }
+
+  void _viewQr(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => DebtPaystackQrSheet(
+        checkoutUrl: paymentLink,
+        receivableId: receivableId,
+        onPaymentConfirmed: onPaymentConfirmed,
       ),
     );
   }
