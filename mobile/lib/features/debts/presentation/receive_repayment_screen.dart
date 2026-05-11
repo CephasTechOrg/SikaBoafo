@@ -7,6 +7,8 @@ import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../providers/debts_providers.dart';
+import 'utils/debts_ui_tokens.dart';
+import 'utils/debts_ui_utils.dart';
 
 class ReceiveRepaymentScreen extends ConsumerStatefulWidget {
   const ReceiveRepaymentScreen({required this.receivableId, super.key});
@@ -95,25 +97,30 @@ class _ReceiveRepaymentScreenState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'GHS ${row.outstandingAmount}',
+                      '₵${DebtsUiUtils.fmtAmount(row.outstandingAmount)}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.8,
+                        height: 1.0,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Outstanding',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.74),
-                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (row.dueDateIso != null) ...[
+                    if (row.dueDateIso != null &&
+                        row.dueDateIso!.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       PremiumBadge(
-                        label: 'Due ${row.dueDateIso}',
+                        label:
+                            'Due ${DebtsUiUtils.fmtDueDate(row.dueDateIso)}',
                         icon: Icons.event_note_rounded,
                         background: Colors.white.withValues(alpha: 0.1),
                       ),
@@ -137,31 +144,74 @@ class _ReceiveRepaymentScreenState
                   controller: _amountCtrl,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Amount',
-                    hintText: 'e.g. 25.00',
+                  decoration: InputDecoration(
+                    labelText: 'Amount received',
+                    hintText: '0.00',
+                    prefixText: '₵ ',
+                    prefixIcon: const Icon(
+                      Icons.attach_money_rounded,
+                      color: AppColors.muted,
+                      size: 20,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.canvas,
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(DebtTokens.buttonRadius),
+                      borderSide:
+                          const BorderSide(color: AppColors.borderStrong),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(DebtTokens.buttonRadius),
+                      borderSide:
+                          const BorderSide(color: AppColors.borderStrong),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(DebtTokens.buttonRadius),
+                      borderSide: const BorderSide(
+                          color: AppColors.forest, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
                   ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _method,
-                  decoration:
-                      const InputDecoration(labelText: 'Payment method'),
-                  items: const [
-                    DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                    DropdownMenuItem(
-                      value: 'mobile_money',
-                      child: Text('Mobile Money'),
+                const SizedBox(height: 16),
+                const Text(
+                  'Payment method',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _MethodChip(
+                      label: 'Cash',
+                      icon: Icons.money_rounded,
+                      selected: _method == 'cash',
+                      onTap: () => setState(() => _method = 'cash'),
                     ),
-                    DropdownMenuItem(
-                      value: 'bank_transfer',
-                      child: Text('Bank Transfer'),
+                    const SizedBox(width: 8),
+                    _MethodChip(
+                      label: 'MoMo',
+                      icon: Icons.smartphone_rounded,
+                      selected: _method == 'mobile_money',
+                      onTap: () => setState(() => _method = 'mobile_money'),
+                    ),
+                    const SizedBox(width: 8),
+                    _MethodChip(
+                      label: 'Bank',
+                      icon: Icons.account_balance_rounded,
+                      selected: _method == 'bank_transfer',
+                      onTap: () =>
+                          setState(() => _method = 'bank_transfer'),
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _method = value);
-                  },
                 ),
               ],
             ),
@@ -225,5 +275,59 @@ class _ReceiveRepaymentScreenState
       if (mounted) setState(() => _saving = false);
     }
   }
-
 }
+
+class _MethodChip extends StatelessWidget {
+  const _MethodChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.forest.withValues(alpha: 0.10)
+                : AppColors.canvas,
+            borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
+            border: Border.all(
+              color: selected ? AppColors.forest : AppColors.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 20,
+                  color: selected ? AppColors.forest : AppColors.muted),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? AppColors.forest : AppColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

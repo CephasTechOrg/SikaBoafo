@@ -289,7 +289,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             ),
           ),
           if (canCollect) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -297,13 +297,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 icon: const Icon(Icons.payments_outlined),
                 label: const Text(
                   'Receive Payment',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.forest,
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(54),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
                   ),
                 ),
               ),
@@ -328,6 +328,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                           ? 'Generating...'
                           : 'Generate Link',
                     ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(DebtTokens.buttonRadius),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -341,6 +348,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     label: const Text(
                       'Cancel Debt',
                       style: TextStyle(color: AppColors.danger),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(DebtTokens.buttonRadius),
+                      ),
                     ),
                   ),
                 ),
@@ -357,7 +371,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               onCopyPressed: () => _copyPaymentLink(context, row.paymentLink!),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           PremiumPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,12 +379,18 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                 const PremiumSectionHeading(title: 'Customer'),
                 const SizedBox(height: 16),
                 _InfoRow(label: 'Name', value: row.customerName),
-                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(height: 1, color: Color(0xFFEEF1EE)),
+                ),
                 _InfoRow(
                   label: 'Phone',
                   value: widget.detail.customerPhoneNumber ?? 'Not provided',
                 ),
-                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(height: 1, color: Color(0xFFEEF1EE)),
+                ),
                 _InfoRow(
                   label: 'Created',
                   value: DateFormat('d MMM yyyy').format(
@@ -380,7 +400,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           PremiumPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,8 +730,9 @@ class _BalanceHero extends StatelessWidget {
                   'Outstanding Balance',
                   style: TextStyle(
                     color: Color(0xFFD6F5E4),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
@@ -722,14 +743,15 @@ class _BalanceHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             outstanding,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+              fontSize: 44,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.0,
+              height: 1.0,
             ),
           ),
           const SizedBox(height: 14),
@@ -785,17 +807,19 @@ class _MetricTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Color(0xFFD9E6FF),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.60),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 4),
@@ -804,7 +828,10 @@ class _MetricTile extends StatelessWidget {
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w800,
+              fontSize: 13,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -898,7 +925,7 @@ class _InfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: const TextStyle(color: AppColors.muted, fontSize: 14),
           ),
         ),
         const SizedBox(width: 12),
@@ -909,7 +936,10 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               color: AppColors.ink,
               fontWeight: FontWeight.w700,
+              fontSize: 14,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -1103,7 +1133,7 @@ class _MethodChip extends StatelessWidget {
             color: selected
                 ? AppColors.forest.withValues(alpha: 0.10)
                 : AppColors.canvas,
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+            borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
             border: Border.all(
               color: selected ? AppColors.forest : AppColors.border,
               width: selected ? 1.5 : 1,
@@ -1383,9 +1413,10 @@ class _ReceiveRepaymentSheetState
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.forest,
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(54),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                  borderRadius:
+                      BorderRadius.circular(DebtTokens.buttonRadius),
                 ),
               ),
             ),
