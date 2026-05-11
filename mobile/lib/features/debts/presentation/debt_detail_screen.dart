@@ -262,7 +262,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
                     return Column(
                       children: [
                         for (var i = 0; i < times.length; i++) ...[
-                          _ReminderRow(
+                          DebtReminderRow(
                             when: times[i],
                             onRemove: () => ref
                                 .read(
@@ -335,7 +335,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
           ],
           if (hasPaymentLink) ...[
             const SizedBox(height: 12),
-            _PaymentLinkPanel(
+            DebtPaymentLinkPanel(
               paymentLink: row.paymentLink!,
               receivableId: widget.receivableId,
               onPaymentConfirmed: _onPaymentConfirmed,
