@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 
 import '../../../app/env/app_config.dart';
 import '../../../core/services/api_client.dart';
-import '../../../shared/utils/user_friendly_error.dart';
 
 class DebtCustomerDto {
   const DebtCustomerDto({
@@ -235,8 +234,4 @@ class DebtsApi {
       rethrow;
     }
   }
-}
-
-String humanizeDebtsApiError(Object error) {
-  return userFriendlyError(error);
 }
