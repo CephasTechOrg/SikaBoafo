@@ -56,19 +56,24 @@ class DebtsEmptyState extends StatelessWidget {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A111827),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 28),
+            child: Icon(icon, color: iconColor, size: 30),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
             title,
             style: const TextStyle(
