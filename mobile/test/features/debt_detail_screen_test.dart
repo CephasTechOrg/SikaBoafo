@@ -20,6 +20,11 @@ class _FakeSecureTokenStorage extends SecureTokenStorage {
 
 class _FakeDebtsApi extends DebtsApi {
   _FakeDebtsApi() : super(ApiClient(tokenStorage: _FakeSecureTokenStorage()));
+}
+
+class _FakeDebtsPaymentsApi extends DebtsPaymentsApi {
+  _FakeDebtsPaymentsApi()
+      : super(ApiClient(tokenStorage: _FakeSecureTokenStorage()));
 
   int initiateCalls = 0;
   String? generatedLink;
