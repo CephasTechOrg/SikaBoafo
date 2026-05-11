@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:biztrack_gh/core/services/api_client.dart';
 import 'package:biztrack_gh/core/services/secure_token_storage.dart';
 import 'package:biztrack_gh/features/debts/data/debts_api.dart';
+import 'package:biztrack_gh/features/debts/data/debts_payments_api.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
 import 'package:biztrack_gh/features/debts/presentation/debt_detail_screen.dart';
 import 'package:biztrack_gh/features/debts/providers/debts_providers.dart';
