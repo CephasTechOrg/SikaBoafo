@@ -99,14 +99,16 @@ LocalReceivableDetail _detailForLink(String? link) {
 
 Widget _buildScreen({
   required _FakeDebtsApi debtsApi,
+  required _FakeDebtsPaymentsApi debtsPaymentsApi,
   required _FakeDebtsController debtsController,
 }) {
   return ProviderScope(
     overrides: [
       debtsApiProvider.overrideWithValue(debtsApi),
+      debtsPaymentsApiProvider.overrideWithValue(debtsPaymentsApi),
       debtsControllerProvider.overrideWith(() => debtsController),
       receivableDetailProvider(_receivableId).overrideWith(
-        (_) async => _detailForLink(debtsApi.generatedLink),
+        (_) async => _detailForLink(debtsPaymentsApi.generatedLink),
       ),
     ],
     child: const MaterialApp(
