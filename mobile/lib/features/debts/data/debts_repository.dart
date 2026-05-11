@@ -4,125 +4,15 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/local/app_database.dart';
 import '../../../data/sync/sync_queue_runner.dart';
+import 'models/local_debt_customer.dart';
+import 'models/local_receivable_detail.dart';
+import 'models/local_receivable_payment_record.dart';
+import 'models/local_receivable_record.dart';
 
-class LocalDebtCustomer {
-  const LocalDebtCustomer({
-    required this.customerId,
-    required this.name,
-    this.phoneNumber,
-    this.whatsappNumber,
-    this.email,
-    this.notes,
-    this.totalOutstanding = '0.00',
-  });
-
-  final String customerId;
-  final String name;
-  final String? phoneNumber;
-  final String? whatsappNumber;
-  final String? email;
-  final String? notes;
-  final String totalOutstanding;
-
-  factory LocalDebtCustomer.fromRow(Map<String, Object?> row) {
-    return LocalDebtCustomer(
-      customerId: (row['id'] ?? '') as String,
-      name: (row['name'] ?? '') as String,
-      phoneNumber: row['phone_number'] as String?,
-      whatsappNumber: row['whatsapp_number'] as String?,
-      email: row['email'] as String?,
-      notes: row['notes'] as String?,
-      totalOutstanding: (row['total_outstanding'] ?? '0.00') as String,
-    );
-  }
-}
-
-class LocalReceivableRecord {
-  const LocalReceivableRecord({
-    required this.receivableId,
-    required this.customerId,
-    required this.customerName,
-    required this.originalAmount,
-    required this.outstandingAmount,
-    required this.status,
-    required this.syncStatus,
-    required this.createdAtMillis,
-    this.dueDateIso,
-    this.note,
-    this.invoiceNumber,
-    this.paymentLink,
-  });
-
-  final String receivableId;
-  final String customerId;
-  final String customerName;
-  final String originalAmount;
-  final String outstandingAmount;
-  final String status;
-  final String syncStatus;
-  final int createdAtMillis;
-  final String? dueDateIso;
-  final String? note;
-  final String? invoiceNumber;
-  final String? paymentLink;
-
-  factory LocalReceivableRecord.fromRow(Map<String, Object?> row) {
-    return LocalReceivableRecord(
-      receivableId: (row['id'] ?? '') as String,
-      customerId: (row['customer_id'] ?? '') as String,
-      customerName: (row['customer_name'] ?? 'Unknown Customer') as String,
-      originalAmount: (row['original_amount'] ?? '0.00') as String,
-      outstandingAmount: (row['outstanding_amount'] ?? '0.00') as String,
-      status: (row['status'] ?? 'open') as String,
-      syncStatus: (row['sync_status'] ?? 'pending') as String,
-      createdAtMillis: (row['created_at'] as int? ?? 0),
-      dueDateIso: row['due_date'] as String?,
-      note: row['note'] as String?,
-      invoiceNumber: row['invoice_number'] as String?,
-      paymentLink: row['payment_link'] as String?,
-    );
-  }
-}
-
-class LocalReceivablePaymentRecord {
-  const LocalReceivablePaymentRecord({
-    required this.paymentId,
-    required this.amount,
-    required this.paymentMethodLabel,
-    required this.syncStatus,
-    required this.createdAtMillis,
-  });
-
-  final String paymentId;
-  final String amount;
-  final String paymentMethodLabel;
-  final String syncStatus;
-  final int createdAtMillis;
-
-  factory LocalReceivablePaymentRecord.fromRow(Map<String, Object?> row) {
-    return LocalReceivablePaymentRecord(
-      paymentId: (row['id'] ?? '') as String,
-      amount: (row['amount'] ?? '0.00') as String,
-      paymentMethodLabel: (row['payment_method_label'] ?? 'cash') as String,
-      syncStatus: (row['sync_status'] ?? 'pending') as String,
-      createdAtMillis: (row['created_at'] as int? ?? 0),
-    );
-  }
-}
-
-class LocalReceivableDetail {
-  const LocalReceivableDetail({
-    required this.record,
-    required this.payments,
-    this.customerPhoneNumber,
-  });
-
-  final LocalReceivableRecord record;
-  final List<LocalReceivablePaymentRecord> payments;
-  final String? customerPhoneNumber;
-
-  int get paymentCount => payments.length;
-}
+export 'models/local_debt_customer.dart';
+export 'models/local_receivable_detail.dart';
+export 'models/local_receivable_payment_record.dart';
+export 'models/local_receivable_record.dart';
 
 class DebtsRepository {
   DebtsRepository({
