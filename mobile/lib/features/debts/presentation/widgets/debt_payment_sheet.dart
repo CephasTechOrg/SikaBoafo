@@ -415,7 +415,7 @@ class _DebtPaymentSheetState extends ConsumerState<DebtPaymentSheet> {
         await ref.read(debtsRepositoryProvider).syncPendingQueue();
       }
       final result = await ref
-          .read(debtsApiProvider)
+          .read(debtsPaymentsApiProvider)
           .initiateReceivablePaymentLink(widget.receivableId);
 
       unawaited(
