@@ -15,6 +15,7 @@ import '../data/debts_api.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import '../providers/debt_reminders_provider.dart';
+import 'utils/debts_ui_tokens.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -201,7 +202,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
         children: [
           _BalanceHero(
             outstanding: outstanding,
@@ -211,7 +212,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             invoiceNumber: row.invoiceNumber,
             status: row.status,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           PremiumPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
