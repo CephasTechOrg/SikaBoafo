@@ -527,24 +527,23 @@ class _QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPrimary = backgroundColor == AppColors.forest;
     return Material(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          height: 52,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(DebtTokens.buttonRadius),
             border: Border.all(
-              color: backgroundColor == AppColors.surfaceAlt
-                  ? AppColors.border
-                  : backgroundColor.withValues(alpha: 0.14),
+              color: isPrimary
+                  ? AppColors.forestDark
+                  : AppColors.border,
             ),
-            boxShadow: backgroundColor == AppColors.surfaceAlt
-                ? AppShadows.subtle
-                : AppShadows.card,
+            boxShadow: isPrimary ? AppShadows.card : DebtTokens.card,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -554,7 +553,7 @@ class _QuickTile extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: foregroundColor,
                 ),
