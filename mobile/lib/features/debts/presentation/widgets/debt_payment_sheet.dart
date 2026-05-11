@@ -358,11 +358,19 @@ class _DebtPaymentSheetState extends ConsumerState<DebtPaymentSheet> {
   }
 
   Future<void> _saveCash() async {
+    final raw = _amountCtrl.text.trim();
+    final parsed = double.tryParse(raw) ?? 0;
+    if (parsed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter an amount greater than 0.')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await ref.read(debtsControllerProvider.notifier).recordRepayment(
             receivableId: widget.receivableId,
-            amount: _amountCtrl.text,
+            amount: raw,
             paymentMethodLabel: 'cash',
           );
       if (!mounted) return;
@@ -388,6 +396,19 @@ class _DebtPaymentSheetState extends ConsumerState<DebtPaymentSheet> {
       return;
     }
 
+    // If the debt has a sync error, refuse early with a clear explanation.
+    if (widget.syncStatus == 'failed') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This debt has a sync error. Pull to refresh on the debts page, then try again.',
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     setState(() => _generatingLink = true);
     try {
       if (widget.syncStatus != 'applied') {
@@ -410,11 +431,15 @@ class _DebtPaymentSheetState extends ConsumerState<DebtPaymentSheet> {
       _openQrSheet(context, result.checkoutUrl);
     } catch (error) {
       if (!mounted) return;
-      final hint =
-          widget.syncStatus != 'applied' ? ' (Try syncing first)' : '';
+      final msg = userFriendlyError(error);
+      final hint = widget.syncStatus != 'applied'
+          ? '\nSync with server failed — check your connection and try again.'
+          : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('${userFriendlyError(error)}$hint')),
+          content: Text('$msg$hint'),
+          duration: const Duration(seconds: 4),
+        ),
       );
     } finally {
       if (mounted) setState(() => _generatingLink = false);

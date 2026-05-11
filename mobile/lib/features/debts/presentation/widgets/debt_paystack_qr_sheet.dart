@@ -67,6 +67,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
       if (!mounted) return;
       if (latest.status == 'settled' || latest.status == 'partially_paid') {
         _timer?.cancel();
+        Navigator.of(context).pop();
         widget.onPaymentConfirmed();
         return;
       }

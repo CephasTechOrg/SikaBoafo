@@ -129,7 +129,12 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
       state = AsyncValue.data(await _loadViewData());
     } catch (error, stackTrace) {
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-      state = AsyncValue.error(error, stackTrace);
+      if (error is ArgumentError) {
+        // Validation failure — restore list to visible state, not error state
+        state = AsyncValue.data(await _loadViewData());
+      } else {
+        state = AsyncValue.error(error, stackTrace);
+      }
       rethrow;
     }
   }
