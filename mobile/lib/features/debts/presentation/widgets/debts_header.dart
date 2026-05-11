@@ -83,7 +83,7 @@ class DebtsHeader extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Padding(
                     padding: EdgeInsets.only(top: 2),
-                    child: DataFreshnessLabel(
+                    child: const DataFreshnessLabel(
                       kvKey: KvCacheRepository.kDebtsTs,
                       color: AppColors.heroSubtitle,
                     ),
