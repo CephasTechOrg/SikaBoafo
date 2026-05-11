@@ -158,7 +158,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     decoration: const BoxDecoration(color: AppColors.surface),
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 36),
                       children: [
                         const StaleBanner(
                           screenKey: 'debts',
@@ -176,20 +176,35 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           ),
                           const SizedBox(height: 16),
                         ],
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Quick Actions',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink,
+                        // ── Quick Actions panel ──────────────────────────────
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(
+                                DebtTokens.panelRadius),
+                            border: Border.all(color: AppColors.border),
+                            boxShadow: DebtTokens.panel,
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        _QuickActionsRow(
-                          onNewDebt: _openNewDebtSheet,
-                          onViewReports: () =>
-                              context.push(AppRoute.reports.path),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Quick Actions',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _QuickActionsRow(
+                                onNewDebt: _openNewDebtSheet,
+                                onViewReports: () =>
+                                    context.push(AppRoute.reports.path),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
                         Row(
@@ -197,8 +212,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                             const Text(
                               'Debts',
                               style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
                                 color: AppColors.ink,
                               ),
                             ),
