@@ -404,7 +404,7 @@ class _DebtPaymentSheetState extends ConsumerState<DebtPaymentSheet> {
                 widget.receivableId, result.checkoutUrl),
       );
 
-      if (!mounted) return;
+      if (!mounted || !context.mounted) return;
       Navigator.of(context).pop();
       if (!context.mounted) return;
       _openQrSheet(context, result.checkoutUrl);
