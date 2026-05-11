@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../data/local/kv_cache_repository.dart';
 import '../../../../shared/widgets/data_freshness_label.dart';
+import '../utils/debts_ui_tokens.dart';
 
-/// Collapsing hero for [DebtsScreen], aligned with [ExpensesHeader] / [InventoryHeader].
+/// Collapsing hero for [DebtsScreen].
 class DebtsHeader extends StatelessWidget {
   const DebtsHeader({
     super.key,
@@ -15,7 +16,6 @@ class DebtsHeader extends StatelessWidget {
     required this.customerCount,
   });
 
-  /// Left padding so hero text clears the sliver [leading] control.
   final double leadingContentInset;
   final int outstandingMinor;
   final int overdueMinor;
@@ -30,214 +30,180 @@ class DebtsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+    return Stack(
+      children: [
+        // Base gradient — simplified to 3 clean tones
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: DebtTokens.heroGradient),
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF041C0B),
-                    Color(0xFF083A1A),
-                    Color(0xFF0F5A30),
-                    Color(0xFF196E3D),
-                  ],
-                  stops: [0.0, 0.28, 0.62, 1.0],
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
-                ),
+        ),
+        // Subtle radial highlight — top-right corner only
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0.72, -0.65),
+                radius: 0.75,
+                colors: [
+                  const Color(0xFF22C55E).withValues(alpha: 0.18),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.68, -0.72),
-                  radius: 0.92,
-                  colors: [
-                    const Color(0xFF27A84E).withValues(alpha: 0.40),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF010A04).withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 1.0,
-            child: ColoredBox(color: Color(0x18FFFFFF)),
-          ),
-          Positioned(
-            right: -6,
-            bottom: -6,
-            child: Opacity(
-              opacity: 0.14,
-              child: Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 120,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(leadingContentInset, 46, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Debts',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
-                        height: 1.1,
-                      ),
+        ),
+        // Top separator line
+        const Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          height: 1,
+          child: ColoredBox(color: Color(0x14FFFFFF)),
+        ),
+        // Content
+        Padding(
+          padding: EdgeInsets.fromLTRB(leadingContentInset, 46, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Screen title + freshness
+              Row(
+                children: [
+                  Text(
+                    'Debts',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.95),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
                     ),
-                    const SizedBox(width: 10),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 3),
-                      child: DataFreshnessLabel(
-                        kvKey: KvCacheRepository.kDebtsTs,
-                        color: AppColors.heroSubtitle,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: DataFreshnessLabel(
+                      kvKey: KvCacheRepository.kDebtsTs,
+                      color: AppColors.heroSubtitle,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'OUTSTANDING',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Outstanding label
+              Text(
+                'OUTSTANDING',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.50),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _fmtMoney(outstandingMinor),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -0.8,
-                    height: 1.0,
+              ),
+              const SizedBox(height: 3),
+              // Big amount
+              Text(
+                _fmtMoney(outstandingMinor),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Constantia',
+                  letterSpacing: -1.0,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 14),
+              // Three metric pills — horizontal row
+              Row(
+                children: [
+                  Expanded(
+                    child: _MetricCard(
+                      icon: Icons.warning_amber_rounded,
+                      iconColor: DebtTokens.danger,
+                      value: _fmtMoney(overdueMinor),
+                      label: 'Overdue',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _StatPill(
-                        icon: Icons.warning_amber_rounded,
-                        value: _fmtMoney(overdueMinor),
-                        label: 'overdue',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.savings_outlined,
-                        value: '₵$paidThisMonthStr',
-                        label: 'collected (mo)',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.group_rounded,
-                        value: '$customerCount',
-                        label: 'customers',
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      icon: Icons.savings_outlined,
+                      iconColor: const Color(0xFF6EE7B7),
+                      value: '₵$paidThisMonthStr',
+                      label: 'Collected (mo)',
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _MetricCard(
+                      icon: Icons.group_rounded,
+                      iconColor: const Color(0xFF93C5FD),
+                      value: '$customerCount',
+                      label: 'Customers',
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _StatPill extends StatelessWidget {
-  const _StatPill({
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
     required this.icon,
+    required this.iconColor,
     required this.value,
     required this.label,
   });
 
   final IconData icon;
+  final Color iconColor;
   final String value;
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.55), size: 13),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.50),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Icon(icon, color: iconColor, size: 14),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+              height: 1.1,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.50),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
