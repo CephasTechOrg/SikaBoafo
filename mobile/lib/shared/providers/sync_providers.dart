@@ -10,6 +10,7 @@ import '../../data/remote/sync_api.dart';
 import '../../data/sync/sync_queue_runner.dart';
 import '../../data/sync/sync_refresh_service.dart';
 import '../../features/debts/data/debts_api.dart';
+import '../../features/debts/data/debts_payments_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
 import '../utils/user_friendly_error.dart';
 import 'core_providers.dart';
@@ -49,6 +50,10 @@ final inventoryApiProvider = Provider<InventoryApi>((ref) {
 
 final debtsApiProvider = Provider<DebtsApi>((ref) {
   return DebtsApi(ref.watch(apiClientProvider));
+});
+
+final debtsPaymentsApiProvider = Provider<DebtsPaymentsApi>((ref) {
+  return DebtsPaymentsApi(ref.watch(apiClientProvider));
 });
 
 final syncRefreshServiceProvider = Provider<SyncRefreshService>((ref) {
