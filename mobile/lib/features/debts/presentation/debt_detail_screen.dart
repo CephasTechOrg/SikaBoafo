@@ -205,7 +205,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
         children: [
-          _BalanceHero(
+          DebtBalanceHero(
             outstanding: outstanding,
             original: original,
             paid: '\u20B5$paymentTotal',
