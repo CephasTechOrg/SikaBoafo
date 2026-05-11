@@ -126,11 +126,13 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final fakeApi = _FakeDebtsApi();
+    final fakePaymentsApi = _FakeDebtsPaymentsApi();
     final fakeController = _FakeDebtsController();
 
     await tester.pumpWidget(
       _buildScreen(
         debtsApi: fakeApi,
+        debtsPaymentsApi: fakePaymentsApi,
         debtsController: fakeController,
       ),
     );
@@ -147,13 +149,13 @@ void main() {
     for (var i = 0; i < 30; i++) {
       await tester.pump(const Duration(milliseconds: 100));
       if (fakeController.refreshCalls >= 1 &&
-          fakeApi.initiateCalls >= 1 &&
+          fakePaymentsApi.initiateCalls >= 1 &&
           find.text('Payment link ready').evaluate().isNotEmpty) {
         break;
       }
     }
 
-    expect(fakeApi.initiateCalls, 1);
+    expect(fakePaymentsApi.initiateCalls, 1);
     expect(fakeController.refreshCalls, 1);
     expect(find.text('Payment link ready'), findsOneWidget);
     expect(find.text('Copy Link'), findsOneWidget);
