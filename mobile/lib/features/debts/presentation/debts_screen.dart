@@ -1,55 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
+import 'utils/debts_ui_utils.dart';
+import 'widgets/debts_empty_state.dart';
 import 'widgets/debts_header.dart';
+import 'widgets/debts_search_bar.dart';
+import 'widgets/debts_tab_filter.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
-
-// O(n) YYYY-MM-DD lexicographic comparison — no DateTime.parse needed.
-String _receivableStatus(LocalReceivableRecord r) {
-  if (r.status == 'settled') return 'settled';
-  if (r.status == 'cancelled') return 'cancelled';
-  final d = r.dueDateIso;
-  if (d != null && d.isNotEmpty) {
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final soon = DateFormat('yyyy-MM-dd')
-        .format(DateTime.now().add(const Duration(days: 7)));
-    if (d.compareTo(today) < 0) return 'overdue';
-    if (d.compareTo(soon) <= 0) return 'due_soon';
-  }
-  return r.status == 'partially_paid' ? 'partially_paid' : 'open';
-}
-
-int _moneyToMinorLocal(String value) {
-  final raw = value.trim();
-  final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-  if (match == null) return 0;
-  final parts = raw.split('.');
-  final major = int.parse(parts[0]);
-  final dec = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-  return (major * 100) + int.parse(dec);
-}
-
-String _fmtAmountStr(String v) {
-  final d = double.tryParse(v) ?? 0;
-  return d.toStringAsFixed(2);
-}
-
-String _fmtDueDate(String? iso) {
-  if (iso == null || iso.isEmpty) return 'No due date';
-  try {
-    return 'Due ${DateFormat('d MMM yyyy').format(DateTime.parse(iso))}';
-  } catch (_) {
-    return 'Due $iso';
-  }
-}
 
 // ── Screen ─────────────────────────────────────────────────────────────────
 
@@ -79,9 +43,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     int overdueMinor = 0;
     for (final r in receivables) {
       if (r.status != 'open' && r.status != 'partially_paid') continue;
-      final m = _moneyToMinorLocal(r.outstandingAmount);
+      final m = DebtsUiUtils.moneyToMinor(r.outstandingAmount);
       outstandingMinor += m;
-      if (_receivableStatus(r) == 'overdue') overdueMinor += m;
+      if (DebtsUiUtils.receivableStatus(r) == 'overdue') overdueMinor += m;
     }
 
     final searched = _searchQuery.isEmpty
@@ -201,7 +165,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         ),
                         const SizedBox(height: 10),
                         if (_showSearch) ...[
-                          _SearchBar(
+                          DebtsSearchBar(
                             onChanged: (v) =>
                                 setState(() => _searchQuery = v.trim()),
                             onClear: () => setState(() {
@@ -272,7 +236,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        _TabFilter(
+                        DebtsTabFilter(
                           activeTab: _activeTab,
                           onTabChanged: (t) => setState(() {
                             _activeTab = t;
@@ -283,7 +247,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                         if (debtsAsync.isLoading && receivables.isEmpty)
                           const Center(child: CircularProgressIndicator())
                         else if (filtered.isEmpty)
-                          _EmptyDebts(
+                          DebtsEmptyState(
                             hasSearch: _searchQuery.isNotEmpty,
                             activeTab: _activeTab,
                           )
@@ -307,7 +271,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   Widget _buildDebtCard(LocalReceivableRecord row) {
-    final status = _receivableStatus(row);
+    final status = DebtsUiUtils.receivableStatus(row);
     final (statusLabel, statusColor, avatarBg) = switch (status) {
       'overdue' => ('Overdue', AppColors.danger, AppColors.dangerSoft),
       'due_soon' => ('Due Soon', AppColors.warning, AppColors.warningSoft),
@@ -327,7 +291,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             .join()
             .toUpperCase();
 
-    final dueLabel = _fmtDueDate(row.dueDateIso);
+    final dueLabel = row.dueDateIso != null && row.dueDateIso!.isNotEmpty
+        ? 'Due ${DebtsUiUtils.fmtDueDate(row.dueDateIso)}'
+        : 'No due date';
 
     return GestureDetector(
       onTap: () => _openDebtDetail(row.receivableId),
@@ -411,7 +377,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '₵${_fmtAmountStr(row.outstandingAmount)}',
+                  '₵${DebtsUiUtils.fmtAmount(row.outstandingAmount)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
@@ -462,7 +428,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       List<LocalReceivableRecord> records) {
     return switch (_activeTab) {
       'overdue' =>
-        records.where((r) => _receivableStatus(r) == 'overdue').toList(),
+        records.where((r) => DebtsUiUtils.receivableStatus(r) == 'overdue').toList(),
       'partial' =>
         records.where((r) => r.status == 'partially_paid').toList(),
       'settled' => records.where((r) => r.status == 'settled').toList(),
@@ -486,156 +452,6 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
   void _showMessage(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-}
-
-// ── Stats row (reserved for future use) ────────────────────────────────────
-
-// ignore: unused_element
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({
-    required this.totalOutstanding,
-    required this.overdue,
-    required this.paidThisMonth,
-    required this.totalCustomers,
-  });
-
-  final String totalOutstanding;
-  final String overdue;
-  final String paidThisMonth;
-  final int totalCustomers;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final itemWidth = constraints.maxWidth >= 720
-            ? (constraints.maxWidth - 30) / 4
-            : (constraints.maxWidth - 10) / 2;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            SizedBox(
-              width: itemWidth,
-              child: _StatCard(
-                label: 'Outstanding',
-                value: '₵$totalOutstanding',
-                subLabel: 'Total owed',
-                iconColor: AppColors.success,
-                icon: Icons.account_balance_wallet_rounded,
-              ),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _StatCard(
-                label: 'Overdue',
-                value: '₵$overdue',
-                subLabel: 'Past due date',
-                iconColor: AppColors.danger,
-                icon: Icons.warning_amber_rounded,
-              ),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _StatCard(
-                label: 'Paid / Month',
-                value: '₵$paidThisMonth',
-                subLabel: 'This month',
-                iconColor: AppColors.info,
-                icon: Icons.check_circle_outline_rounded,
-              ),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _StatCard(
-                label: 'Customers',
-                value: '$totalCustomers',
-                subLabel: 'Total tracked',
-                iconColor: AppColors.warning,
-                icon: Icons.group_rounded,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ignore: unused_element
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.subLabel,
-    required this.iconColor,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final String subLabel;
-  final Color iconColor;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 17),
-          ),
-          const SizedBox(height: 9),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-              color: AppColors.ink,
-              letterSpacing: -0.3,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 10,
-              height: 1.2,
-            ),
-            maxLines: 1,
-          ),
-          const SizedBox(height: 3),
-          Text(
-            subLabel,
-            style: const TextStyle(
-              color: AppColors.mutedSoft,
-              fontSize: 9.5,
-              height: 1.2,
-            ),
-            maxLines: 1,
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -730,223 +546,6 @@ class _QuickTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Tab filter ──────────────────────────────────────────────────────────────
-
-class _TabFilter extends StatelessWidget {
-  const _TabFilter({
-    required this.activeTab,
-    required this.onTabChanged,
-  });
-
-  final String activeTab;
-  final ValueChanged<String> onTabChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _TabPill(
-            label: 'All',
-            tab: 'all',
-            activeTab: activeTab,
-            onTap: onTabChanged,
-          ),
-          const SizedBox(width: 8),
-          _TabPill(
-            label: 'Overdue',
-            tab: 'overdue',
-            activeTab: activeTab,
-            onTap: onTabChanged,
-          ),
-          const SizedBox(width: 8),
-          _TabPill(
-            label: 'Partial',
-            tab: 'partial',
-            activeTab: activeTab,
-            onTap: onTabChanged,
-          ),
-          const SizedBox(width: 8),
-          _TabPill(
-            label: 'Settled',
-            tab: 'settled',
-            activeTab: activeTab,
-            onTap: onTabChanged,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabPill extends StatelessWidget {
-  const _TabPill({
-    required this.label,
-    required this.tab,
-    required this.activeTab,
-    required this.onTap,
-  });
-
-  final String label;
-  final String tab;
-  final String activeTab;
-  final ValueChanged<String> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = tab == activeTab;
-    return GestureDetector(
-      onTap: () => onTap(tab),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? AppColors.forest : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: active ? AppColors.forest : AppColors.border,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : AppColors.ink,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Search bar ──────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  const _SearchBar({required this.onChanged, required this.onClear});
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      autofocus: true,
-      onChanged: onChanged,
-      style: const TextStyle(fontSize: 14, color: AppColors.ink),
-      decoration: InputDecoration(
-        hintText: 'Search by customer name…',
-        prefixIcon:
-            const Icon(Icons.search_rounded, color: AppColors.muted, size: 20),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.close_rounded, size: 18),
-          color: AppColors.muted,
-          onPressed: onClear,
-        ),
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      ),
-    );
-  }
-}
-
-// ── Empty state ─────────────────────────────────────────────────────────────
-
-class _EmptyDebts extends StatelessWidget {
-  const _EmptyDebts({this.hasSearch = false, this.activeTab = 'all'});
-  final bool hasSearch;
-  final String activeTab;
-
-  @override
-  Widget build(BuildContext context) {
-    final String title;
-    final String message;
-    final IconData icon;
-    final Color iconColor;
-    final Color iconBg;
-
-    if (hasSearch) {
-      title = 'No debts match your search.';
-      message = 'Try a different name or clear the search.';
-      icon = Icons.search_off_rounded;
-      iconColor = AppColors.muted;
-      iconBg = AppColors.surfaceAlt;
-    } else if (activeTab == 'overdue') {
-      title = 'No overdue debts.';
-      message = 'All debts are current — great news!';
-      icon = Icons.check_circle_outline_rounded;
-      iconColor = AppColors.success;
-      iconBg = AppColors.successSoft;
-    } else if (activeTab == 'partial') {
-      title = 'No partially paid debts.';
-      message = 'Partially paid debts will appear here.';
-      icon = Icons.timelapse_rounded;
-      iconColor = AppColors.warning;
-      iconBg = AppColors.warningSoft;
-    } else if (activeTab == 'settled') {
-      title = 'No settled debts yet.';
-      message = 'Settled debts will appear here once paid.';
-      icon = Icons.receipt_long_rounded;
-      iconColor = AppColors.muted;
-      iconBg = AppColors.surfaceAlt;
-    } else {
-      title = 'No debts recorded yet.';
-      message = 'Tap “New Debt” to get started.';
-      icon = Icons.add_card_rounded;
-      iconColor = AppColors.forest;
-      iconBg = AppColors.successSoft;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 28),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
-        ],
       ),
     );
   }
