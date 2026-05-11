@@ -315,19 +315,19 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       onTap: () => _openDebtDetail(row.receivableId),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderRadius: BorderRadius.circular(DebtTokens.debtCardRadius),
           border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.subtle,
+          boxShadow: DebtTokens.card,
         ),
         child: Row(
           children: [
             // Avatar
             Container(
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: avatarBg,
                 shape: BoxShape.circle,
@@ -338,13 +338,13 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 style: TextStyle(
                   color: statusColor,
                   fontWeight: FontWeight.w800,
-                  fontSize: 15,
+                  fontSize: 16,
                 ),
               ),
             ),
             const SizedBox(width: 12),
 
-            // Name + due date
+            // Name + due date + invoice
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,7 +364,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                     dueLabel,
                     style: TextStyle(
                       color: status == 'overdue'
-                          ? AppColors.danger
+                          ? DebtTokens.danger
                           : AppColors.muted,
                       fontSize: 12,
                       fontWeight: status == 'overdue'
@@ -394,20 +394,20 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               children: [
                 Text(
                   '₵${DebtsUiUtils.fmtAmount(row.outstandingAmount)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: AppColors.ink,
+                    fontSize: 15,
+                    color: status == 'overdue' ? DebtTokens.danger : AppColors.ink,
                     letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    color: statusColor.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(DebtTokens.pillRadius),
                   ),
                   child: Text(
                     statusLabel,
@@ -420,9 +420,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                 ),
               ],
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.muted, size: 20),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.muted.withValues(alpha: 0.5), size: 18),
           ],
         ),
       ),
