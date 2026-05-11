@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -13,8 +12,12 @@ import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
 import '../providers/debt_reminders_provider.dart';
 import 'utils/debts_ui_tokens.dart';
+import 'utils/debts_ui_utils.dart';
+import 'widgets/debt_balance_hero.dart';
+import 'widgets/debt_payment_card.dart';
+import 'widgets/debt_payment_link_panel.dart';
 import 'widgets/debt_payment_sheet.dart';
-import 'widgets/debt_paystack_qr_sheet.dart';
+import 'widgets/debt_reminder_row.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({
@@ -33,7 +36,7 @@ class DebtDetailScreen extends ConsumerWidget {
     final title = detail?.record.customerName ?? 'Debt Detail';
     final subtitle = detail == null
         ? 'Review balance, repayment history, and debt status'
-        : _statusLabel(detail.record.status);
+        : DebtsUiUtils.statusLabel(detail.record.status);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -123,7 +126,7 @@ class DebtDetailScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
                       children: [
                         _DetailErrorView(
-                          message: _humanizeError(error),
+                          message: userFriendlyError(error),
                           onRetry: () => ref.invalidate(
                             receivableDetailProvider(receivableId),
                           ),
@@ -181,7 +184,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     final row = widget.detail.record;
     final outstanding = '\u20B5${row.outstandingAmount}';
     final original = '\u20B5${row.originalAmount}';
-    final paymentTotal = _formatMoney(
+    final paymentTotal = DebtsUiUtils.fmtAmount(
       ((double.tryParse(row.originalAmount) ?? 0) -
               (double.tryParse(row.outstandingAmount) ?? 0))
           .toStringAsFixed(2),
@@ -206,7 +209,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             outstanding: outstanding,
             original: original,
             paid: '\u20B5$paymentTotal',
-            dueDate: _formatDueDate(row.dueDateIso),
+            dueDate: DebtsUiUtils.fmtDueDate(row.dueDateIso, fallback: 'Not set'),
             invoiceNumber: row.invoiceNumber,
             status: row.status,
           ),
@@ -515,7 +518,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
       );
     } catch (error) {
       if (!context.mounted) return;
-      final msg = _humanizeError(error);
+      final msg = userFriendlyError(error);
       final hint = widget.detail.record.syncStatus != 'applied'
           ? ' (Try syncing first)'
           : '';
