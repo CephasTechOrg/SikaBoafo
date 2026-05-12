@@ -72,3 +72,31 @@ class PaymentVerifyOut(BaseModel):
     paystack_transaction_status: str
     display_text: str | None = None
     needs_otp: bool = False
+
+
+class ReceivableMomoChargeIn(BaseModel):
+    phone: str = Field(min_length=8, max_length=20)
+    provider: Literal["mtn", "atl", "vod"]
+
+
+class ReceivableMomoChargeOut(BaseModel):
+    payment_id: UUID
+    provider: str
+    provider_reference: str
+    amount: Decimal = Field(max_digits=18, decimal_places=2)
+    currency: str
+    status: str
+    receivable_id: UUID
+    display_text: str | None = None
+    needs_otp: bool = False
+
+
+class ReceivablePaymentVerifyOut(BaseModel):
+    payment_id: UUID
+    receivable_id: UUID
+    provider_payment_status: str
+    receivable_status: str
+    outstanding_amount: Decimal = Field(max_digits=18, decimal_places=2)
+    paystack_transaction_status: str
+    display_text: str | None = None
+    needs_otp: bool = False

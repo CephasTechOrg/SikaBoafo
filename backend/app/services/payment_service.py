@@ -163,6 +163,31 @@ class PaymentVerifySnapshot:
 
 
 @dataclass(slots=True)
+class ReceivableMomoChargeSnapshot:
+    payment_id: UUID
+    provider: str
+    provider_reference: str
+    amount: Decimal
+    currency: str
+    status: str
+    receivable_id: UUID
+    display_text: str | None = None
+    needs_otp: bool = False
+
+
+@dataclass(slots=True)
+class ReceivablePaymentVerifySnapshot:
+    payment_id: UUID
+    receivable_id: UUID
+    provider_payment_status: str
+    receivable_status: str
+    outstanding_amount: Decimal
+    paystack_transaction_status: str
+    display_text: str | None = None
+    needs_otp: bool = False
+
+
+@dataclass(slots=True)
 class PaymentWebhookSnapshot:
     status: str
     payment_id: UUID | None = None
@@ -805,6 +830,460 @@ class PaymentService:
             display_text=_paystack_display_text_from_raw(verified.raw_payload),
             needs_otp=paystack_status == "send_otp",
         )
+
+    def initiate_receivable_momo_charge(
+        self,
+        *,
+        user_id: UUID,
+        receivable_id: UUID,
+        phone: str,
+        provider: str,
+    ) -> ReceivableMomoChargeSnapshot:
+        """Push a Paystack MoMo charge to the debtor's handset for a receivable."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        receivable = self.db.scalar(
+            select(Receivable)
+            .options(selectinload(Receivable.customer))
+            .where(
+                Receivable.id == receivable_id,
+                Receivable.store_id == store.id,
+            )
+        )
+        if receivable is None:
+            msg = "Receivable not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+        self._validate_receivable_state(receivable=receivable)
+
+        connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_connection(
+            connection=connection,
+            merchant_id=merchant.id,
+            settings=configured,
+        )
+        reference = self._build_reference(
+            merchant_id=merchant.id, receivable_id=receivable.id
+        )
+        amount = self._money(receivable.outstanding_amount)
+        normalized_phone = _normalize_ghana_momo_phone(phone)
+        paystack_provider = _paystack_gh_momo_provider_code(provider)
+
+        result = self._client(configured).charge_mobile_money(
+            secret_key=secret_key,
+            email=_customer_email(receivable.customer),
+            amount_kobo=int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP)),
+            reference=reference,
+            currency=merchant.currency_code or DEFAULT_CURRENCY,
+            phone=normalized_phone,
+            provider=paystack_provider,
+            metadata={
+                "receivable_id": str(receivable.id),
+                "customer_id": str(receivable.customer_id),
+                "merchant_id": str(merchant.id),
+                "store_id": str(store.id),
+                "invoice_number": receivable.invoice_number,
+                "payment_method_label": PAYMENT_METHOD_MOBILE_MONEY,
+                "payment_flow": "momo_number_charge",
+                "momo_provider": provider,
+            },
+        )
+
+        if isinstance(result.raw_payload, dict):
+            raw_for_store: dict[str, Any] = {**result.raw_payload}
+            inner = raw_for_store.get("data")
+            if isinstance(inner, dict):
+                inner_copy = {**inner}
+                meta = inner_copy.get("metadata")
+                if not isinstance(meta, dict):
+                    meta = {}
+                else:
+                    meta = {**meta}
+                meta.setdefault("payment_flow", "momo_number_charge")
+                inner_copy["metadata"] = meta
+                raw_for_store["data"] = inner_copy
+        else:
+            raw_for_store = result.raw_payload
+
+        payment = Payment(
+            merchant_id=merchant.id,
+            receivable_id=receivable.id,
+            provider=PAYMENT_PROVIDER_PAYSTACK,
+            provider_reference=result.reference,
+            internal_reference=reference,
+            provider_mode=connection.mode,
+            amount=amount,
+            currency=merchant.currency_code or DEFAULT_CURRENCY,
+            status=PROVIDER_PAYMENT_PENDING,
+            initiated_at=datetime.now(tz=UTC),
+            raw_provider_payload=raw_for_store,
+        )
+        self.db.add(payment)
+        receivable.payment_provider_reference = result.reference
+        self.db.add(receivable)
+        self.db.flush()
+
+        log_audit(
+            db=self.db,
+            actor_user_id=user_id,
+            business_id=merchant.id,
+            action="payment.momo_charge_initiated",
+            entity_type="payment",
+            entity_id=payment.id,
+            meta={
+                "provider": payment.provider,
+                "provider_reference": payment.provider_reference,
+                "receivable_id": str(receivable.id),
+                "amount": str(payment.amount),
+                "currency": payment.currency,
+                "momo_provider": provider,
+            },
+        )
+
+        paystack_charge_status = result.status.strip().lower()
+        needs_otp = paystack_charge_status == "send_otp"
+
+        if paystack_charge_status == "success":
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=str(payment.provider_reference).strip(),
+            )
+            self._apply_paystack_verify_to_receivable_payment(
+                user_id=user_id,
+                merchant=merchant,
+                payment=payment,
+                receivable=receivable,
+                verified=verified,
+            )
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(receivable)
+        return ReceivableMomoChargeSnapshot(
+            payment_id=payment.id,
+            provider=payment.provider,
+            provider_reference=payment.provider_reference or result.reference,
+            amount=payment.amount,
+            currency=payment.currency,
+            status=payment.status,
+            receivable_id=receivable.id,
+            display_text=result.display_text,
+            needs_otp=needs_otp,
+        )
+
+    def submit_receivable_momo_otp(
+        self,
+        *,
+        user_id: UUID,
+        payment_id: UUID,
+        otp: str,
+    ) -> ReceivablePaymentVerifySnapshot:
+        """Submit OTP/voucher after Paystack returns ``send_otp`` on a receivable charge."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        payment = self.db.scalar(
+            select(Payment)
+            .join(Receivable, Receivable.id == Payment.receivable_id)
+            .where(
+                Payment.id == payment_id,
+                Receivable.store_id == store.id,
+                Payment.receivable_id.isnot(None),
+            )
+        )
+        if payment is None:
+            msg = "Payment not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        receivable = self.db.scalar(
+            select(Receivable)
+            .options(selectinload(Receivable.customer))
+            .where(Receivable.id == payment.receivable_id)
+        )
+        if receivable is None:
+            msg = "Receivable not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        if payment.provider_reference is None or not str(payment.provider_reference).strip():
+            msg = "Payment has no provider reference."
+            raise PaymentInitiationStateError(msg)
+
+        if (
+            payment.status == PROVIDER_PAYMENT_SUCCEEDED
+            and receivable.status == RECEIVABLE_STATUS_SETTLED
+        ):
+            return ReceivablePaymentVerifySnapshot(
+                payment_id=payment.id,
+                receivable_id=receivable.id,
+                provider_payment_status=payment.status,
+                receivable_status=receivable.status,
+                outstanding_amount=self._money(receivable.outstanding_amount),
+                paystack_transaction_status="success",
+                display_text=None,
+                needs_otp=False,
+            )
+
+        if payment.status == PROVIDER_PAYMENT_FAILED:
+            msg = "Payment is no longer pending."
+            raise PaymentInitiationStateError(msg)
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_payment(
+            payment=payment,
+            settings=configured,
+        )
+        charge_out = self._client(configured).submit_charge_otp(
+            secret_key=secret_key,
+            reference=str(payment.provider_reference).strip(),
+            otp=otp,
+        )
+
+        new_ref = str(charge_out.reference).strip()
+        if new_ref:
+            payment.provider_reference = new_ref
+
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.raw_provider_payload = {**prev_payload, "submit_otp_charge": charge_out.raw_payload}
+        self.db.add(payment)
+        self.db.add(receivable)
+        self.db.flush()
+
+        charge_status = charge_out.status.strip().lower()
+        paystack_status: str
+        response_display = charge_out.display_text or _paystack_display_text_from_raw(
+            charge_out.raw_payload
+        )
+        response_needs_otp = charge_status == "send_otp"
+
+        if charge_status == "success":
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=str(payment.provider_reference).strip(),
+            )
+            paystack_status = self._apply_paystack_verify_to_receivable_payment(
+                user_id=user_id,
+                merchant=merchant,
+                payment=payment,
+                receivable=receivable,
+                verified=verified,
+            )
+            response_needs_otp = paystack_status == "send_otp"
+            response_display = response_display or _paystack_display_text_from_raw(
+                verified.raw_payload
+            )
+        elif charge_status in {"failed", "abandoned", "reversed"}:
+            payment.status = PROVIDER_PAYMENT_FAILED
+            self.db.add(payment)
+            self.db.flush()
+            log_audit(
+                db=self.db,
+                actor_user_id=user_id,
+                business_id=merchant.id,
+                action="payment.failed",
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "receivable_id": str(receivable.id),
+                    "paystack_status": charge_status,
+                    "source": "submit_otp",
+                },
+            )
+            paystack_status = charge_status
+            response_needs_otp = False
+        else:
+            paystack_status = charge_status
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(receivable)
+        return ReceivablePaymentVerifySnapshot(
+            payment_id=payment.id,
+            receivable_id=receivable.id,
+            provider_payment_status=payment.status,
+            receivable_status=receivable.status,
+            outstanding_amount=self._money(receivable.outstanding_amount),
+            paystack_transaction_status=paystack_status,
+            display_text=response_display,
+            needs_otp=response_needs_otp,
+        )
+
+    def verify_receivable_payment(
+        self,
+        *,
+        user_id: UUID,
+        payment_id: UUID,
+    ) -> ReceivablePaymentVerifySnapshot:
+        """Re-query Paystack for a receivable-linked payment (MoMo prompt / webhook delay)."""
+        try:
+            merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
+        except StoreContextError as exc:
+            raise PaymentInitiationContextError(str(exc)) from exc
+
+        payment = self.db.scalar(
+            select(Payment)
+            .join(Receivable, Receivable.id == Payment.receivable_id)
+            .where(
+                Payment.id == payment_id,
+                Receivable.store_id == store.id,
+                Payment.receivable_id.isnot(None),
+            )
+        )
+        if payment is None:
+            msg = "Payment not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        receivable = self.db.scalar(
+            select(Receivable)
+            .options(selectinload(Receivable.customer))
+            .where(Receivable.id == payment.receivable_id)
+        )
+        if receivable is None:
+            msg = "Receivable not found."
+            raise PaymentInitiationTargetNotFoundError(msg)
+
+        if payment.provider_reference is None or not str(payment.provider_reference).strip():
+            msg = "Payment has no provider reference."
+            raise PaymentInitiationStateError(msg)
+
+        if (
+            payment.status == PROVIDER_PAYMENT_SUCCEEDED
+            and receivable.status == RECEIVABLE_STATUS_SETTLED
+        ):
+            return ReceivablePaymentVerifySnapshot(
+                payment_id=payment.id,
+                receivable_id=receivable.id,
+                provider_payment_status=payment.status,
+                receivable_status=receivable.status,
+                outstanding_amount=self._money(receivable.outstanding_amount),
+                paystack_transaction_status="success",
+                display_text=None,
+                needs_otp=False,
+            )
+
+        configured = self.settings or get_settings()
+        secret_key = self._resolve_secret_key_for_payment(
+            payment=payment,
+            settings=configured,
+        )
+        ref = str(payment.provider_reference).strip()
+        verified: PaystackVerifyResult
+        if _payment_is_momo_number_charge(payment):
+            try:
+                verified = self._client(configured).get_charge_transaction(
+                    secret_key=secret_key,
+                    reference=ref,
+                )
+            except PaystackClientError:
+                verified = self._client(configured).verify_transaction(
+                    secret_key=secret_key,
+                    reference=ref,
+                )
+        else:
+            verified = self._client(configured).verify_transaction(
+                secret_key=secret_key,
+                reference=ref,
+            )
+        paystack_status = self._apply_paystack_verify_to_receivable_payment(
+            user_id=user_id,
+            merchant=merchant,
+            payment=payment,
+            receivable=receivable,
+            verified=verified,
+        )
+
+        self.db.commit()
+        self.db.refresh(payment)
+        self.db.refresh(receivable)
+        return ReceivablePaymentVerifySnapshot(
+            payment_id=payment.id,
+            receivable_id=receivable.id,
+            provider_payment_status=payment.status,
+            receivable_status=receivable.status,
+            outstanding_amount=self._money(receivable.outstanding_amount),
+            paystack_transaction_status=paystack_status,
+            display_text=_paystack_display_text_from_raw(verified.raw_payload),
+            needs_otp=paystack_status == "send_otp",
+        )
+
+    def _apply_paystack_verify_to_receivable_payment(
+        self,
+        *,
+        user_id: UUID,
+        merchant: Merchant,
+        payment: Payment,
+        receivable: Receivable,
+        verified: PaystackVerifyResult,
+    ) -> str:
+        """Apply Paystack verify result to a receivable-linked payment; flush only."""
+        verified_amount = self._kobo_to_money(verified.amount_kobo)
+        paystack_status = verified.status.strip().lower()
+        action = "payment.verify_pending"
+        failure_reason: str | None = None
+
+        if paystack_status == "success":
+            if verified_amount is not None and verified_amount > Decimal("0.00"):
+                payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                    tz=UTC
+                )
+                if verified_amount != payment.amount:
+                    payment.amount = verified_amount
+                self._apply_receivable_settlement(
+                    payment=payment,
+                    receivable=receivable,
+                    channel=PAYMENT_METHOD_MOBILE_MONEY,
+                )
+                action = "payment.succeeded"
+            else:
+                payment.status = PROVIDER_PAYMENT_FAILED
+                failure_reason = "invalid_verified_amount"
+                action = "payment.failed"
+        elif paystack_status in {"failed", "abandoned", "reversed"}:
+            payment.status = PROVIDER_PAYMENT_FAILED
+            action = "payment.failed"
+
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.raw_provider_payload = {**prev_payload, "manual_verify": verified.raw_payload}
+        self.db.add(payment)
+        self.db.add(receivable)
+        self.db.flush()
+
+        if action != "payment.verify_pending":
+            log_audit(
+                db=self.db,
+                actor_user_id=user_id,
+                business_id=merchant.id,
+                action=action,
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "receivable_id": str(receivable.id),
+                    "paystack_status": paystack_status,
+                    "verified_amount": str(verified_amount)
+                    if verified_amount is not None
+                    else None,
+                    "outstanding_amount": str(receivable.outstanding_amount),
+                    "failure_reason": failure_reason,
+                },
+            )
+
+        return paystack_status
 
     def handle_paystack_webhook(
         self,
