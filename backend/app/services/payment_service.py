@@ -1803,11 +1803,14 @@ class PaymentService:
         )
         if payment is None or payment.receivable_id is None:
             return None
+        # Receivable.store is lazy="joined" (stores -> merchants -> users), so a
+        # plain FOR UPDATE on the full join fails on PostgreSQL; see
+        # sales_service._load_balances (with_for_update(of=...)) for the same pattern.
         receivable = self.db.scalar(
             select(Receivable)
             .options(selectinload(Receivable.customer))
             .where(Receivable.id == payment.receivable_id)
-            .with_for_update()
+            .with_for_update(of=Receivable)
         )
         if receivable is None:
             return None
@@ -1898,7 +1901,7 @@ class PaymentService:
                 .where(Receivable.id == payment.receivable_id)
             )
             if for_update:
-                stmt = stmt.with_for_update()
+                stmt = stmt.with_for_update(of=Receivable)
             receivable = self.db.scalar(stmt)
             if receivable is not None:
                 return receivable
@@ -1908,7 +1911,7 @@ class PaymentService:
             .where(Receivable.payment_provider_reference == provider_reference)
         )
         if for_update:
-            stmt = stmt.with_for_update()
+            stmt = stmt.with_for_update(of=Receivable)
         return self.db.scalar(stmt)
 
     def _load_payment_by_reference(

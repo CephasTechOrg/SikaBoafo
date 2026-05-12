@@ -142,6 +142,11 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     try {
       await ref.read(debtsApiProvider).cancelReceivable(receivableId);
       try {
+        await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
+      } catch (_) {
+        // ignore — list/detail may stay stale until next full debts refresh
+      }
+      try {
         await _repo.syncPendingQueue();
       } catch (_) {
         // ignore — server already cancelled; local snapshot will reconcile
