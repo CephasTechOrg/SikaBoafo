@@ -1,5 +1,5 @@
 # Secrets
-.env.dart_define
+.env
 
 # Miscellaneous
 *.class
