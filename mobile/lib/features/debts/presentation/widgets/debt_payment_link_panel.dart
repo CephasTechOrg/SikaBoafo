@@ -16,9 +16,17 @@ import 'debt_paystack_qr_sheet.dart';
 ///   - **No link yet:** primary "Generate payment link" CTA.
 ///   - **Link active:** "Active link" card with Show QR + Share buttons.
 class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
-  const DebtPaymentLinkPanel({super.key, required this.record});
+  const DebtPaymentLinkPanel({
+    super.key,
+    required this.record,
+    this.compact = false,
+  });
 
   final LocalReceivableRecord record;
+
+  /// When true (e.g. inside [ExpansionTile] on debt detail), omits the large
+  /// header row and uses tighter padding so the parent sets hierarchy.
+  final bool compact;
 
   @override
   ConsumerState<DebtPaymentLinkPanel> createState() =>
@@ -239,12 +247,12 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(widget.compact ? 10 : 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(widget.compact ? 12 : 18),
         border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        boxShadow: widget.compact ? const <BoxShadow>[] : AppShadows.subtle,
       ),
       child: _hasLink ? _activeLinkBody() : _generateBody(),
     );
@@ -254,51 +262,52 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: AppGradients.primaryCta,
-                borderRadius: BorderRadius.circular(13),
+        if (!widget.compact) ...[
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppGradients.primaryCta,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.qr_code_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
-              child: const Icon(
-                Icons.qr_code_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Collect online',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Collect online',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Generate a QR / link the customer can pay from any '
-                    'mobile money or card.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
+                    SizedBox(height: 2),
+                    Text(
+                      'QR, link, or card.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           controller: _amountCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -394,51 +403,52 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.successSoft,
-                borderRadius: BorderRadius.circular(13),
+        if (!widget.compact) ...[
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.successSoft,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.link_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
               ),
-              child: const Icon(
-                Icons.link_rounded,
-                color: AppColors.success,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Payment link active',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Payment link active',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Share the link or show the QR. The debt settles '
-                    'automatically when the customer pays.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w500,
-                      height: 1.35,
+                    SizedBox(height: 2),
+                    Text(
+                      'Share or show QR. Settles when paid.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(

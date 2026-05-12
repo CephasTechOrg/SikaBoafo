@@ -16,6 +16,52 @@ import 'widgets/debt_payments_history.dart';
 import 'widgets/debt_reminders_section.dart';
 import 'widgets/receive_payment_sheet/receive_payment_sheet.dart';
 
+Future<void> _confirmAndCancelReceivableDebt(
+  BuildContext context,
+  WidgetRef ref,
+  LocalReceivableRecord record,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Cancel this debt?'),
+      content: const Text(
+        'The debt will be marked cancelled. You can\'t undo this — '
+        'create a new debt if you change your mind.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Keep debt'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.danger,
+          ),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Cancel debt'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  if (!context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref.read(debtsControllerProvider.notifier).cancelReceivable(
+          receivableId: record.receivableId,
+        );
+    ref.invalidate(receivableDetailProvider(record.receivableId));
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Debt cancelled.')),
+    );
+  } catch (error) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(userFriendlyError(error))),
+    );
+  }
+}
+
 class DebtDetailScreen extends ConsumerWidget {
   const DebtDetailScreen({required this.receivableId, super.key});
 
@@ -55,6 +101,46 @@ class DebtDetailScreen extends ConsumerWidget {
                 onPressed: () =>
                     ref.invalidate(receivableDetailProvider(receivableId)),
               ),
+              if (detailAsync.valueOrNull != null &&
+                  !detailAsync.valueOrNull!.receivable.isTerminal)
+                PopupMenuButton<String>(
+                  tooltip: 'More options',
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  color: AppColors.surface,
+                  onSelected: (value) {
+                    if (value == 'cancel') {
+                      _confirmAndCancelReceivableDebt(
+                        context,
+                        ref,
+                        detailAsync.valueOrNull!.receivable,
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem<String>(
+                      value: 'cancel',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.block_rounded,
+                          color: AppColors.danger,
+                          size: 22,
+                        ),
+                        title: Text(
+                          'Cancel debt',
+                          style: TextStyle(
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
             backgroundColor: const Color(0xFF041C0B),
             elevation: 0,
@@ -144,14 +230,80 @@ class _LoadedBody extends ConsumerWidget {
                 DebtMetaRow(record: record),
                 const SizedBox(height: 22),
                 if (!isTerminal) ...[
-                  _ActionRow(
-                    onReceivePayment: () =>
-                        _handleReceivePayment(context, record),
-                    onCancelDebt: () =>
-                        _handleCancelDebt(context, ref, record),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () =>
+                          _handleReceivePayment(context, record),
+                      icon: const Icon(Icons.payments_rounded, size: 18),
+                      label: const Text('Receive payment'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.forestDark,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  DebtPaymentLinkPanel(record: record),
+                  const SizedBox(height: 12),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: Material(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      clipBehavior: Clip.antiAlias,
+                      child: ExpansionTile(
+                        initiallyExpanded: false,
+                        tilePadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 2,
+                        ),
+                        collapsedShape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: AppColors.border),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: AppColors.border),
+                        ),
+                        title: const Text(
+                          'Collect online',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Link, QR, or MoMo',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        childrenPadding: const EdgeInsets.fromLTRB(
+                          8,
+                          0,
+                          8,
+                          10,
+                        ),
+                        children: [
+                          DebtPaymentLinkPanel(
+                            record: record,
+                            compact: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 22),
                 ],
                 DebtRemindersSection(
@@ -175,110 +327,6 @@ class _LoadedBody extends ConsumerWidget {
     await showReceivePaymentSheet(context, record: record);
   }
 
-  Future<void> _handleCancelDebt(
-    BuildContext context,
-    WidgetRef ref,
-    LocalReceivableRecord record,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel this debt?'),
-        content: const Text(
-          'The debt will be marked cancelled. You can\'t undo this — '
-          'create a new debt if you change your mind.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep debt'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Cancel debt'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(debtsControllerProvider.notifier).cancelReceivable(
-            receivableId: record.receivableId,
-          );
-      ref.invalidate(receivableDetailProvider(record.receivableId));
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Debt cancelled.')),
-      );
-    } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(userFriendlyError(error))),
-      );
-    }
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.onReceivePayment,
-    required this.onCancelDebt,
-  });
-
-  final VoidCallback onReceivePayment;
-  final VoidCallback onCancelDebt;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: FilledButton.icon(
-            onPressed: onReceivePayment,
-            icon: const Icon(Icons.payments_rounded, size: 18),
-            label: const Text('Receive payment'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.forestDark,
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: onCancelDebt,
-            icon: const Icon(Icons.block_rounded, size: 16),
-            label: const Text('Cancel'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.danger,
-              side: BorderSide(
-                color: AppColors.danger.withValues(alpha: 0.4),
-              ),
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _DetailHeaderBackground extends StatelessWidget {

@@ -29,6 +29,9 @@ class DebtRemindersSection extends ConsumerWidget {
     final reminders = remindersAsync.valueOrNull ?? const <LocalDebtReminder>[];
     final canSchedule = !record.isTerminal;
     final activeCount = reminders.where((r) => r.isActive).length;
+    final isEmpty = !remindersAsync.isLoading &&
+        !remindersAsync.hasError &&
+        reminders.isEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +65,7 @@ class DebtRemindersSection extends ConsumerWidget {
                 ),
               ),
             const Spacer(),
-            if (canSchedule)
+            if (canSchedule && !isEmpty)
               TextButton.icon(
                 onPressed: () => _openSheet(context, ref),
                 icon: const Icon(Icons.add_alarm_rounded, size: 16),
