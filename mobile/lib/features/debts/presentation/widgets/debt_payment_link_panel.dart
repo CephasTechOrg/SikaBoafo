@@ -246,6 +246,8 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        _MomoPushButton(onTap: _openMomoPush),
       ],
     );
   }
