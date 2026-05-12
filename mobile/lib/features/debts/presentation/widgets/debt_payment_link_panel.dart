@@ -387,3 +387,26 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     );
   }
 }
+
+class _MomoPushButton extends StatelessWidget {
+  const _MomoPushButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.phone_android_rounded, size: 16),
+      label: const Text('Push MoMo prompt'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.gold,
+        minimumSize: const Size.fromHeight(46),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+        ),
+        side: BorderSide(color: AppColors.gold.withValues(alpha: 0.45)),
+      ),
+    );
+  }
+}

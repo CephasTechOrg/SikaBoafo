@@ -42,9 +42,10 @@ class TopCustomersCard extends StatelessWidget {
               final isOverdue = r.dueDateIso != null &&
                   r.dueDateIso!.isNotEmpty &&
                   r.dueDateIso!.compareTo(today) < 0;
-              final initials = r.customerName.trim().isEmpty
+              final name = r.customerName ?? '';
+              final initials = name.trim().isEmpty
                   ? '?'
-                  : r.customerName
+                  : name
                       .trim()
                       .split(' ')
                       .take(2)
@@ -82,7 +83,7 @@ class TopCustomersCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            r.customerName,
+                            name.isEmpty ? 'Unknown' : name,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
