@@ -1992,6 +1992,8 @@ __all__ = [
     "PaymentInitiationTargetNotFoundError",
     "PaymentService",
     "PaymentVerifySnapshot",
+    "ReceivableMomoChargeSnapshot",
+    "ReceivablePaymentVerifySnapshot",
     "SaleMomoChargeSnapshot",
     "SalePaymentInitiationSnapshot",
     "PaymentWebhookSnapshot",
