@@ -102,6 +102,27 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     }
   }
 
+  /// Cancels a debt server-side via the receivables API. This is an online
+   /// operation — there's no offline queue entry for cancel today; the
+   /// caller should handle network errors with a snackbar.
+  Future<void> cancelReceivable({required String receivableId}) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(debtsApiProvider).cancelReceivable(receivableId);
+      try {
+        await _repo.syncPendingQueue();
+      } catch (_) {
+        // ignore — server already cancelled; local snapshot will reconcile
+      }
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.data(await _readSnapshot());
+    } catch (error, stackTrace) {
+      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<String> recordRepayment({
     required String receivableId,
     required String amount,
