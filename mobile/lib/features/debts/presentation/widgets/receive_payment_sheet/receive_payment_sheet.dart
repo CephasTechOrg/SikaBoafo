@@ -175,6 +175,18 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                     ),
                   ],
                   const SizedBox(height: 18),
+                  if (!_amountValid && _amountCtrl.text.isEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        'Enter the amount received above to continue.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ),
+                  ],
                   ReceivePaymentConfirmButton(
                     enabled: _amountValid,
                     submitting: _submitting,

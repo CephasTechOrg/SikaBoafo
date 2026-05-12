@@ -26,7 +26,6 @@ class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
 
 class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
-  String? _error;
 
   bool get _hasLink {
     final link = widget.record.paymentLink;
@@ -34,10 +33,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   }
 
   Future<void> _generate({required bool openQrAfter}) async {
-    setState(() {
-      _generating = true;
-      _error = null;
-    });
+    setState(() => _generating = true);
     try {
       final initiation = await ref
           .read(debtsControllerProvider.notifier)
@@ -72,7 +68,13 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       }
     } catch (error) {
       if (!mounted) return;
-      setState(() => _error = userFriendlyError(error));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userFriendlyError(error)),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -190,13 +192,23 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ),
           ],
         ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            _error!,
-            style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.forest.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(999),
           ),
-        ],
+          child: Text(
+            DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.forestDark,
+              fontWeight: FontWeight.w800,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -320,13 +332,6 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ),
           ),
         ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            _error!,
-            style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
-          ),
-        ],
         const SizedBox(height: 12),
         Row(
           children: [
