@@ -42,8 +42,8 @@ class SyncRefreshService {
         );
       }
     });
-    await _appDb.kv.putTimestamp(
-        KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
+    await _appDb.kv
+        .putTimestamp(KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
   Future<void> refreshDebtSnapshot() async {
@@ -150,6 +150,8 @@ class SyncRefreshService {
           'status': dto.status,
           'invoice_number': dto.invoiceNumber,
           'payment_link': dto.paymentLink,
+          'payment_id': dto.paymentId,
+          'payment_amount': dto.paymentAmount,
           'local_operation_id': 'server:receivable:${dto.receivableId}',
           'source_device_id': 'server',
           'created_at': createdAt,
@@ -169,6 +171,8 @@ class SyncRefreshService {
         'status': dto.status,
         'invoice_number': dto.invoiceNumber,
         'payment_link': dto.paymentLink,
+        'payment_id': dto.paymentId,
+        'payment_amount': dto.paymentAmount,
         'updated_at': now,
       },
       where: 'id = ?',

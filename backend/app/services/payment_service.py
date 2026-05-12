@@ -225,6 +225,7 @@ class PaymentService:
             raise PaymentInitiationTargetNotFoundError(msg)
 
         self._validate_receivable_state(receivable=receivable)
+        self._ensure_no_pending_receivable_payment(receivable_id=receivable.id)
 
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
@@ -847,6 +848,7 @@ class PaymentService:
         receivable_id: UUID,
         phone: str,
         provider: str,
+        amount: Decimal | None = None,
     ) -> ReceivableMomoChargeSnapshot:
         """Push a Paystack MoMo charge to the debtor's handset for a receivable."""
         try:
@@ -866,6 +868,7 @@ class PaymentService:
             msg = "Receivable not found."
             raise PaymentInitiationTargetNotFoundError(msg)
         self._validate_receivable_state(receivable=receivable)
+        self._ensure_no_pending_receivable_payment(receivable_id=receivable.id)
 
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
@@ -878,7 +881,15 @@ class PaymentService:
         reference = self._build_reference(
             merchant_id=merchant.id, receivable_id=receivable.id
         )
-        amount = self._money(receivable.outstanding_amount)
+        outstanding = self._money(receivable.outstanding_amount)
+        if amount is not None:
+            charge_amount = self._money(amount)
+            if charge_amount <= Decimal("0.00") or charge_amount > outstanding:
+                msg = f"Amount must be between 0.01 and {outstanding}."
+                raise PaymentInitiationStateError(msg)
+        else:
+            charge_amount = outstanding
+        amount = charge_amount
         normalized_phone = _normalize_ghana_momo_phone(phone)
         paystack_provider = _paystack_gh_momo_provider_code(provider)
 
@@ -997,27 +1008,14 @@ class PaymentService:
         except StoreContextError as exc:
             raise PaymentInitiationContextError(str(exc)) from exc
 
-        payment = self.db.scalar(
-            select(Payment)
-            .join(Receivable, Receivable.id == Payment.receivable_id)
-            .where(
-                Payment.id == payment_id,
-                Receivable.store_id == store.id,
-                Payment.receivable_id.isnot(None),
-            )
+        locked = self._load_receivable_payment_with_lock(
+            store_id=store.id,
+            payment_id=payment_id,
         )
-        if payment is None:
+        if locked is None:
             msg = "Payment not found."
             raise PaymentInitiationTargetNotFoundError(msg)
-
-        receivable = self.db.scalar(
-            select(Receivable)
-            .options(selectinload(Receivable.customer))
-            .where(Receivable.id == payment.receivable_id)
-        )
-        if receivable is None:
-            msg = "Receivable not found."
-            raise PaymentInitiationTargetNotFoundError(msg)
+        payment, receivable = locked
 
         if payment.provider_reference is None or not str(payment.provider_reference).strip():
             msg = "Payment has no provider reference."
@@ -1139,27 +1137,14 @@ class PaymentService:
         except StoreContextError as exc:
             raise PaymentInitiationContextError(str(exc)) from exc
 
-        payment = self.db.scalar(
-            select(Payment)
-            .join(Receivable, Receivable.id == Payment.receivable_id)
-            .where(
-                Payment.id == payment_id,
-                Receivable.store_id == store.id,
-                Payment.receivable_id.isnot(None),
-            )
+        locked = self._load_receivable_payment_with_lock(
+            store_id=store.id,
+            payment_id=payment_id,
         )
-        if payment is None:
+        if locked is None:
             msg = "Payment not found."
             raise PaymentInitiationTargetNotFoundError(msg)
-
-        receivable = self.db.scalar(
-            select(Receivable)
-            .options(selectinload(Receivable.customer))
-            .where(Receivable.id == payment.receivable_id)
-        )
-        if receivable is None:
-            msg = "Receivable not found."
-            raise PaymentInitiationTargetNotFoundError(msg)
+        payment, receivable = locked
 
         if payment.provider_reference is None or not str(payment.provider_reference).strip():
             msg = "Payment has no provider reference."
@@ -1313,7 +1298,10 @@ class PaymentService:
             else None
         )
 
-        payment = self._load_payment_by_reference(provider_reference=provider_reference)
+        payment = self._load_payment_by_reference(
+            provider_reference=provider_reference,
+            for_update=True,
+        )
         secrets = self._resolve_webhook_signature_secrets(
             payment=payment,
             provider_reference=provider_reference,
@@ -1410,6 +1398,7 @@ class PaymentService:
             receivable = self._load_receivable_for_payment(
                 payment=payment,
                 provider_reference=provider_reference,
+                for_update=True,
             )
             if receivable is None:
                 webhook_event.payment_id = payment.id
@@ -1779,6 +1768,51 @@ class PaymentService:
             else RECEIVABLE_STATUS_PARTIALLY_PAID
         )
 
+    def _ensure_no_pending_receivable_payment(self, *, receivable_id: UUID) -> None:
+        pending = self.db.scalar(
+            select(Payment.id)
+            .where(
+                Payment.receivable_id == receivable_id,
+                Payment.status == PROVIDER_PAYMENT_PENDING,
+            )
+            .order_by(Payment.initiated_at.desc())
+            .limit(1)
+        )
+        if pending is not None:
+            msg = (
+                "A payment is already pending for this debt. "
+                f"Use the existing payment ({pending}) or verify it."
+            )
+            raise PaymentInitiationStateError(msg)
+
+    def _load_receivable_payment_with_lock(
+        self,
+        *,
+        store_id: UUID,
+        payment_id: UUID,
+    ) -> tuple[Payment, Receivable] | None:
+        payment = self.db.scalar(
+            select(Payment)
+            .join(Receivable, Receivable.id == Payment.receivable_id)
+            .where(
+                Payment.id == payment_id,
+                Receivable.store_id == store_id,
+                Payment.receivable_id.isnot(None),
+            )
+            .with_for_update()
+        )
+        if payment is None or payment.receivable_id is None:
+            return None
+        receivable = self.db.scalar(
+            select(Receivable)
+            .options(selectinload(Receivable.customer))
+            .where(Receivable.id == payment.receivable_id)
+            .with_for_update()
+        )
+        if receivable is None:
+            return None
+        return payment, receivable
+
     def _resolve_webhook_signature_secrets(
         self,
         *,
@@ -1855,30 +1889,43 @@ class PaymentService:
         *,
         payment: Payment,
         provider_reference: str,
+        for_update: bool = False,
     ) -> Receivable | None:
         if payment.receivable_id is not None:
-            receivable = self.db.scalar(
+            stmt = (
                 select(Receivable)
                 .options(selectinload(Receivable.customer))
                 .where(Receivable.id == payment.receivable_id)
             )
+            if for_update:
+                stmt = stmt.with_for_update()
+            receivable = self.db.scalar(stmt)
             if receivable is not None:
                 return receivable
-        return self.db.scalar(
+        stmt = (
             select(Receivable)
             .options(selectinload(Receivable.customer))
             .where(Receivable.payment_provider_reference == provider_reference)
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        return self.db.scalar(stmt)
 
-    def _load_payment_by_reference(self, *, provider_reference: str | None) -> Payment | None:
+    def _load_payment_by_reference(
+        self,
+        *,
+        provider_reference: str | None,
+        for_update: bool = False,
+    ) -> Payment | None:
         if provider_reference is None:
             return None
-        return self.db.scalar(
-            select(Payment).where(
-                Payment.provider == PAYMENT_PROVIDER_PAYSTACK,
-                Payment.provider_reference == provider_reference,
-            )
+        stmt = select(Payment).where(
+            Payment.provider == PAYMENT_PROVIDER_PAYSTACK,
+            Payment.provider_reference == provider_reference,
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        return self.db.scalar(stmt)
 
     @staticmethod
     def _parse_webhook_payload(*, raw_body: bytes) -> dict[str, Any]:

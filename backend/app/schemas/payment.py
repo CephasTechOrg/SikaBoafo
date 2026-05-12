@@ -78,6 +78,7 @@ class PaymentVerifyOut(BaseModel):
 class ReceivableMomoChargeIn(BaseModel):
     phone: str = Field(min_length=8, max_length=20)
     provider: Literal["mtn", "atl", "vod"]
+    amount: Decimal | None = Field(default=None, max_digits=18, decimal_places=2, gt=0)
 
 
 class ReceivableMomoChargeOut(BaseModel):

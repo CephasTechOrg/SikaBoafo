@@ -297,7 +297,10 @@ class SyncStatusController
 
   Future<bool> _pingBackend() async {
     try {
-      final response = await _apiClient.dio.get<dynamic>('/health');
+      final response = await _apiClient.dio.get<dynamic>(
+        '/health',
+        options: Options(extra: {'skip_auth_header': true}),
+      );
       final data = response.data;
       return data is Map<String, dynamic> && data['status'] == 'ok';
     } on DioException {

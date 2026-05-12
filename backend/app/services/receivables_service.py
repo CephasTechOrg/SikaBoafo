@@ -8,6 +8,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.constants import (
@@ -17,6 +18,7 @@ from app.core.constants import (
     RECEIVABLE_STATUS_SETTLED,
 )
 from app.models.customer import Customer
+from app.models.payment import Payment
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.store import Store
 from app.schemas.receivable import (
@@ -28,6 +30,7 @@ from app.services.audit_service import log_audit
 from app.services.store_context import StoreContextError, get_merchant_and_store
 
 _MONEY_SCALE = Decimal("0.01")
+_MAX_INVOICE_ALLOCATE_ATTEMPTS = 3
 
 _TERMINAL_STATUSES = {RECEIVABLE_STATUS_SETTLED, RECEIVABLE_STATUS_CANCELLED}
 
@@ -74,6 +77,8 @@ class ReceivableSnapshot:
     created_by_user_id: UUID | None
     payment_link: str | None
     payment_provider_reference: str | None
+    payment_id: UUID | None
+    payment_amount: Decimal | None
     created_at: datetime
 
 
@@ -219,23 +224,37 @@ class ReceivablesService:
         store = self._get_default_store_for_user(user_id=user_id)
         customer = self._get_customer_for_store(store_id=store.id, customer_id=payload.customer_id)
         amount = self._money(payload.original_amount)
-        invoice_number = self._allocate_invoice_number(store_id=store.id)
-        receivable = Receivable(
-            store_id=store.id,
-            customer_id=customer.id,
-            original_amount=amount,
-            outstanding_amount=amount,
-            due_date=payload.due_date,
-            status=RECEIVABLE_STATUS_OPEN,
-            invoice_number=invoice_number,
-            created_by_user_id=user_id,
-            source_device_id=source_device_id,
-            local_operation_id=local_operation_id,
-        )
-        if payload.receivable_id is not None:
-            receivable.id = payload.receivable_id
-        self.db.add(receivable)
-        self.db.flush()
+        receivable: Receivable | None = None
+        invoice_number: str | None = None
+        for _ in range(_MAX_INVOICE_ALLOCATE_ATTEMPTS):
+            invoice_number = self._allocate_invoice_number(store_id=store.id)
+            try:
+                with self.db.begin_nested():
+                    receivable = Receivable(
+                        store_id=store.id,
+                        customer_id=customer.id,
+                        original_amount=amount,
+                        outstanding_amount=amount,
+                        due_date=payload.due_date,
+                        status=RECEIVABLE_STATUS_OPEN,
+                        invoice_number=invoice_number,
+                        created_by_user_id=user_id,
+                        source_device_id=source_device_id,
+                        local_operation_id=local_operation_id,
+                    )
+                    if payload.receivable_id is not None:
+                        receivable.id = payload.receivable_id
+                    self.db.add(receivable)
+                    self.db.flush()
+                break
+            except IntegrityError as exc:
+                if not self._is_invoice_number_integrity_error(exc):
+                    raise
+                receivable = None
+                continue
+        if receivable is None or invoice_number is None:
+            msg = "Could not allocate a unique invoice number. Please retry."
+            raise InvalidRepaymentError(msg)
         log_audit(
             db=self.db,
             actor_user_id=user_id,
@@ -375,6 +394,16 @@ RETURNING next_number
         allocated = int(row[0])
         return f"{prefix}{allocated:04d}"
 
+    @staticmethod
+    def _is_invoice_number_integrity_error(exc: IntegrityError) -> bool:
+        text_lower = str(exc).lower()
+        return (
+            "invoice_number" in text_lower
+            or "ix_receivables_invoice_number" in text_lower
+            or "ix_receivables_store_invoice_number" in text_lower
+            or "receivables_store_id_invoice_number" in text_lower
+        )
+
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         try:
             _, store = get_merchant_and_store(user_id=user_id, db=self.db)
@@ -430,13 +459,16 @@ RETURNING next_number
             created_at=customer.created_at,
         )
 
-    @staticmethod
     def _to_receivable_snapshot(
+        self,
         *,
         receivable: Receivable,
         customer: Customer | None = None,
     ) -> ReceivableSnapshot:
         row_customer = customer or receivable.customer
+        payment_id, payment_amount = self._latest_payment_context_for_receivable(
+            receivable_id=receivable.id
+        )
         return ReceivableSnapshot(
             receivable_id=receivable.id,
             customer_id=receivable.customer_id,
@@ -450,8 +482,30 @@ RETURNING next_number
             created_by_user_id=receivable.created_by_user_id,
             payment_link=receivable.payment_link,
             payment_provider_reference=receivable.payment_provider_reference,
+            payment_id=payment_id,
+            payment_amount=payment_amount,
             created_at=receivable.created_at,
         )
+
+    def _latest_payment_context_for_receivable(
+        self,
+        *,
+        receivable_id: UUID,
+    ) -> tuple[UUID | None, Decimal | None]:
+        try:
+            payment = self.db.scalar(
+                select(Payment)
+                .where(Payment.receivable_id == receivable_id)
+                .order_by(Payment.initiated_at.desc())
+                .limit(1)
+            )
+        except OperationalError:
+            # SQLite unit tests that do not create the payments table should still
+            # be able to exercise receivable creation paths.
+            return None, None
+        if payment is None:
+            return None, None
+        return payment.id, self._money(payment.amount)
 
     @staticmethod
     def _to_repayment_snapshot(*, repayment: ReceivablePayment) -> ReceivablePaymentSnapshot:

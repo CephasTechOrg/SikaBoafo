@@ -112,6 +112,8 @@ class ReceivableOut(BaseModel):
     created_by_user_id: UUID | None = None
     payment_link: str | None = None
     payment_provider_reference: str | None = None
+    payment_id: UUID | None = None
+    payment_amount: Decimal | None = None
     created_at: datetime
 
 

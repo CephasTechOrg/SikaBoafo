@@ -106,9 +106,9 @@ class ReceivablePaymentVerifyOutDto {
   final bool needsOtp;
 
   bool get isSettled => receivableStatus == 'settled';
-  bool get isPaymentSuccessful => 
-      providerPaymentStatus == 'success' || 
-      providerPaymentStatus == 'succeeded' || 
+  bool get isPaymentSuccessful =>
+      providerPaymentStatus == 'success' ||
+      providerPaymentStatus == 'succeeded' ||
       paystackTransactionStatus == 'success';
   bool get isFailed =>
       providerPaymentStatus == 'failed' ||
@@ -120,8 +120,7 @@ class ReceivablePaymentVerifyOutDto {
     return ReceivablePaymentVerifyOutDto(
       paymentId: (json['payment_id'] ?? '') as String,
       receivableId: (json['receivable_id'] ?? '') as String,
-      providerPaymentStatus:
-          (json['provider_payment_status'] ?? '') as String,
+      providerPaymentStatus: (json['provider_payment_status'] ?? '') as String,
       receivableStatus: (json['receivable_status'] ?? '') as String,
       outstandingAmount: '${json['outstanding_amount'] ?? '0.00'}',
       paystackTransactionStatus:
@@ -160,10 +159,14 @@ class DebtsPaymentsApi {
     required String receivableId,
     required String phone,
     required String provider,
+    String? amount,
   }) async {
+    final body = <String, dynamic>{'phone': phone, 'provider': provider};
+    if (amount != null && amount.trim().isNotEmpty)
+      body['amount'] = amount.trim();
     final response = await _apiClient.dio.post<dynamic>(
       '/payments/receivables/$receivableId/momo-charge',
-      data: {'phone': phone, 'provider': provider},
+      data: body,
     );
     final data = response.data;
     if (data is! Map<String, dynamic>) {
@@ -179,7 +182,7 @@ class DebtsPaymentsApi {
     required String otp,
   }) async {
     final response = await _apiClient.dio.post<dynamic>(
-      '/payments/receivables/$paymentId/submit-momo-otp',
+      '/payments/receivable-payments/$paymentId/submit-momo-otp',
       data: {'otp': otp},
     );
     final data = response.data;
@@ -195,7 +198,7 @@ class DebtsPaymentsApi {
     String paymentId,
   ) async {
     final response = await _apiClient.dio.post<dynamic>(
-      '/payments/receivables/$paymentId/verify',
+      '/payments/receivable-payments/$paymentId/verify',
     );
     final data = response.data;
     if (data is! Map<String, dynamic>) {
@@ -223,7 +226,10 @@ String humanizeDebtsPaymentsError(Object error) {
       }
     }
     if (detail is String && detail.trim().isNotEmpty) return detail.trim();
-    if (error.type == DioExceptionType.connectionError) {
+    if (error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
       return 'Cannot reach backend. Try again when online.';
     }
     final code = error.response?.statusCode;

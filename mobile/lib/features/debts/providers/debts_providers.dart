@@ -116,15 +116,27 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
       receivableId: receivableId,
       paymentLink: initiation.checkoutUrl,
       paymentId: initiation.paymentId,
-      paymentAmount: amount ?? '',
+      paymentAmount: (amount != null && amount.trim().isNotEmpty)
+          ? amount.trim()
+          : initiation.amount,
     );
     state = AsyncValue.data(await _readSnapshot());
     return initiation;
   }
 
+  /// Reads a single receivable by ID directly from the local DB. Useful for
+  /// re-checking sync status after a forced sync attempt.
+  Future<LocalReceivableRecord?> getReceivableById(String receivableId) {
+    return _repo.getReceivableById(receivableId);
+  }
+
+  Future<void> ensureReceivableCreateSyncedToBackend(String receivableId) {
+    return _repo.ensureReceivableCreateSyncedToBackend(receivableId);
+  }
+
   /// Cancels a debt server-side via the receivables API. This is an online
-   /// operation — there's no offline queue entry for cancel today; the
-   /// caller should handle network errors with a snackbar.
+  /// operation — there's no offline queue entry for cancel today; the
+  /// caller should handle network errors with a snackbar.
   Future<void> cancelReceivable({required String receivableId}) async {
     state = const AsyncLoading();
     try {

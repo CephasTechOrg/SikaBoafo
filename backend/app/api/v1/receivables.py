@@ -46,6 +46,8 @@ def _receivable_out(r: ReceivableSnapshot) -> ReceivableOut:
         created_by_user_id=r.created_by_user_id,
         payment_link=r.payment_link,
         payment_provider_reference=r.payment_provider_reference,
+        payment_id=r.payment_id,
+        payment_amount=r.payment_amount,
         created_at=r.created_at,
     )
 

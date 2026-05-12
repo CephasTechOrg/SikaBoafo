@@ -8,7 +8,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -319,6 +319,125 @@ def test_invoice_number_auto_generated() -> None:
         )
         assert debt2_resp.status_code == 201
         assert debt2_resp.json()["invoice_number"] == f"INV-{year}-0002"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_invoice_number_can_repeat_across_stores() -> None:
+    client, session_local, current_user = _build_sqlite_test_stack()
+    from datetime import datetime
+
+    try:
+        year = datetime.now(tz=UTC).year
+        with session_local() as db:
+            owner2 = User(phone_number="233244000999")
+            owner2.id = uuid4()
+            owner2.is_active = True
+            merchant2 = Merchant(
+                owner_user_id=owner2.id,
+                business_name="Second Merchant",
+                business_type="Shop",
+            )
+            merchant2.id = uuid4()
+            store2 = Store(
+                merchant_id=merchant2.id,
+                name="Second Store",
+                location="Tema",
+                timezone="Africa/Accra",
+                is_default=True,
+            )
+            store2.id = uuid4()
+            customer2 = Customer(
+                store_id=store2.id,
+                name="Second Customer",
+                phone_number="0244777000",
+            )
+            customer2.id = uuid4()
+            receivable2 = Receivable(
+                store_id=store2.id,
+                customer_id=customer2.id,
+                original_amount=Decimal("30.00"),
+                outstanding_amount=Decimal("30.00"),
+                status="open",
+                invoice_number=f"INV-{year}-0001",
+            )
+            receivable2.id = uuid4()
+            db.add_all([owner2, merchant2, store2, customer2, receivable2])
+            db.commit()
+
+        customer_resp = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Primary Store Customer"},
+        )
+        assert customer_resp.status_code == 201
+        customer_id = customer_resp.json()["customer_id"]
+
+        debt_resp = client.post(
+            "/api/v1/receivables",
+            json={"customer_id": customer_id, "original_amount": "40.00"},
+        )
+        assert debt_resp.status_code == 201
+        assert debt_resp.json()["invoice_number"] == f"INV-{year}-0001"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_create_receivable_recovers_from_invoice_collision() -> None:
+    client, session_local, current_user = _build_sqlite_test_stack()
+    from datetime import datetime
+
+    try:
+        year = datetime.now(tz=UTC).year
+        with session_local() as db:
+            merchant = db.query(Merchant).filter(Merchant.owner_user_id == current_user.id).one()
+            store = db.query(Store).filter(
+                Store.merchant_id == merchant.id,
+                Store.is_default.is_(True),
+            ).one()
+            customer = Customer(
+                store_id=store.id,
+                name="Seed Customer",
+                phone_number="0244555111",
+            )
+            customer.id = uuid4()
+            db.add(customer)
+            db.flush()
+            seeded = Receivable(
+                store_id=store.id,
+                customer_id=customer.id,
+                original_amount=Decimal("20.00"),
+                outstanding_amount=Decimal("20.00"),
+                status="open",
+                invoice_number=f"INV-{year}-0001",
+            )
+            seeded.id = uuid4()
+            db.add(seeded)
+            # Force stale counter behind existing invoice to trigger retry path.
+            db.execute(
+                text(
+                    """
+INSERT INTO receivable_invoice_counters (store_id, year, next_number)
+VALUES (:store_id, :year, 0)
+ON CONFLICT(store_id, year) DO UPDATE SET next_number=0
+"""
+                ),
+                {"store_id": str(store.id), "year": year},
+            )
+            db.commit()
+
+        customer_resp = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Retry Customer"},
+        )
+        assert customer_resp.status_code == 201
+        customer_id = customer_resp.json()["customer_id"]
+
+        debt_resp = client.post(
+            "/api/v1/receivables",
+            json={"customer_id": customer_id, "original_amount": "35.00"},
+        )
+        assert debt_resp.status_code == 201
+        assert debt_resp.json()["invoice_number"] == f"INV-{year}-0002"
     finally:
         app.dependency_overrides.clear()
 

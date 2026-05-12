@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
@@ -151,7 +152,29 @@ class SyncService:
                         status=SYNC_STATUS_APPLIED,
                     )
                 )
-                self.db.commit()
+                try:
+                    self.db.commit()
+                except IntegrityError as exc:
+                    self.db.rollback()
+                    duplicate = self.db.scalar(
+                        select(SyncOperation).where(
+                            SyncOperation.device_id == device_id,
+                            SyncOperation.local_operation_id == operation.local_operation_id,
+                        )
+                    )
+                    if duplicate is not None:
+                        results.append(
+                            SyncApplyResult(
+                                local_operation_id=operation.local_operation_id,
+                                entity_type=operation.entity_type,
+                                action_type=operation.action_type,
+                                status=SYNC_STATUS_DUPLICATE,
+                                entity_id=duplicate.entity_id,
+                                detail="Already applied.",
+                            )
+                        )
+                        continue
+                    raise exc
                 results.append(
                     SyncApplyResult(
                         local_operation_id=operation.local_operation_id,
@@ -160,6 +183,18 @@ class SyncService:
                         status=SYNC_STATUS_APPLIED,
                         entity_id=entity_id,
                         server_version=server_version,
+                    )
+                )
+            except IntegrityError as exc:
+                self.db.rollback()
+                detail = self._integrity_error_detail(exc)
+                results.append(
+                    SyncApplyResult(
+                        local_operation_id=operation.local_operation_id,
+                        entity_type=operation.entity_type,
+                        action_type=operation.action_type,
+                        status=SYNC_STATUS_CONFLICT,
+                        detail=detail,
                     )
                 )
             except (
@@ -390,3 +425,15 @@ class SyncService:
 
         msg = f"Unsupported operation: {entity_type}:{action_type}"
         raise UnsupportedSyncOperationError(msg)
+
+    @staticmethod
+    def _integrity_error_detail(exc: IntegrityError) -> str:
+        raw = str(exc)
+        lowered = raw.lower()
+        if "invoice_number" in lowered:
+            return (
+                "Receivable invoice number collision. Retry sync after server invoice counter reset."
+            )
+        if "uq_sync_device_local_op" in lowered:
+            return "Operation already applied on server."
+        return raw

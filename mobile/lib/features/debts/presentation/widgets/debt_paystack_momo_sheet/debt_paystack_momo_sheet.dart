@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 import '../../../../../shared/providers/sync_providers.dart';
+import '../../../data/debts_payments_api.dart';
 import '../../../providers/debt_detail_provider.dart';
 import '../../../providers/debts_providers.dart';
 import '../../utils/debts_ui_utils.dart';
@@ -27,6 +28,7 @@ class DebtPaystackMomoSheet extends ConsumerStatefulWidget {
     super.key,
     required this.receivableId,
     required this.amountDisplay,
+    required this.chargeAmount,
     required this.customerName,
     required this.onPaymentConfirmed,
     this.paystackTestMode = false,
@@ -34,6 +36,7 @@ class DebtPaystackMomoSheet extends ConsumerStatefulWidget {
 
   final String receivableId;
   final String amountDisplay;
+  final String chargeAmount;
   final String customerName;
   final VoidCallback onPaymentConfirmed;
   final bool paystackTestMode;
@@ -43,8 +46,7 @@ class DebtPaystackMomoSheet extends ConsumerStatefulWidget {
       _DebtPaystackMomoSheetState();
 }
 
-class _DebtPaystackMomoSheetState
-    extends ConsumerState<DebtPaystackMomoSheet> {
+class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
   final _phoneCtrl = TextEditingController();
   final _otpCtrl = TextEditingController();
   final _phoneFocusNode = FocusNode();
@@ -63,6 +65,8 @@ class _DebtPaystackMomoSheetState
   String? _paymentId;
   String? _paystackDisplayText;
   int _pollCount = 0;
+  int _autoCheckFailures = 0;
+  String? _statusError;
 
   static const _maxPolls = 40;
   static const _otpLength = 6;
@@ -125,12 +129,12 @@ class _DebtPaystackMomoSheetState
     }
     setState(() => _sending = true);
     try {
-      final out =
-          await ref.read(debtsPaymentsApiProvider).initiateMomoCharge(
-                receivableId: widget.receivableId,
-                phone: raw,
-                provider: _provider,
-              );
+      final out = await ref.read(debtsPaymentsApiProvider).initiateMomoCharge(
+            receivableId: widget.receivableId,
+            phone: raw,
+            provider: _provider,
+            amount: widget.chargeAmount,
+          );
       if (!mounted) return;
       setState(() {
         _promptSent = true;
@@ -149,7 +153,7 @@ class _DebtPaystackMomoSheetState
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_humanize(error))),
+        SnackBar(content: Text(humanizeDebtsPaymentsError(error))),
       );
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -185,18 +189,25 @@ class _DebtPaystackMomoSheetState
         widget.onPaymentConfirmed();
         return;
       }
+      _autoCheckFailures = 0;
+      _statusError = null;
       if (verify.isFailed && !auto) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content:
-                Text('Payment not completed. You can retry or cancel.'),
+            content: Text('Payment not completed. You can retry or cancel.'),
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
+      if (auto) {
+        _autoCheckFailures++;
+        if (_autoCheckFailures >= 2) {
+          _statusError = 'Could not reach backend to verify payment status.';
+        }
+      }
       if (!auto && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not check status. Try again.')),
+          SnackBar(content: Text(humanizeDebtsPaymentsError(error))),
         );
       }
     } finally {
@@ -220,11 +231,10 @@ class _DebtPaystackMomoSheetState
     var cooldownAfter = false;
     setState(() => _submittingOtp = true);
     try {
-      final out =
-          await ref.read(debtsPaymentsApiProvider).submitMomoOtp(
-                paymentId: paymentId,
-                otp: code,
-              );
+      final out = await ref.read(debtsPaymentsApiProvider).submitMomoOtp(
+            paymentId: paymentId,
+            otp: code,
+          );
       if (!mounted) return;
       if (out.isPaymentSuccessful) {
         completed = true;
@@ -256,7 +266,7 @@ class _DebtPaystackMomoSheetState
       if (!mounted) return;
       cooldownAfter = _needsOtp;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_humanize(error))),
+        SnackBar(content: Text(humanizeDebtsPaymentsError(error))),
       );
     } finally {
       if (mounted) {
@@ -266,11 +276,6 @@ class _DebtPaystackMomoSheetState
         }
       }
     }
-  }
-
-  String _humanize(Object error) {
-    final raw = error.toString();
-    return raw.startsWith('Exception: ') ? raw.substring(11) : raw;
   }
 
   @override
@@ -295,8 +300,7 @@ class _DebtPaystackMomoSheetState
               boxShadow: AppShadows.elevated,
             ),
             child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -520,12 +524,23 @@ class _DebtPaystackMomoSheetState
                         ),
                       ],
                     ),
+                    if (_statusError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _statusError!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed:
-                            _checking ? null : () => _check(auto: false),
+                        onPressed: _checking ? null : () => _check(auto: false),
                         icon: const Icon(Icons.refresh_rounded, size: 18),
                         label: const Text('Check status'),
                         style: FilledButton.styleFrom(
@@ -605,6 +620,7 @@ Future<void> showDebtPaystackMomoSheet(
   BuildContext context, {
   required String receivableId,
   required String amountDisplay,
+  required String chargeAmount,
   required String customerName,
   required VoidCallback onPaymentConfirmed,
   bool paystackTestMode = false,
@@ -617,6 +633,7 @@ Future<void> showDebtPaystackMomoSheet(
     builder: (_) => DebtPaystackMomoSheet(
       receivableId: receivableId,
       amountDisplay: amountDisplay,
+      chargeAmount: chargeAmount,
       customerName: customerName,
       onPaymentConfirmed: onPaymentConfirmed,
       paystackTestMode: paystackTestMode,

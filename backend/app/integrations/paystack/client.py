@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 from urllib import error, parse, request
 
 logger = logging.getLogger(__name__)
+_RETRYABLE_HTTP_CODES = {429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 3
+_BACKOFF_SECONDS = 0.35
 
 
 class PaystackClientError(Exception):
@@ -324,30 +328,49 @@ class PaystackClient:
             headers={**_BASE_HEADERS, **headers},
             method="POST",
         )
-        try:
-            with request.urlopen(req, timeout=self.timeout_seconds) as response:
-                body = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            raw = exc.read().decode("utf-8", errors="replace")
-            parsed = _parse_json(raw)
-            msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
-            logger.warning(
-                "Paystack initialize request failed: status=%s message=%s payload=%s",
-                exc.code,
-                msg,
-                parsed,
-            )
-            raise PaystackClientError(
-                msg,
-                status_code=exc.code,
-                response_body=parsed,
-            ) from exc
-        except error.URLError as exc:
-            msg = f"Could not reach Paystack: {exc.reason!s}"
-            logger.warning("Paystack initialize request unreachable: reason=%s", exc.reason)
-            raise PaystackClientError(msg) from exc
+        body: str | None = None
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            try:
+                with request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    body = response.read().decode("utf-8")
+                    break
+            except error.HTTPError as exc:
+                raw = exc.read().decode("utf-8", errors="replace")
+                parsed = _parse_json(raw)
+                msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
+                retryable = exc.code in _RETRYABLE_HTTP_CODES and attempt < _MAX_ATTEMPTS
+                logger.warning(
+                    "Paystack POST failed endpoint=%s status=%s retryable=%s attempt=%s message=%s",
+                    url,
+                    exc.code,
+                    retryable,
+                    attempt,
+                    msg,
+                )
+                if retryable:
+                    time.sleep(_BACKOFF_SECONDS * attempt)
+                    continue
+                raise PaystackClientError(
+                    msg,
+                    status_code=exc.code,
+                    response_body=parsed,
+                ) from exc
+            except error.URLError as exc:
+                retryable = attempt < _MAX_ATTEMPTS
+                logger.warning(
+                    "Paystack POST unreachable endpoint=%s retryable=%s attempt=%s reason=%s",
+                    url,
+                    retryable,
+                    attempt,
+                    exc.reason,
+                )
+                if retryable:
+                    time.sleep(_BACKOFF_SECONDS * attempt)
+                    continue
+                msg = f"Could not reach Paystack: {exc.reason!s}"
+                raise PaystackClientError(msg) from exc
 
-        parsed = _parse_json(body)
+        parsed = _parse_json(body or "")
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
             logger.warning("Paystack POST returned non-JSON payload: %.200s", body)
@@ -365,30 +388,49 @@ class PaystackClient:
             headers={**_BASE_HEADERS, **headers},
             method="GET",
         )
-        try:
-            with request.urlopen(req, timeout=self.timeout_seconds) as response:
-                body = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            raw = exc.read().decode("utf-8", errors="replace")
-            parsed = _parse_json(raw)
-            msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
-            logger.warning(
-                "Paystack verify request failed: status=%s message=%s payload=%s",
-                exc.code,
-                msg,
-                parsed,
-            )
-            raise PaystackClientError(
-                msg,
-                status_code=exc.code,
-                response_body=parsed,
-            ) from exc
-        except error.URLError as exc:
-            msg = f"Could not reach Paystack: {exc.reason!s}"
-            logger.warning("Paystack verify request unreachable: reason=%s", exc.reason)
-            raise PaystackClientError(msg) from exc
+        body: str | None = None
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            try:
+                with request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    body = response.read().decode("utf-8")
+                    break
+            except error.HTTPError as exc:
+                raw = exc.read().decode("utf-8", errors="replace")
+                parsed = _parse_json(raw)
+                msg = _extract_error_message(parsed) or f"Paystack HTTP {exc.code}."
+                retryable = exc.code in _RETRYABLE_HTTP_CODES and attempt < _MAX_ATTEMPTS
+                logger.warning(
+                    "Paystack GET failed endpoint=%s status=%s retryable=%s attempt=%s message=%s",
+                    url,
+                    exc.code,
+                    retryable,
+                    attempt,
+                    msg,
+                )
+                if retryable:
+                    time.sleep(_BACKOFF_SECONDS * attempt)
+                    continue
+                raise PaystackClientError(
+                    msg,
+                    status_code=exc.code,
+                    response_body=parsed,
+                ) from exc
+            except error.URLError as exc:
+                retryable = attempt < _MAX_ATTEMPTS
+                logger.warning(
+                    "Paystack GET unreachable endpoint=%s retryable=%s attempt=%s reason=%s",
+                    url,
+                    retryable,
+                    attempt,
+                    exc.reason,
+                )
+                if retryable:
+                    time.sleep(_BACKOFF_SECONDS * attempt)
+                    continue
+                msg = f"Could not reach Paystack: {exc.reason!s}"
+                raise PaystackClientError(msg) from exc
 
-        parsed = _parse_json(body)
+        parsed = _parse_json(body or "")
         if parsed is None:
             msg = "Paystack returned non-JSON payload."
             logger.warning("Paystack GET returned non-JSON payload: %.200s", body)

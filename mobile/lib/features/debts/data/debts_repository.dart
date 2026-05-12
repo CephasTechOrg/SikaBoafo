@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
@@ -65,8 +66,7 @@ LIMIT ?
     return rows
         .map((row) => LocalDebtCustomer.fromRow(
               row,
-              totalOutstanding:
-                  (row['total_outstanding'] ?? '0.00') as String,
+              totalOutstanding: (row['total_outstanding'] ?? '0.00') as String,
             ))
         .toList(growable: false);
   }
@@ -513,6 +513,48 @@ ORDER BY p.created_at DESC
 
   Future<SyncQueueRunSummary> syncPendingQueue({int limit = 100}) {
     return _syncQueueRunner.run(limit: limit);
+  }
+
+  /// Blocks until this receivable's create operation is applied on the backend.
+  /// Used by online debt payment actions that require server-side receivable existence.
+  Future<void> ensureReceivableCreateSyncedToBackend(
+    String receivableId, {
+    Duration budget = const Duration(seconds: 60),
+  }) async {
+    final deadline = DateTime.now().add(budget);
+    while (DateTime.now().isBefore(deadline)) {
+      await syncPendingQueue();
+      final row = await _appDb.syncQueue.rowForReceivableCreate(receivableId);
+      if (row == null) {
+        // No queued create row means either already synced previously or not a local create.
+        return;
+      }
+      final status = (row['status'] ?? '') as String;
+      switch (status) {
+        case 'applied':
+          return;
+        case 'conflict':
+        case 'dead':
+          final detail = (row['last_error'] as String?)?.trim();
+          throw StateError(
+            detail?.isNotEmpty == true
+                ? detail!
+                : 'Debt could not sync with server (conflict).',
+          );
+        case 'failed':
+        case 'pending':
+        case 'sending':
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          continue;
+        default:
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          continue;
+      }
+    }
+    throw TimeoutException(
+      'Debt is still syncing. Connect to the internet and try again '
+      '(your debt is saved on this device).',
+    );
   }
 
   // -------------------------------------------------------------- helpers

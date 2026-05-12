@@ -340,6 +340,7 @@ def initiate_receivable_momo_charge(
             receivable_id=receivable_id,
             phone=payload.phone,
             provider=payload.provider,
+            amount=payload.amount,
         )
     except PaymentInitiationContextError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -422,6 +423,24 @@ def submit_receivable_momo_otp(
 
 
 @router.post(
+    "/receivable-payments/{payment_id}/submit-momo-otp",
+    response_model=ReceivablePaymentVerifyOut,
+)
+def submit_receivable_momo_otp_alias(
+    payment_id: UUID,
+    payload: SaleMomoOtpIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> ReceivablePaymentVerifyOut:
+    return submit_receivable_momo_otp(
+        payment_id=payment_id,
+        payload=payload,
+        db=db,
+        current_user=current_user,
+    )
+
+
+@router.post(
     "/receivables/{payment_id}/verify",
     response_model=ReceivablePaymentVerifyOut,
 )
@@ -464,4 +483,20 @@ def verify_receivable_payment(
         paystack_transaction_status=out.paystack_transaction_status,
         display_text=out.display_text,
         needs_otp=out.needs_otp,
+    )
+
+
+@router.post(
+    "/receivable-payments/{payment_id}/verify",
+    response_model=ReceivablePaymentVerifyOut,
+)
+def verify_receivable_payment_alias(
+    payment_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> ReceivablePaymentVerifyOut:
+    return verify_receivable_payment(
+        payment_id=payment_id,
+        db=db,
+        current_user=current_user,
     )

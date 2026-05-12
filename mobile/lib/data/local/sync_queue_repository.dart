@@ -114,6 +114,20 @@ class SyncQueueRepository {
     return rows.isEmpty ? null : rows.first;
   }
 
+  /// Latest queue row for an outbound receivable create.
+  Future<Map<String, Object?>?> rowForReceivableCreate(
+      String receivableId) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'sync_queue',
+      where: 'entity_id = ? AND entity_type = ? AND operation = ?',
+      whereArgs: [receivableId, 'receivable', 'create'],
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
   Future<List<Map<String, Object?>>> pendingRows({int limit = 100}) async {
     final db = await _appDb.database;
     return db.query(

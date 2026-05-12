@@ -54,6 +54,8 @@ class ReceivableDto {
     this.createdByUserId,
     this.paymentLink,
     this.paymentProviderReference,
+    this.paymentId,
+    this.paymentAmount,
   });
 
   final String receivableId;
@@ -68,6 +70,8 @@ class ReceivableDto {
   final String? createdByUserId;
   final String? paymentLink;
   final String? paymentProviderReference;
+  final String? paymentId;
+  final String? paymentAmount;
   final String createdAtIso;
 
   factory ReceivableDto.fromJson(Map<String, dynamic> json) {
@@ -84,6 +88,9 @@ class ReceivableDto {
       createdByUserId: json['created_by_user_id'] as String?,
       paymentLink: json['payment_link'] as String?,
       paymentProviderReference: json['payment_provider_reference'] as String?,
+      paymentId: json['payment_id'] as String?,
+      paymentAmount:
+          json['payment_amount'] == null ? null : '${json['payment_amount']}',
       createdAtIso: (json['created_at'] ?? '') as String,
     );
   }
@@ -196,8 +203,8 @@ class DebtsApi {
   }
 
   Future<ReceivableDto> cancelReceivable(String receivableId) async {
-    final response = await _apiClient.dio
-        .post<dynamic>('/receivables/$receivableId/cancel');
+    final response =
+        await _apiClient.dio.post<dynamic>('/receivables/$receivableId/cancel');
     final data = response.data;
     if (data is! Map<String, dynamic>) {
       throw const FormatException('Unexpected cancel response payload.');
@@ -227,8 +234,7 @@ String humanizeDebtsApiError(Object error) {
     }
     final code = error.response?.statusCode;
     if (code != null) {
-      return 'Debts request failed (HTTP $code). ${error.message ?? ''}'
-          .trim();
+      return 'Debts request failed (HTTP $code). ${error.message ?? ''}'.trim();
     }
     return error.message ?? 'Debts request failed.';
   }

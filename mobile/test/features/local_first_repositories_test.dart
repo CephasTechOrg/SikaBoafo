@@ -34,6 +34,49 @@ class _FakeSyncApi extends SyncApi {
   }
 }
 
+class _ApplyAllSyncApi extends SyncApi {
+  _ApplyAllSyncApi()
+      : super(ApiClient(tokenStorage: _FakeSecureTokenStorage(), dio: Dio()));
+
+  @override
+  Future<List<SyncApplyResult>> apply({
+    required String deviceId,
+    required List<SyncOperationPayload> operations,
+  }) async {
+    return operations
+        .map(
+          (op) => SyncApplyResult(
+            localOperationId: op.localOperationId,
+            status: 'applied',
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
+class _ConflictReceivableSyncApi extends SyncApi {
+  _ConflictReceivableSyncApi()
+      : super(ApiClient(tokenStorage: _FakeSecureTokenStorage(), dio: Dio()));
+
+  @override
+  Future<List<SyncApplyResult>> apply({
+    required String deviceId,
+    required List<SyncOperationPayload> operations,
+  }) async {
+    return operations
+        .map(
+          (op) => SyncApplyResult(
+            localOperationId: op.localOperationId,
+            status: op.entityType == 'receivable' ? 'conflict' : 'applied',
+            detail: op.entityType == 'receivable'
+                ? 'invoice_number collision on server'
+                : null,
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
 class _FakeInventoryApi extends InventoryApi {
   _FakeInventoryApi()
       : super(ApiClient(tokenStorage: _FakeSecureTokenStorage(), dio: Dio()));
@@ -833,6 +876,81 @@ void main() {
     expect(queueRows[1]['status'], SyncQueueRepository.pending);
     expect(queueRows[2]['status'], SyncQueueRepository.pending);
 
+    await appDb.close();
+  });
+
+  test(
+      'debts ensureReceivableCreateSyncedToBackend returns after receivable apply',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = DebtsRepository(
+      appDb: appDb,
+      syncQueueRunner: SyncQueueRunner(
+        appDb: appDb,
+        syncApi: _ApplyAllSyncApi(),
+      ),
+    );
+
+    await db.insert('sync_queue', {
+      'entity_type': 'receivable',
+      'operation': 'create',
+      'entity_id': 'receivable-1',
+      'payload_json': '{}',
+      'source_device_id': 'test-device',
+      'local_operation_id': 'receivable-op-1',
+      'status': SyncQueueRepository.pending,
+      'created_at': 1,
+      'attempts': 0,
+    });
+
+    await repo.ensureReceivableCreateSyncedToBackend(
+      'receivable-1',
+      budget: const Duration(seconds: 2),
+    );
+    final row = await appDb.syncQueue.rowForReceivableCreate('receivable-1');
+    expect(row?['status'], SyncQueueRepository.applied);
+    await appDb.close();
+  });
+
+  test(
+      'debts ensureReceivableCreateSyncedToBackend surfaces backend conflict details',
+      () async {
+    final db = await _openInMemoryDatabase();
+    final appDb = _InMemoryAppDatabase(db);
+    final repo = DebtsRepository(
+      appDb: appDb,
+      syncQueueRunner: SyncQueueRunner(
+        appDb: appDb,
+        syncApi: _ConflictReceivableSyncApi(),
+      ),
+    );
+
+    await db.insert('sync_queue', {
+      'entity_type': 'receivable',
+      'operation': 'create',
+      'entity_id': 'receivable-2',
+      'payload_json': '{}',
+      'source_device_id': 'test-device',
+      'local_operation_id': 'receivable-op-2',
+      'status': SyncQueueRepository.pending,
+      'created_at': 1,
+      'attempts': 0,
+    });
+
+    await expectLater(
+      repo.ensureReceivableCreateSyncedToBackend(
+        'receivable-2',
+        budget: const Duration(seconds: 2),
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('invoice_number collision'),
+        ),
+      ),
+    );
     await appDb.close();
   });
 }

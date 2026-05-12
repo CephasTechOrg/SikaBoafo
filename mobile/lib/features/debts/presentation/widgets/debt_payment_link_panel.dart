@@ -27,6 +27,7 @@ class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
 
 class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
+  bool _openingMomo = false;
   late final TextEditingController _amountCtrl;
 
   @override
@@ -50,25 +51,87 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     return link != null && link.trim().isNotEmpty;
   }
 
-  Future<void> _generate({required bool openQrAfter}) async {
-    if (!_isSynced) {
+  int _minorFromAmount(String raw) {
+    final value = raw.trim();
+    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(value);
+    if (match == null) return -1;
+    final parts = value.split('.');
+    final major = int.tryParse(parts.first) ?? -1;
+    if (major < 0) return -1;
+    final decimal = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
+    final cents = int.tryParse(decimal) ?? -1;
+    if (cents < 0) return -1;
+    return (major * 100) + cents;
+  }
+
+  bool _validateAmountInput() {
+    final amountRaw = _amountCtrl.text.trim();
+    final amountMinor = _minorFromAmount(amountRaw);
+    final outstandingMinor = _minorFromAmount(widget.record.outstandingAmount);
+    if (amountMinor <= 0 ||
+        outstandingMinor <= 0 ||
+        amountMinor > outstandingMinor) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Enter an amount between GHS 0.01 and ${DebtsUiUtils.formatAmount(widget.record.outstandingAmount)}.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _ensureSyncedForOnlinePayment() async {
+    if (_isSynced) return true;
+    try {
+      await ref
+          .read(debtsControllerProvider.notifier)
+          .ensureReceivableCreateSyncedToBackend(widget.record.receivableId);
+      final refreshed = await ref
+          .read(debtsControllerProvider.notifier)
+          .getReceivableById(widget.record.receivableId);
+      final nowSynced = refreshed?.syncStatus == 'applied';
+      if (nowSynced) return true;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'This debt hasn\'t synced to the server yet. Please refresh and try again.',
+            'This debt has not synced yet. Check your internet connection and try again.',
           ),
+          duration: Duration(seconds: 4),
         ),
       );
+      return false;
+    } catch (error) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userFriendlyError(error)),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<void> _generate({required bool openQrAfter}) async {
+    if (!_validateAmountInput()) return;
+    setState(() => _generating = true);
+    final synced = await _ensureSyncedForOnlinePayment();
+    if (!mounted) return;
+    if (!synced) {
+      setState(() => _generating = false);
       return;
     }
-    setState(() => _generating = true);
+
     try {
-      final initiation = await ref
-          .read(debtsControllerProvider.notifier)
-          .initiatePaymentLink(
-            receivableId: widget.record.receivableId,
-            amount: _amountCtrl.text.trim(),
-          );
+      final initiation =
+          await ref.read(debtsControllerProvider.notifier).initiatePaymentLink(
+                receivableId: widget.record.receivableId,
+                amount: _amountCtrl.text.trim(),
+              );
       if (!mounted) return;
       if (openQrAfter) {
         await showDebtPaystackQrSheet(
@@ -148,19 +211,29 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   }
 
   Future<void> _openMomoPush() async {
-    await showDebtPaystackMomoSheet(
-      context,
-      receivableId: widget.record.receivableId,
-      amountDisplay: DebtsUiUtils.formatAmount(_amountCtrl.text.trim()),
-      customerName: widget.record.customerName ?? 'Customer',
-      onPaymentConfirmed: () {
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment received. Debt settled.')),
-        );
-      },
-    );
+    if (_openingMomo || _generating) return;
+    if (!_validateAmountInput()) return;
+    setState(() => _openingMomo = true);
+    try {
+      final synced = await _ensureSyncedForOnlinePayment();
+      if (!mounted || !synced) return;
+      await showDebtPaystackMomoSheet(
+        context,
+        receivableId: widget.record.receivableId,
+        amountDisplay: DebtsUiUtils.formatAmount(_amountCtrl.text.trim()),
+        chargeAmount: _amountCtrl.text.trim(),
+        customerName: widget.record.customerName ?? 'Customer',
+        onPaymentConfirmed: () {
+          if (!mounted) return;
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment received. Debt settled.')),
+          );
+        },
+      );
+    } finally {
+      if (mounted) setState(() => _openingMomo = false);
+    }
   }
 
   @override
@@ -308,7 +381,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ],
         ),
         const SizedBox(height: 8),
-        _MomoPushButton(onTap: _openMomoPush),
+        _MomoPushButton(
+          onTap: (_generating || _openingMomo) ? null : _openMomoPush,
+          busy: _openingMomo,
+        ),
       ],
     );
   }
@@ -422,8 +498,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         const SizedBox(height: 8),
         Center(
           child: TextButton.icon(
-            onPressed:
-                _generating ? null : () => _generate(openQrAfter: true),
+            onPressed: _generating ? null : () => _generate(openQrAfter: true),
             icon: const Icon(Icons.refresh_rounded, size: 14),
             label: _generating
                 ? const Text('Regenerating…')
@@ -443,16 +518,23 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
 }
 
 class _MomoPushButton extends StatelessWidget {
-  const _MomoPushButton({required this.onTap});
+  const _MomoPushButton({required this.onTap, required this.busy});
 
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: const Icon(Icons.phone_android_rounded, size: 16),
-      label: const Text('Push MoMo prompt'),
+      icon: busy
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.phone_android_rounded, size: 16),
+      label: Text(busy ? 'Preparing…' : 'Push MoMo prompt'),
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.gold,
         minimumSize: const Size.fromHeight(46),

@@ -23,6 +23,7 @@ from app.core.constants import (
     PAYMENT_STATUS_RECORDED,
     PAYMENT_STATUS_SUCCEEDED,
     PAYSTACK_MODE_TEST,
+    PROVIDER_PAYMENT_PENDING,
     PROVIDER_PAYMENT_SUCCEEDED,
     SALE_STATUS_RECORDED,
     SALE_STATUS_VOIDED,
@@ -530,6 +531,65 @@ def test_verify_sale_payment_marks_sale_succeeded() -> None:
             sale = db.scalar(select(Sale).where(Sale.id == sale_id))
             assert sale is not None
             assert sale.payment_status == PAYMENT_STATUS_SUCCEEDED
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_initiate_receivable_payment_rejects_when_pending_payment_exists() -> None:
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with session_local() as db:
+            receivable = db.scalar(select(Receivable).where(Receivable.id == receivable_id))
+            assert receivable is not None
+            merchant_id = db.scalar(select(Store.merchant_id).where(Store.id == receivable.store_id))
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_PENDING_001",
+                internal_reference="BTGH_PENDING_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+            db.commit()
+
+        response = client.post(
+            "/api/v1/payments/initiate",
+            json={"receivable_id": str(receivable_id)},
+        )
+        assert response.status_code == 409
+        assert "already pending" in response.json()["detail"].lower()
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_initiate_receivable_momo_charge_forwards_optional_amount() -> None:
+    env = _configure_env()
+    client, _, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.charge_mobile_money",
+            return_value=PaystackChargeResult(
+                reference="PSK_MOMO_AMT_1",
+                status="pay_offline",
+                display_text="Approve prompt",
+                raw_payload={"status": True, "data": {"reference": "PSK_MOMO_AMT_1"}},
+            ),
+        ) as mocked_charge:
+            response = client.post(
+                f"/api/v1/payments/receivables/{receivable_id}/momo-charge",
+                json={"phone": "0551234987", "provider": "mtn", "amount": "50.00"},
+            )
+        assert response.status_code == 200
+        assert mocked_charge.call_args.kwargs["amount_kobo"] == 5000
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()

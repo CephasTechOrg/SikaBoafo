@@ -1,4 +1,5 @@
 import 'package:biztrack_gh/features/debts/data/debts_payments_api.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -67,6 +68,19 @@ void main() {
 
       expect(verifySettled.isSettled, isTrue);
       expect(verifyPartial.isSettled, isFalse);
+    });
+  });
+
+  group('humanizeDebtsPaymentsError', () {
+    test('maps timeout-like Dio errors to backend unreachable message', () {
+      final request = RequestOptions(path: '/payments/test');
+      final timeoutError = DioException(
+        requestOptions: request,
+        type: DioExceptionType.connectionTimeout,
+      );
+
+      final message = humanizeDebtsPaymentsError(timeoutError);
+      expect(message, contains('Cannot reach backend'));
     });
   });
 }

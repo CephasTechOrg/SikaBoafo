@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy import Date, ForeignKey, Index, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +26,14 @@ if TYPE_CHECKING:
 
 class Receivable(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     __tablename__ = "receivables"
+    __table_args__ = (
+        Index(
+            "ix_receivables_store_invoice_number",
+            "store_id",
+            "invoice_number",
+            unique=True,
+        ),
+    )
 
     store_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -45,9 +53,7 @@ class Receivable(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
     status: Mapped[str] = mapped_column(
         String(32), default=RECEIVABLE_STATUS_OPEN, nullable=False
     )
-    invoice_number: Mapped[str | None] = mapped_column(
-        String(32), nullable=True, unique=True, index=True
-    )
+    invoice_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     sale_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("sales.id", ondelete="SET NULL"),

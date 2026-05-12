@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/providers/sync_providers.dart';
+import '../../data/debts_payments_api.dart';
 import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
@@ -43,6 +44,8 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
   int _pollCount = 0;
   bool _checking = false;
   bool _confirmed = false;
+  int _autoCheckFailures = 0;
+  String? _statusError;
   static const _maxPolls = 20;
 
   @override
@@ -82,6 +85,8 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
           widget.onPaymentConfirmed();
           return;
         }
+        _autoCheckFailures = 0;
+        _statusError = null;
         if (!auto) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -99,9 +104,9 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
         final api = ref.read(debtsApiProvider);
         final dto = await api.fetchReceivable(widget.receivableId);
         if (!mounted) return;
-        final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
-        final settled =
-            dto.status == 'settled' || outstandingMinor == 0;
+        final outstandingMinor =
+            DebtsUiUtils.amountToMinor(dto.outstandingAmount);
+        final settled = dto.status == 'settled' || outstandingMinor == 0;
         if (settled) {
           _confirmed = true;
           _timer?.cancel();
@@ -113,6 +118,8 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
           widget.onPaymentConfirmed();
           return;
         }
+        _autoCheckFailures = 0;
+        _statusError = null;
         if (!auto) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -126,12 +133,16 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
           );
         }
       }
-    } catch (_) {
+    } catch (error) {
+      if (auto) {
+        _autoCheckFailures++;
+        if (_autoCheckFailures >= 2) {
+          _statusError = 'Could not reach backend to verify payment status.';
+        }
+      }
       if (!auto && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not check status. Try again.'),
-          ),
+          SnackBar(content: Text(humanizeDebtsPaymentsError(error))),
         );
       }
     } finally {
@@ -323,6 +334,18 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   ),
                 ],
               ),
+              if (_statusError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _statusError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
