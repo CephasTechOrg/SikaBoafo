@@ -41,6 +41,18 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     state = AsyncValue.data(await _readSnapshot());
   }
 
+  /// Pulls receivables/customers from the API into SQLite, then re-reads the
+  /// local snapshot. Use after server-side payment or cancel so list/detail
+  /// match the backend (see also [refresh] which only syncs the outbound queue).
+  Future<void> refreshFromServer() async {
+    try {
+      await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
+    } catch (_) {
+      // ignore — UI may stay stale until next full refresh
+    }
+    await refresh();
+  }
+
   Future<String> createCustomer({
     required String name,
     String? phoneNumber,
@@ -141,18 +153,7 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     state = const AsyncLoading();
     try {
       await ref.read(debtsApiProvider).cancelReceivable(receivableId);
-      try {
-        await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
-      } catch (_) {
-        // ignore — list/detail may stay stale until next full debts refresh
-      }
-      try {
-        await _repo.syncPendingQueue();
-      } catch (_) {
-        // ignore — server already cancelled; local snapshot will reconcile
-      }
-      await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
-      state = AsyncValue.data(await _readSnapshot());
+      await refreshFromServer();
     } catch (error, stackTrace) {
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
       state = AsyncValue.error(error, stackTrace);

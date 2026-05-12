@@ -15,6 +15,32 @@ _MAX_ATTEMPTS = 3
 _BACKOFF_SECONDS = 0.35
 
 
+def _amount_kobo_from_paystack_data(data: dict[str, Any]) -> int | None:
+    """Parse Paystack ``data.amount`` (kobo/minor units) from verify or charge JSON.
+
+    Paystack usually returns an integer; some gateways return a float or numeric
+    string. Missing or invalid amounts return ``None``.
+    """
+    raw = data.get("amount")
+    if raw is None or isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        s = raw.strip()
+        if s.isdigit():
+            return int(s)
+        try:
+            return int(float(s))
+        except ValueError:
+            return None
+    if isinstance(raw, float):
+        if raw != raw or raw in (float("inf"), float("-inf")):
+            return None
+        return int(raw)
+    return None
+
+
 class PaystackClientError(Exception):
     """Paystack request failed or returned an invalid payload."""
 
@@ -238,14 +264,7 @@ class PaystackClient:
             msg = "Paystack charge lookup response missing status."
             raise PaystackClientError(msg, response_body=raw)
 
-        amount_kobo_raw = data.get("amount")
-        amount_kobo: int | None
-        if isinstance(amount_kobo_raw, int):
-            amount_kobo = amount_kobo_raw
-        elif isinstance(amount_kobo_raw, str) and amount_kobo_raw.isdigit():
-            amount_kobo = int(amount_kobo_raw)
-        else:
-            amount_kobo = None
+        amount_kobo = _amount_kobo_from_paystack_data(data)
 
         paid_at_raw = data.get("paid_at") or data.get("paidAt")
         paid_at: str | None
@@ -293,14 +312,7 @@ class PaystackClient:
             msg = "Paystack verify response missing status."
             raise PaystackClientError(msg, response_body=raw)
 
-        amount_kobo_raw = data.get("amount")
-        amount_kobo: int | None
-        if isinstance(amount_kobo_raw, int):
-            amount_kobo = amount_kobo_raw
-        elif isinstance(amount_kobo_raw, str) and amount_kobo_raw.isdigit():
-            amount_kobo = int(amount_kobo_raw)
-        else:
-            amount_kobo = None
+        amount_kobo = _amount_kobo_from_paystack_data(data)
 
         paid_at = data.get("paid_at")
         if paid_at is not None and not isinstance(paid_at, str):

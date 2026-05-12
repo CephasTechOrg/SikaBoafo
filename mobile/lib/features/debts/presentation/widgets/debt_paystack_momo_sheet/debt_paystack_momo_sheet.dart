@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 import '../../../../../shared/providers/sync_providers.dart';
+import '../../../data/debts_api.dart';
 import '../../../data/debts_payments_api.dart';
 import '../../../providers/debt_detail_provider.dart';
 import '../../../providers/debts_providers.dart';
@@ -16,16 +17,16 @@ import 'debt_momo_provider_selector.dart';
 /// Paystack direct MoMo push for a receivable. Mirror of
 /// `paystack_momo_sheet.dart` from the sales feature.
 ///
-/// **Verification:** Same intent as sales Paystack flows and [DebtPaystackQrSheet]
-/// — poll [DebtsPaymentsApi.verifyPayment] until the server marks the payment
-/// successful (webhook-backed), then refresh receivable detail + list.
+/// **Verification:** Poll [DebtsApi.fetchReceivable] for server-settled state,
+/// then [DebtsPaymentsApi.verifyPayment] when still open (parity with
+/// [DebtPaystackQrSheet] / sales [PaystackQrSheet]).
 ///
 /// Flow:
 ///   1. Merchant enters the customer's MoMo number + network.
 ///   2. Backend pushes a charge to the customer's handset.
 ///   3. If Paystack returns `send_otp`, merchant collects the 6-digit code
 ///      from the customer and submits it.
-///   4. Sheet polls `/payments/receivables/{id}/verify` every 3s until the
+///   4. Sheet polls [DebtsApi.fetchReceivable] and verify every 3s until the
 ///      receivable is settled.
 class DebtPaystackMomoSheet extends ConsumerStatefulWidget {
   const DebtPaystackMomoSheet({
@@ -164,6 +165,19 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
     }
   }
 
+  bool _receivableFullySettled(ReceivableDto dto) {
+    final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
+    return dto.status == 'settled' || outstandingMinor == 0;
+  }
+
+  Future<void> _completePaymentSuccess() async {
+    _timer?.cancel();
+    ref.invalidate(receivableDetailProvider(widget.receivableId));
+    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    if (!mounted) return;
+    widget.onPaymentConfirmed();
+  }
+
   Future<void> _check({bool auto = false}) async {
     final paymentId = _paymentId;
     if (paymentId == null || paymentId.isEmpty) return;
@@ -175,6 +189,19 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
     if (auto) _pollCount++;
     setState(() => _checking = true);
     try {
+      final debtsApi = ref.read(debtsApiProvider);
+      ReceivableDto? serverRow;
+      try {
+        serverRow = await debtsApi.fetchReceivable(widget.receivableId);
+      } catch (_) {
+        serverRow = null;
+      }
+      if (!mounted) return;
+      if (serverRow != null && _receivableFullySettled(serverRow)) {
+        await _completePaymentSuccess();
+        return;
+      }
+
       final verify =
           await ref.read(debtsPaymentsApiProvider).verifyPayment(paymentId);
       if (!mounted) return;
@@ -186,11 +213,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
         }
       });
       if (verify.isPaymentSuccessful) {
-        _timer?.cancel();
-        ref.invalidate(receivableDetailProvider(widget.receivableId));
-        await ref.read(debtsControllerProvider.notifier).refresh();
-        if (!mounted) return;
-        widget.onPaymentConfirmed();
+        await _completePaymentSuccess();
         return;
       }
       _autoCheckFailures = 0;
@@ -245,7 +268,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
         _otpCooldownTimer?.cancel();
         _timer?.cancel();
         ref.invalidate(receivableDetailProvider(widget.receivableId));
-        await ref.read(debtsControllerProvider.notifier).refresh();
+        await ref.read(debtsControllerProvider.notifier).refreshFromServer();
         if (!mounted) return;
         widget.onPaymentConfirmed();
         return;

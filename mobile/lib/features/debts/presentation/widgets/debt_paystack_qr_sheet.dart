@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/providers/sync_providers.dart';
+import '../../data/debts_api.dart';
 import '../../data/debts_payments_api.dart';
 import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
@@ -15,10 +16,10 @@ import '../utils/debts_ui_utils.dart';
 
 /// Paystack QR + share-link sheet for a single debt.
 ///
-/// **Verification (same idea as sales [PaystackQrSheet]):** poll until the
-/// server reports success — here via [DebtsPaymentsApi.verifyPayment] when
-/// [paymentId] is known, otherwise by re-fetching the receivable until balance
-/// / status reflects webhook settlement.
+/// **Verification (parity with sales [PaystackQrSheet]):** poll
+/// [DebtsApi.fetchReceivable] for server truth (webhook may settle first),
+/// then [DebtsPaymentsApi.verifyPayment] to nudge Paystack when still open.
+/// Without [paymentId], only fetch-receivable polling is used.
 class DebtPaystackQrSheet extends ConsumerStatefulWidget {
   const DebtPaystackQrSheet({
     super.key,
@@ -49,7 +50,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
   bool _confirmed = false;
   int _autoCheckFailures = 0;
   String? _statusError;
-  static const _maxPolls = 20;
+  static const _maxPolls = 40;
 
   @override
   void initState() {
@@ -66,6 +67,20 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     super.dispose();
   }
 
+  Future<void> _completeSuccess() async {
+    _confirmed = true;
+    _timer?.cancel();
+    ref.invalidate(receivableDetailProvider(widget.receivableId));
+    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    if (!mounted) return;
+    widget.onPaymentConfirmed();
+  }
+
+  bool _receivableFullySettled(ReceivableDto dto) {
+    final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
+    return dto.status == 'settled' || outstandingMinor == 0;
+  }
+
   Future<void> _check({bool auto = false}) async {
     if (_checking || _confirmed) return;
     if (auto && _pollCount >= _maxPolls) {
@@ -75,17 +90,26 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     if (auto) _pollCount++;
     setState(() => _checking = true);
     try {
+      final debtsApi = ref.read(debtsApiProvider);
+
       if (widget.paymentId != null) {
-        final api = ref.read(debtsPaymentsApiProvider);
-        final verify = await api.verifyPayment(widget.paymentId!);
+        ReceivableDto? serverRow;
+        try {
+          serverRow = await debtsApi.fetchReceivable(widget.receivableId);
+        } catch (_) {
+          serverRow = null;
+        }
+        if (!mounted) return;
+        if (serverRow != null && _receivableFullySettled(serverRow)) {
+          await _completeSuccess();
+          return;
+        }
+
+        final paymentsApi = ref.read(debtsPaymentsApiProvider);
+        final verify = await paymentsApi.verifyPayment(widget.paymentId!);
         if (!mounted) return;
         if (verify.isPaymentSuccessful) {
-          _confirmed = true;
-          _timer?.cancel();
-          ref.invalidate(receivableDetailProvider(widget.receivableId));
-          await ref.read(debtsControllerProvider.notifier).refresh();
-          if (!mounted) return;
-          widget.onPaymentConfirmed();
+          await _completeSuccess();
           return;
         }
         _autoCheckFailures = 0;
@@ -104,21 +128,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
         }
       } else {
         // Fallback for older links without paymentId cached
-        final api = ref.read(debtsApiProvider);
-        final dto = await api.fetchReceivable(widget.receivableId);
+        final dto = await debtsApi.fetchReceivable(widget.receivableId);
         if (!mounted) return;
-        final outstandingMinor =
-            DebtsUiUtils.amountToMinor(dto.outstandingAmount);
-        final settled = dto.status == 'settled' || outstandingMinor == 0;
-        if (settled) {
-          _confirmed = true;
-          _timer?.cancel();
-          // Force the detail provider + list controller to re-read so the UI
-          // reflects the new balance / status the moment the sheet closes.
-          ref.invalidate(receivableDetailProvider(widget.receivableId));
-          await ref.read(debtsControllerProvider.notifier).refresh();
-          if (!mounted) return;
-          widget.onPaymentConfirmed();
+        if (_receivableFullySettled(dto)) {
+          await _completeSuccess();
           return;
         }
         _autoCheckFailures = 0;
