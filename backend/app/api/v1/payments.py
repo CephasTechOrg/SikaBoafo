@@ -320,3 +320,147 @@ def verify_sale_payment(
         display_text=out.display_text,
         needs_otp=out.needs_otp,
     )
+
+
+@router.post(
+    "/receivables/{receivable_id}/momo-charge",
+    response_model=ReceivableMomoChargeOut,
+)
+def initiate_receivable_momo_charge(
+    receivable_id: UUID,
+    payload: ReceivableMomoChargeIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> ReceivableMomoChargeOut:
+    service = PaymentService(db=db)
+    try:
+        charged = service.initiate_receivable_momo_charge(
+            user_id=current_user.id,
+            receivable_id=receivable_id,
+            phone=payload.phone,
+            provider=payload.provider,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (PaymentInitiationStateError, PaystackConnectionMissingError) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return ReceivableMomoChargeOut(
+        payment_id=charged.payment_id,
+        provider=charged.provider,
+        provider_reference=charged.provider_reference,
+        amount=charged.amount,
+        currency=charged.currency,
+        status=charged.status,
+        receivable_id=charged.receivable_id,
+        display_text=charged.display_text,
+        needs_otp=charged.needs_otp,
+    )
+
+
+@router.post(
+    "/receivables/{payment_id}/submit-momo-otp",
+    response_model=ReceivablePaymentVerifyOut,
+)
+def submit_receivable_momo_otp(
+    payment_id: UUID,
+    payload: SaleMomoOtpIn,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> ReceivablePaymentVerifyOut:
+    service = PaymentService(db=db)
+    try:
+        out = service.submit_receivable_momo_otp(
+            user_id=current_user.id,
+            payment_id=payment_id,
+            otp=payload.otp,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return ReceivablePaymentVerifyOut(
+        payment_id=out.payment_id,
+        receivable_id=out.receivable_id,
+        provider_payment_status=out.provider_payment_status,
+        receivable_status=out.receivable_status,
+        outstanding_amount=out.outstanding_amount,
+        paystack_transaction_status=out.paystack_transaction_status,
+        display_text=out.display_text,
+        needs_otp=out.needs_otp,
+    )
+
+
+@router.post(
+    "/receivables/{payment_id}/verify",
+    response_model=ReceivablePaymentVerifyOut,
+)
+def verify_receivable_payment(
+    payment_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _Authenticated,
+) -> ReceivablePaymentVerifyOut:
+    service = PaymentService(db=db)
+    try:
+        out = service.verify_receivable_payment(
+            user_id=current_user.id,
+            payment_id=payment_id,
+        )
+    except PaymentInitiationContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationTargetNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PaymentInitiationStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except PaystackSecretKeyMissingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except CryptoConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except PaystackClientError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return ReceivablePaymentVerifyOut(
+        payment_id=out.payment_id,
+        receivable_id=out.receivable_id,
+        provider_payment_status=out.provider_payment_status,
+        receivable_status=out.receivable_status,
+        outstanding_amount=out.outstanding_amount,
+        paystack_transaction_status=out.paystack_transaction_status,
+        display_text=out.display_text,
+        needs_otp=out.needs_otp,
+    )
