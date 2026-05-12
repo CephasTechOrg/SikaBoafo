@@ -13,9 +13,12 @@ import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Paystack QR + share-link sheet for a single debt. Mirrors
-/// `paystack_qr_sheet.dart` from the sales feature, polling the receivable
-/// every 3s to detect server-side settlement via webhook.
+/// Paystack QR + share-link sheet for a single debt.
+///
+/// **Verification (same idea as sales [PaystackQrSheet]):** poll until the
+/// server reports success — here via [DebtsPaymentsApi.verifyPayment] when
+/// [paymentId] is known, otherwise by re-fetching the receivable until balance
+/// / status reflects webhook settlement.
 class DebtPaystackQrSheet extends ConsumerStatefulWidget {
   const DebtPaystackQrSheet({
     super.key,
@@ -177,235 +180,239 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottomInset),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(28),
             boxShadow: AppShadows.elevated,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderStrong,
-                    borderRadius: BorderRadius.circular(999),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderStrong,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Scan to Pay',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Show this QR to ${widget.customerName}. '
-                'The debt settles automatically when they pay.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12.5,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.forest.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  widget.amountDisplay,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.forestDark,
+                const SizedBox(height: 18),
+                const Text(
+                  'Scan to Pay',
+                  style: TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppShadows.card,
-                ),
-                child: QrImageView(
-                  data: widget.checkoutUrl,
-                  version: QrVersions.auto,
-                  size: 210,
-                  eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square,
-                    color: AppColors.forest,
-                  ),
-                  dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square,
                     color: AppColors.ink,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Payment link',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.inkSoft,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                constraints: const BoxConstraints(maxHeight: 100),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Scrollbar(
-                  thumbVisibility: true,
-                  child: SingleChildScrollView(
-                    child: SelectableText(
-                      widget.checkoutUrl,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        height: 1.35,
-                        color: AppColors.ink,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _copyLink,
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      label: const Text('Copy'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _shareLink,
-                      icon: const Icon(Icons.ios_share_rounded, size: 18),
-                      label: const Text('Share'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        minimumSize: const Size.fromHeight(44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_statusError != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
-                  _statusError!,
+                  'Show this QR to ${widget.customerName}. '
+                  'Payment confirms automatically.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                    fontSize: 12.5,
+                    height: 1.4,
                   ),
                 ),
-              ],
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _checking
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 1.5),
-                        )
-                      : const Icon(
-                          Icons.wifi_rounded,
-                          size: 12,
-                          color: AppColors.success,
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.forest.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    widget.amountDisplay,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.forestDark,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: AppShadows.card,
+                  ),
+                  child: QrImageView(
+                    data: widget.checkoutUrl,
+                    version: QrVersions.auto,
+                    size: 200,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: AppColors.forest,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Payment link',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.inkSoft,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxHeight: 100),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      child: SelectableText(
+                        widget.checkoutUrl,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.35,
+                          color: AppColors.ink,
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
-                  const SizedBox(width: 6),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _copyLink,
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        label: const Text('Copy'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _shareLink,
+                        icon: const Icon(Icons.ios_share_rounded, size: 18),
+                        label: const Text('Share'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.forest,
+                          minimumSize: const Size.fromHeight(44),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_statusError != null) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    _checking ? 'Checking…' : 'Waiting for payment',
+                    _statusError!,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _checking ? null : () => _check(),
-                  icon: _checking
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _checking
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          )
+                        : const Icon(
+                            Icons.wifi_rounded,
+                            size: 12,
+                            color: AppColors.success,
                           ),
-                        )
-                      : const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Check payment now'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.forest,
-                    minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                    const SizedBox(width: 6),
+                    Text(
+                      _checking ? 'Checking…' : 'Waiting for payment…',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _checking ? null : () => _check(),
+                    icon: _checking
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Check payment now'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.forest,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
-                  foregroundColor: AppColors.inkSoft,
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    foregroundColor: AppColors.inkSoft,
+                  ),
+                  child: const Text('Close'),
                 ),
-                child: const Text('Close'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

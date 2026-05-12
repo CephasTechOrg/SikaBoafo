@@ -16,6 +16,10 @@ import 'debt_momo_provider_selector.dart';
 /// Paystack direct MoMo push for a receivable. Mirror of
 /// `paystack_momo_sheet.dart` from the sales feature.
 ///
+/// **Verification:** Same intent as sales Paystack flows and [DebtPaystackQrSheet]
+/// — poll [DebtsPaymentsApi.verifyPayment] until the server marks the payment
+/// successful (webhook-backed), then refresh receivable detail + list.
+///
 /// Flow:
 ///   1. Merchant enters the customer's MoMo number + network.
 ///   2. Backend pushes a charge to the customer's handset.

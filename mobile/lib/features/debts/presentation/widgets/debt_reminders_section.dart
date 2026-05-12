@@ -106,7 +106,10 @@ class DebtRemindersSection extends ConsumerWidget {
             ),
           )
         else if (reminders.isEmpty)
-          _EmptyReminders(canSchedule: canSchedule)
+          _EmptyReminders(
+            canSchedule: canSchedule,
+            onAdd: () => _openSheet(context, ref),
+          )
         else
           ...reminders.map(
             (r) => Padding(
@@ -153,14 +156,18 @@ class DebtRemindersSection extends ConsumerWidget {
 }
 
 class _EmptyReminders extends StatelessWidget {
-  const _EmptyReminders({required this.canSchedule});
+  const _EmptyReminders({
+    required this.canSchedule,
+    required this.onAdd,
+  });
 
   final bool canSchedule;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(16),
@@ -176,17 +183,24 @@ class _EmptyReminders extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              canSchedule
-                  ? 'No reminders yet. Set one so you don\'t forget to follow up.'
-                  : 'Reminders aren\'t available for settled or cancelled debts.',
+              canSchedule ? 'No reminders yet.' : 'Not available for this debt.',
               style: const TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 color: AppColors.muted,
                 fontWeight: FontWeight.w500,
-                height: 1.35,
               ),
             ),
           ),
+          if (canSchedule)
+            IconButton(
+              tooltip: 'Add reminder',
+              onPressed: onAdd,
+              icon: const Icon(
+                Icons.add_alarm_outlined,
+                color: AppColors.forestDark,
+              ),
+              visualDensity: VisualDensity.compact,
+            ),
         ],
       ),
     );
