@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../data/debts_payments_api.dart';
 import '../data/debts_repository.dart';
 
 final debtsRepositoryProvider = Provider<DebtsRepository>((ref) {
@@ -100,6 +101,22 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
       state = AsyncValue.error(error, stackTrace);
       rethrow;
     }
+  }
+
+  /// Initiates a Paystack hosted-checkout link for a receivable and caches
+  /// the returned URL on the local row. Online-only. Returns the DTO so the
+  /// caller can render the QR / share sheet immediately.
+  Future<ReceivablePaymentInitiationDto> initiatePaymentLink({
+    required String receivableId,
+  }) async {
+    final api = ref.read(debtsPaymentsApiProvider);
+    final initiation = await api.initiatePayment(receivableId);
+    await _repo.attachPaymentLinkLocal(
+      receivableId: receivableId,
+      paymentLink: initiation.checkoutUrl,
+    );
+    state = AsyncValue.data(await _readSnapshot());
+    return initiation;
   }
 
   /// Cancels a debt server-side via the receivables API. This is an online

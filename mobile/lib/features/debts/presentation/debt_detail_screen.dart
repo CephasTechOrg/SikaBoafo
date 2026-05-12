@@ -11,6 +11,7 @@ import '../providers/debts_providers.dart';
 import 'widgets/debt_balance_hero.dart';
 import 'widgets/debt_customer_summary.dart';
 import 'widgets/debt_meta_row.dart';
+import 'widgets/debt_payment_link_panel.dart';
 import 'widgets/debt_payments_history.dart';
 import 'widgets/receive_payment_sheet/receive_payment_sheet.dart';
 
@@ -148,6 +149,8 @@ class _LoadedBody extends ConsumerWidget {
                     onCancelDebt: () =>
                         _handleCancelDebt(context, ref, record),
                   ),
+                  const SizedBox(height: 14),
+                  DebtPaymentLinkPanel(record: record),
                   const SizedBox(height: 22),
                 ],
                 DebtPaymentsHistory(payments: detail.payments),
