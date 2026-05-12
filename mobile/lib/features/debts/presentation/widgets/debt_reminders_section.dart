@@ -49,8 +49,7 @@ class DebtRemindersSection extends ConsumerWidget {
             const SizedBox(width: 8),
             if (activeCount > 0)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.successSoft,
                   borderRadius: BorderRadius.circular(12),
@@ -183,7 +182,9 @@ class _EmptyReminders extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              canSchedule ? 'No reminders yet.' : 'Not available for this debt.',
+              canSchedule
+                  ? 'No reminders yet.'
+                  : 'Not available for this debt.',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.muted,

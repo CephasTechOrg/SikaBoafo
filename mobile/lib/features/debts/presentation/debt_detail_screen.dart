@@ -233,8 +233,7 @@ class _LoadedBody extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () =>
-                          _handleReceivePayment(context, record),
+                      onPressed: () => _handleReceivePayment(context, record),
                       icon: const Icon(Icons.payments_rounded, size: 18),
                       label: const Text('Receive payment'),
                       style: FilledButton.styleFrom(
@@ -326,7 +325,6 @@ class _LoadedBody extends ConsumerWidget {
   ) async {
     await showReceivePaymentSheet(context, record: record);
   }
-
 }
 
 class _DetailHeaderBackground extends StatelessWidget {

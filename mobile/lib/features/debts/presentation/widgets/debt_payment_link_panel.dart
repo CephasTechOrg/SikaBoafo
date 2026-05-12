@@ -103,6 +103,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           .getReceivableById(widget.record.receivableId);
       final nowSynced = refreshed?.syncStatus == 'applied';
       if (nowSynced) return true;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
