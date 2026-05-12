@@ -42,6 +42,92 @@ class ReceivablePaymentInitiationDto {
   }
 }
 
+/// MoMo direct-charge initiation result. Mirror of `SaleMomoChargeOutDto`.
+class ReceivableMomoChargeOutDto {
+  const ReceivableMomoChargeOutDto({
+    required this.paymentId,
+    required this.provider,
+    required this.providerReference,
+    required this.amount,
+    required this.currency,
+    required this.status,
+    required this.receivableId,
+    this.displayText,
+    this.needsOtp = false,
+  });
+
+  final String paymentId;
+  final String provider;
+  final String providerReference;
+  final String amount;
+  final String currency;
+  final String status;
+  final String receivableId;
+  final String? displayText;
+  final bool needsOtp;
+
+  factory ReceivableMomoChargeOutDto.fromJson(Map<String, dynamic> json) {
+    return ReceivableMomoChargeOutDto(
+      paymentId: (json['payment_id'] ?? '') as String,
+      provider: (json['provider'] ?? 'paystack') as String,
+      providerReference: (json['provider_reference'] ?? '') as String,
+      amount: '${json['amount'] ?? '0.00'}',
+      currency: (json['currency'] ?? 'GHS') as String,
+      status: (json['status'] ?? 'pending') as String,
+      receivableId: (json['receivable_id'] ?? '') as String,
+      displayText: json['display_text'] as String?,
+      needsOtp: json['needs_otp'] == true,
+    );
+  }
+}
+
+/// Verify / submit-OTP response for a receivable payment.
+class ReceivablePaymentVerifyOutDto {
+  const ReceivablePaymentVerifyOutDto({
+    required this.paymentId,
+    required this.receivableId,
+    required this.providerPaymentStatus,
+    required this.receivableStatus,
+    required this.outstandingAmount,
+    required this.paystackTransactionStatus,
+    this.displayText,
+    this.needsOtp = false,
+  });
+
+  final String paymentId;
+  final String receivableId;
+  final String providerPaymentStatus;
+
+  /// 'open' | 'partially_paid' | 'settled' | 'cancelled'.
+  final String receivableStatus;
+  final String outstandingAmount;
+  final String paystackTransactionStatus;
+  final String? displayText;
+  final bool needsOtp;
+
+  bool get isSettled => receivableStatus == 'settled';
+  bool get isFailed =>
+      providerPaymentStatus == 'failed' ||
+      paystackTransactionStatus == 'failed' ||
+      paystackTransactionStatus == 'abandoned' ||
+      paystackTransactionStatus == 'reversed';
+
+  factory ReceivablePaymentVerifyOutDto.fromJson(Map<String, dynamic> json) {
+    return ReceivablePaymentVerifyOutDto(
+      paymentId: (json['payment_id'] ?? '') as String,
+      receivableId: (json['receivable_id'] ?? '') as String,
+      providerPaymentStatus:
+          (json['provider_payment_status'] ?? '') as String,
+      receivableStatus: (json['receivable_status'] ?? '') as String,
+      outstandingAmount: '${json['outstanding_amount'] ?? '0.00'}',
+      paystackTransactionStatus:
+          (json['paystack_transaction_status'] ?? '') as String,
+      displayText: json['display_text'] as String?,
+      needsOtp: json['needs_otp'] == true,
+    );
+  }
+}
+
 class DebtsPaymentsApi {
   DebtsPaymentsApi(this._apiClient);
 
@@ -61,6 +147,56 @@ class DebtsPaymentsApi {
       );
     }
     return ReceivablePaymentInitiationDto.fromJson(data);
+  }
+
+  Future<ReceivableMomoChargeOutDto> initiateMomoCharge({
+    required String receivableId,
+    required String phone,
+    required String provider,
+  }) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/receivables/$receivableId/momo-charge',
+      data: {'phone': phone, 'provider': provider},
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Unexpected receivable MoMo charge payload.',
+      );
+    }
+    return ReceivableMomoChargeOutDto.fromJson(data);
+  }
+
+  Future<ReceivablePaymentVerifyOutDto> submitMomoOtp({
+    required String paymentId,
+    required String otp,
+  }) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/receivables/$paymentId/submit-momo-otp',
+      data: {'otp': otp},
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Unexpected receivable submit MoMo OTP payload.',
+      );
+    }
+    return ReceivablePaymentVerifyOutDto.fromJson(data);
+  }
+
+  Future<ReceivablePaymentVerifyOutDto> verifyPayment(
+    String paymentId,
+  ) async {
+    final response = await _apiClient.dio.post<dynamic>(
+      '/payments/receivables/$paymentId/verify',
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException(
+        'Unexpected receivable payment verify payload.',
+      );
+    }
+    return ReceivablePaymentVerifyOutDto.fromJson(data);
   }
 }
 

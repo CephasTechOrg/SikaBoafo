@@ -7,6 +7,7 @@ import '../../data/models/local_receivable_record.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
 import 'debt_payment_link_share.dart';
+import 'debt_paystack_momo_sheet/debt_paystack_momo_sheet.dart';
 import 'debt_paystack_qr_sheet.dart';
 
 /// Card on the debt detail screen for generating / showing the Paystack
@@ -107,6 +108,23 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       amountDisplay:
           DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
       customerName: widget.record.customerName ?? 'Customer',
+    );
+  }
+
+  Future<void> _openMomoPush() async {
+    await showDebtPaystackMomoSheet(
+      context,
+      receivableId: widget.record.receivableId,
+      amountDisplay:
+          DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
+      customerName: widget.record.customerName ?? 'Customer',
+      onPaymentConfirmed: () {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment received. Debt settled.')),
+        );
+      },
     );
   }
 
