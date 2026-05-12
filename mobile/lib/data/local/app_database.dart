@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 16;
+const _schemaVersion = 17;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -81,6 +81,9 @@ class AppDatabase {
         if (oldVersion < 16) {
           await _createNotificationsSchema(db);
         }
+        if (oldVersion < 17) {
+          await _createDebtRemindersSchema(db);
+        }
       },
     );
     return _db!;
@@ -118,6 +121,7 @@ CREATE TABLE sync_queue (
     await _createExpenseSchema(db);
     await _createDebtSchema(db);
     await _createNotificationsSchema(db);
+    await _createDebtRemindersSchema(db);
   }
 
   Future<void> _createCacheSchema(Database db) async {
@@ -443,6 +447,29 @@ CREATE TABLE IF NOT EXISTS receivable_payments_local (
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_receivable_payments_receivable '
       'ON receivable_payments_local (receivable_id, created_at DESC)',
+    );
+  }
+
+  Future<void> _createDebtRemindersSchema(Database db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS local_debt_reminders (
+  id TEXT PRIMARY KEY NOT NULL,
+  receivable_id TEXT NOT NULL,
+  fire_at INTEGER NOT NULL,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  notification_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (receivable_id) REFERENCES receivables_local(id) ON DELETE CASCADE
+)
+''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_debt_reminders_receivable '
+      'ON local_debt_reminders (receivable_id, fire_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_debt_reminders_fire_at '
+      'ON local_debt_reminders (status, fire_at)',
     );
   }
 
