@@ -13,6 +13,7 @@ import 'widgets/debt_customer_summary.dart';
 import 'widgets/debt_meta_row.dart';
 import 'widgets/debt_payment_link_panel.dart';
 import 'widgets/debt_payments_history.dart';
+import 'widgets/debt_reminders_section.dart';
 import 'widgets/receive_payment_sheet/receive_payment_sheet.dart';
 
 class DebtDetailScreen extends ConsumerWidget {
@@ -153,6 +154,11 @@ class _LoadedBody extends ConsumerWidget {
                   DebtPaymentLinkPanel(record: record),
                   const SizedBox(height: 22),
                 ],
+                DebtRemindersSection(
+                  record: record,
+                  customerName: detail.customer.name,
+                ),
+                const SizedBox(height: 22),
                 DebtPaymentsHistory(payments: detail.payments),
               ],
             ),
