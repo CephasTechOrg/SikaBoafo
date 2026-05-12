@@ -12,6 +12,8 @@ class LocalReceivableRecord {
     this.note,
     this.invoiceNumber,
     this.paymentLink,
+    this.paymentId,
+    this.paymentAmount,
     this.providerReference,
     this.saleId,
     this.createdByUserId,
@@ -33,6 +35,8 @@ class LocalReceivableRecord {
   final String? note;
   final String? invoiceNumber;
   final String? paymentLink;
+  final String? paymentId;
+  final String? paymentAmount;
   final String? providerReference;
   final String? saleId;
   final String? createdByUserId;
@@ -55,6 +59,8 @@ class LocalReceivableRecord {
       note: row['note'] as String?,
       invoiceNumber: row['invoice_number'] as String?,
       paymentLink: row['payment_link'] as String?,
+      paymentId: row['payment_id'] as String?,
+      paymentAmount: row['payment_amount'] as String?,
       providerReference: row['payment_provider_reference'] as String?,
       saleId: row['sale_id'] as String?,
       createdByUserId: row['created_by_user_id'] as String?,

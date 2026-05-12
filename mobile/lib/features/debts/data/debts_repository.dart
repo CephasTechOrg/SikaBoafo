@@ -185,6 +185,8 @@ SELECT r.id,
        r.status,
        r.invoice_number,
        r.payment_link,
+       r.payment_id,
+       r.payment_amount,
        r.sale_id,
        r.created_by_user_id,
        r.created_at,
@@ -218,6 +220,8 @@ SELECT r.id,
        r.status,
        r.invoice_number,
        r.payment_link,
+       r.payment_id,
+       r.payment_amount,
        r.sale_id,
        r.created_by_user_id,
        r.created_at,
@@ -249,6 +253,8 @@ SELECT r.id,
        r.status,
        r.invoice_number,
        r.payment_link,
+       r.payment_id,
+       r.payment_amount,
        r.sale_id,
        r.created_by_user_id,
        r.created_at,
@@ -326,6 +332,8 @@ LIMIT 1
           'status': 'open',
           'invoice_number': null,
           'payment_link': null,
+          'payment_id': null,
+          'payment_amount': null,
           'created_by_user_id': null,
           'sale_id': null,
           'local_operation_id': localOpId,
@@ -480,15 +488,22 @@ ORDER BY p.created_at DESC
   /// Updates the payment link cached on a receivable after a successful
   /// `/payments/initiate` call. No sync queue entry — the server already
   /// has the link via the response.
-  Future<void> attachPaymentLinkLocal({
+  Future<void> attachPaymentContextLocal({
     required String receivableId,
     required String paymentLink,
+    required String paymentId,
+    required String paymentAmount,
   }) async {
     final db = await _appDb.database;
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.update(
       'receivables_local',
-      {'payment_link': paymentLink, 'updated_at': now},
+      {
+        'payment_link': paymentLink,
+        'payment_id': paymentId,
+        'payment_amount': paymentAmount,
+        'updated_at': now,
+      },
       where: 'id = ?',
       whereArgs: [receivableId],
     );

@@ -112,6 +112,7 @@ def initiate_payment(
         initiated = service.initiate_receivable_payment(
             user_id=current_user.id,
             receivable_id=payload.receivable_id,
+            amount=payload.amount,
         )
     except PaymentInitiationContextError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

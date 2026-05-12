@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class PaymentInitiateIn(BaseModel):
     receivable_id: UUID
+    amount: Decimal | None = Field(default=None, max_digits=18, decimal_places=2, gt=0)
 
 
 class PaymentInitiateOut(BaseModel):

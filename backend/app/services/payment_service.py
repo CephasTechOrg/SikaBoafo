@@ -205,6 +205,7 @@ class PaymentService:
         *,
         user_id: UUID,
         receivable_id: UUID,
+        amount: Decimal | None = None,
     ) -> PaymentInitiationSnapshot:
         try:
             merchant, store = get_merchant_and_store(user_id=user_id, db=self.db)
@@ -234,7 +235,15 @@ class PaymentService:
             settings=configured,
         )
         reference = self._build_reference(merchant_id=merchant.id, receivable_id=receivable.id)
-        amount = self._money(receivable.outstanding_amount)
+        outstanding = self._money(receivable.outstanding_amount)
+        if amount is not None:
+            charge_amount = self._money(amount)
+            if charge_amount <= Decimal("0.00") or charge_amount > outstanding:
+                msg = f"Amount must be between 0.01 and {outstanding}."
+                raise PaymentInitiationStateError(msg)
+        else:
+            charge_amount = outstanding
+        amount = charge_amount
         result = self._client(configured).initialize_transaction(
             secret_key=secret_key,
             email=_customer_email(receivable.customer),

@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 17;
+const _schemaVersion = 18;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -83,6 +83,9 @@ class AppDatabase {
         }
         if (oldVersion < 17) {
           await _createDebtRemindersSchema(db);
+        }
+        if (oldVersion < 18) {
+          await _upgradeReceivablesSchemaV18(db);
         }
       },
     );
@@ -293,6 +296,19 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     }
   }
 
+  Future<void> _upgradeReceivablesSchemaV18(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(receivables_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('payment_id')) {
+      await db.execute(
+          'ALTER TABLE receivables_local ADD COLUMN payment_id TEXT');
+    }
+    if (!names.contains('payment_amount')) {
+      await db.execute(
+          'ALTER TABLE receivables_local ADD COLUMN payment_amount TEXT');
+    }
+  }
+
   Future<void> _upgradeInventorySchemaV13(Database db) async {
     final cols = await db.rawQuery('PRAGMA table_info(items_local)');
     final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
@@ -414,6 +430,8 @@ CREATE TABLE IF NOT EXISTS receivables_local (
   status TEXT NOT NULL,
   invoice_number TEXT,
   payment_link TEXT,
+  payment_id TEXT,
+  payment_amount TEXT,
   created_by_user_id TEXT,
   sale_id TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,

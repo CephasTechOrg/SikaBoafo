@@ -106,6 +106,10 @@ class ReceivablePaymentVerifyOutDto {
   final bool needsOtp;
 
   bool get isSettled => receivableStatus == 'settled';
+  bool get isPaymentSuccessful => 
+      providerPaymentStatus == 'success' || 
+      providerPaymentStatus == 'succeeded' || 
+      paystackTransactionStatus == 'success';
   bool get isFailed =>
       providerPaymentStatus == 'failed' ||
       paystackTransactionStatus == 'failed' ||
@@ -134,11 +138,14 @@ class DebtsPaymentsApi {
   final ApiClient _apiClient;
 
   Future<ReceivablePaymentInitiationDto> initiatePayment(
-    String receivableId,
-  ) async {
+    String receivableId, {
+    String? amount,
+  }) async {
+    final body = <String, dynamic>{'receivable_id': receivableId};
+    if (amount != null && amount.trim().isNotEmpty) body['amount'] = amount;
     final response = await _apiClient.dio.post<dynamic>(
       '/payments/initiate',
-      data: {'receivable_id': receivableId},
+      data: body,
     );
     final data = response.data;
     if (data is! Map<String, dynamic>) {

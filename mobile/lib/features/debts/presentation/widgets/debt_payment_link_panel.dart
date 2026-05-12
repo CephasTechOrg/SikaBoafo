@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
@@ -26,6 +27,23 @@ class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
 
 class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
+  late final TextEditingController _amountCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController(
+      text: widget.record.outstandingAmount,
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  bool get _isSynced => widget.record.syncStatus == 'applied';
 
   bool get _hasLink {
     final link = widget.record.paymentLink;
@@ -33,19 +51,33 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   }
 
   Future<void> _generate({required bool openQrAfter}) async {
+    if (!_isSynced) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This debt hasn\'t synced to the server yet. Please refresh and try again.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _generating = true);
     try {
       final initiation = await ref
           .read(debtsControllerProvider.notifier)
-          .initiatePaymentLink(receivableId: widget.record.receivableId);
+          .initiatePaymentLink(
+            receivableId: widget.record.receivableId,
+            amount: _amountCtrl.text.trim(),
+          );
       if (!mounted) return;
       if (openQrAfter) {
         await showDebtPaystackQrSheet(
           context,
           receivableId: widget.record.receivableId,
           checkoutUrl: initiation.checkoutUrl,
+          paymentId: initiation.paymentId,
           amountDisplay: DebtsUiUtils.formatAmount(
-            widget.record.outstandingAmount,
+            _amountCtrl.text.trim(),
           ),
           customerName: widget.record.customerName ?? 'Customer',
           onPaymentConfirmed: () {
@@ -61,7 +93,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           context,
           checkoutUrl: initiation.checkoutUrl,
           amountDisplay: DebtsUiUtils.formatAmount(
-            widget.record.outstandingAmount,
+            _amountCtrl.text.trim(),
           ),
           customerName: widget.record.customerName ?? 'Customer',
         );
@@ -87,8 +119,9 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       context,
       receivableId: widget.record.receivableId,
       checkoutUrl: link,
+      paymentId: widget.record.paymentId,
       amountDisplay: DebtsUiUtils.formatAmount(
-        widget.record.outstandingAmount,
+        widget.record.paymentAmount ?? widget.record.outstandingAmount,
       ),
       customerName: widget.record.customerName ?? 'Customer',
       onPaymentConfirmed: () {
@@ -107,8 +140,9 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     await showDebtPaymentLinkShare(
       context,
       checkoutUrl: link,
-      amountDisplay:
-          DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
+      amountDisplay: DebtsUiUtils.formatAmount(
+        widget.record.paymentAmount ?? widget.record.outstandingAmount,
+      ),
       customerName: widget.record.customerName ?? 'Customer',
     );
   }
@@ -117,8 +151,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     await showDebtPaystackMomoSheet(
       context,
       receivableId: widget.record.receivableId,
-      amountDisplay:
-          DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
+      amountDisplay: DebtsUiUtils.formatAmount(_amountCtrl.text.trim()),
       customerName: widget.record.customerName ?? 'Customer',
       onPaymentConfirmed: () {
         if (!mounted) return;
@@ -192,20 +225,36 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.forest.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(999),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _amountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+          ],
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.forestDark,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
-          child: Text(
-            DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
-            style: const TextStyle(
+          decoration: InputDecoration(
+            prefixText: 'GHS ',
+            prefixStyle: const TextStyle(
               fontSize: 13,
-              color: AppColors.forestDark,
-              fontWeight: FontWeight.w800,
-              fontFeatures: [FontFeature.tabularFigures()],
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+            hintText: '0.00',
+            filled: true,
+            fillColor: AppColors.forest.withValues(alpha: 0.07),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
             ),
           ),
         ),

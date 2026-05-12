@@ -177,7 +177,7 @@ class _DebtPaystackMomoSheetState
           _paystackDisplayText = t.trim();
         }
       });
-      if (verify.isSettled) {
+      if (verify.isPaymentSuccessful) {
         _timer?.cancel();
         ref.invalidate(receivableDetailProvider(widget.receivableId));
         await ref.read(debtsControllerProvider.notifier).refresh();
@@ -226,7 +226,7 @@ class _DebtPaystackMomoSheetState
                 otp: code,
               );
       if (!mounted) return;
-      if (out.isSettled) {
+      if (out.isPaymentSuccessful) {
         completed = true;
         _otpCooldownTimer?.cancel();
         _timer?.cancel();

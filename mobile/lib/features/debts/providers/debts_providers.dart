@@ -108,12 +108,15 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   /// caller can render the QR / share sheet immediately.
   Future<ReceivablePaymentInitiationDto> initiatePaymentLink({
     required String receivableId,
+    String? amount,
   }) async {
     final api = ref.read(debtsPaymentsApiProvider);
-    final initiation = await api.initiatePayment(receivableId);
-    await _repo.attachPaymentLinkLocal(
+    final initiation = await api.initiatePayment(receivableId, amount: amount);
+    await _repo.attachPaymentContextLocal(
       receivableId: receivableId,
       paymentLink: initiation.checkoutUrl,
+      paymentId: initiation.paymentId,
+      paymentAmount: amount ?? '',
     );
     state = AsyncValue.data(await _readSnapshot());
     return initiation;

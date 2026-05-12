@@ -20,6 +20,7 @@ class DebtPaystackQrSheet extends ConsumerStatefulWidget {
     super.key,
     required this.receivableId,
     required this.checkoutUrl,
+    this.paymentId,
     required this.amountDisplay,
     required this.customerName,
     required this.onPaymentConfirmed,
@@ -27,6 +28,7 @@ class DebtPaystackQrSheet extends ConsumerStatefulWidget {
 
   final String receivableId;
   final String checkoutUrl;
+  final String? paymentId;
   final String amountDisplay;
   final String customerName;
   final VoidCallback onPaymentConfirmed;
@@ -67,34 +69,62 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     if (auto) _pollCount++;
     setState(() => _checking = true);
     try {
-      final api = ref.read(debtsApiProvider);
-      final dto = await api.fetchReceivable(widget.receivableId);
-      if (!mounted) return;
-      final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
-      final settled =
-          dto.status == 'settled' || outstandingMinor == 0;
-      if (settled) {
-        _confirmed = true;
-        _timer?.cancel();
-        // Force the detail provider + list controller to re-read so the UI
-        // reflects the new balance / status the moment the sheet closes.
-        ref.invalidate(receivableDetailProvider(widget.receivableId));
-        await ref.read(debtsControllerProvider.notifier).refresh();
+      if (widget.paymentId != null) {
+        final api = ref.read(debtsPaymentsApiProvider);
+        final verify = await api.verifyPayment(widget.paymentId!);
         if (!mounted) return;
-        widget.onPaymentConfirmed();
-        return;
-      }
-      if (!auto) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              dto.status == 'partially_paid'
-                  ? 'Partial payment recorded — waiting for the rest.'
-                  : 'Still waiting for payment…',
+        if (verify.isPaymentSuccessful) {
+          _confirmed = true;
+          _timer?.cancel();
+          ref.invalidate(receivableDetailProvider(widget.receivableId));
+          await ref.read(debtsControllerProvider.notifier).refresh();
+          if (!mounted) return;
+          widget.onPaymentConfirmed();
+          return;
+        }
+        if (!auto) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                verify.receivableStatus == 'partially_paid'
+                    ? 'Partial payment recorded — waiting for the rest.'
+                    : 'Still waiting for payment…',
+              ),
+              duration: const Duration(seconds: 2),
             ),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+          );
+        }
+      } else {
+        // Fallback for older links without paymentId cached
+        final api = ref.read(debtsApiProvider);
+        final dto = await api.fetchReceivable(widget.receivableId);
+        if (!mounted) return;
+        final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
+        final settled =
+            dto.status == 'settled' || outstandingMinor == 0;
+        if (settled) {
+          _confirmed = true;
+          _timer?.cancel();
+          // Force the detail provider + list controller to re-read so the UI
+          // reflects the new balance / status the moment the sheet closes.
+          ref.invalidate(receivableDetailProvider(widget.receivableId));
+          await ref.read(debtsControllerProvider.notifier).refresh();
+          if (!mounted) return;
+          widget.onPaymentConfirmed();
+          return;
+        }
+        if (!auto) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                dto.status == 'partially_paid'
+                    ? 'Partial payment recorded — waiting for the rest.'
+                    : 'Still waiting for payment…',
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     } catch (_) {
       if (!auto && mounted) {
@@ -364,6 +394,7 @@ Future<void> showDebtPaystackQrSheet(
   BuildContext context, {
   required String receivableId,
   required String checkoutUrl,
+  String? paymentId,
   required String amountDisplay,
   required String customerName,
   required VoidCallback onPaymentConfirmed,
@@ -376,6 +407,7 @@ Future<void> showDebtPaystackQrSheet(
     builder: (_) => DebtPaystackQrSheet(
       receivableId: receivableId,
       checkoutUrl: checkoutUrl,
+      paymentId: paymentId,
       amountDisplay: amountDisplay,
       customerName: customerName,
       onPaymentConfirmed: onPaymentConfirmed,
