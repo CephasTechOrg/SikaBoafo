@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/utils/user_friendly_error.dart';
+import '../../data/debts_api.dart';
 import '../../data/models/local_receivable_record.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
@@ -38,11 +39,13 @@ class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
 class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
   bool _openingMomo = false;
+  bool _statusWatchInFlight = false;
   late final TextEditingController _amountCtrl;
 
   /// Ticks once a minute so the countdown badge stays fresh without rebuilding
   /// the entire debt detail tree. Cancelled in `dispose`.
   Timer? _expiryTicker;
+  Timer? _statusWatchTicker;
 
   @override
   void initState() {
@@ -54,11 +57,23 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       if (!mounted) return;
       setState(() {});
     });
+    _syncStatusWatcher();
+  }
+
+  @override
+  void didUpdateWidget(covariant DebtPaymentLinkPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldKey = '${oldWidget.record.receivableId}:${oldWidget.record.paymentId}:${oldWidget.record.paymentLink}';
+    final newKey = '${widget.record.receivableId}:${widget.record.paymentId}:${widget.record.paymentLink}';
+    if (oldKey != newKey || oldWidget.record.status != widget.record.status) {
+      _syncStatusWatcher();
+    }
   }
 
   @override
   void dispose() {
     _expiryTicker?.cancel();
+    _statusWatchTicker?.cancel();
     _amountCtrl.dispose();
     super.dispose();
   }
@@ -68,6 +83,57 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool get _hasLink {
     final link = widget.record.paymentLink;
     return link != null && link.trim().isNotEmpty;
+  }
+
+  bool get _isWatchableStatus =>
+      widget.record.status == 'open' || widget.record.status == 'partially_paid';
+
+  void _syncStatusWatcher() {
+    _statusWatchTicker?.cancel();
+    if (!_hasLink || !_isWatchableStatus) return;
+    _statusWatchTicker = Timer.periodic(
+      const Duration(seconds: 6),
+      (_) => _watchServerPaymentProgress(),
+    );
+  }
+
+  Future<void> _watchServerPaymentProgress() async {
+    if (!mounted || _statusWatchInFlight || !_isWatchableStatus || !_hasLink) {
+      return;
+    }
+    _statusWatchInFlight = true;
+    try {
+      final server = await ref
+          .read(debtsApiProvider)
+          .fetchReceivable(widget.record.receivableId);
+      if (!mounted) return;
+      final localMinor = DebtsUiUtils.amountToMinor(widget.record.outstandingAmount);
+      final serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
+      final settled = server.status == 'settled' || serverMinor == 0;
+      final progressed =
+          settled || serverMinor < localMinor || server.status != widget.record.status;
+      if (!progressed) return;
+
+      await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            settled
+                ? 'Payment received. Debt settled.'
+                : 'Payment received. Remaining balance: ${DebtsUiUtils.formatAmount(server.outstandingAmount)}.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      if (settled || server.status == 'cancelled') {
+        _statusWatchTicker?.cancel();
+      }
+    } catch (_) {
+      // Passive watcher only; avoid noisy banners for transient network errors.
+    } finally {
+      _statusWatchInFlight = false;
+    }
   }
 
   /// Parsed UTC expiry instant for the active payment link, or `null` if the

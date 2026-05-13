@@ -100,7 +100,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                   size: 22,
                 ),
                 onPressed: () =>
-                    ref.read(debtsControllerProvider.notifier).refresh(),
+                    ref.read(debtsControllerProvider.notifier).refreshFromServer(),
               ),
             ],
             backgroundColor: const Color(0xFF041C0B),
@@ -175,7 +175,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   Future<void> _refresh() async {
-    await ref.read(debtsControllerProvider.notifier).refresh();
+    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
   }
 
   Future<void> _openNewDebtSheet(BuildContext context) async {

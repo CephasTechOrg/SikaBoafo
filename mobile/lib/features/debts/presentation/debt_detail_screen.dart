@@ -98,8 +98,12 @@ class DebtDetailScreen extends ConsumerWidget {
                   color: Colors.white,
                   size: 22,
                 ),
-                onPressed: () =>
-                    ref.invalidate(receivableDetailProvider(receivableId)),
+                onPressed: () async {
+                  await ref
+                      .read(debtsControllerProvider.notifier)
+                      .refreshFromServer();
+                  ref.invalidate(receivableDetailProvider(receivableId));
+                },
               ),
               if (detailAsync.valueOrNull != null &&
                   !detailAsync.valueOrNull!.receivable.isTerminal)
@@ -216,8 +220,8 @@ class _LoadedBody extends ConsumerWidget {
           child: RefreshIndicator(
             color: AppColors.forest,
             onRefresh: () async {
+              await ref.read(debtsControllerProvider.notifier).refreshFromServer();
               ref.invalidate(receivableDetailProvider(record.receivableId));
-              await ref.read(debtsControllerProvider.notifier).refresh();
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
