@@ -72,7 +72,9 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   }
 
   String _humanizeRefreshError(Object error) {
-    final raw = error.toString();
+    // Use the same Dio/detail parsing as other debts API errors — not
+    // `error.toString()`, which dumps long DioException text into SnackBars.
+    final raw = humanizeDebtsApiError(error).trim();
     if (raw.isEmpty) return 'Could not refresh debts from the server.';
     return raw.length > 160 ? '${raw.substring(0, 157)}…' : raw;
   }
