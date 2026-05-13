@@ -463,6 +463,8 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
 
   Widget _activeLinkBody() {
     final link = widget.record.paymentLink!;
+    final expired = _linkExpired;
+    final countdownLabel = _expiryCountdownLabel();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -473,32 +475,34 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.successSoft,
+                  color: expired ? AppColors.dangerSoft : AppColors.successSoft,
                   borderRadius: BorderRadius.circular(13),
                 ),
-                child: const Icon(
-                  Icons.link_rounded,
-                  color: AppColors.success,
+                child: Icon(
+                  expired ? Icons.link_off_rounded : Icons.link_rounded,
+                  color: expired ? AppColors.danger : AppColors.success,
                   size: 20,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Payment link active',
-                      style: TextStyle(
+                      expired ? 'Payment link expired' : 'Payment link active',
+                      style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Share or show QR. Settles when paid.',
-                      style: TextStyle(
+                      expired
+                          ? 'Regenerate to share or scan again.'
+                          : 'Share or show QR. Settles when paid.',
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.muted,
                         fontWeight: FontWeight.w500,
@@ -512,6 +516,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ),
           const SizedBox(height: 10),
         ],
+        if (expired || countdownLabel != null) ...[
+          _ExpiryBadge(expired: expired, label: countdownLabel),
+          const SizedBox(height: 10),
+        ],
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
@@ -523,69 +531,145 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             link,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
-              color: AppColors.inkSoft,
-              fontFeatures: [FontFeature.tabularFigures()],
+              color: expired ? AppColors.muted : AppColors.inkSoft,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              decoration:
+                  expired ? TextDecoration.lineThrough : TextDecoration.none,
             ),
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _openExistingShare,
-                icon: const Icon(Icons.ios_share_rounded, size: 16),
-                label: const Text('Share'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
-                  ),
-                ),
+        if (expired)
+          FilledButton.icon(
+            onPressed:
+                _generating ? null : () => _generate(openQrAfter: true),
+            icon: _generating
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 18),
+            label:
+                Text(_generating ? 'Regenerating…' : 'Regenerate payment link'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.forestDark,
+              minimumSize: const Size.fromHeight(46),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.sm),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                onPressed: _openExistingQr,
-                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                label: const Text('Show QR'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.forestDark,
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: TextButton.icon(
-            onPressed: _generating ? null : () => _generate(openQrAfter: true),
-            icon: const Icon(Icons.refresh_rounded, size: 14),
-            label: _generating
-                ? const Text('Regenerating…')
-                : const Text('Regenerate link'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.inkSoft,
               textStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openExistingShare,
+                  icon: const Icon(Icons.ios_share_rounded, size: 16),
+                  label: const Text('Share'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed: _openExistingQr,
+                  icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                  label: const Text('Show QR'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.forestDark,
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed:
+                  _generating ? null : () => _generate(openQrAfter: true),
+              icon: const Icon(Icons.refresh_rounded, size: 14),
+              label: _generating
+                  ? const Text('Regenerating…')
+                  : const Text('Regenerate link'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.inkSoft,
+                textStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
+    );
+  }
+}
+
+class _ExpiryBadge extends StatelessWidget {
+  const _ExpiryBadge({required this.expired, required this.label});
+
+  final bool expired;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = expired ? AppColors.dangerSoft : AppColors.warningSoft;
+    final fg = expired ? AppColors.danger : AppColors.warning;
+    final text = expired ? 'Expired' : (label ?? '');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            expired
+                ? Icons.lock_clock_rounded
+                : Icons.schedule_rounded,
+            size: 14,
+            color: fg,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: fg,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
