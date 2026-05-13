@@ -56,6 +56,7 @@ class ReceivableDto {
     this.paymentProviderReference,
     this.paymentId,
     this.paymentAmount,
+    this.paymentLinkExpiresAtIso,
   });
 
   final String receivableId;
@@ -72,6 +73,10 @@ class ReceivableDto {
   final String? paymentProviderReference;
   final String? paymentId;
   final String? paymentAmount;
+
+  /// ISO8601 timestamp the active pending payment link/QR expires at, or
+  /// `null` when there is no pending payment. Authoritative server value.
+  final String? paymentLinkExpiresAtIso;
   final String createdAtIso;
 
   factory ReceivableDto.fromJson(Map<String, dynamic> json) {
@@ -91,6 +96,7 @@ class ReceivableDto {
       paymentId: json['payment_id'] as String?,
       paymentAmount:
           json['payment_amount'] == null ? null : '${json['payment_amount']}',
+      paymentLinkExpiresAtIso: json['payment_link_expires_at'] as String?,
       createdAtIso: (json['created_at'] ?? '') as String,
     );
   }

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -511,10 +511,11 @@ RETURNING next_number
             return None, None, None
         # Imported lazily to avoid pulling the payments service at module
         # import time; both modules sit in the same package.
+        from app.core.constants import PROVIDER_PAYMENT_PENDING
         from app.services.payment_service import RECEIVABLE_PAYMENT_LINK_TTL
 
         expires_at: datetime | None = None
-        if payment.status == "pending":
+        if payment.status == PROVIDER_PAYMENT_PENDING:
             initiated = payment.initiated_at
             if initiated is not None:
                 if initiated.tzinfo is None:

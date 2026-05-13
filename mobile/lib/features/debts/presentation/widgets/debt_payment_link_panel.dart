@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,16 +40,25 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _openingMomo = false;
   late final TextEditingController _amountCtrl;
 
+  /// Ticks once a minute so the countdown badge stays fresh without rebuilding
+  /// the entire debt detail tree. Cancelled in `dispose`.
+  Timer? _expiryTicker;
+
   @override
   void initState() {
     super.initState();
     _amountCtrl = TextEditingController(
       text: widget.record.outstandingAmount,
     );
+    _expiryTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _expiryTicker?.cancel();
     _amountCtrl.dispose();
     super.dispose();
   }
@@ -57,6 +68,37 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool get _hasLink {
     final link = widget.record.paymentLink;
     return link != null && link.trim().isNotEmpty;
+  }
+
+  /// Parsed UTC expiry instant for the active payment link, or `null` if the
+  /// server has not yet attached one (e.g. legacy local row before refresh).
+  /// Treated as "active, no countdown" when null.
+  DateTime? get _linkExpiresAt {
+    final iso = widget.record.paymentLinkExpiresAtIso;
+    if (iso == null || iso.isEmpty) return null;
+    return DateTime.tryParse(iso)?.toLocal();
+  }
+
+  bool get _linkExpired {
+    final at = _linkExpiresAt;
+    if (at == null) return false;
+    return !DateTime.now().isBefore(at);
+  }
+
+  /// Compact "Expires in 23h 12m" / "Expires in 4m" copy. Returns `null` when
+  /// expiry is unknown so callers can hide the badge entirely.
+  String? _expiryCountdownLabel() {
+    final at = _linkExpiresAt;
+    if (at == null) return null;
+    final remaining = at.difference(DateTime.now());
+    if (!remaining.isNegative && remaining.inSeconds <= 60) {
+      return 'Expires in <1m';
+    }
+    if (remaining.isNegative) return null;
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+    if (hours <= 0) return 'Expires in ${minutes}m';
+    return 'Expires in ${hours}h ${minutes}m';
   }
 
   int _minorFromAmount(String raw) {
@@ -187,6 +229,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   Future<void> _openExistingQr() async {
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
+    if (_linkExpired) {
+      _showExpiredSnack();
+      return;
+    }
     await showDebtPaystackQrSheet(
       context,
       receivableId: widget.record.receivableId,
@@ -209,6 +255,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   Future<void> _openExistingShare() async {
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
+    if (_linkExpired) {
+      _showExpiredSnack();
+      return;
+    }
     await showDebtPaymentLinkShare(
       context,
       checkoutUrl: link,
@@ -216,6 +266,18 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         widget.record.paymentAmount ?? widget.record.outstandingAmount,
       ),
       customerName: widget.record.customerName ?? 'Customer',
+    );
+  }
+
+  void _showExpiredSnack() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'This payment link expired. Regenerate it to share or scan again.',
+        ),
+        duration: Duration(seconds: 3),
+      ),
     );
   }
 

@@ -14,6 +14,7 @@ class LocalReceivableRecord {
     this.paymentLink,
     this.paymentId,
     this.paymentAmount,
+    this.paymentLinkExpiresAtIso,
     this.providerReference,
     this.saleId,
     this.createdByUserId,
@@ -37,6 +38,11 @@ class LocalReceivableRecord {
   final String? paymentLink;
   final String? paymentId;
   final String? paymentAmount;
+
+  /// ISO8601 timestamp the active pending payment link expires at, or `null`
+  /// when there is no active pending payment (settled / failed / never
+  /// initiated). The server is authoritative; UI renders a countdown only.
+  final String? paymentLinkExpiresAtIso;
   final String? providerReference;
   final String? saleId;
   final String? createdByUserId;
@@ -61,6 +67,7 @@ class LocalReceivableRecord {
       paymentLink: row['payment_link'] as String?,
       paymentId: row['payment_id'] as String?,
       paymentAmount: row['payment_amount'] as String?,
+      paymentLinkExpiresAtIso: row['payment_link_expires_at'] as String?,
       providerReference: row['payment_provider_reference'] as String?,
       saleId: row['sale_id'] as String?,
       createdByUserId: row['created_by_user_id'] as String?,

@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 18;
+const _schemaVersion = 19;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -86,6 +86,9 @@ class AppDatabase {
         }
         if (oldVersion < 18) {
           await _upgradeReceivablesSchemaV18(db);
+        }
+        if (oldVersion < 19) {
+          await _upgradeReceivablesSchemaV19(db);
         }
       },
     );
@@ -309,6 +312,19 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
     }
   }
 
+  /// Adds `payment_link_expires_at` (ISO8601 string, nullable) so the debt
+  /// detail screen can render the 24h expiration countdown without an extra
+  /// roundtrip. Authoritative value comes from the server.
+  Future<void> _upgradeReceivablesSchemaV19(Database db) async {
+    final cols = await db.rawQuery('PRAGMA table_info(receivables_local)');
+    final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
+    if (!names.contains('payment_link_expires_at')) {
+      await db.execute(
+        'ALTER TABLE receivables_local ADD COLUMN payment_link_expires_at TEXT',
+      );
+    }
+  }
+
   Future<void> _upgradeInventorySchemaV13(Database db) async {
     final cols = await db.rawQuery('PRAGMA table_info(items_local)');
     final names = cols.map((r) => (r['name'] ?? '').toString()).toSet();
@@ -432,6 +448,7 @@ CREATE TABLE IF NOT EXISTS receivables_local (
   payment_link TEXT,
   payment_id TEXT,
   payment_amount TEXT,
+  payment_link_expires_at TEXT,
   created_by_user_id TEXT,
   sale_id TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
