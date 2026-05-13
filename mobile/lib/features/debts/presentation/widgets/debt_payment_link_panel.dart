@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../shared/providers/sync_providers.dart';
 import '../../../../shared/utils/user_friendly_error.dart';
-import '../../data/debts_api.dart';
 import '../../data/models/local_receivable_record.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
