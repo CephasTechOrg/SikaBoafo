@@ -36,7 +36,13 @@ class DebtPaystackQrSheet extends ConsumerStatefulWidget {
   final String? paymentId;
   final String amountDisplay;
   final String customerName;
-  final VoidCallback onPaymentConfirmed;
+
+  /// Called when the sheet detects (verify or direct fetch) that payment has
+  /// landed. The latest authoritative [ReceivableDto] is forwarded when known
+  /// so the parent can show truthful copy ("Debt settled" vs "Partial: …").
+  /// May be `null` if the network call after success failed; parents should
+  /// fall back to their local snapshot in that case.
+  final void Function(ReceivableDto? serverRow) onPaymentConfirmed;
 
   @override
   ConsumerState<DebtPaystackQrSheet> createState() =>
@@ -45,12 +51,10 @@ class DebtPaystackQrSheet extends ConsumerStatefulWidget {
 
 class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
   Timer? _timer;
-  int _pollCount = 0;
   bool _checking = false;
   bool _confirmed = false;
   int _autoCheckFailures = 0;
   String? _statusError;
-  static const _maxPolls = 40;
 
   @override
   void initState() {
@@ -67,13 +71,49 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     super.dispose();
   }
 
-  Future<void> _completeSuccess() async {
+  /// Closes the sheet immediately and lets the parent show its success
+  /// snackbar; the snapshot pull / receivable upsert run as fire-and-forget
+  /// behind the scenes so a slow network never strands the user on
+  /// "Checking…". The local DB is still updated before pop when the caller
+  /// passed a fresh [serverRow] (the panel's snackbar consults it).
+  Future<void> _completeSuccess({ReceivableDto? serverRow}) async {
+    if (_confirmed) return;
     _confirmed = true;
     _timer?.cancel();
-    ref.invalidate(receivableDetailProvider(widget.receivableId));
-    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+
+    // Apply authoritative server row synchronously so the panel reads the
+    // correct outstanding/status when it renders its snackbar. Wrapped in a
+    // short timeout to make sure a stalled write can't park the UI.
+    if (serverRow != null) {
+      try {
+        await ref
+            .read(debtsControllerProvider.notifier)
+            .applyServerReceivable(serverRow)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // Local upsert is best-effort here; background refresh below repairs.
+      }
+    }
+
     if (!mounted) return;
-    widget.onPaymentConfirmed();
+    widget.onPaymentConfirmed(serverRow);
+
+    // Fire-and-forget snapshot reconciliation. We've already closed the sheet
+    // by this point — the merchant sees the panel update either right now
+    // (from `applyServerReceivable`) or within seconds when the pull lands.
+    unawaited(_reconcileSnapshotInBackground());
+  }
+
+  Future<void> _reconcileSnapshotInBackground() async {
+    try {
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
+      await ref
+          .read(debtsControllerProvider.notifier)
+          .refreshFromServer()
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Surfaced via DebtsViewData.lastSyncError on next read; no UI here.
+    }
   }
 
   /// Server reported the pending payment is past TTL. Stop polling, refresh
@@ -99,44 +139,91 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     return dto.status == 'settled' || outstandingMinor == 0;
   }
 
+  /// A verify response counts as "payment landed" when **any** of these hold:
+  /// - Paystack/our payment row reports success (legacy rule), OR
+  /// - the receivable is already settled server-side (webhook beat us), OR
+  /// - outstanding has dropped to zero (settled by another route).
+  ///
+  /// Without the latter two checks the sheet polls forever when the webhook
+  /// settles first but Paystack verify briefly returns a non-success string
+  /// for transient reasons.
+  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) {
+    if (verify.isPaymentSuccessful) return true;
+    if (verify.isSettled) return true;
+    return DebtsUiUtils.amountToMinor(verify.outstandingAmount) == 0;
+  }
+
   Future<void> _check({bool auto = false}) async {
     if (_checking || _confirmed) return;
-    if (auto && _pollCount >= _maxPolls) {
-      _timer?.cancel();
-      return;
-    }
-    if (auto) _pollCount++;
     setState(() => _checking = true);
     try {
       final debtsApi = ref.read(debtsApiProvider);
 
       if (widget.paymentId != null) {
+        // First, ask the server for the canonical receivable row. If the
+        // webhook has already settled, this is the cheapest way to find out.
         ReceivableDto? serverRow;
+        Object? serverRowError;
         try {
           serverRow = await debtsApi.fetchReceivable(widget.receivableId);
-        } catch (_) {
+        } catch (error) {
+          // Don't swallow silently. Count toward auto-failure budget so the
+          // status chip can surface "Could not reach backend…" instead of
+          // making the user wonder why polling never finishes.
           serverRow = null;
+          serverRowError = error;
         }
         if (!mounted) return;
         if (serverRow != null && _receivableFullySettled(serverRow)) {
-          await _completeSuccess();
+          await _completeSuccess(serverRow: serverRow);
           return;
         }
 
         final paymentsApi = ref.read(debtsPaymentsApiProvider);
         final verify = await paymentsApi.verifyPayment(widget.paymentId!);
         if (!mounted) return;
-        if (verify.isPaymentSuccessful) {
-          await _completeSuccess();
+        if (_verifyIndicatesSuccess(verify)) {
+          // Pull the canonical receivable row right after verify so the local
+          // ledger updates even when full snapshot pagination misses this debt.
+          ReceivableDto? confirmedRow = serverRow;
+          if (confirmedRow == null ||
+              !_receivableFullySettled(confirmedRow)) {
+            try {
+              confirmedRow = await debtsApi.fetchReceivable(widget.receivableId);
+            } catch (_) {
+              // Fall through with whatever serverRow we had; the panel
+              // watcher will reconcile the rest.
+            }
+          }
+          await _completeSuccess(serverRow: confirmedRow);
           return;
         }
         if (verify.paystackTransactionStatus == 'expired') {
           await _handleExpiredFromServer();
           return;
         }
-        _autoCheckFailures = 0;
-        _statusError = null;
-        if (!auto) {
+        // Partial-paid: write the authoritative row locally so the panel
+        // reflects the new balance immediately, then keep polling for the
+        // remainder (we deliberately don't close the sheet here).
+        if (verify.receivableStatus == 'partially_paid' && serverRow != null) {
+          try {
+            await ref
+                .read(debtsControllerProvider.notifier)
+                .applyServerReceivable(serverRow);
+          } catch (_) {
+            // best-effort; next snapshot pull will repair
+          }
+        }
+        if (serverRowError != null) {
+          _autoCheckFailures++;
+          if (_autoCheckFailures >= 2) {
+            _statusError = 'Could not reach backend to verify payment status.';
+          }
+        } else {
+          _autoCheckFailures = 0;
+          _statusError = null;
+        }
+        if (!auto && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -153,7 +240,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
         final dto = await debtsApi.fetchReceivable(widget.receivableId);
         if (!mounted) return;
         if (_receivableFullySettled(dto)) {
-          await _completeSuccess();
+          await _completeSuccess(serverRow: dto);
           return;
         }
         _autoCheckFailures = 0;
@@ -462,7 +549,7 @@ Future<void> showDebtPaystackQrSheet(
   String? paymentId,
   required String amountDisplay,
   required String customerName,
-  required VoidCallback onPaymentConfirmed,
+  required void Function(ReceivableDto? serverRow) onPaymentConfirmed,
 }) {
   return showModalBottomSheet<void>(
     context: context,

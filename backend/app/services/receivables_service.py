@@ -9,9 +9,11 @@ from uuid import UUID
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, noload, selectinload
 
 from app.core.constants import (
+    PROVIDER_PAYMENT_FAILED,
+    PROVIDER_PAYMENT_PENDING,
     RECEIVABLE_STATUS_CANCELLED,
     RECEIVABLE_STATUS_OPEN,
     RECEIVABLE_STATUS_PARTIALLY_PAID,
@@ -125,6 +127,7 @@ class ReceivablesService:
                 ).label("total_outstanding"),
             )
             .outerjoin(Receivable, Receivable.customer_id == Customer.id)
+            .options(noload(Customer.store))
             .where(Customer.store_id == store.id)
             .group_by(Customer.id)
             .order_by(Customer.name.asc())
@@ -307,6 +310,15 @@ class ReceivablesService:
         if local_operation_id is not None:
             receivable.local_operation_id = local_operation_id
 
+        # A cash repayment invalidates any pending hosted Paystack attempt:
+        # the link was minted against an older outstanding amount, so if the
+        # customer paid that link too we would over-collect. Mark pending
+        # rows failed and drop the cached link/reference on the receivable.
+        self._invalidate_pending_online_payments(
+            receivable=receivable,
+            reason="manual_repayment_invalidates_pending_link",
+        )
+
         repayment = ReceivablePayment(
             receivable_id=receivable.id,
             amount=amount,
@@ -343,6 +355,16 @@ class ReceivablesService:
             msg = f"Debt is already {receivable.status} and cannot be cancelled."
             raise InvalidRepaymentError(msg)
         receivable.status = RECEIVABLE_STATUS_CANCELLED
+        # Cancelling a debt must also kill any live online payment context:
+        # otherwise a customer who paid the previously-shared link would
+        # un-cancel the receivable via the Paystack webhook / verify path.
+        # `_apply_receivable_settlement` separately refuses to mutate a
+        # cancelled receivable, but failing the pending payment here closes
+        # the loop on the merchant side too (no more "active link" UI).
+        self._invalidate_pending_online_payments(
+            receivable=receivable,
+            reason="receivable_cancelled",
+        )
         self.db.flush()
         log_audit(
             db=self.db,
@@ -471,7 +493,10 @@ RETURNING next_number
             payment_id,
             payment_amount,
             payment_link_expires_at,
-        ) = self._latest_payment_context_for_receivable(receivable_id=receivable.id)
+        ) = self._latest_payment_context_for_receivable(
+            receivable_id=receivable.id,
+            receivable=receivable,
+        )
         return ReceivableSnapshot(
             receivable_id=receivable.id,
             customer_id=receivable.customer_id,
@@ -491,11 +516,80 @@ RETURNING next_number
             created_at=receivable.created_at,
         )
 
+    def _invalidate_pending_online_payments(
+        self,
+        *,
+        receivable: Receivable,
+        reason: str,
+    ) -> None:
+        """Fail any pending Paystack attempts and clear the cached link.
+
+        Called by cash repayment and cancel paths so a previously-shared
+        hosted link can never settle the receivable a second time. We mark
+        each pending [Payment] row failed with a structured ``failure_reason``
+        so the audit trail explains *why* it died (cash repayment vs cancel).
+
+        Catches [OperationalError] to remain compatible with the SQLite unit
+        tests that omit the payments table.
+        """
+        try:
+            pending_payments = list(
+                self.db.scalars(
+                    select(Payment).where(
+                        Payment.receivable_id == receivable.id,
+                        Payment.status == PROVIDER_PAYMENT_PENDING,
+                    )
+                )
+            )
+        except OperationalError:
+            pending_payments = []
+
+        now_iso = datetime.now(tz=UTC).isoformat()
+        for pending in pending_payments:
+            prev_payload = (
+                pending.raw_provider_payload
+                if isinstance(pending.raw_provider_payload, dict)
+                else {}
+            )
+            pending.raw_provider_payload = {
+                **prev_payload,
+                "failure_reason": reason,
+                "invalidated_at": now_iso,
+            }
+            pending.status = PROVIDER_PAYMENT_FAILED
+            self.db.add(pending)
+
+        if receivable.payment_link is not None or receivable.payment_provider_reference is not None:
+            receivable.payment_link = None
+            receivable.payment_provider_reference = None
+            self.db.add(receivable)
+
     def _latest_payment_context_for_receivable(
         self,
         *,
         receivable_id: UUID,
+        receivable: Receivable | None = None,
     ) -> tuple[UUID | None, Decimal | None, datetime | None]:
+        """Return the active payment context only for a live pending link.
+
+        The mobile UI uses these fields to decide whether to render the
+        "active payment link" card and which payment id to verify against.
+        Returning context for a succeeded/failed/expired row caused two
+        nasty UX bugs:
+
+        - Succeeded payment + still-cached ``payment_link`` made the panel
+          look like an outstanding online attempt was still in flight.
+        - A payment_id pointing at a succeeded row meant ``verifyPayment``
+          short-circuited immediately and the watcher thought nothing was
+          happening.
+
+        We only return ``(payment_id, amount, expires_at)`` when ALL hold:
+        - the latest [Payment] is ``PROVIDER_PAYMENT_PENDING``,
+        - the receivable's cached ``payment_provider_reference`` matches
+          that payment's reference (i.e. the link the merchant can see now
+          really belongs to this pending attempt), and
+        - the pending attempt has not exceeded ``RECEIVABLE_PAYMENT_LINK_TTL``.
+        """
         try:
             payment = self.db.scalar(
                 select(Payment)
@@ -509,18 +603,42 @@ RETURNING next_number
             return None, None, None
         if payment is None:
             return None, None, None
-        # Imported lazily to avoid pulling the payments service at module
-        # import time; both modules sit in the same package.
-        from app.core.constants import PROVIDER_PAYMENT_PENDING
+
         from app.services.payment_service import RECEIVABLE_PAYMENT_LINK_TTL
 
-        expires_at: datetime | None = None
-        if payment.status == PROVIDER_PAYMENT_PENDING:
-            initiated = payment.initiated_at
-            if initiated is not None:
-                if initiated.tzinfo is None:
-                    initiated = initiated.replace(tzinfo=UTC)
-                expires_at = initiated + RECEIVABLE_PAYMENT_LINK_TTL
+        if payment.status != PROVIDER_PAYMENT_PENDING:
+            return None, None, None
+
+        cached_ref = (
+            str(receivable.payment_provider_reference).strip()
+            if receivable is not None and receivable.payment_provider_reference is not None
+            else None
+        )
+        payment_ref = (
+            str(payment.provider_reference).strip()
+            if payment.provider_reference is not None
+            else None
+        )
+        # Only consider the link "active" when the row the merchant sees
+        # on the receivable still points at this pending attempt. After a
+        # successful payment / cancel / cash repayment the cached link is
+        # cleared upstream, so this branch returns no context.
+        if receivable is not None and (
+            cached_ref is None or payment_ref is None or cached_ref != payment_ref
+        ):
+            return None, None, None
+
+        initiated = payment.initiated_at
+        if initiated is None:
+            return None, None, None
+        if initiated.tzinfo is None:
+            initiated = initiated.replace(tzinfo=UTC)
+        expires_at = initiated + RECEIVABLE_PAYMENT_LINK_TTL
+        if datetime.now(tz=UTC) >= expires_at:
+            # Stale-link safety: don't advertise a pending payment past its
+            # TTL; the verify path expires it on demand.
+            return None, None, None
+
         return payment.id, self._money(payment.amount), expires_at
 
     @staticmethod

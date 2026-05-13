@@ -43,7 +43,12 @@ class DebtPaystackMomoSheet extends ConsumerStatefulWidget {
   final String amountDisplay;
   final String chargeAmount;
   final String customerName;
-  final VoidCallback onPaymentConfirmed;
+
+  /// Called after the sheet confirms payment landed on the server. Receives
+  /// the latest authoritative [ReceivableDto] (or `null` if the post-success
+  /// fetch failed) so the parent can show truthful copy. Mirror of
+  /// [DebtPaystackQrSheet.onPaymentConfirmed].
+  final void Function(ReceivableDto? serverRow) onPaymentConfirmed;
   final bool paystackTestMode;
 
   @override
@@ -170,12 +175,50 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
     return dto.status == 'settled' || outstandingMinor == 0;
   }
 
-  Future<void> _completePaymentSuccess() async {
-    _timer?.cancel();
-    ref.invalidate(receivableDetailProvider(widget.receivableId));
-    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+  /// Same broadened detection used by the QR sheet — trust the server's
+  /// receivable_status / outstanding so a webhook race never strands the
+  /// merchant on "Waiting for payment".
+  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) {
+    if (verify.isPaymentSuccessful) return true;
+    if (verify.isSettled) return true;
+    return DebtsUiUtils.amountToMinor(verify.outstandingAmount) == 0;
+  }
+
+  /// Close the sheet immediately, then reconcile the local snapshot in the
+  /// background. Without this the sheet stays on "Checking…" while the
+  /// snapshot pull is slow. The QR sheet uses the same shape (see
+  /// [DebtPaystackQrSheet._completeSuccess]).
+  Future<void> _completePaymentSuccess({ReceivableDto? serverRow}) async {
     if (!mounted) return;
-    widget.onPaymentConfirmed();
+    _timer?.cancel();
+
+    if (serverRow != null) {
+      try {
+        await ref
+            .read(debtsControllerProvider.notifier)
+            .applyServerReceivable(serverRow)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // best-effort; background refresh below repairs.
+      }
+    }
+
+    if (!mounted) return;
+    widget.onPaymentConfirmed(serverRow);
+
+    unawaited(_reconcileSnapshotInBackground());
+  }
+
+  Future<void> _reconcileSnapshotInBackground() async {
+    try {
+      ref.invalidate(receivableDetailProvider(widget.receivableId));
+      await ref
+          .read(debtsControllerProvider.notifier)
+          .refreshFromServer()
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Surfaced via DebtsViewData.lastSyncError on next read.
+    }
   }
 
   Future<void> _check({bool auto = false}) async {
@@ -191,14 +234,18 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
     try {
       final debtsApi = ref.read(debtsApiProvider);
       ReceivableDto? serverRow;
+      Object? serverRowError;
       try {
         serverRow = await debtsApi.fetchReceivable(widget.receivableId);
-      } catch (_) {
+      } catch (error) {
+        // Don't swallow silently; count toward _autoCheckFailures so the
+        // status chip can show "Could not reach backend…" parity with QR.
         serverRow = null;
+        serverRowError = error;
       }
       if (!mounted) return;
       if (serverRow != null && _receivableFullySettled(serverRow)) {
-        await _completePaymentSuccess();
+        await _completePaymentSuccess(serverRow: serverRow);
         return;
       }
 
@@ -212,13 +259,40 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
           _paystackDisplayText = t.trim();
         }
       });
-      if (verify.isPaymentSuccessful) {
-        await _completePaymentSuccess();
+      if (_verifyIndicatesSuccess(verify)) {
+        ReceivableDto? confirmedRow = serverRow;
+        if (confirmedRow == null ||
+            !_receivableFullySettled(confirmedRow)) {
+          try {
+            confirmedRow = await debtsApi.fetchReceivable(widget.receivableId);
+          } catch (_) {
+            // fall through with whatever we had
+          }
+        }
+        await _completePaymentSuccess(serverRow: confirmedRow);
         return;
       }
-      _autoCheckFailures = 0;
-      _statusError = null;
-      if (verify.isFailed && !auto) {
+      // Partial-paid passes through: write the authoritative row locally so
+      // the panel reflects the new balance immediately, without closing.
+      if (verify.receivableStatus == 'partially_paid' && serverRow != null) {
+        try {
+          await ref
+              .read(debtsControllerProvider.notifier)
+              .applyServerReceivable(serverRow);
+        } catch (_) {
+          // best-effort
+        }
+      }
+      if (serverRowError != null) {
+        _autoCheckFailures++;
+        if (_autoCheckFailures >= 2) {
+          _statusError = 'Could not reach backend to verify payment status.';
+        }
+      } else {
+        _autoCheckFailures = 0;
+        _statusError = null;
+      }
+      if (verify.isFailed && !auto && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Payment not completed. You can retry or cancel.'),
@@ -263,14 +337,21 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
             otp: code,
           );
       if (!mounted) return;
-      if (out.isPaymentSuccessful) {
+      if (out.isPaymentSuccessful ||
+          out.isSettled ||
+          DebtsUiUtils.amountToMinor(out.outstandingAmount) == 0) {
         completed = true;
         _otpCooldownTimer?.cancel();
-        _timer?.cancel();
-        ref.invalidate(receivableDetailProvider(widget.receivableId));
-        await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+        ReceivableDto? confirmedRow;
+        try {
+          confirmedRow = await ref
+              .read(debtsApiProvider)
+              .fetchReceivable(widget.receivableId);
+        } catch (_) {
+          confirmedRow = null;
+        }
         if (!mounted) return;
-        widget.onPaymentConfirmed();
+        await _completePaymentSuccess(serverRow: confirmedRow);
         return;
       }
       cooldownAfter = out.needsOtp;
@@ -649,7 +730,7 @@ Future<void> showDebtPaystackMomoSheet(
   required String amountDisplay,
   required String chargeAmount,
   required String customerName,
-  required VoidCallback onPaymentConfirmed,
+  required void Function(ReceivableDto? serverRow) onPaymentConfirmed,
   bool paystackTestMode = false,
 }) {
   return showModalBottomSheet<void>(

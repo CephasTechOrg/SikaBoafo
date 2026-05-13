@@ -99,8 +99,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                   color: Colors.white,
                   size: 22,
                 ),
-                onPressed: () =>
-                    ref.read(debtsControllerProvider.notifier).refreshFromServer(),
+                onPressed: _refresh,
               ),
             ],
             backgroundColor: const Color(0xFF041C0B),
@@ -176,6 +175,16 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
 
   Future<void> _refresh() async {
     await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    if (!mounted) return;
+    final err = ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;
+    if (err != null && err.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sync paused: $err'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   Future<void> _openNewDebtSheet(BuildContext context) async {

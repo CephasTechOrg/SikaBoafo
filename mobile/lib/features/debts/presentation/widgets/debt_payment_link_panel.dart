@@ -4,10 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../../../../app/router.dart';
 import '../../../../app/theme/app_theme.dart';
+import '../../../../core/services/notifications_service.dart';
+import '../../../../shared/providers/core_providers.dart';
 import '../../../../shared/providers/sync_providers.dart';
 import '../../../../shared/utils/user_friendly_error.dart';
+import '../../../settings/providers/notification_prefs_provider.dart';
+import '../../data/debts_api.dart';
 import '../../data/models/local_receivable_record.dart';
+import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
 import 'debt_payment_link_share.dart';
@@ -40,6 +48,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
   bool _openingMomo = false;
   bool _statusWatchInFlight = false;
+  String? _lastStatusToastKey;
   late final TextEditingController _amountCtrl;
 
   /// Ticks once a minute so the countdown badge stays fresh without rebuilding
@@ -103,17 +112,48 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     }
     _statusWatchInFlight = true;
     try {
-      final server = await ref
+      ReceivableDto server = await ref
           .read(debtsApiProvider)
           .fetchReceivable(widget.record.receivableId);
       if (!mounted) return;
       final localMinor = DebtsUiUtils.amountToMinor(widget.record.outstandingAmount);
-      final serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
-      final settled = server.status == 'settled' || serverMinor == 0;
-      final progressed =
+      int serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
+      bool settled = server.status == 'settled' || serverMinor == 0;
+      bool progressed =
           settled || serverMinor < localMinor || server.status != widget.record.status;
+
+      // Verify fallback: webhook may have been missed or delayed. If
+      // fetchReceivable shows no progress and we have a known paymentId,
+      // nudge Paystack via verifyPayment and re-fetch. The QR sheet does
+      // this while open; the passive watcher needs the same nudge for
+      // links shared out-of-band (e.g. WhatsApp).
+      final paymentId = widget.record.paymentId;
+      if (!progressed && paymentId != null && paymentId.isNotEmpty) {
+        try {
+          await ref.read(debtsPaymentsApiProvider).verifyPayment(paymentId);
+          if (!mounted) return;
+          server = await ref
+              .read(debtsApiProvider)
+              .fetchReceivable(widget.record.receivableId);
+          if (!mounted) return;
+          serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
+          settled = server.status == 'settled' || serverMinor == 0;
+          progressed = settled ||
+              serverMinor < localMinor ||
+              server.status != widget.record.status;
+        } catch (_) {
+          // Verify is best-effort here; rely on next tick / webhook.
+        }
+      }
+
       if (!progressed) return;
 
+      final toastKey = '${server.status}:${server.outstandingAmount}';
+      if (_lastStatusToastKey == toastKey) return;
+      _lastStatusToastKey = toastKey;
+
+      await ref.read(debtsControllerProvider.notifier).applyServerReceivable(server);
+      ref.invalidate(receivableDetailProvider(widget.record.receivableId));
       await ref.read(debtsControllerProvider.notifier).refreshFromServer();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,6 +166,13 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           duration: const Duration(seconds: 3),
         ),
       );
+      // Fire a local notification too, so the merchant gets a buzz even
+      // when they've navigated away from the debt detail screen (this
+      // watcher only runs while the panel is mounted, but the user can
+      // be on a child screen of the detail route).
+      unawaited(
+        _maybeFirePaymentNotification(server: server, settled: settled),
+      );
       if (settled || server.status == 'cancelled') {
         _statusWatchTicker?.cancel();
       }
@@ -133,6 +180,46 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       // Passive watcher only; avoid noisy banners for transient network errors.
     } finally {
       _statusWatchInFlight = false;
+    }
+  }
+
+  /// Pushes a local payment notification when the watcher detects settlement
+  /// or partial progress while the user is on this screen. Gated by the
+  /// `paymentEventsEnabled` preference so users who opt out aren't pinged.
+  Future<void> _maybeFirePaymentNotification({
+    required ReceivableDto server,
+    required bool settled,
+  }) async {
+    final prefs = ref.read(notificationPrefsProvider).valueOrNull;
+    if (prefs?.paymentEventsEnabled != true) return;
+    final customer = widget.record.customerName ?? 'Customer';
+    final title = settled
+        ? 'Debt settled: $customer'
+        : 'Payment received: $customer';
+    final body = settled
+        ? 'Outstanding cleared (${DebtsUiUtils.formatAmount(server.originalAmount)}).'
+        : 'Remaining balance: ${DebtsUiUtils.formatAmount(server.outstandingAmount)}.';
+    const android = AndroidNotificationDetails(
+      'payment_events',
+      'Payment events',
+      channelDescription: 'Payment confirmation and failure alerts',
+      importance: Importance.high,
+      priority: Priority.high,
+      color: AppColors.forest,
+    );
+    final route =
+        AppRoute.debtDetail.path.replaceFirst(':id', widget.record.receivableId);
+    try {
+      await ref.read(notificationsServiceProvider).showNow(
+            type: AppNotificationType.paystack,
+            title: title,
+            body: body,
+            android: android,
+            route: route,
+            entityId: widget.record.receivableId,
+          );
+    } catch (_) {
+      // Notifications are best-effort; never let them break the watcher.
     }
   }
 
@@ -260,13 +347,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             _amountCtrl.text.trim(),
           ),
           customerName: widget.record.customerName ?? 'Customer',
-          onPaymentConfirmed: () {
-            if (!mounted) return;
-            Navigator.of(context).pop();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Payment received. Debt settled.')),
-            );
-          },
+          onPaymentConfirmed: _onSheetPaymentConfirmed,
         );
       } else {
         await showDebtPaymentLinkShare(
@@ -308,13 +389,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         widget.record.paymentAmount ?? widget.record.outstandingAmount,
       ),
       customerName: widget.record.customerName ?? 'Customer',
-      onPaymentConfirmed: () {
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment received. Debt settled.')),
-        );
-      },
+      onPaymentConfirmed: _onSheetPaymentConfirmed,
     );
   }
 
@@ -332,6 +407,69 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         widget.record.paymentAmount ?? widget.record.outstandingAmount,
       ),
       customerName: widget.record.customerName ?? 'Customer',
+    );
+  }
+
+  /// Resolves the snackbar message after a sheet reports payment landed.
+  /// Prefers the authoritative [serverRow], then falls back to the latest
+  /// local snapshot, then the previous "settled" assumption. Without this,
+  /// partial payments were misleadingly reported as fully settled.
+  String _paymentConfirmedMessage(ReceivableDto? serverRow) {
+    String? status = serverRow?.status;
+    String? outstandingAmount = serverRow?.outstandingAmount;
+
+    if (serverRow == null) {
+      final localRecord = ref
+          .read(debtsControllerProvider)
+          .valueOrNull
+          ?.receivables
+          .where((r) => r.receivableId == widget.record.receivableId)
+          .cast<LocalReceivableRecord?>()
+          .firstOrNull;
+      status = localRecord?.status;
+      outstandingAmount = localRecord?.outstandingAmount;
+    }
+
+    final outstandingMinor = outstandingAmount == null
+        ? 0
+        : DebtsUiUtils.amountToMinor(outstandingAmount);
+
+    final settled = status == 'settled' || outstandingMinor == 0;
+    if (settled) return 'Payment received. Debt settled.';
+    if (outstandingAmount != null) {
+      return 'Partial payment received. Remaining: '
+          '${DebtsUiUtils.formatAmount(outstandingAmount)}.';
+    }
+    return 'Payment received.';
+  }
+
+  void _onSheetPaymentConfirmed(ReceivableDto? serverRow) {
+    if (!mounted) return;
+
+    // Hard-invalidate the detail provider so the screen below re-reads
+    // local state once the sheet pops. The QR sheet's background reconcile
+    // already does this, but MoMo / future entry points may not, and a
+    // double-invalidate is cheap.
+    ref.invalidate(receivableDetailProvider(widget.record.receivableId));
+
+    // Local-first: apply the authoritative server row so the panel rebuilds
+    // with the right balance even before the snapshot pull lands.
+    if (serverRow != null) {
+      unawaited(
+        ref
+            .read(debtsControllerProvider.notifier)
+            .applyServerReceivable(serverRow),
+      );
+    }
+
+    // Reconcile against server in the background so we don't block pop().
+    unawaited(
+      ref.read(debtsControllerProvider.notifier).refreshFromServer(),
+    );
+
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_paymentConfirmedMessage(serverRow))),
     );
   }
 
@@ -360,13 +498,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         amountDisplay: DebtsUiUtils.formatAmount(_amountCtrl.text.trim()),
         chargeAmount: _amountCtrl.text.trim(),
         customerName: widget.record.customerName ?? 'Customer',
-        onPaymentConfirmed: () {
-          if (!mounted) return;
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment received. Debt settled.')),
-          );
-        },
+        onPaymentConfirmed: _onSheetPaymentConfirmed,
       );
     } finally {
       if (mounted) setState(() => _openingMomo = false);

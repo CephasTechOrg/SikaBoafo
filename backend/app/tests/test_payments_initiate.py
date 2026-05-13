@@ -23,8 +23,10 @@ from app.core.constants import (
     PAYMENT_STATUS_RECORDED,
     PAYMENT_STATUS_SUCCEEDED,
     PAYSTACK_MODE_TEST,
+    PROVIDER_PAYMENT_FAILED,
     PROVIDER_PAYMENT_PENDING,
     PROVIDER_PAYMENT_SUCCEEDED,
+    RECEIVABLE_STATUS_CANCELLED,
     SALE_STATUS_RECORDED,
     SALE_STATUS_VOIDED,
 )
@@ -702,6 +704,546 @@ def test_verify_receivable_payment_short_circuits_expired_pending() -> None:
             row = db.scalar(select(Payment).where(Payment.id == payment_id))
             assert row is not None
             assert row.status == "failed"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_after_partial_settlement_does_not_double_debit() -> None:
+    """Once a partial payment has settled (`receivable_payment_id` set),
+    re-running verify must NOT call `_apply_receivable_settlement` again.
+    Otherwise a partial payment of 50 of 120 would silently flip to
+    settled by subtracting 50 a second time."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+
+            settled_payment_row = ReceivablePayment(
+                receivable_id=receivable_id,
+                amount=Decimal("50.00"),
+                payment_method_label="mobile_money",
+            )
+            settled_payment_row.id = uuid4()
+            db.add(settled_payment_row)
+            db.flush()
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                receivable_payment_id=settled_payment_row.id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_PARTIAL_001",
+                internal_reference="BTGH_PARTIAL_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("50.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_SUCCEEDED,
+                initiated_at=datetime.now(tz=UTC),
+                confirmed_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+
+            receivable.outstanding_amount = Decimal("70.00")
+            receivable.status = "partially_paid"
+            db.add(receivable)
+            db.commit()
+            payment_id = payment.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction"
+        ) as mocked_verify:
+            response = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["receivable_status"] == "partially_paid"
+        assert Decimal(body["outstanding_amount"]) == Decimal("70.00")
+        # Idempotency short-circuit must avoid the Paystack roundtrip too.
+        mocked_verify.assert_not_called()
+
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.outstanding_amount == Decimal("70.00")
+            assert refreshed.status == "partially_paid"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_twice_after_settlement_is_noop() -> None:
+    """Two consecutive verify calls after a successful full settlement should
+    leave the receivable on settled with zero outstanding (no negative)."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+
+            settled_payment_row = ReceivablePayment(
+                receivable_id=receivable_id,
+                amount=Decimal("120.00"),
+                payment_method_label="mobile_money",
+            )
+            settled_payment_row.id = uuid4()
+            db.add(settled_payment_row)
+            db.flush()
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                receivable_payment_id=settled_payment_row.id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_FULL_001",
+                internal_reference="BTGH_FULL_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_SUCCEEDED,
+                initiated_at=datetime.now(tz=UTC),
+                confirmed_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+
+            receivable.outstanding_amount = Decimal("0.00")
+            receivable.status = "settled"
+            db.add(receivable)
+            db.commit()
+            payment_id = payment.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction"
+        ) as mocked_verify:
+            for _ in range(2):
+                response = client.post(
+                    f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+                )
+                assert response.status_code == 200, response.text
+                assert response.json()["receivable_status"] == "settled"
+
+        mocked_verify.assert_not_called()
+
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.outstanding_amount == Decimal("0.00")
+            assert refreshed.status == "settled"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_clears_cached_link_on_full_settlement() -> None:
+    """A fully-settling verify must drop the receivable's cached payment_link
+    and payment_provider_reference so the UI no longer treats the (now used)
+    Paystack reference as an active online attempt."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        provider_reference = "PSK_FULL_LINK_001"
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            receivable.payment_link = "https://checkout.paystack.com/link-001"
+            receivable.payment_provider_reference = provider_reference
+            db.add(receivable)
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference=provider_reference,
+                internal_reference="BTGH_FULL_LINK_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+            db.commit()
+            payment_id = payment.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=provider_reference,
+                status="success",
+                amount_kobo=12000,
+                paid_at="2026-05-13T12:00:00Z",
+                raw_payload={"status": True, "data": {"status": "success"}},
+            ),
+        ):
+            response = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert response.status_code == 200, response.text
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.status == "settled"
+            assert refreshed.outstanding_amount == Decimal("0.00")
+            assert refreshed.payment_link is None
+            assert refreshed.payment_provider_reference is None
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_clears_cached_link_on_partial_settlement() -> None:
+    """A partial settlement also invalidates the cached link: the remaining
+    balance needs a fresh Paystack reference to avoid double-collection."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        provider_reference = "PSK_PART_LINK_001"
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            receivable.payment_link = "https://checkout.paystack.com/link-part-001"
+            receivable.payment_provider_reference = provider_reference
+            db.add(receivable)
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference=provider_reference,
+                internal_reference="BTGH_PART_LINK_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("50.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+            db.commit()
+            payment_id = payment.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=provider_reference,
+                status="success",
+                amount_kobo=5000,
+                paid_at="2026-05-13T12:00:00Z",
+                raw_payload={"status": True, "data": {"status": "success"}},
+            ),
+        ):
+            response = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert response.status_code == 200, response.text
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.status == "partially_paid"
+            assert refreshed.outstanding_amount == Decimal("70.00")
+            assert refreshed.payment_link is None
+            assert refreshed.payment_provider_reference is None
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_on_cancelled_receivable_fails_payment_without_mutating_outstanding() -> None:
+    """If a Paystack callback lands on a debt that has been cancelled
+    server-side, the settlement helper refuses the mutation. The payment
+    flips to failed and the receivable stays cancelled with its original
+    outstanding amount."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack(
+        receivable_status=RECEIVABLE_STATUS_CANCELLED,
+    )
+    try:
+        provider_reference = "PSK_CANCELLED_001"
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            original_outstanding = receivable.outstanding_amount
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference=provider_reference,
+                internal_reference="BTGH_CANCELLED_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+            db.commit()
+            payment_id = payment.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=provider_reference,
+                status="success",
+                amount_kobo=12000,
+                paid_at="2026-05-13T12:00:00Z",
+                raw_payload={"status": True, "data": {"status": "success"}},
+            ),
+        ):
+            response = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert response.status_code == 200, response.text
+        with session_local() as db:
+            refreshed_payment = db.scalar(
+                select(Payment).where(Payment.id == payment_id)
+            )
+            assert refreshed_payment is not None
+            assert refreshed_payment.status == PROVIDER_PAYMENT_FAILED
+
+            refreshed_receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed_receivable is not None
+            assert refreshed_receivable.status == RECEIVABLE_STATUS_CANCELLED
+            assert refreshed_receivable.outstanding_amount == original_outstanding
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_cancel_receivable_fails_pending_payment_and_clears_link() -> None:
+    """Cancelling a debt with a live Paystack link must also fail the pending
+    payment row and clear the cached link, so a customer who pays the
+    out-of-band link later cannot un-cancel the debt via the webhook."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        provider_reference = "PSK_TO_CANCEL_001"
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            receivable.payment_link = "https://checkout.paystack.com/cancel-me"
+            receivable.payment_provider_reference = provider_reference
+            db.add(receivable)
+
+            pending = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference=provider_reference,
+                internal_reference="BTGH_TO_CANCEL_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(pending)
+            db.commit()
+            pending_id = pending.id
+
+        response = client.post(
+            f"/api/v1/receivables/{receivable_id}/cancel",
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["status"] == "cancelled"
+
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.status == RECEIVABLE_STATUS_CANCELLED
+            assert refreshed.payment_link is None
+            assert refreshed.payment_provider_reference is None
+
+            refreshed_pending = db.scalar(
+                select(Payment).where(Payment.id == pending_id)
+            )
+            assert refreshed_pending is not None
+            assert refreshed_pending.status == PROVIDER_PAYMENT_FAILED
+            failure = (refreshed_pending.raw_provider_payload or {}).get("failure_reason")
+            assert failure == "receivable_cancelled"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_record_repayment_fails_pending_online_payment_and_clears_link() -> None:
+    """A cash repayment shifts the outstanding balance, so any live hosted
+    Paystack link (minted against the old outstanding) must be invalidated
+    to prevent over-collection if the customer also pays that link later."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        provider_reference = "PSK_BEFORE_CASH_001"
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            receivable.payment_link = "https://checkout.paystack.com/before-cash"
+            receivable.payment_provider_reference = provider_reference
+            db.add(receivable)
+
+            pending = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference=provider_reference,
+                internal_reference="BTGH_BEFORE_CASH_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(pending)
+            db.commit()
+            pending_id = pending.id
+
+        response = client.post(
+            f"/api/v1/receivables/{receivable_id}/repayments",
+            json={"amount": "40.00", "payment_method_label": "cash"},
+        )
+        assert response.status_code == 200, response.text
+
+        with session_local() as db:
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.outstanding_amount == Decimal("80.00")
+            assert refreshed.status == "partially_paid"
+            assert refreshed.payment_link is None
+            assert refreshed.payment_provider_reference is None
+
+            refreshed_pending = db.scalar(
+                select(Payment).where(Payment.id == pending_id)
+            )
+            assert refreshed_pending is not None
+            assert refreshed_pending.status == PROVIDER_PAYMENT_FAILED
+            failure = (refreshed_pending.raw_provider_payload or {}).get("failure_reason")
+            assert failure == "manual_repayment_invalidates_pending_link"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_receivable_snapshot_omits_payment_context_for_succeeded_payment() -> None:
+    """After a Paystack payment has settled, the API must not advertise the
+    succeeded ``payment_id`` as an active context. Otherwise the mobile
+    panel keeps polling a closed payment and the watcher thinks nothing is
+    happening (audit findings #5 and #7)."""
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+
+            settled_payment_row = ReceivablePayment(
+                receivable_id=receivable_id,
+                amount=Decimal("120.00"),
+                payment_method_label="mobile_money",
+            )
+            settled_payment_row.id = uuid4()
+            db.add(settled_payment_row)
+            db.flush()
+
+            payment = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                receivable_payment_id=settled_payment_row.id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_SETTLED_NOW",
+                internal_reference="BTGH_SETTLED_NOW",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_SUCCEEDED,
+                initiated_at=datetime.now(tz=UTC),
+                confirmed_at=datetime.now(tz=UTC),
+                raw_provider_payload={"status": True},
+            )
+            db.add(payment)
+            receivable.outstanding_amount = Decimal("0.00")
+            receivable.status = "settled"
+            # The settlement path normally clears these; we leave them set
+            # here to prove the snapshot still hides them on a succeeded row.
+            receivable.payment_link = "https://checkout.paystack.com/leftover"
+            receivable.payment_provider_reference = "PSK_SETTLED_NOW"
+            db.add(receivable)
+            db.commit()
+
+        response = client.get(f"/api/v1/receivables/{receivable_id}")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["payment_id"] is None
+        assert body["payment_amount"] is None
+        assert body["payment_link_expires_at"] is None
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()

@@ -1029,9 +1029,12 @@ class PaymentService:
             msg = "Payment has no provider reference."
             raise PaymentInitiationStateError(msg)
 
+        # Same idempotency rule as `verify_receivable_payment`: keying off
+        # `receivable_payment_id` prevents a partial payment from being
+        # double-debited if OTP submit is retried after a successful charge.
         if (
             payment.status == PROVIDER_PAYMENT_SUCCEEDED
-            and receivable.status == RECEIVABLE_STATUS_SETTLED
+            and payment.receivable_payment_id is not None
         ):
             return ReceivablePaymentVerifySnapshot(
                 payment_id=payment.id,
@@ -1158,9 +1161,17 @@ class PaymentService:
             msg = "Payment has no provider reference."
             raise PaymentInitiationStateError(msg)
 
+        # Settlement-already-applied short-circuit. This MUST key off
+        # `payment.receivable_payment_id` (set by `_apply_receivable_settlement`),
+        # not `receivable.status == settled`, because a *partial* payment leaves
+        # the receivable in `partially_paid` while the payment row is already
+        # `succeeded`. Without this guard, re-entering `_apply_paystack_verify_*`
+        # would call `_apply_receivable_settlement` a second time and silently
+        # reduce `outstanding_amount` again, flipping a real partial payment
+        # to `settled` and corrupting the customer's balance.
         if (
             payment.status == PROVIDER_PAYMENT_SUCCEEDED
-            and receivable.status == RECEIVABLE_STATUS_SETTLED
+            and payment.receivable_payment_id is not None
         ):
             return ReceivablePaymentVerifySnapshot(
                 payment_id=payment.id,
@@ -1270,17 +1281,46 @@ class PaymentService:
     def _apply_paystack_verify_to_receivable_payment(
         self,
         *,
-        user_id: UUID,
+        user_id: UUID | None,
         merchant: Merchant,
         payment: Payment,
         receivable: Receivable,
         verified: PaystackVerifyResult,
+        channel: str | None = None,
+        extra_payload_key: str = "manual_verify",
+        emit_audit: bool = True,
     ) -> str:
-        """Apply Paystack verify result to a receivable-linked payment; flush only."""
+        """Apply Paystack verify result to a receivable-linked payment; flush only.
+
+        Shared by manual verify, OTP submit, and webhook paths so the same
+        idempotency, metadata-mismatch, cancelled-receivable, and settlement
+        rules apply everywhere.
+
+        - ``user_id`` is ``None`` for webhook-driven calls (no actor).
+        - ``channel`` overrides the hard-coded mobile-money channel used when
+          recording the [ReceivablePayment]; webhook supplies the real
+          Paystack channel ("mobile_money", "bank", "card", ...).
+        - ``extra_payload_key`` controls which key the verify payload is
+          stored under inside ``payment.raw_provider_payload`` (so manual and
+          webhook flows don't clobber each other).
+        """
         verified_amount = self._kobo_to_money(verified.amount_kobo)
         paystack_status = verified.status.strip().lower()
         action = "payment.verify_pending"
         failure_reason: str | None = None
+        effective_channel = channel or PAYMENT_METHOD_MOBILE_MONEY
+
+        # Idempotency: settlement already applied (webhook or prior verify).
+        # `receivable_payment_id` is set inside `_apply_receivable_settlement`,
+        # so its presence proves we already debited `outstanding_amount` for
+        # this payment. Re-running would subtract a second time and silently
+        # flip a partial payment to fully `settled`. Defense in depth with the
+        # outer short-circuit in `verify_receivable_payment`.
+        if (
+            payment.status == PROVIDER_PAYMENT_SUCCEEDED
+            and payment.receivable_payment_id is not None
+        ):
+            return paystack_status or "success"
 
         # Defense-in-depth: if Paystack echoed back the receivable_id metadata
         # we wrote at initiate time, make sure it matches the row we are about
@@ -1298,18 +1338,28 @@ class PaymentService:
             paystack_status = "failed"
         elif paystack_status == "success":
             if verified_amount is not None and verified_amount > Decimal("0.00"):
-                payment.status = PROVIDER_PAYMENT_SUCCEEDED
-                payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
-                    tz=UTC
-                )
                 if verified_amount != payment.amount:
                     payment.amount = verified_amount
-                self._apply_receivable_settlement(
+                applied = self._apply_receivable_settlement(
                     payment=payment,
                     receivable=receivable,
-                    channel=PAYMENT_METHOD_MOBILE_MONEY,
+                    channel=effective_channel,
                 )
-                action = "payment.succeeded"
+                if applied:
+                    payment.status = PROVIDER_PAYMENT_SUCCEEDED
+                    payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
+                        tz=UTC
+                    )
+                    action = "payment.succeeded"
+                else:
+                    # Settlement refused (e.g. receivable cancelled). Mark
+                    # the payment failed so it stops appearing as a pending
+                    # online attempt; audit was already emitted inside the
+                    # settlement helper.
+                    payment.status = PROVIDER_PAYMENT_FAILED
+                    failure_reason = "receivable_cancelled"
+                    action = "payment.failed"
+                    paystack_status = "failed"
             else:
                 payment.status = PROVIDER_PAYMENT_FAILED
                 failure_reason = "invalid_verified_amount"
@@ -1323,12 +1373,12 @@ class PaymentService:
             if isinstance(payment.raw_provider_payload, dict)
             else {}
         )
-        payment.raw_provider_payload = {**prev_payload, "manual_verify": verified.raw_payload}
+        payment.raw_provider_payload = {**prev_payload, extra_payload_key: verified.raw_payload}
         self.db.add(payment)
         self.db.add(receivable)
         self.db.flush()
 
-        if action != "payment.verify_pending":
+        if emit_audit and action != "payment.verify_pending":
             log_audit(
                 db=self.db,
                 actor_user_id=user_id,
@@ -1507,7 +1557,10 @@ class PaymentService:
 
         previous_status = payment.status
         verified_amount = self._kobo_to_money(verified.amount_kobo)
-        if verified_amount is not None:
+        if verified_amount is not None and sale is not None:
+            # Receivable case lets the verify helper own the amount update
+            # so it stays consistent with the manual verify path. For sales
+            # we keep the legacy behaviour (mutate here, no helper call).
             payment.amount = verified_amount
         failure_reason: str | None = None
         expected_amount: Decimal | None = None
@@ -1532,28 +1585,50 @@ class PaymentService:
                     )
                     action = "payment.failed"
             else:
-                if verified_amount is not None and verified_amount > Decimal("0.00"):
-                    payment.status = PROVIDER_PAYMENT_SUCCEEDED
-                    payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(
-                        tz=UTC
-                    )
-                    self._apply_receivable_settlement(
+                # Receivable path: delegate to the same helper used by the
+                # manual verify endpoint so idempotency, metadata-mismatch,
+                # cancelled-guard, and link-clearing rules apply identically.
+                merchant = self.db.scalar(
+                    select(Merchant).where(Merchant.id == payment.merchant_id)
+                )
+                if merchant is None:
+                    payment.status = PROVIDER_PAYMENT_FAILED
+                    failure_reason = "merchant_not_found"
+                    action = "payment.failed"
+                else:
+                    paystack_status = self._apply_paystack_verify_to_receivable_payment(
+                        user_id=None,
+                        merchant=merchant,
                         payment=payment,
                         receivable=receivable,
+                        verified=verified,
                         channel=channel,
+                        extra_payload_key="verify",
+                        emit_audit=False,
                     )
-                    action = "payment.succeeded"
-                else:
-                    payment.status = PROVIDER_PAYMENT_FAILED
-                    failure_reason = "invalid_verified_amount"
-                    action = "payment.failed"
+                    if payment.status == PROVIDER_PAYMENT_SUCCEEDED:
+                        action = "payment.succeeded"
+                    elif paystack_status == "failed":
+                        action = "payment.failed"
+                        if failure_reason is None:
+                            failure_reason = "settlement_refused"
+                    else:
+                        action = "payment.verify_pending"
         else:
             payment.status = PROVIDER_PAYMENT_FAILED
             if sale is not None:
                 sale.payment_status = PAYMENT_STATUS_FAILED
             action = "payment.failed"
 
+        # Preserve any keys the helper may have added (e.g. "verify") so we
+        # don't lose them when stamping the webhook payload.
+        existing_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
         payment.raw_provider_payload = {
+            **existing_payload,
             "webhook": payload,
             "verify": verified.raw_payload,
         }
@@ -1815,11 +1890,41 @@ class PaymentService:
         payment: Payment,
         receivable: Receivable,
         channel: str,
-    ) -> None:
+    ) -> bool:
+        """Apply a successful Paystack payment to a receivable.
+
+        Returns ``True`` when settlement was applied (outstanding mutated or
+        the receivable was already at zero). Returns ``False`` when the
+        caller must treat the payment as failed instead — currently only
+        the case for receivables already marked cancelled, where applying
+        Paystack money would silently un-cancel the debt.
+        """
+        # Trust boundary: a cancelled receivable must never be revived by a
+        # late Paystack callback. The caller should mark the payment failed
+        # with an appropriate reason. Audit is emitted here for visibility
+        # since the verify/webhook callers don't know the receivable was
+        # cancelled until they see this return value.
+        if receivable.status == RECEIVABLE_STATUS_CANCELLED:
+            business_id = self._business_id_for_receivable(receivable_id=receivable.id)
+            log_audit(
+                db=self.db,
+                actor_user_id=None,
+                business_id=business_id,
+                action="payment.ignored_cancelled_receivable",
+                entity_type="payment",
+                entity_id=payment.id,
+                meta={
+                    "provider_reference": payment.provider_reference,
+                    "receivable_id": str(receivable.id),
+                },
+            )
+            return False
+
         outstanding = self._money(receivable.outstanding_amount)
         if outstanding <= Decimal("0.00"):
             receivable.status = RECEIVABLE_STATUS_SETTLED
-            return
+            self._clear_cached_link_if_matches(payment=payment, receivable=receivable)
+            return True
         settlement_amount = self._money(min(outstanding, payment.amount))
         if payment.receivable_payment_id is None and settlement_amount > Decimal("0.00"):
             receivable_payment = ReceivablePayment(
@@ -1838,6 +1943,32 @@ class PaymentService:
             if next_outstanding == Decimal("0.00")
             else RECEIVABLE_STATUS_PARTIALLY_PAID
         )
+        # Either a partial or full payment invalidates the cached online
+        # context: full settlement closes the debt, partial settlement
+        # means the next payment must be a fresh link for the new
+        # remaining balance.
+        self._clear_cached_link_if_matches(payment=payment, receivable=receivable)
+        return True
+
+    @staticmethod
+    def _clear_cached_link_if_matches(
+        *,
+        payment: Payment,
+        receivable: Receivable,
+    ) -> None:
+        """Drop the receivable's cached Paystack link when it belongs to this payment.
+
+        We only clear when the cached reference matches the payment being
+        settled — otherwise we might wipe a newer pending attempt the
+        merchant just generated for the remaining balance.
+        """
+        ref = receivable.payment_provider_reference
+        if ref is None:
+            return
+        if str(ref).strip() != str(payment.provider_reference or "").strip():
+            return
+        receivable.payment_link = None
+        receivable.payment_provider_reference = None
 
     def _ensure_no_pending_receivable_payment(
         self,

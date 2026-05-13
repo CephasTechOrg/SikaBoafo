@@ -345,13 +345,18 @@ def test_paystack_webhook_success_settles_receivable_using_payment_mode_secret()
             payment = db.scalar(select(Payment).where(Payment.provider_reference == reference))
             assert payment is not None
             assert payment.status == "succeeded"
+            assert payment.receivable_id is not None
 
             receivable = db.scalar(
-                select(Receivable).where(Receivable.payment_provider_reference == reference)
+                select(Receivable).where(Receivable.id == payment.receivable_id)
             )
             assert receivable is not None
             assert receivable.status == "settled"
             assert receivable.outstanding_amount == Decimal("0.00")
+            # Successful settlement clears the cached online link so the
+            # merchant UI doesn't keep showing a stale "active link" card.
+            assert receivable.payment_link is None
+            assert receivable.payment_provider_reference is None
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()
@@ -415,13 +420,18 @@ def test_paystack_webhook_partial_success_marks_receivable_partially_paid() -> N
             payment = db.scalar(select(Payment).where(Payment.provider_reference == reference))
             assert payment is not None
             assert payment.amount == Decimal("50.00")
+            assert payment.receivable_id is not None
 
             receivable = db.scalar(
-                select(Receivable).where(Receivable.payment_provider_reference == reference)
+                select(Receivable).where(Receivable.id == payment.receivable_id)
             )
             assert receivable is not None
             assert receivable.status == "partially_paid"
             assert receivable.outstanding_amount == Decimal("70.00")
+            # Partial settlement also drops the cached link: the next
+            # payment for the remaining balance must mint a fresh link.
+            assert receivable.payment_link is None
+            assert receivable.payment_provider_reference is None
     finally:
         _restore_env(env)
         app.dependency_overrides.clear()

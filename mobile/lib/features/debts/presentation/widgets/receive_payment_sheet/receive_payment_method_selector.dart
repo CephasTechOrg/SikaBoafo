@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/theme/app_theme.dart';
 
-/// Method picker for the receive-payment sheet. Three options:
-/// cash, mobile money, bank transfer — laid out as selectable cards.
+/// Method picker for the receive-payment sheet.
+///
+/// Manual "Receive payment" is for in-person collection, so we intentionally
+/// keep this flow cash-only. Digital collections (mobile money, bank, card)
+/// should go through the online payment link / QR flow above the sheet,
+/// which records a [ReceivablePayment] server-side automatically.
 class ReceivePaymentMethodSelector extends StatelessWidget {
   const ReceivePaymentMethodSelector({
     super.key,
@@ -36,24 +40,6 @@ class ReceivePaymentMethodSelector extends StatelessWidget {
           value: 'cash',
           selected: selected == 'cash',
           onTap: () => onChanged('cash'),
-        ),
-        const SizedBox(height: 8),
-        _MethodCard(
-          icon: Icons.smartphone_rounded,
-          title: 'Mobile money',
-          subtitle: 'MoMo / Vodafone Cash / AT Money',
-          value: 'mobile_money',
-          selected: selected == 'mobile_money',
-          onTap: () => onChanged('mobile_money'),
-        ),
-        const SizedBox(height: 8),
-        _MethodCard(
-          icon: Icons.account_balance_rounded,
-          title: 'Bank transfer',
-          subtitle: 'Direct deposit or transfer',
-          value: 'bank_transfer',
-          selected: selected == 'bank_transfer',
-          onTap: () => onChanged('bank_transfer'),
         ),
       ],
     );

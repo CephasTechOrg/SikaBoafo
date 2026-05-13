@@ -48,9 +48,36 @@ class SyncRefreshService {
 
   Future<void> refreshDebtSnapshot() async {
     final customers = await _debtsApi.fetchCustomers();
-    final receivables = await _debtsApi.fetchReceivables();
+    // Backend caps `GET /receivables?limit=` at 300; stay within validation.
+    final receivables = await _debtsApi.fetchReceivables(limit: 300);
     final db = await _appDb.database;
     final now = DateTime.now().millisecondsSinceEpoch;
+    final fetchedIds = receivables.map((r) => r.receivableId).toSet();
+
+    // Backfill rows that can be missing from paged list responses (older but
+    // still active debts, or rows with a still-shared payment link). This
+    // prevents "paid on server but still open locally" until manual revisit.
+    final trackedRows = await db.query(
+      'receivables_local',
+      columns: ['id'],
+      where: "status IN (?, ?) OR payment_link IS NOT NULL",
+      whereArgs: ['open', 'partially_paid'],
+    );
+    final trackedIds = trackedRows
+        .map((row) => (row['id'] ?? '').toString())
+        .where((id) => id.isNotEmpty && !fetchedIds.contains(id))
+        .toList(growable: false);
+    final extraReceivables = <ReceivableDto>[];
+    for (final id in trackedIds) {
+      try {
+        final dto = await _debtsApi.fetchReceivable(id);
+        extraReceivables.add(dto);
+      } catch (_) {
+        // Ignore per-row lookup failures so a single missing/deleted row does
+        // not block the entire debt snapshot refresh.
+      }
+    }
+    final allReceivables = <ReceivableDto>[...receivables, ...extraReceivables];
 
     await db.transaction((tx) async {
       for (final customer in customers) {
@@ -69,7 +96,7 @@ class SyncRefreshService {
         );
       }
 
-      for (final receivable in receivables) {
+      for (final receivable in allReceivables) {
         final existing = await tx.query(
           'receivables_local',
           columns: ['local_operation_id', 'source_device_id', 'created_at'],

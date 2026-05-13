@@ -10,9 +10,11 @@ import 'receive_payment_amount_field.dart';
 import 'receive_payment_confirm_button.dart';
 import 'receive_payment_method_selector.dart';
 
-/// Records a manual repayment (cash / MoMo / bank transfer). Validates
-/// `amount <= outstanding` locally and submits via the offline-first
-/// `recordRepayment` controller method.
+/// Records a manual *cash* repayment. Online methods (mobile money, bank,
+/// card) flow through the QR / payment link, which records its own
+/// [ReceivablePayment] server-side; the manual sheet only handles cash to
+/// avoid double-booking. Validates `amount <= outstanding` locally and
+/// submits via the offline-first `recordRepayment` controller method.
 class ReceivePaymentSheet extends ConsumerStatefulWidget {
   const ReceivePaymentSheet({super.key, required this.record});
 

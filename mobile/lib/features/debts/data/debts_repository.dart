@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../data/local/app_database.dart';
 import '../../../data/sync/sync_queue_runner.dart';
+import 'debts_api.dart';
 import 'models/local_debt_customer.dart';
 import 'models/local_receivable_detail.dart';
 import 'models/local_receivable_payment_record.dart';
@@ -512,6 +513,70 @@ ORDER BY p.created_at DESC
     );
   }
 
+  /// Upserts one receivable row using authoritative server payload.
+  ///
+  /// Used for real-time debt payment/cancel reconciliation where waiting for a
+  /// full `/receivables` snapshot can feel stale (or miss rows due pagination).
+  Future<void> upsertReceivableFromServer(ReceivableDto dto) async {
+    final db = await _appDb.database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final createdAt = DateTime.tryParse(dto.createdAtIso)?.millisecondsSinceEpoch ?? now;
+    await db.transaction((tx) async {
+      final existing = await tx.query(
+        'receivables_local',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [dto.receivableId],
+        limit: 1,
+      );
+      if (existing.isEmpty) {
+        await tx.insert(
+          'receivables_local',
+          {
+            'id': dto.receivableId,
+            'customer_id': dto.customerId,
+            'original_amount': dto.originalAmount,
+            'outstanding_amount': dto.outstandingAmount,
+            'due_date': dto.dueDateIso,
+            'status': dto.status,
+            'invoice_number': dto.invoiceNumber,
+            'payment_link': dto.paymentLink,
+            'payment_id': dto.paymentId,
+            'payment_amount': dto.paymentAmount,
+            'payment_link_expires_at': dto.paymentLinkExpiresAtIso,
+            'created_by_user_id': dto.createdByUserId,
+            'sale_id': dto.saleId,
+            'local_operation_id': 'server:receivable:${dto.receivableId}',
+            'source_device_id': 'server',
+            'created_at': createdAt,
+            'updated_at': now,
+          },
+        );
+        return;
+      }
+      await tx.update(
+        'receivables_local',
+        {
+          'customer_id': dto.customerId,
+          'original_amount': dto.originalAmount,
+          'outstanding_amount': dto.outstandingAmount,
+          'due_date': dto.dueDateIso,
+          'status': dto.status,
+          'invoice_number': dto.invoiceNumber,
+          'payment_link': dto.paymentLink,
+          'payment_id': dto.paymentId,
+          'payment_amount': dto.paymentAmount,
+          'payment_link_expires_at': dto.paymentLinkExpiresAtIso,
+          'created_by_user_id': dto.createdByUserId,
+          'sale_id': dto.saleId,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [dto.receivableId],
+      );
+    });
+  }
+
   // -------------------------------------------------------------- sync
 
   Future<SyncQueueRunSummary> syncPendingQueue({int limit = 100}) {
@@ -592,18 +657,30 @@ class DebtsViewData {
   const DebtsViewData({
     required this.customers,
     required this.receivables,
+    this.lastSyncError,
   });
 
   final List<LocalDebtCustomer> customers;
   final List<LocalReceivableRecord> receivables;
 
+  /// Set when the last `refreshFromServer` attempt failed (auth blip, 502, dns).
+  /// `null` means the most recent server pull succeeded or hasn't been tried.
+  /// Surface this in the debts screen banner so silent failures aren't hidden.
+  final String? lastSyncError;
+
   DebtsViewData copyWith({
     List<LocalDebtCustomer>? customers,
     List<LocalReceivableRecord>? receivables,
+    Object? lastSyncError = _unset,
   }) {
     return DebtsViewData(
       customers: customers ?? this.customers,
       receivables: receivables ?? this.receivables,
+      lastSyncError: identical(lastSyncError, _unset)
+          ? this.lastSyncError
+          : lastSyncError as String?,
     );
   }
 }
+
+const Object _unset = Object();

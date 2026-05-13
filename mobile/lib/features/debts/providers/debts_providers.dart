@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../data/debts_api.dart';
 import '../data/debts_payments_api.dart';
 import '../data/debts_repository.dart';
 
@@ -19,6 +20,10 @@ final debtsControllerProvider =
 
 class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   DebtsRepository get _repo => ref.read(debtsRepositoryProvider);
+
+  /// Carries the most recent `refreshFromServer` error so callers (banner,
+  /// snackbar) can surface it on the next snapshot read. Cleared on success.
+  String? _lastSyncError;
 
   @override
   Future<DebtsViewData> build() async {
@@ -44,13 +49,32 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   /// Pulls receivables/customers from the API into SQLite, then re-reads the
   /// local snapshot. Use after server-side payment or cancel so list/detail
   /// match the backend (see also [refresh] which only syncs the outbound queue).
+  ///
+  /// Errors are captured (so callers don't crash) but surfaced via
+  /// [DebtsViewData.lastSyncError] for the next snapshot read. This avoids
+  /// the previous behaviour of silently swallowing snapshot pull failures.
   Future<void> refreshFromServer() async {
     try {
       await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
-    } catch (_) {
-      // ignore — UI may stay stale until next full refresh
+      _lastSyncError = null;
+    } catch (error) {
+      _lastSyncError = _humanizeRefreshError(error);
     }
     await refresh();
+  }
+
+  /// Applies one authoritative receivable payload into SQLite and refreshes
+  /// view state immediately. Use after per-receivable API calls (verify/cancel)
+  /// so the UI updates even before the next full snapshot pull.
+  Future<void> applyServerReceivable(ReceivableDto dto) async {
+    await _repo.upsertReceivableFromServer(dto);
+    state = AsyncValue.data(await _readSnapshot());
+  }
+
+  String _humanizeRefreshError(Object error) {
+    final raw = error.toString();
+    if (raw.isEmpty) return 'Could not refresh debts from the server.';
+    return raw.length > 160 ? '${raw.substring(0, 157)}…' : raw;
   }
 
   Future<String> createCustomer({
@@ -152,7 +176,8 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   Future<void> cancelReceivable({required String receivableId}) async {
     state = const AsyncLoading();
     try {
-      await ref.read(debtsApiProvider).cancelReceivable(receivableId);
+      final cancelled = await ref.read(debtsApiProvider).cancelReceivable(receivableId);
+      await applyServerReceivable(cancelled);
       await refreshFromServer();
     } catch (error, stackTrace) {
       await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -166,12 +191,24 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
     required String amount,
     required String paymentMethodLabel,
   }) async {
+    // The manual "Receive payment" sheet is cash-only by product decision:
+    // online payment methods (MoMo, bank, card) always go through the QR /
+    // payment link flow, which records its own [ReceivablePayment] server-side.
+    // Reject anything else here so a stale build / future regression can't
+    // silently double-book a payment.
+    final normalized = paymentMethodLabel.trim().toLowerCase();
+    if (normalized != 'cash') {
+      throw ArgumentError(
+        'Manual repayments must be cash. Use the payment link for '
+        'mobile money, bank, or card.',
+      );
+    }
     state = const AsyncLoading();
     try {
       final paymentId = await _repo.recordRepaymentLocal(
         receivableId: receivableId,
         amount: amount,
-        paymentMethodLabel: paymentMethodLabel,
+        paymentMethodLabel: normalized,
       );
       try {
         await _repo.syncPendingQueue();
@@ -191,6 +228,10 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   Future<DebtsViewData> _readSnapshot() async {
     final customers = await _repo.listCustomers();
     final receivables = await _repo.listReceivables();
-    return DebtsViewData(customers: customers, receivables: receivables);
+    return DebtsViewData(
+      customers: customers,
+      receivables: receivables,
+      lastSyncError: _lastSyncError,
+    );
   }
 }
