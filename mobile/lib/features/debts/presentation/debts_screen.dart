@@ -203,11 +203,22 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       }
     }
     return {
-      DebtsFilterTab.all: receivables.length,
+      // `All` shows everything except cancelled debts; cancelled rows stay
+      // accessible from customer detail history but never clutter the
+      // active ledger view.
+      DebtsFilterTab.all: receivables.length - _countCancelled(receivables),
       DebtsFilterTab.open: open,
       DebtsFilterTab.overdue: overdue,
       DebtsFilterTab.settled: settled,
     };
+  }
+
+  int _countCancelled(List<LocalReceivableRecord> receivables) {
+    var count = 0;
+    for (final r in receivables) {
+      if (r.status == 'cancelled') count++;
+    }
+    return count;
   }
 
   List<LocalReceivableRecord> _applyFilters(
@@ -216,7 +227,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final lowerQuery = _query.trim().toLowerCase();
     return all.where((r) {
       final matchesTab = switch (_activeTab) {
-        DebtsFilterTab.all => true,
+        DebtsFilterTab.all => r.status != 'cancelled',
         DebtsFilterTab.open =>
           r.status == 'open' || r.status == 'partially_paid',
         DebtsFilterTab.overdue =>
