@@ -135,7 +135,7 @@ def get_customer_detail(
 def list_receivables(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-    limit: Annotated[int, Query(ge=1, le=300)] = 100,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[ReceivableOut]:
     service = ReceivablesService(db=db)
     try:

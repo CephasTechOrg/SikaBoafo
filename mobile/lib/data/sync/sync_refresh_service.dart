@@ -48,8 +48,9 @@ class SyncRefreshService {
 
   Future<void> refreshDebtSnapshot() async {
     final customers = await _debtsApi.fetchCustomers();
-    // Backend caps `GET /receivables?limit=` at 300; stay within validation.
-    final receivables = await _debtsApi.fetchReceivables(limit: 300);
+    final receivables = await _debtsApi.fetchReceivables(
+      limit: DebtsApi.maxReceivablesListQueryLimit,
+    );
     final db = await _appDb.database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final fetchedIds = receivables.map((r) => r.receivableId).toSet();

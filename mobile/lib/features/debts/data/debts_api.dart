@@ -155,6 +155,9 @@ class CustomerDetailDto {
 class DebtsApi {
   DebtsApi(this._apiClient);
 
+  /// Upper bound for `GET /receivables?limit=` — must match FastAPI `Query(le=…)` on the backend.
+  static const int maxReceivablesListQueryLimit = 500;
+
   final ApiClient _apiClient;
 
   Future<List<DebtCustomerDto>> fetchCustomers({int limit = 200}) async {
@@ -184,9 +187,10 @@ class DebtsApi {
   }
 
   Future<List<ReceivableDto>> fetchReceivables({int limit = 100}) async {
+    final safe = limit.clamp(1, maxReceivablesListQueryLimit);
     final response = await _apiClient.dio.get<dynamic>(
       '/receivables',
-      queryParameters: {'limit': limit},
+      queryParameters: {'limit': safe},
     );
     final data = response.data;
     if (data is! List) {
