@@ -76,6 +76,24 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     widget.onPaymentConfirmed();
   }
 
+  /// Server reported the pending payment is past TTL. Stop polling, refresh
+  /// the local snapshot so the panel shows "Expired - regenerate", then close.
+  Future<void> _handleExpiredFromServer() async {
+    _timer?.cancel();
+    ref.invalidate(receivableDetailProvider(widget.receivableId));
+    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'This payment link expired. Regenerate it from the debt screen.',
+        ),
+        duration: Duration(seconds: 3),
+      ),
+    );
+    Navigator.of(context).pop();
+  }
+
   bool _receivableFullySettled(ReceivableDto dto) {
     final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
     return dto.status == 'settled' || outstandingMinor == 0;
@@ -110,6 +128,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
         if (!mounted) return;
         if (verify.isPaymentSuccessful) {
           await _completeSuccess();
+          return;
+        }
+        if (verify.paystackTransactionStatus == 'expired') {
+          await _handleExpiredFromServer();
           return;
         }
         _autoCheckFailures = 0;

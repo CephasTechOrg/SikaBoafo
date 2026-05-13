@@ -1237,6 +1237,36 @@ class PaymentService:
             needs_otp=paystack_status == "send_otp",
         )
 
+    @staticmethod
+    def _verified_metadata_mismatch(
+        *,
+        verified: PaystackVerifyResult,
+        receivable: Receivable,
+    ) -> bool:
+        """Return True when Paystack's `metadata.receivable_id` does not point
+        at the locked receivable we are about to settle.
+
+        Missing metadata is treated as a non-mismatch (legacy initiates may
+        not have written it). Only an explicit, non-matching value is treated
+        as a mismatch.
+        """
+        raw = verified.raw_payload
+        if not isinstance(raw, dict):
+            return False
+        data = raw.get("data")
+        if not isinstance(data, dict):
+            return False
+        metadata = data.get("metadata")
+        if not isinstance(metadata, dict):
+            return False
+        raw_receivable_id = metadata.get("receivable_id")
+        if raw_receivable_id is None:
+            return False
+        raw_str = str(raw_receivable_id).strip()
+        if not raw_str:
+            return False
+        return raw_str != str(receivable.id)
+
     def _apply_paystack_verify_to_receivable_payment(
         self,
         *,
@@ -1252,7 +1282,21 @@ class PaymentService:
         action = "payment.verify_pending"
         failure_reason: str | None = None
 
-        if paystack_status == "success":
+        # Defense-in-depth: if Paystack echoed back the receivable_id metadata
+        # we wrote at initiate time, make sure it matches the row we are about
+        # to settle. Catches misrouted webhooks or hand-crafted verify calls
+        # that point at the wrong reference. Missing metadata is treated as
+        # legacy/OK and falls through to the normal status flow.
+        metadata_mismatch = self._verified_metadata_mismatch(
+            verified=verified,
+            receivable=receivable,
+        )
+        if metadata_mismatch and paystack_status == "success":
+            payment.status = PROVIDER_PAYMENT_FAILED
+            failure_reason = "metadata_mismatch"
+            action = "payment.failed"
+            paystack_status = "failed"
+        elif paystack_status == "success":
             if verified_amount is not None and verified_amount > Decimal("0.00"):
                 payment.status = PROVIDER_PAYMENT_SUCCEEDED
                 payment.confirmed_at = _parse_iso_datetime(verified.paid_at) or datetime.now(

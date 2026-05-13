@@ -571,6 +571,142 @@ def test_initiate_receivable_payment_rejects_when_pending_payment_exists() -> No
         app.dependency_overrides.clear()
 
 
+def test_initiate_receivable_payment_auto_expires_stale_pending() -> None:
+    """Pending payments older than the 24h TTL are auto-expired so the
+    merchant can mint a fresh Paystack reference."""
+    from datetime import timedelta
+
+    from app.services.payment_service import RECEIVABLE_PAYMENT_LINK_TTL
+
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        # Plant a stale pending payment well past the TTL on the receivable.
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            stale = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_STALE_001",
+                internal_reference="BTGH_STALE_001",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC)
+                - RECEIVABLE_PAYMENT_LINK_TTL
+                - timedelta(minutes=5),
+                raw_provider_payload={"status": True},
+            )
+            receivable.payment_link = "https://checkout.paystack.com/old"
+            receivable.payment_provider_reference = "PSK_STALE_001"
+            db.add_all([stale, receivable])
+            db.commit()
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.initialize_transaction",
+            return_value=PaystackInitializeResult(
+                authorization_url="https://checkout.paystack.com/fresh-789",
+                access_code="ACCESS_FRESH",
+                reference="PSK_FRESH_001",
+                raw_payload={"status": True, "data": {"reference": "PSK_FRESH_001"}},
+            ),
+        ):
+            response = client.post(
+                "/api/v1/payments/initiate",
+                json={"receivable_id": str(receivable_id)},
+            )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["provider_reference"] == "PSK_FRESH_001"
+
+        with session_local() as db:
+            stale_row = db.scalar(
+                select(Payment).where(Payment.provider_reference == "PSK_STALE_001")
+            )
+            assert stale_row is not None
+            assert stale_row.status == "failed"
+            assert (stale_row.raw_provider_payload or {}).get("failure_reason") == (
+                "payment_link_ttl_exceeded"
+            )
+
+            # Receivable now points at the fresh reference.
+            refreshed = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert refreshed is not None
+            assert refreshed.payment_provider_reference == "PSK_FRESH_001"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
+def test_verify_receivable_payment_short_circuits_expired_pending() -> None:
+    """`verify` for a TTL-elapsed pending payment short-circuits to
+    `paystack_transaction_status='expired'` without calling Paystack."""
+    from datetime import timedelta
+
+    from app.services.payment_service import RECEIVABLE_PAYMENT_LINK_TTL
+
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with session_local() as db:
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
+            stale = Payment(
+                merchant_id=merchant_id,
+                receivable_id=receivable_id,
+                provider=PAYMENT_PROVIDER_PAYSTACK,
+                provider_reference="PSK_VERIFY_EXPIRED",
+                internal_reference="BTGH_VERIFY_EXPIRED",
+                provider_mode=PAYSTACK_MODE_TEST,
+                amount=Decimal("120.00"),
+                currency="GHS",
+                status=PROVIDER_PAYMENT_PENDING,
+                initiated_at=datetime.now(tz=UTC)
+                - RECEIVABLE_PAYMENT_LINK_TTL
+                - timedelta(minutes=1),
+                raw_provider_payload={"status": True},
+            )
+            db.add(stale)
+            db.commit()
+            payment_id = stale.id
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction"
+        ) as mocked_verify:
+            response = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["paystack_transaction_status"] == "expired"
+        # Server should not have called Paystack for an already-expired link.
+        mocked_verify.assert_not_called()
+
+        with session_local() as db:
+            row = db.scalar(select(Payment).where(Payment.id == payment_id))
+            assert row is not None
+            assert row.status == "failed"
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
 def test_initiate_receivable_momo_charge_forwards_optional_amount() -> None:
     env = _configure_env()
     client, _, receivable_id, _ = _build_sqlite_test_stack()
