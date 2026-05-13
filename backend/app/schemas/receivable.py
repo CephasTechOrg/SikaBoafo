@@ -114,6 +114,10 @@ class ReceivableOut(BaseModel):
     payment_provider_reference: str | None = None
     payment_id: UUID | None = None
     payment_amount: Decimal | None = None
+    # ISO8601 timestamp at which the active pending payment link / QR expires.
+    # `None` when there is no active pending payment (paid, failed, or never
+    # initiated). Authoritative; mobile renders a countdown from it.
+    payment_link_expires_at: datetime | None = None
     created_at: datetime
 
 

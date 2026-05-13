@@ -55,6 +55,14 @@ from app.services.store_context import StoreContextError, get_merchant_and_store
 _MONEY_SCALE = Decimal("0.01")
 _TERMINAL_RECEIVABLE_STATUSES = {RECEIVABLE_STATUS_SETTLED, RECEIVABLE_STATUS_CANCELLED}
 
+# Receivable payment links expire after this window. Pending Payment rows past
+# the TTL are auto-expired when the merchant tries to initiate a new payment
+# (or when the sheet calls verify), and the receivable's cached payment_link /
+# payment_provider_reference are reset so a fresh Paystack reference can be
+# minted. Authoritative on the server; clients render the countdown from
+# `payment_link_expires_at` only.
+RECEIVABLE_PAYMENT_LINK_TTL = timedelta(hours=24)
+
 
 def _paystack_display_text_from_raw(raw: dict[str, Any]) -> str | None:
     data = raw.get("data")
@@ -225,7 +233,7 @@ class PaymentService:
             raise PaymentInitiationTargetNotFoundError(msg)
 
         self._validate_receivable_state(receivable=receivable)
-        self._ensure_no_pending_receivable_payment(receivable_id=receivable.id)
+        self._ensure_no_pending_receivable_payment(receivable=receivable)
 
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
@@ -868,7 +876,7 @@ class PaymentService:
             msg = "Receivable not found."
             raise PaymentInitiationTargetNotFoundError(msg)
         self._validate_receivable_state(receivable=receivable)
-        self._ensure_no_pending_receivable_payment(receivable_id=receivable.id)
+        self._ensure_no_pending_receivable_payment(receivable=receivable)
 
         connection = self._load_connected_paystack_connection(merchant_id=merchant.id)
 
@@ -1161,6 +1169,25 @@ class PaymentService:
                 receivable_status=receivable.status,
                 outstanding_amount=self._money(receivable.outstanding_amount),
                 paystack_transaction_status="success",
+                display_text=None,
+                needs_otp=False,
+            )
+
+        # Short-circuit before hitting Paystack: a pending payment past the
+        # link TTL is treated as expired so the mobile sheet can prompt the
+        # merchant to regenerate without burning a network call.
+        if self._is_payment_expired(payment):
+            self._expire_pending_payment(payment=payment, receivable=receivable)
+            self.db.commit()
+            self.db.refresh(payment)
+            self.db.refresh(receivable)
+            return ReceivablePaymentVerifySnapshot(
+                payment_id=payment.id,
+                receivable_id=receivable.id,
+                provider_payment_status=payment.status,
+                receivable_status=receivable.status,
+                outstanding_amount=self._money(receivable.outstanding_amount),
+                paystack_transaction_status="expired",
                 display_text=None,
                 needs_otp=False,
             )
@@ -1768,22 +1795,93 @@ class PaymentService:
             else RECEIVABLE_STATUS_PARTIALLY_PAID
         )
 
-    def _ensure_no_pending_receivable_payment(self, *, receivable_id: UUID) -> None:
+    def _ensure_no_pending_receivable_payment(
+        self,
+        *,
+        receivable: Receivable,
+    ) -> None:
+        """Block initiate if a non-expired pending payment exists for this debt.
+
+        Pending payments older than [RECEIVABLE_PAYMENT_LINK_TTL] are silently
+        auto-expired (marked `failed`, audit logged) and the receivable's
+        cached `payment_link` / `payment_provider_reference` are cleared so the
+        caller can mint a fresh Paystack reference.
+        """
         pending = self.db.scalar(
-            select(Payment.id)
+            select(Payment)
             .where(
-                Payment.receivable_id == receivable_id,
+                Payment.receivable_id == receivable.id,
                 Payment.status == PROVIDER_PAYMENT_PENDING,
             )
             .order_by(Payment.initiated_at.desc())
             .limit(1)
         )
-        if pending is not None:
-            msg = (
-                "A payment is already pending for this debt. "
-                f"Use the existing payment ({pending}) or verify it."
-            )
-            raise PaymentInitiationStateError(msg)
+        if pending is None:
+            return
+        if self._is_payment_expired(pending):
+            self._expire_pending_payment(payment=pending, receivable=receivable)
+            return
+        msg = (
+            "A payment is already pending for this debt. "
+            f"Use the existing payment ({pending.id}) or verify it."
+        )
+        raise PaymentInitiationStateError(msg)
+
+    @staticmethod
+    def _is_payment_expired(payment: Payment) -> bool:
+        if payment.status != PROVIDER_PAYMENT_PENDING:
+            return False
+        initiated = payment.initiated_at
+        if initiated.tzinfo is None:
+            initiated = initiated.replace(tzinfo=UTC)
+        return datetime.now(tz=UTC) - initiated >= RECEIVABLE_PAYMENT_LINK_TTL
+
+    def _expire_pending_payment(
+        self,
+        *,
+        payment: Payment,
+        receivable: Receivable | None,
+    ) -> None:
+        """Mark a stale pending Payment as failed and clear the cached link."""
+        now = datetime.now(tz=UTC)
+        prev_payload: dict[str, Any] = (
+            payment.raw_provider_payload
+            if isinstance(payment.raw_provider_payload, dict)
+            else {}
+        )
+        payment.status = PROVIDER_PAYMENT_FAILED
+        payment.raw_provider_payload = {
+            **prev_payload,
+            "expired_at": now.isoformat(),
+            "failure_reason": "payment_link_ttl_exceeded",
+        }
+        self.db.add(payment)
+
+        if receivable is not None:
+            ref = receivable.payment_provider_reference
+            if ref is not None and ref == payment.provider_reference:
+                receivable.payment_link = None
+                receivable.payment_provider_reference = None
+                self.db.add(receivable)
+
+        self.db.flush()
+
+        business_id: UUID | None = None
+        if receivable is not None:
+            business_id = self._business_id_for_receivable(receivable_id=receivable.id)
+        log_audit(
+            db=self.db,
+            actor_user_id=None,
+            business_id=business_id,
+            action="payment.expired",
+            entity_type="payment",
+            entity_id=payment.id,
+            meta={
+                "provider_reference": payment.provider_reference,
+                "receivable_id": str(receivable.id) if receivable is not None else None,
+                "ttl_hours": int(RECEIVABLE_PAYMENT_LINK_TTL.total_seconds() // 3600),
+            },
+        )
 
     def _load_receivable_payment_with_lock(
         self,

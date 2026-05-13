@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -79,6 +79,7 @@ class ReceivableSnapshot:
     payment_provider_reference: str | None
     payment_id: UUID | None
     payment_amount: Decimal | None
+    payment_link_expires_at: datetime | None
     created_at: datetime
 
 
@@ -466,9 +467,11 @@ RETURNING next_number
         customer: Customer | None = None,
     ) -> ReceivableSnapshot:
         row_customer = customer or receivable.customer
-        payment_id, payment_amount = self._latest_payment_context_for_receivable(
-            receivable_id=receivable.id
-        )
+        (
+            payment_id,
+            payment_amount,
+            payment_link_expires_at,
+        ) = self._latest_payment_context_for_receivable(receivable_id=receivable.id)
         return ReceivableSnapshot(
             receivable_id=receivable.id,
             customer_id=receivable.customer_id,
@@ -484,6 +487,7 @@ RETURNING next_number
             payment_provider_reference=receivable.payment_provider_reference,
             payment_id=payment_id,
             payment_amount=payment_amount,
+            payment_link_expires_at=payment_link_expires_at,
             created_at=receivable.created_at,
         )
 
@@ -491,7 +495,7 @@ RETURNING next_number
         self,
         *,
         receivable_id: UUID,
-    ) -> tuple[UUID | None, Decimal | None]:
+    ) -> tuple[UUID | None, Decimal | None, datetime | None]:
         try:
             payment = self.db.scalar(
                 select(Payment)
@@ -502,10 +506,21 @@ RETURNING next_number
         except OperationalError:
             # SQLite unit tests that do not create the payments table should still
             # be able to exercise receivable creation paths.
-            return None, None
+            return None, None, None
         if payment is None:
-            return None, None
-        return payment.id, self._money(payment.amount)
+            return None, None, None
+        # Imported lazily to avoid pulling the payments service at module
+        # import time; both modules sit in the same package.
+        from app.services.payment_service import RECEIVABLE_PAYMENT_LINK_TTL
+
+        expires_at: datetime | None = None
+        if payment.status == "pending":
+            initiated = payment.initiated_at
+            if initiated is not None:
+                if initiated.tzinfo is None:
+                    initiated = initiated.replace(tzinfo=UTC)
+                expires_at = initiated + RECEIVABLE_PAYMENT_LINK_TTL
+        return payment.id, self._money(payment.amount), expires_at
 
     @staticmethod
     def _to_repayment_snapshot(*, repayment: ReceivablePayment) -> ReceivablePaymentSnapshot:
