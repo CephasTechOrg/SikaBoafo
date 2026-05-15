@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
-import 'package:biztrack_gh/features/debts/presentation/debts_screen.dart';
+import 'package:biztrack_gh/features/debts/presentation/widgets/receive_payment_sheet/receive_payment_sheet.dart';
 import 'package:biztrack_gh/features/debts/providers/debts_providers.dart';
 import 'package:biztrack_gh/features/inventory/data/inventory_repository.dart';
 import 'package:biztrack_gh/features/inventory/providers/inventory_providers.dart';
@@ -17,7 +17,7 @@ import 'package:biztrack_gh/features/sales/providers/sales_providers.dart';
 void main() {
   group('Frontend lifecycle regressions', () {
     testWidgets(
-      'DebtsScreen does not throw when repayment completes after dispose',
+      'ReceivePaymentSheet does not throw when repayment completes after dispose',
       (tester) async {
         tester.view.physicalSize = const Size(800, 1600);
         tester.view.devicePixelRatio = 1.0;
@@ -35,19 +35,32 @@ void main() {
                 ),
               ),
             ],
-            child: const MaterialApp(home: DebtsScreen()),
+            child: const MaterialApp(
+              home: Scaffold(
+                body: ReceivePaymentSheet(
+                  record: LocalReceivableRecord(
+                    receivableId: 'recv-1',
+                    customerId: 'cust-1',
+                    customerName: 'Ama',
+                    originalAmount: '20.00',
+                    outstandingAmount: '20.00',
+                    status: 'open',
+                    syncStatus: 'applied',
+                    createdAtMillis: 0,
+                  ),
+                ),
+              ),
+            ),
           ),
         );
 
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
 
-        await tester.tap(find.text('Record Payment').first);
-        await tester.pumpAndSettle();
+        await tester.tap(find.text('FULL'));
+        await tester.pump();
 
-        final saveRepayment = find.text('Save Repayment');
-        await tester.ensureVisible(saveRepayment);
-        await tester.tap(saveRepayment);
+        await tester.tap(find.text('Confirm payment'));
         await tester.pump();
 
         await tester.pumpWidget(const SizedBox.shrink());
@@ -138,6 +151,8 @@ class _FakeDebtsController extends DebtsController {
           customerId: 'cust-1',
           name: 'Ama',
           totalOutstanding: '20.00',
+          syncStatus: 'applied',
+          createdAtMillis: 0,
         ),
       ],
       receivables: [
@@ -152,17 +167,17 @@ class _FakeDebtsController extends DebtsController {
           createdAtMillis: 0,
         ),
       ],
-      paidThisMonth: '0.00',
     );
   }
 
   @override
-  Future<void> recordRepayment({
+  Future<String> recordRepayment({
     required String receivableId,
     required String amount,
     required String paymentMethodLabel,
   }) async {
     await onRecordRepayment();
+    return 'local-payment-1';
   }
 }
 

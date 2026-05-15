@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('ReceivablePaymentVerifyOutDto', () {
     test('isPaymentSuccessful evaluates correctly', () {
-      final verifySuccess1 = ReceivablePaymentVerifyOutDto(
+      const verifySuccess1 = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'success',
@@ -14,7 +14,7 @@ void main() {
         paystackTransactionStatus: 'success',
       );
 
-      final verifySuccess2 = ReceivablePaymentVerifyOutDto(
+      const verifySuccess2 = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'succeeded',
@@ -23,7 +23,7 @@ void main() {
         paystackTransactionStatus: 'success',
       );
 
-      final verifyFailed = ReceivablePaymentVerifyOutDto(
+      const verifyFailed = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'failed',
@@ -32,7 +32,7 @@ void main() {
         paystackTransactionStatus: 'failed',
       );
 
-      final verifyPending = ReceivablePaymentVerifyOutDto(
+      const verifyPending = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'pending',
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('isSettled evaluates based on receivableStatus', () {
-      final verifySettled = ReceivablePaymentVerifyOutDto(
+      const verifySettled = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'success',
@@ -57,7 +57,7 @@ void main() {
         paystackTransactionStatus: 'success',
       );
 
-      final verifyPartial = ReceivablePaymentVerifyOutDto(
+      const verifyPartial = ReceivablePaymentVerifyOutDto(
         paymentId: '123',
         receivableId: '456',
         providerPaymentStatus: 'success',

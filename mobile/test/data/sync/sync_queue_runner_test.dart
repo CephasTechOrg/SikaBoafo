@@ -347,11 +347,11 @@ void main() {
   });
 
   group('server_version writeback', () {
-    late Database _db;
+    late Database sqliteDb;
 
     setUp(() async {
       sqfliteFfiInit();
-      _db = await databaseFactoryFfi.openDatabase(
+      sqliteDb = await databaseFactoryFfi.openDatabase(
         inMemoryDatabasePath,
         options: OpenDatabaseOptions(
           version: 1,
@@ -373,15 +373,15 @@ CREATE TABLE items_local (
     });
 
     tearDown(() async {
-      await _db.close();
+      await sqliteDb.close();
     });
 
-    _SqliteFakeAppDatabase _makeDb(List<Map<String, Object?>> rows) =>
-        _SqliteFakeAppDatabase(rows, _db);
+    _SqliteFakeAppDatabase makeSqliteDb(List<Map<String, Object?>> rows) =>
+        _SqliteFakeAppDatabase(rows, sqliteDb);
 
     test('item create apply writes server_version=1 to items_local', () async {
       const itemId = 'item-create-abc';
-      await _db.insert('items_local', {
+      await sqliteDb.insert('items_local', {
         'id': itemId,
         'name': 'Palm Oil',
         'default_price': '20.00',
@@ -392,7 +392,7 @@ CREATE TABLE items_local (
       });
 
       final runner = SyncQueueRunner(
-        appDb: _makeDb([
+        appDb: makeSqliteDb([
           _queueRow(
             id: 1,
             deviceId: 'dev-1',
@@ -416,14 +416,14 @@ CREATE TABLE items_local (
       expect(summary.applied, 1);
       expect(summary.failed, 0);
       final rows =
-          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+          await sqliteDb.query('items_local', where: 'id = ?', whereArgs: [itemId]);
       expect(rows.first['server_version'], 1);
     });
 
     test('item update apply writes incremented server_version to items_local',
         () async {
       const itemId = 'item-update-def';
-      await _db.insert('items_local', {
+      await sqliteDb.insert('items_local', {
         'id': itemId,
         'name': 'Palm Oil',
         'default_price': '20.00',
@@ -435,7 +435,7 @@ CREATE TABLE items_local (
       });
 
       final runner = SyncQueueRunner(
-        appDb: _makeDb([
+        appDb: makeSqliteDb([
           _queueRow(
             id: 1,
             deviceId: 'dev-1',
@@ -457,7 +457,7 @@ CREATE TABLE items_local (
       await runner.run();
 
       final rows =
-          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+          await sqliteDb.query('items_local', where: 'id = ?', whereArgs: [itemId]);
       expect(rows.first['server_version'], 2);
     });
 
@@ -491,7 +491,7 @@ CREATE TABLE items_local (
     test('item apply without serverVersion leaves existing version unchanged',
         () async {
       const itemId = 'item-no-version-ghi';
-      await _db.insert('items_local', {
+      await sqliteDb.insert('items_local', {
         'id': itemId,
         'name': 'Sugar',
         'default_price': '8.00',
@@ -503,7 +503,7 @@ CREATE TABLE items_local (
       });
 
       final runner = SyncQueueRunner(
-        appDb: _makeDb([
+        appDb: makeSqliteDb([
           _queueRow(
             id: 1,
             deviceId: 'dev-1',
@@ -525,7 +525,7 @@ CREATE TABLE items_local (
       await runner.run();
 
       final rows =
-          await _db.query('items_local', where: 'id = ?', whereArgs: [itemId]);
+          await sqliteDb.query('items_local', where: 'id = ?', whereArgs: [itemId]);
       expect(rows.first['server_version'], 3);
     });
   });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,7 @@ import 'package:biztrack_gh/core/services/secure_token_storage.dart';
 import 'package:biztrack_gh/data/local/app_database.dart';
 import 'package:biztrack_gh/data/local/sync_queue_repository.dart';
 import 'package:biztrack_gh/features/dashboard/data/dashboard_api.dart';
+import 'package:biztrack_gh/features/dashboard/presentation/widgets/dashboard_quick_actions.dart';
 import 'package:biztrack_gh/features/dashboard/providers/dashboard_providers.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
 import 'package:biztrack_gh/features/debts/providers/debts_providers.dart';
@@ -137,10 +140,11 @@ class _FakeDebtsController extends DebtsController {
           customerId: 'customer-1',
           name: 'Ama',
           totalOutstanding: '30.00',
+          syncStatus: 'applied',
+          createdAtMillis: 0,
         ),
       ],
       receivables: _receivables,
-      paidThisMonth: '0.00',
     );
   }
 }
@@ -279,12 +283,14 @@ Future<void> _pumpApp(
           biometricService ??
               _FakeBiometricService(supported: true, authenticateResult: true),
         ),
-        merchantContextProvider.overrideWith((_) async => _merchantContext),
-        dashboardSummaryProvider.overrideWith((_) async => _summary),
-        dashboardRecentActivityProvider.overrideWith(
-          (_) async => const <DashboardActivity>[],
+        merchantContextProvider.overrideWith(
+          (_) => Stream.value(_merchantContext),
         ),
-        dashboardInsightsProvider.overrideWith((_) async => _insights),
+        dashboardSummaryProvider.overrideWith((_) => Stream.value(_summary)),
+        dashboardRecentActivityProvider.overrideWith(
+          (_) => Stream.value(const <DashboardActivity>[]),
+        ),
+        dashboardInsightsProvider.overrideWith((_) => Stream.value(_insights)),
         localDashboardOverlayProvider.overrideWith((_) async => _overlay),
         localPendingActivityProvider.overrideWith(
           (_) async => const <LocalPendingActivityRow>[],
@@ -371,7 +377,7 @@ void main() {
     },
   );
 
-  testWidgets('dashboard Collect Debt quick action opens Debts', (tester) async {
+  testWidgets('dashboard Debts quick action opens Debts', (tester) async {
     final storage = _MemorySecureTokenStorage()
       ..refreshToken = 'refresh-token'
       ..sessionGateCompletedAt = DateTime.now();
@@ -384,15 +390,20 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 
-    await tester.tap(find.text('Collect Debt'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(DashboardQuickActions),
+        matching: find.text('Debts'),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 
     expect(find.text('Debts'), findsWidgets);
-    expect(find.text('Recent Debts'), findsOneWidget);
+    expect(find.text('Ama'), findsOneWidget);
   });
 
-  testWidgets('Debts Reports actions open Reports', (tester) async {
+  testWidgets('More tab Reports action opens Reports', (tester) async {
     final storage = _MemorySecureTokenStorage()
       ..refreshToken = 'refresh-token'
       ..sessionGateCompletedAt = DateTime.now();
@@ -401,11 +412,20 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(BizTrackApp)),
     );
-    container.read(appRouterProvider).go(AppRoute.debts.path);
+    container.read(appRouterProvider).go(AppRoute.home.path);
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 
-    await tester.tap(find.text('Reports').first);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('More'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Reports'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
 

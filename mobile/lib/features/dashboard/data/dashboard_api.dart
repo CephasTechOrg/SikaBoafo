@@ -45,11 +45,6 @@ class DashboardApi {
   static const _cacheInsightsKey = 'dashboard.insights';
   static const _cacheRecentActivityKey = 'dashboard.recent_activity';
 
-  static const _summaryTtl = Duration(minutes: 5);
-  static const _activityTtl = Duration(minutes: 5);
-  static const _insightsTtl = Duration(minutes: 30);
-  static const _contextTtl = Duration(hours: 1);
-
   Future<void> clearDashboardCache() async {
     await Future.wait([
       _cache?.delete(_cacheSummaryKey) ?? Future.value(),

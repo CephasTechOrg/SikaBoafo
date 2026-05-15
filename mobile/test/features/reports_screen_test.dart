@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -118,10 +120,10 @@ void main() {
         ProviderScope(
           overrides: [
             dashboardSummaryProvider.overrideWith(
-              (_) async => _stubSummary,
+              (_) => Stream.value(_stubSummary),
             ),
             dashboardInsightsProvider.overrideWith(
-              (_) async => _stubInsights,
+              (_) => Stream.value(_stubInsights),
             ),
             debtsControllerProvider.overrideWith(
               () => _FakeDebtsController(receivables),
@@ -176,8 +178,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardSummaryProvider.overrideWith((_) async => _stubSummary),
-            dashboardInsightsProvider.overrideWith((_) async => _stubInsights),
+            dashboardSummaryProvider.overrideWith((_) => Stream.value(_stubSummary)),
+            dashboardInsightsProvider.overrideWith((_) => Stream.value(_stubInsights)),
             debtsControllerProvider.overrideWith(
               () => _FakeDebtsController(const []),
             ),
@@ -218,8 +220,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardSummaryProvider.overrideWith((_) async => _stubSummary),
-            dashboardInsightsProvider.overrideWith((_) async => _stubInsights),
+            dashboardSummaryProvider.overrideWith((_) => Stream.value(_stubSummary)),
+            dashboardInsightsProvider.overrideWith((_) => Stream.value(_stubInsights)),
             debtsControllerProvider.overrideWith(
               () => _FakeDebtsController(const []),
             ),
@@ -244,9 +246,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            dashboardSummaryProvider.overrideWith((_) async => _stubSummary),
+            dashboardSummaryProvider.overrideWith((_) => Stream.value(_stubSummary)),
             dashboardInsightsProvider.overrideWith(
-              (_) async => throw Exception('offline'),
+              (_) => Stream<DashboardInsights>.error(Exception('offline')),
             ),
             debtsControllerProvider.overrideWith(
               () => _FakeDebtsController(const []),
@@ -269,9 +271,9 @@ void main() {
         ProviderScope(
           overrides: [
             dashboardSummaryProvider.overrideWith(
-              (_) async => throw Exception('Connection error'),
+              (_) => Stream<DashboardSummary>.error(Exception('Connection error')),
             ),
-            dashboardInsightsProvider.overrideWith((_) async => _stubInsights),
+            dashboardInsightsProvider.overrideWith((_) => Stream.value(_stubInsights)),
             debtsControllerProvider.overrideWith(
               () => _FakeDebtsController(const []),
             ),
@@ -297,7 +299,6 @@ class _FakeDebtsController extends DebtsController {
 
   @override
   Future<DebtsViewData> build() async {
-    return DebtsViewData(
-        customers: const [], receivables: _receivables, paidThisMonth: '0.00');
+    return DebtsViewData(customers: const [], receivables: _receivables);
   }
 }

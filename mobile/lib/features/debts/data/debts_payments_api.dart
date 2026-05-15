@@ -162,8 +162,9 @@ class DebtsPaymentsApi {
     String? amount,
   }) async {
     final body = <String, dynamic>{'phone': phone, 'provider': provider};
-    if (amount != null && amount.trim().isNotEmpty)
+    if (amount != null && amount.trim().isNotEmpty) {
       body['amount'] = amount.trim();
+    }
     final response = await _apiClient.dio.post<dynamic>(
       '/payments/receivables/$receivableId/momo-charge',
       data: body,

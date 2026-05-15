@@ -236,6 +236,9 @@ CREATE TABLE customers_local (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
   phone_number TEXT,
+  whatsapp_number TEXT,
+  email TEXT,
+  notes TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
@@ -251,11 +254,20 @@ CREATE TABLE receivables_local (
   original_amount TEXT NOT NULL,
   outstanding_amount TEXT NOT NULL,
   due_date TEXT,
+  note TEXT,
   status TEXT NOT NULL,
+  invoice_number TEXT,
+  payment_link TEXT,
+  payment_id TEXT,
+  payment_amount TEXT,
+  payment_link_expires_at TEXT,
+  created_by_user_id TEXT,
+  sale_id TEXT,
   local_operation_id TEXT NOT NULL UNIQUE,
   source_device_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY (customer_id) REFERENCES customers_local(id) ON DELETE RESTRICT
 )
 ''');
 
