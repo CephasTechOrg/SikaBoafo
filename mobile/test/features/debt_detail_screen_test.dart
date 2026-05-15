@@ -46,6 +46,12 @@ class _ReceivableDetailHarness {
 
 class _FakeDebtsController extends DebtsController {
   int initiateCalls = 0;
+  int refreshCalls = 0;
+
+  /// When set, the next `refreshFromServer` call will surface this string via
+  /// `DebtsViewData.lastSyncError` so detail-screen tests can assert the
+  /// "Sync paused" SnackBar plumbing without hitting the network.
+  String? nextRefreshError;
 
   @override
   Future<DebtsViewData> build() async {
@@ -53,6 +59,19 @@ class _FakeDebtsController extends DebtsController {
     return DebtsViewData(
       customers: [d.customer],
       receivables: [d.receivable],
+    );
+  }
+
+  @override
+  Future<void> refreshFromServer() async {
+    refreshCalls += 1;
+    final d = _ReceivableDetailHarness.detail;
+    state = AsyncValue.data(
+      DebtsViewData(
+        customers: [d.customer],
+        receivables: [d.receivable],
+        lastSyncError: nextRefreshError,
+      ),
     );
   }
 
@@ -142,6 +161,38 @@ void main() {
       }
 
       expect(fakeController.initiateCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'tapping app bar refresh surfaces lastSyncError via SnackBar',
+    (tester) async {
+      _ReceivableDetailHarness.paymentLinkActive = false;
+      addTearDown(() {
+        _ReceivableDetailHarness.paymentLinkActive = false;
+      });
+
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final fakeController = _FakeDebtsController()
+        ..nextRefreshError = 'Backend unreachable';
+
+      await tester.pumpWidget(_buildScreen(fakeController));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.byTooltip('Refresh'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(fakeController.refreshCalls, 1);
+      expect(
+        find.text('Sync paused: Backend unreachable'),
+        findsOneWidget,
+      );
     },
   );
 }

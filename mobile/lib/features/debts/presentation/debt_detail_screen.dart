@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/utils/user_friendly_error.dart';
+import '../../../shared/widgets/stale_banner.dart';
 import '../data/models/local_receivable_detail.dart';
 import '../data/models/local_receivable_record.dart';
 import '../providers/debt_detail_provider.dart';
@@ -15,6 +17,28 @@ import 'widgets/debt_payment_link_panel.dart';
 import 'widgets/debt_payments_history.dart';
 import 'widgets/debt_reminders_section.dart';
 import 'widgets/receive_payment_sheet/receive_payment_sheet.dart';
+
+/// Pulls the latest debts snapshot from the server, invalidates the detail
+/// provider, then surfaces any sync error via a SnackBar — mirroring the
+/// behavior of `DebtsScreen._refresh` so failures aren't silent on detail.
+Future<void> _refreshDetailFromServer(
+  BuildContext context,
+  WidgetRef ref,
+  String receivableId,
+) async {
+  await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+  ref.invalidate(receivableDetailProvider(receivableId));
+  if (!context.mounted) return;
+  final err = ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;
+  if (err != null && err.isNotEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sync paused: $err'),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+}
 
 Future<void> _confirmAndCancelReceivableDebt(
   BuildContext context,
@@ -98,12 +122,8 @@ class DebtDetailScreen extends ConsumerWidget {
                   color: Colors.white,
                   size: 22,
                 ),
-                onPressed: () async {
-                  await ref
-                      .read(debtsControllerProvider.notifier)
-                      .refreshFromServer();
-                  ref.invalidate(receivableDetailProvider(receivableId));
-                },
+                onPressed: () =>
+                    _refreshDetailFromServer(context, ref, receivableId),
               ),
               if (detailAsync.valueOrNull != null &&
                   !detailAsync.valueOrNull!.receivable.isTerminal)
@@ -219,14 +239,20 @@ class _LoadedBody extends ConsumerWidget {
           decoration: const BoxDecoration(color: AppColors.surface),
           child: RefreshIndicator(
             color: AppColors.forest,
-            onRefresh: () async {
-              await ref.read(debtsControllerProvider.notifier).refreshFromServer();
-              ref.invalidate(receivableDetailProvider(record.receivableId));
-            },
+            onRefresh: () => _refreshDetailFromServer(
+              context,
+              ref,
+              record.receivableId,
+            ),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
               children: [
+                const StaleBanner(
+                  screenKey: 'debt_detail',
+                  kvKey: KvCacheRepository.kDebtsTs,
+                ),
+                const SizedBox(height: 8),
                 DebtBalanceHero(record: record),
                 const SizedBox(height: 14),
                 DebtCustomerSummary(customer: detail.customer),
