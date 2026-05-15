@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../../app/theme/app_theme.dart';
+import '../../utils/debts_ui_tokens.dart';
 
 /// Method picker for the receive-payment sheet.
 ///
@@ -27,7 +27,7 @@ class ReceivePaymentMethodSelector extends StatelessWidget {
           'How did the customer pay?',
           style: TextStyle(
             fontSize: 12.5,
-            color: AppColors.inkSoft,
+            color: DebtsUi.textSecondary,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.2,
           ),
@@ -65,83 +65,86 @@ class _MethodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.forest.withValues(alpha: 0.07)
-              : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? AppColors.forestDark.withValues(alpha: 0.55)
-                : AppColors.border,
-            width: selected ? 1.4 : 1.0,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? DebtsUi.greenPale : DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(
+              color: selected ? DebtsUi.greenMid : DebtsUi.border,
+              width: 1.5,
+            ),
+            boxShadow: selected ? null : DebtsUi.shadowSm,
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.forestDark
-                    : AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: selected ? Colors.white : AppColors.inkSoft,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected ? DebtsUi.greenMid : DebtsUi.surface2,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                  border: Border.all(
+                    color:
+                        selected ? DebtsUi.greenMid : DebtsUi.border,
+                    width: 1.5,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? Colors.white : DebtsUi.textSecondary,
+                ),
               ),
-            ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: selected
-                  ? const Icon(
-                      Icons.check_circle_rounded,
-                      key: ValueKey('selected'),
-                      color: AppColors.forestDark,
-                      size: 22,
-                    )
-                  : const Icon(
-                      Icons.radio_button_unchecked_rounded,
-                      key: ValueKey('unselected'),
-                      color: AppColors.mutedSoft,
-                      size: 22,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: DebtsUi.textPrimary,
+                      ),
                     ),
-            ),
-          ],
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DebtsUi.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                child: selected
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        key: ValueKey('selected'),
+                        color: DebtsUi.greenMid,
+                        size: 22,
+                      )
+                    : const Icon(
+                        Icons.radio_button_unchecked_rounded,
+                        key: ValueKey('unselected'),
+                        color: DebtsUi.textMuted,
+                        size: 22,
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

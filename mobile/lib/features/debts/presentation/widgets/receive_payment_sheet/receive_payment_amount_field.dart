@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../../app/theme/app_theme.dart';
+import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
 
 /// Amount input for the receive-payment sheet, with quick-fill chips for
-/// "Half" and "Full" (the entire outstanding amount).
+/// "Half" and "Full" (the entire outstanding amount). Styled with the shared
+/// debts mockup design language.
 class ReceivePaymentAmountField extends StatelessWidget {
   const ReceivePaymentAmountField({
     super.key,
@@ -31,21 +32,35 @@ class ReceivePaymentAmountField extends StatelessWidget {
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
           ],
+          cursorColor: DebtsUi.greenMid,
           style: const TextStyle(
-            fontSize: 20,
-            color: AppColors.ink,
+            fontSize: 22,
+            color: DebtsUi.textPrimary,
             fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
             fontFeatures: [FontFeature.tabularFigures()],
           ),
           decoration: InputDecoration(
             labelText: 'Amount received',
+            labelStyle: const TextStyle(
+              fontSize: 12.5,
+              color: DebtsUi.textSecondary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+            floatingLabelStyle: const TextStyle(
+              fontSize: 12.5,
+              color: DebtsUi.greenMid,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
             prefixIcon: const Padding(
               padding: EdgeInsets.fromLTRB(14, 0, 8, 0),
               child: Text(
                 '₵',
                 style: TextStyle(
-                  fontSize: 20,
-                  color: AppColors.inkSoft,
+                  fontSize: 22,
+                  color: DebtsUi.greenMid,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -53,21 +68,21 @@ class ReceivePaymentAmountField extends StatelessWidget {
             prefixIconConstraints:
                 const BoxConstraints(minWidth: 0, minHeight: 0),
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: DebtsUi.surface,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide: const BorderSide(color: DebtsUi.greenMid, width: 1.8),
             ),
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
           ),
         ),
         const SizedBox(height: 10),
@@ -119,48 +134,48 @@ class _QuickFill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: enabled
-              ? AppColors.forest.withValues(alpha: 0.06)
-              : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: enabled
-                ? AppColors.forest.withValues(alpha: 0.30)
-                : AppColors.border,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: enabled ? DebtsUi.greenPale : DebtsUi.surface2,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+            border: Border.all(
+              color: enabled ? DebtsUi.greenLight : DebtsUi.border,
+              width: 1.5,
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: TextStyle(
-                fontSize: 10,
-                color: enabled ? AppColors.forestDark : AppColors.mutedSoft,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: enabled ? DebtsUi.greenMid : DebtsUi.textMuted,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: enabled ? AppColors.ink : AppColors.mutedSoft,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const [FontFeature.tabularFigures()],
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: enabled ? DebtsUi.textPrimary : DebtsUi.textMuted,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/utils/user_friendly_error.dart';
 import '../../data/models/local_debt_reminder.dart';
 import '../../data/models/local_receivable_record.dart';
 import '../../providers/debt_reminders_provider.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 import 'debt_reminder_row.dart';
+import 'debt_section_card.dart';
 import 'schedule_reminder_sheet.dart';
 
-/// Reminders section under a debt detail screen. Lists scheduled / sent /
-/// cancelled reminders and hosts the "Set reminder" CTA.
+/// Reminders block on the debt detail screen, wrapped in a [DebtSectionCard]
+/// so it matches the mockup's `.section-card` chrome (header + divider +
+/// padded body + count badge / inline action).
 class DebtRemindersSection extends ConsumerWidget {
   const DebtRemindersSection({
     super.key,
@@ -33,92 +35,78 @@ class DebtRemindersSection extends ConsumerWidget {
         !remindersAsync.hasError &&
         reminders.isEmpty;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Reminders',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (activeCount > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.successSoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$activeCount active',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.forestDark,
-                  ),
-                ),
-              ),
-            const Spacer(),
-            if (canSchedule && !isEmpty)
-              TextButton.icon(
-                onPressed: () => _openSheet(context, ref),
-                icon: const Icon(Icons.add_alarm_rounded, size: 16),
-                label: const Text('Set reminder'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.forestDark,
-                  textStyle: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        if (remindersAsync.isLoading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 1.8),
-              ),
-            ),
-          )
-        else if (remindersAsync.hasError)
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.dangerSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Text(
-              userFriendlyError(remindersAsync.error!),
-              style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
-            ),
-          )
-        else if (reminders.isEmpty)
-          _EmptyReminders(
-            canSchedule: canSchedule,
-            onAdd: () => _openSheet(context, ref),
-          )
-        else
-          ...reminders.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: DebtReminderRow(
-                reminder: r,
-                onCancel: () => _handleCancel(context, ref, r),
-              ),
+    return DebtSectionCard(
+      title: 'Reminders',
+      icon: Icons.notifications_none_rounded,
+      countBadge: activeCount > 0 ? activeCount : null,
+      trailing: (activeCount == 0 && canSchedule && !isEmpty)
+          ? _SetReminderButton(onTap: () => _openSheet(context, ref))
+          : null,
+      child: _buildBody(
+        context: context,
+        ref: ref,
+        remindersAsync: remindersAsync,
+        reminders: reminders,
+        canSchedule: canSchedule,
+      ),
+    );
+  }
+
+  Widget _buildBody({
+    required BuildContext context,
+    required WidgetRef ref,
+    required AsyncValue<List<LocalDebtReminder>> remindersAsync,
+    required List<LocalDebtReminder> reminders,
+    required bool canSchedule,
+  }) {
+    if (remindersAsync.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.8,
+              color: DebtsUi.greenMid,
             ),
           ),
+        ),
+      );
+    }
+    if (remindersAsync.hasError) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: DebtsUi.dangerSoft,
+          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+          border: Border.all(color: DebtsUi.dangerBorder),
+        ),
+        child: Text(
+          userFriendlyError(remindersAsync.error!),
+          style: const TextStyle(fontSize: 13, color: DebtsUi.danger),
+        ),
+      );
+    }
+    if (reminders.isEmpty) {
+      return DebtSectionEmptyState(
+        icon: Icons.notifications_none_rounded,
+        title: canSchedule ? 'No reminders yet' : 'Not available for this debt.',
+        message: canSchedule
+            ? 'Tap “Set reminder” above to schedule a nudge for this debt.'
+            : 'Reminders aren\'t scheduled on settled or cancelled debts.',
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < reminders.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          DebtReminderRow(
+            reminder: reminders[i],
+            onCancel: () => _handleCancel(context, ref, reminders[i]),
+          ),
+        ],
       ],
     );
   }
@@ -154,55 +142,26 @@ class DebtRemindersSection extends ConsumerWidget {
   }
 }
 
-class _EmptyReminders extends StatelessWidget {
-  const _EmptyReminders({
-    required this.canSchedule,
-    required this.onAdd,
-  });
+class _SetReminderButton extends StatelessWidget {
+  const _SetReminderButton({required this.onTap});
 
-  final bool canSchedule;
-  final VoidCallback onAdd;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.notifications_none_rounded,
-            size: 20,
-            color: AppColors.muted,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              canSchedule
-                  ? 'No reminders yet.'
-                  : 'Not available for this debt.',
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.muted,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (canSchedule)
-            IconButton(
-              tooltip: 'Add reminder',
-              onPressed: onAdd,
-              icon: const Icon(
-                Icons.add_alarm_outlined,
-                color: AppColors.forestDark,
-              ),
-              visualDensity: VisualDensity.compact,
-            ),
-        ],
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.add_alarm_rounded, size: 16),
+      label: const Text('Set reminder'),
+      style: TextButton.styleFrom(
+        foregroundColor: DebtsUi.greenMid,
+        textStyle: const TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: const Size(0, 0),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }

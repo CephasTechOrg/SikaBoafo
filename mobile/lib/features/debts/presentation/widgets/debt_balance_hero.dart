@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../data/models/local_receivable_record.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Big "balance" card at the top of the debt detail screen. Surfaces
-/// outstanding amount, original amount, and the current status pill.
+/// Floating "status card" for the debt detail screen.
+///
+/// Visual reference: `index (2).html` `.status-card`. Shows the outstanding
+/// label + amount (or "Cleared"), status badge, progress bar, and a two-cell
+/// row of Original / Paid amount boxes. Designed to overlap the green hero
+/// from above; the parent screen handles the negative-margin layout.
 class DebtBalanceHero extends StatelessWidget {
   const DebtBalanceHero({super.key, required this.record});
 
@@ -16,102 +20,117 @@ class DebtBalanceHero extends StatelessWidget {
     final outstandingMinor =
         DebtsUiUtils.amountToMinor(record.outstandingAmount);
     final originalMinor = DebtsUiUtils.amountToMinor(record.originalAmount);
-    final paidMinor = (originalMinor - outstandingMinor).clamp(0, originalMinor);
+    final paidMinor =
+        (originalMinor - outstandingMinor).clamp(0, originalMinor);
     final progress =
         originalMinor == 0 ? 0.0 : paidMinor / originalMinor;
-    final status = DebtsUiUtils.statusVisualFor(
-      status: record.status,
-      dueDateIso: record.dueDateIso,
-    );
     final isSettled = record.status == 'settled';
     final isCancelled = record.status == 'cancelled';
+    final isOverdue = !isSettled &&
+        !isCancelled &&
+        DebtsUiUtils.isOverdue(record.dueDateIso);
+
+    final badge = _resolveBadge(
+      isSettled: isSettled,
+      isCancelled: isCancelled,
+      isOverdue: isOverdue,
+      isPartial: record.status == 'partially_paid',
+    );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
+        boxShadow: DebtsUi.shadowMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'OUTSTANDING',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'OUTSTANDING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: DebtsUi.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isSettled
+                          ? 'Cleared'
+                          : DebtsUiUtils.formatMinor(outstandingMinor),
+                      style: TextStyle(
+                        fontFamily: 'Constantia',
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                        color: isSettled
+                            ? DebtsUi.greenMid
+                            : DebtsUi.textPrimary,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: status.background,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  status.label,
-                  style: TextStyle(
-                    color: status.foreground,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
+              const SizedBox(width: 12),
+              _StatusBadge(badge: badge),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            isSettled
-                ? 'Cleared'
-                : DebtsUiUtils.formatMinor(outstandingMinor),
-            style: TextStyle(
-              color: isSettled ? AppColors.success : AppColors.ink,
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              fontFamily: isSettled ? null : 'Constantia',
-              letterSpacing: -0.8,
-              height: 1.0,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (!isCancelled) ...[
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: isSettled ? 1.0 : progress.clamp(0.0, 1.0),
-                minHeight: 6,
-                backgroundColor: AppColors.surfaceAlt,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isSettled ? AppColors.success : AppColors.forest,
+              borderRadius: BorderRadius.circular(3),
+              child: SizedBox(
+                height: 5,
+                child: Stack(
+                  children: [
+                    const Positioned.fill(
+                      child: ColoredBox(color: DebtsUi.greenLight),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: isSettled
+                          ? 1.0
+                          : progress.clamp(0.0, 1.0).toDouble(),
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: DebtsUi.progressGradient,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
-                _MiniMetric(
-                  label: 'Original',
+                _AmountBox(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'ORIGINAL',
                   value: DebtsUiUtils.formatMinor(originalMinor),
-                  icon: Icons.receipt_long_rounded,
                 ),
-                const SizedBox(width: 12),
-                _MiniMetric(
-                  label: 'Paid',
-                  value: DebtsUiUtils.formatMinor(paidMinor),
+                const SizedBox(width: 10),
+                _AmountBox(
                   icon: Icons.check_circle_outline_rounded,
-                  tone: paidMinor > 0
-                      ? AppColors.success
-                      : AppColors.inkSoft,
+                  iconColor: DebtsUi.greenBright,
+                  label: 'PAID',
+                  value: DebtsUiUtils.formatMinor(paidMinor),
+                  valueColor: paidMinor > 0
+                      ? DebtsUi.greenMid
+                      : DebtsUi.textPrimary,
                 ),
               ],
             ),
@@ -119,8 +138,8 @@ class DebtBalanceHero extends StatelessWidget {
             const Text(
               'This debt was cancelled and will not be collected.',
               style: TextStyle(
-                fontSize: 12.5,
-                color: AppColors.muted,
+                fontSize: 13,
+                color: DebtsUi.textMuted,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -128,60 +147,139 @@ class DebtBalanceHero extends StatelessWidget {
       ),
     );
   }
+
+  _BadgeStyle _resolveBadge({
+    required bool isSettled,
+    required bool isCancelled,
+    required bool isOverdue,
+    required bool isPartial,
+  }) {
+    if (isCancelled) {
+      return const _BadgeStyle(
+        label: 'Cancelled',
+        bg: DebtsUi.surface2,
+        fg: DebtsUi.textMuted,
+        border: DebtsUi.border,
+      );
+    }
+    if (isSettled) {
+      return const _BadgeStyle(
+        label: 'Settled',
+        bg: DebtsUi.settledBg,
+        fg: DebtsUi.settledFg,
+        border: DebtsUi.settledBorder,
+      );
+    }
+    if (isOverdue) {
+      return const _BadgeStyle(
+        label: 'Overdue',
+        bg: DebtsUi.overdueBg,
+        fg: DebtsUi.overdueFg,
+        border: DebtsUi.overdueBorder,
+      );
+    }
+    return _BadgeStyle(
+      label: isPartial ? 'Partial' : 'Open',
+      bg: DebtsUi.openBg,
+      fg: DebtsUi.openFg,
+      border: DebtsUi.openBorder,
+    );
+  }
 }
 
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({
+class _BadgeStyle {
+  const _BadgeStyle({
     required this.label,
-    required this.value,
-    required this.icon,
-    this.tone,
+    required this.bg,
+    required this.fg,
+    required this.border,
   });
 
   final String label;
-  final String value;
+  final Color bg;
+  final Color fg;
+  final Color border;
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.badge});
+
+  final _BadgeStyle badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      decoration: BoxDecoration(
+        color: badge.bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: badge.border),
+      ),
+      child: Text(
+        badge.label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: badge.fg,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _AmountBox extends StatelessWidget {
+  const _AmountBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.iconColor,
+    this.valueColor,
+  });
+
   final IconData icon;
-  final Color? tone;
+  final String label;
+  final String value;
+  final Color? iconColor;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+          color: DebtsUi.surface2,
+          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+          border: Border.all(color: DebtsUi.border, width: 1.5),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: tone ?? AppColors.inkSoft),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.4,
-                    ),
+            Row(
+              children: [
+                Icon(icon, size: 12, color: iconColor ?? DebtsUi.textMuted),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: DebtsUi.textMuted,
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: tone ?? AppColors.ink,
-                      fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: valueColor ?? DebtsUi.textPrimary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../../app/theme/app_theme.dart';
 import '../../../data/models/local_debt_customer.dart';
+import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
+import '../debts_gradient_button.dart';
 
 /// Step 2 of the new-debt flow: amount, optional due date, optional note.
 /// The selected customer is shown at the top with a "change" affordance.
+/// Styled with the shared debts mockup design language.
 class DebtFormStep extends StatefulWidget {
   const DebtFormStep({
     super.key,
@@ -55,7 +57,7 @@ class _DebtFormStepState extends State<DebtFormStep> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: AppColors.forestDark,
+                  primary: DebtsUi.greenMid,
                 ),
           ),
           child: child!,
@@ -110,17 +112,24 @@ class _DebtFormStepState extends State<DebtFormStep> {
         const Text(
           'Debt details',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
+            fontFamily: 'Constantia',
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: DebtsUi.textPrimary,
+            letterSpacing: -0.3,
+            height: 1.1,
           ),
         ),
         const SizedBox(height: 4),
         const Text(
           'How much is owed, and when is it due?',
-          style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+          style: TextStyle(
+            fontSize: 12.5,
+            color: DebtsUi.textMuted,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _SelectedCustomer(
           customer: widget.customer,
           onChange: _saving ? () {} : widget.onChangeCustomer,
@@ -136,40 +145,39 @@ class _DebtFormStepState extends State<DebtFormStep> {
         const SizedBox(height: 12),
         _NoteField(controller: _noteCtrl),
         if (_error != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            _error!,
-            style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: DebtsUi.dangerSoft,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+              border: Border.all(color: DebtsUi.dangerBorder, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded,
+                    size: 16, color: DebtsUi.danger),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: DebtsUi.danger,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
         const SizedBox(height: 18),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: _saving ? null : _submit,
-            icon: _saving
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.check_rounded, size: 18),
-            label: Text(_saving ? 'Saving…' : 'Record debt'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.forestDark,
-              minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+        DebtsGradientButton(
+          label: 'Record debt',
+          icon: Icons.check_rounded,
+          loading: _saving,
+          onPressed: _saving ? null : _submit,
         ),
       ],
     );
@@ -187,18 +195,19 @@ class _SelectedCustomer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
+        color: DebtsUi.greenPale,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.greenLight, width: 1.5),
       ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              color: DebtsUi.avatarGreenBg,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+              border: Border.all(color: DebtsUi.avatarGreenBorder, width: 1.5),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -206,13 +215,13 @@ class _SelectedCustomer extends StatelessWidget {
                   ? customer.name[0].toUpperCase()
                   : '?',
               style: const TextStyle(
-                color: AppColors.navy,
+                color: DebtsUi.avatarGreenFg,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,17 +231,17 @@ class _SelectedCustomer extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: DebtsUi.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   customer.phoneNumber ?? 'No phone on file',
                   style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.muted,
+                    fontSize: 12,
+                    color: DebtsUi.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -244,10 +253,13 @@ class _SelectedCustomer extends StatelessWidget {
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),
             label: const Text('Change'),
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.forestDark,
+              foregroundColor: DebtsUi.greenMid,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: const Size(0, 32),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -270,21 +282,35 @@ class _AmountField extends StatelessWidget {
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
       ],
+      cursorColor: DebtsUi.greenMid,
       style: const TextStyle(
-        fontSize: 18,
-        color: AppColors.ink,
-        fontWeight: FontWeight.w700,
+        fontSize: 20,
+        color: DebtsUi.textPrimary,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.3,
         fontFeatures: [FontFeature.tabularFigures()],
       ),
       decoration: InputDecoration(
         labelText: 'Amount',
+        labelStyle: const TextStyle(
+          fontSize: 12.5,
+          color: DebtsUi.textSecondary,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+        floatingLabelStyle: const TextStyle(
+          fontSize: 12.5,
+          color: DebtsUi.greenMid,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
         prefixIcon: const Padding(
           padding: EdgeInsets.fromLTRB(14, 0, 8, 0),
           child: Text(
             '₵',
             style: TextStyle(
-              fontSize: 18,
-              color: AppColors.inkSoft,
+              fontSize: 20,
+              color: DebtsUi.greenMid,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -292,21 +318,21 @@ class _AmountField extends StatelessWidget {
         prefixIconConstraints:
             const BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: DebtsUi.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.greenMid, width: 1.8),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       ),
     );
   }
@@ -326,60 +352,71 @@ class _DueDateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDate = dueDate != null;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      onTap: onPick,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today_rounded,
-                size: 18, color: AppColors.muted),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Due date (optional)',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasDate
-                        ? DebtsUiUtils.formatDueLabel(
-                            dueDate!.toIso8601String().substring(0, 10),
-                          )
-                        : 'Tap to pick a date',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: hasDate ? AppColors.ink : AppColors.mutedSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        onTap: onPick,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(color: DebtsUi.border, width: 1.5),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_rounded,
+                size: 18,
+                color: DebtsUi.textSecondary,
               ),
-            ),
-            if (hasDate)
-              IconButton(
-                tooltip: 'Clear date',
-                icon: const Icon(Icons.close_rounded,
-                    size: 18, color: AppColors.muted),
-                onPressed: onClear,
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(minWidth: 32, minHeight: 32),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Due date (optional)',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: DebtsUi.textMuted,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasDate
+                          ? DebtsUiUtils.formatDueLabel(
+                              dueDate!.toIso8601String().substring(0, 10),
+                            )
+                          : 'Tap to pick a date',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color:
+                            hasDate ? DebtsUi.textPrimary : DebtsUi.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-          ],
+              if (hasDate)
+                IconButton(
+                  tooltip: 'Clear date',
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: DebtsUi.textSecondary,
+                  ),
+                  onPressed: onClear,
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -396,23 +433,40 @@ class _NoteField extends StatelessWidget {
     return TextField(
       controller: controller,
       maxLines: 2,
-      style: const TextStyle(fontSize: 13.5, color: AppColors.ink),
+      cursorColor: DebtsUi.greenMid,
+      style: const TextStyle(fontSize: 14, color: DebtsUi.textPrimary),
       decoration: InputDecoration(
         labelText: 'Note (optional)',
+        labelStyle: const TextStyle(
+          fontSize: 12.5,
+          color: DebtsUi.textSecondary,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+        floatingLabelStyle: const TextStyle(
+          fontSize: 12.5,
+          color: DebtsUi.greenMid,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
         hintText: 'e.g. delivered 3 bags of rice on credit',
+        hintStyle: const TextStyle(
+          fontSize: 13,
+          color: DebtsUi.textMuted,
+        ),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: DebtsUi.surface,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          borderSide: const BorderSide(color: DebtsUi.greenMid, width: 1.8),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),

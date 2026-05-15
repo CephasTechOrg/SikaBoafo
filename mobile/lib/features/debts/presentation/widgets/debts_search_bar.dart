@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../utils/debts_ui_tokens.dart';
 
-/// Search-by-customer / invoice input. Mirrors `SalesSearchBar`.
+/// Compact search input matching `index (2).html` `.search-bar`: white surface
+/// with a 1.5px border, leading magnifier icon, muted hint copy.
 class DebtsSearchBar extends StatelessWidget {
   const DebtsSearchBar({
     super.key,
@@ -21,50 +22,48 @@ class DebtsSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
+        cursorColor: DebtsUi.greenMid,
         style: const TextStyle(
-          fontSize: 13.5,
-          color: AppColors.ink,
-          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          color: DebtsUi.textPrimary,
+          fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
-          hintText: 'Search by customer or invoice',
+          hintText: 'Search by customer or invoice…',
+          hintStyle: const TextStyle(
+            fontSize: 14,
+            color: DebtsUi.textMuted,
+            fontWeight: FontWeight.w500,
+          ),
           isDense: true,
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
           prefixIcon: const Icon(
             Icons.search_rounded,
             size: 18,
-            color: AppColors.muted,
+            color: DebtsUi.textMuted,
           ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 34,
-            minHeight: 0,
-          ),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 32, minHeight: 0),
           suffixIcon: hasQuery
-              ? Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: IconButton(
-                    onPressed: onClear,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: AppColors.muted,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
+              ? IconButton(
+                  onPressed: onClear,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: DebtsUi.textMuted,
                   ),
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 )
               : null,
           border: InputBorder.none,

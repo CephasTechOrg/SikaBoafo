@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/utils/user_friendly_error.dart';
 import '../../data/debt_reminders_repository.dart';
 import '../../providers/debt_reminders_provider.dart';
+import '../utils/debts_ui_tokens.dart';
+import 'debts_gradient_button.dart';
 
 /// Bottom sheet that lets the merchant pick a future date + time, write an
-/// optional message, and schedule a local notification.
+/// optional message, and schedule a local notification. Styled with the
+/// shared debts mockup design language.
 class ScheduleReminderSheet extends ConsumerStatefulWidget {
   const ScheduleReminderSheet({
     super.key,
@@ -41,7 +43,6 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
         amountDisplay: widget.amountDisplay,
       ),
     );
-    // Sensible defaults: tomorrow at 09:00.
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     _date = DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
     _time = const TimeOfDay(hour: 9, minute: 0);
@@ -75,7 +76,7 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                primary: AppColors.forestDark,
+                primary: DebtsUi.greenMid,
               ),
         ),
         child: child!,
@@ -93,7 +94,7 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                primary: AppColors.forestDark,
+                primary: DebtsUi.greenMid,
               ),
         ),
         child: child!,
@@ -156,12 +157,13 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: AppShadows.elevated,
+              color: DebtsUi.surface,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+              border: Border.all(color: DebtsUi.border, width: 1.5),
+              boxShadow: DebtsUi.shadowLg,
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
@@ -171,27 +173,60 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.borderStrong,
+                        color: DebtsUi.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Set a reminder',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: DebtsUi.greenPale,
+                          borderRadius:
+                              BorderRadius.circular(DebtsUi.radiusSm),
+                          border: Border.all(
+                              color: DebtsUi.greenLight, width: 1.5),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          size: 18,
+                          color: DebtsUi.greenMid,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Set a reminder',
+                          style: TextStyle(
+                            fontFamily: 'Constantia',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: DebtsUi.textPrimary,
+                            letterSpacing: -0.3,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'We\'ll send a local notification at the time you pick so '
-                    'you remember to follow up with ${widget.customerName}.',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.muted,
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 46),
+                    child: Text(
+                      'We\'ll send a local notification at the time you pick so '
+                      'you remember to follow up with ${widget.customerName}.',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: DebtsUi.textMuted,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -224,30 +259,50 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                   TextField(
                     controller: _messageCtrl,
                     maxLines: 3,
+                    cursorColor: DebtsUi.greenMid,
                     style: const TextStyle(
-                      fontSize: 13.5,
-                      color: AppColors.ink,
+                      fontSize: 14,
+                      color: DebtsUi.textPrimary,
                     ),
                     decoration: InputDecoration(
                       labelText: 'Reminder message (optional)',
+                      labelStyle: const TextStyle(
+                        fontSize: 12.5,
+                        color: DebtsUi.textSecondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                      floatingLabelStyle: const TextStyle(
+                        fontSize: 12.5,
+                        color: DebtsUi.greenMid,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
                       hintText:
                           'What should the notification say to nudge you?',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: DebtsUi.textMuted,
+                      ),
                       filled: true,
-                      fillColor: AppColors.surface,
+                      fillColor: DebtsUi.surface,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.sm),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderRadius:
+                            BorderRadius.circular(DebtsUi.radiusMd),
+                        borderSide: const BorderSide(
+                            color: DebtsUi.border, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.sm),
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderRadius:
+                            BorderRadius.circular(DebtsUi.radiusMd),
+                        borderSide: const BorderSide(
+                            color: DebtsUi.border, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                        borderRadius:
+                            BorderRadius.circular(DebtsUi.radiusMd),
                         borderSide: const BorderSide(
-                          color: AppColors.forest,
-                          width: 1.4,
-                        ),
+                            color: DebtsUi.greenMid, width: 1.8),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -256,43 +311,43 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                     ),
                   ),
                   if (_error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      _error!,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.danger,
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: DebtsUi.dangerSoft,
+                        borderRadius:
+                            BorderRadius.circular(DebtsUi.radiusSm),
+                        border: Border.all(
+                            color: DebtsUi.dangerBorder, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded,
+                              size: 16, color: DebtsUi.danger),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: DebtsUi.danger,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                   const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _saving ? null : _submit,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.alarm_rounded, size: 18),
-                      label: Text(_saving ? 'Scheduling…' : 'Schedule reminder'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forestDark,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadii.sm),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
+                  DebtsGradientButton(
+                    label: 'Schedule reminder',
+                    icon: Icons.alarm_rounded,
+                    loading: _saving,
+                    loadingLabel: 'Scheduling…',
+                    onPressed: _saving ? null : _submit,
                   ),
                 ],
               ),
@@ -337,49 +392,53 @@ class _PickerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: AppColors.inkSoft),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 9.5,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(color: DebtsUi.border, width: 1.5),
+            boxShadow: DebtsUi.shadowSm,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: DebtsUi.greenMid),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: DebtsUi.textMuted,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      color: AppColors.ink,
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: DebtsUi.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

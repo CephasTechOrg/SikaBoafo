@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../data/local/kv_cache_repository.dart';
 import '../../../../shared/widgets/data_freshness_label.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Hero header for [DebtsScreen]. Matches CustomersHeader visual style —
-/// forest gradient with radial highlight and a soft icon watermark.
+/// Hero block at the top of the Debts list.
+///
+/// Visual reference: `index (2).html` → `.debts-header`. Uses the mockup's
+/// green gradient with two soft "orb" highlights, a serif outstanding total,
+/// and a single-line stat-pill row.
 class DebtsHeader extends StatelessWidget {
   const DebtsHeader({
     super.key,
@@ -25,165 +28,133 @@ class DebtsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF041C0B),
-                    Color(0xFF083A1A),
-                    Color(0xFF0F5A30),
-                    Color(0xFF196E3D),
-                  ],
-                  stops: [0.0, 0.28, 0.62, 1.0],
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.none,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: DebtsUi.heroGradient),
+        ),
+        const Positioned(
+          top: -40,
+          right: -40,
+          width: 200,
+          height: 200,
+          child: _HeroOrb(opacity: 0.04),
+        ),
+        const Positioned(
+          bottom: -60,
+          left: 40,
+          width: 140,
+          height: 140,
+          child: _HeroOrb(opacity: 0.03),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(leadingContentInset, 50, 20, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Debts',
+                    style: TextStyle(
+                      fontFamily: 'Constantia',
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                      height: 1.0,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: DataFreshnessLabel(
+                      kvKey: KvCacheRepository.kDebtsTs,
+                      color: Color(0xCCFFFFFF),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const _OutstandingLabel(),
+              const SizedBox(height: 4),
+              Text(
+                DebtsUiUtils.formatMinor(outstandingMinor),
+                style: const TextStyle(
+                  fontFamily: 'Constantia',
+                  fontSize: 40,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -1,
+                  height: 1.0,
                 ),
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.68, -0.72),
-                  radius: 0.92,
-                  colors: [
-                    const Color(0xFF27A84E).withValues(alpha: 0.40),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF010A04).withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 1.0,
-            child: ColoredBox(color: Color(0x18FFFFFF)),
-          ),
-          Positioned(
-            right: -6,
-            bottom: -6,
-            child: Opacity(
-              opacity: 0.14,
-              child: Icon(
-                Icons.handshake_rounded,
-                size: 120,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(leadingContentInset, 46, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+              const SizedBox(height: 14),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
                   children: [
-                    Text(
-                      'Debts',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
-                        height: 1.1,
-                      ),
+                    _StatPill(
+                      icon: Icons.receipt_long_outlined,
+                      value: '$totalDebtsCount',
+                      label: 'total',
                     ),
-                    const SizedBox(width: 10),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 3),
-                      child: DataFreshnessLabel(
-                        kvKey: KvCacheRepository.kDebtsTs,
-                        color: AppColors.heroSubtitle,
-                      ),
+                    const SizedBox(width: 8),
+                    _StatPill(
+                      icon: Icons.schedule_rounded,
+                      value: '$openCount',
+                      label: 'open',
+                    ),
+                    const SizedBox(width: 8),
+                    _StatPill(
+                      icon: Icons.warning_amber_rounded,
+                      value: '$overdueCount',
+                      label: 'overdue',
+                      highlight: overdueCount > 0,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'TOTAL OUTSTANDING',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DebtsUiUtils.formatMinor(outstandingMinor),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -0.8,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _StatPill(
-                        icon: Icons.receipt_long_rounded,
-                        value: '$totalDebtsCount',
-                        label: 'total',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.schedule_rounded,
-                        value: '$openCount',
-                        label: 'open',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.warning_amber_rounded,
-                        value: '$overdueCount',
-                        label: 'overdue',
-                        accent: overdueCount > 0
-                            ? const Color(0xFFF6A6A6)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroOrb extends StatelessWidget {
+  const _HeroOrb({required this.opacity});
+
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: opacity),
+      ),
+    );
+  }
+}
+
+class _OutstandingLabel extends StatelessWidget {
+  const _OutstandingLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'TOTAL OUTSTANDING',
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.2,
+        color: Colors.white.withValues(alpha: 0.55),
       ),
     );
   }
@@ -194,51 +165,52 @@ class _StatPill extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
-    this.accent,
+    this.highlight = false,
   });
 
   final IconData icon;
   final String value;
   final String label;
-  final Color? accent;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
-    final valueColor = accent ?? Colors.white;
+    final accent = highlight
+        ? const Color(0xFFFCC8C8)
+        : Colors.white.withValues(alpha: 0.7);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.55), size: 13),
+          Icon(icon, size: 14, color: accent),
           const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: valueColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.50),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
+                TextSpan(
+                  text: ' $label',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

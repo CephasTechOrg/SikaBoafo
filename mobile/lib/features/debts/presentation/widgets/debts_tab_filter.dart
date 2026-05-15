@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../utils/debts_ui_tokens.dart';
 
 enum DebtsFilterTab { all, open, overdue, settled }
@@ -20,6 +19,10 @@ extension DebtsFilterTabX on DebtsFilterTab {
   }
 }
 
+/// Horizontally-arranged filter pills (`index (2).html` `.filter-tabs`).
+///
+/// Active tab fills with `green-deep` and shows white text + translucent
+/// badge. Inactive tabs are bordered surface chips with green-pale badges.
 class DebtsTabFilter extends StatelessWidget {
   const DebtsTabFilter({
     super.key,
@@ -34,25 +37,20 @@ class DebtsTabFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(DebtsUiTokens.pillRadius),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final tab in DebtsFilterTab.values)
-            Expanded(
-              child: _Pill(
-                label: tab.label,
-                badge: counts[tab],
-                selected: activeTab == tab,
-                onTap: () => onChanged(tab),
-              ),
+          for (final tab in DebtsFilterTab.values) ...[
+            _Pill(
+              label: tab.label,
+              badge: counts[tab],
+              selected: activeTab == tab,
+              onTap: () => onChanged(tab),
             ),
+            if (tab != DebtsFilterTab.values.last) const SizedBox(width: 8),
+          ],
         ],
       ),
     );
@@ -74,52 +72,48 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pillColor = selected ? const Color(0xFF0C3A24) : Colors.transparent;
-    final textColor = selected ? Colors.white : AppColors.inkSoft;
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: DebtsUiTokens.tabSwitchAnimation,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: pillColor,
-          borderRadius: BorderRadius.circular(DebtsUiTokens.pillRadius),
+          color: selected ? DebtsUi.greenDeep : DebtsUi.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? DebtsUi.greenDeep : DebtsUi.border,
+            width: 1.5,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : DebtsUi.textSecondary,
               ),
             ),
             if (badge != null && badge! > 0) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                 decoration: BoxDecoration(
                   color: selected
-                      ? Colors.white.withValues(alpha: 0.18)
-                      : AppColors.surfaceAlt,
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : DebtsUi.greenLight,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '$badge',
                   style: TextStyle(
-                    color: selected ? Colors.white : AppColors.inkSoft,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : DebtsUi.greenMid,
                   ),
                 ),
               ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../data/models/local_debt_customer.dart';
+import '../utils/debts_ui_tokens.dart';
 
-/// Customer card under the balance hero. Surfaces call / WhatsApp shortcuts
-/// when contact info is available.
+/// Contact row under the meta strip on a debt detail screen.
+///
+/// Visual reference: `index (2).html` `.contact-row` — Call (primary green
+/// pale) + Message (neutral surface) buttons sharing a row. Hidden when the
+/// customer has no phone on file.
 class DebtCustomerSummary extends StatelessWidget {
   const DebtCustomerSummary({super.key, required this.customer});
 
@@ -25,7 +28,7 @@ class DebtCustomerSummary extends StatelessWidget {
   }
 
   Future<void> _openWhatsApp(BuildContext context) async {
-    final raw = (customer.whatsappNumber ?? customer.phoneNumber);
+    final raw = customer.whatsappNumber ?? customer.phoneNumber;
     if (raw == null || raw.trim().isEmpty) return;
     final digits = raw.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) return;
@@ -41,120 +44,87 @@ class DebtCustomerSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPhone =
-        customer.phoneNumber != null && customer.phoneNumber!.trim().isNotEmpty;
+    final hasPhone = customer.phoneNumber != null &&
+        customer.phoneNumber!.trim().isNotEmpty;
     final hasWhatsapp = hasPhone ||
         (customer.whatsappNumber != null &&
             customer.whatsappNumber!.trim().isNotEmpty);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              customer.name.isNotEmpty
-                  ? customer.name[0].toUpperCase()
-                  : '?',
-              style: const TextStyle(
-                color: AppColors.navy,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
+
+    if (!hasPhone && !hasWhatsapp) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        if (hasPhone)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  hasPhone ? customer.phoneNumber! : 'No phone on file',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (hasPhone)
-            _ContactIconButton(
+            child: _ContactButton(
               icon: Icons.call_rounded,
-              tooltip: 'Call ${customer.name}',
+              label: 'Call',
+              primary: true,
               onTap: () => _callPhone(context),
             ),
-          if (hasWhatsapp) ...[
-            const SizedBox(width: 8),
-            _ContactIconButton(
+          ),
+        if (hasPhone && hasWhatsapp) const SizedBox(width: 10),
+        if (hasWhatsapp)
+          Expanded(
+            child: _ContactButton(
               icon: Icons.chat_bubble_outline_rounded,
-              tooltip: 'WhatsApp ${customer.name}',
-              tone: AppColors.success,
+              label: 'Message',
               onTap: () => _openWhatsApp(context),
             ),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
 
-class _ContactIconButton extends StatelessWidget {
-  const _ContactIconButton({
+class _ContactButton extends StatelessWidget {
+  const _ContactButton({
     required this.icon,
-    required this.tooltip,
+    required this.label,
     required this.onTap,
-    this.tone,
+    this.primary = false,
   });
 
   final IconData icon;
-  final String tooltip;
+  final String label;
   final VoidCallback onTap;
-  final Color? tone;
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
-    final accent = tone ?? AppColors.forestDark;
-    return Tooltip(
-      message: tooltip,
+    final bg = primary ? DebtsUi.greenPale : DebtsUi.surface2;
+    final border = primary ? DebtsUi.greenLight : DebtsUi.border;
+    final fg = primary ? DebtsUi.greenMid : DebtsUi.textSecondary;
+
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
+        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 38,
-          height: 38,
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accent.withValues(alpha: 0.30)),
+            color: bg,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+            border: Border.all(color: border, width: 1.5),
           ),
-          child: Icon(icon, size: 18, color: accent),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

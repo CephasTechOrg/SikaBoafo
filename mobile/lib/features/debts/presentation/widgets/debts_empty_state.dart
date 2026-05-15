@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../utils/debts_ui_tokens.dart';
 
-/// Empty-state card shown on Debts list when no debts match the current
-/// filter / search. Tone shifts based on whether *any* debts exist.
+/// Empty state shown on Debts list when no debts match the filter / search.
+/// Mockup-aligned: surface card with green-tinted icon tile, title, copy,
+/// and a gradient CTA button.
 class DebtsEmptyState extends StatelessWidget {
   const DebtsEmptyState({
     super.key,
@@ -15,7 +16,6 @@ class DebtsEmptyState extends StatelessWidget {
     this.ctaLabel = 'Record a debt',
   });
 
-  /// Variant for "you have debts but none match this filter".
   factory DebtsEmptyState.filtered({
     required VoidCallback onCreateDebt,
     required String filterLabel,
@@ -39,9 +39,10 @@ class DebtsEmptyState extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
+        boxShadow: DebtsUi.shadowSm,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -50,13 +51,14 @@ class DebtsEmptyState extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.forest.withValues(alpha: 0.08),
+              color: DebtsUi.greenPale,
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: DebtsUi.greenLight, width: 1.5),
             ),
             child: const Icon(
-              Icons.handshake_rounded,
-              size: 34,
-              color: AppColors.forest,
+              Icons.handshake_outlined,
+              size: 32,
+              color: DebtsUi.greenMid,
             ),
           ),
           const SizedBox(height: 18),
@@ -65,36 +67,69 @@ class DebtsEmptyState extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: DebtsUi.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppColors.muted),
+            style: const TextStyle(
+              fontSize: 14,
+              color: DebtsUi.textSecondary,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onCreateDebt,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: Text(ctaLabel),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.forestDark,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            child: _CtaButton(label: ctaLabel, onTap: onCreateDebt),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CtaButton extends StatelessWidget {
+  const _CtaButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: DebtsUi.ctaGradient,
+          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x59166B42),
+              blurRadius: 20,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

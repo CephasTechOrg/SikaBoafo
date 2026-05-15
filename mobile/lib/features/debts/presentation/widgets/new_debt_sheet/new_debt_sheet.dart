@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../app/theme/app_theme.dart';
 import '../../../../../shared/utils/user_friendly_error.dart';
 import '../../../data/models/local_debt_customer.dart';
 import '../../../providers/debts_providers.dart';
+import '../../utils/debts_ui_tokens.dart';
 import 'customer_inline_create.dart';
 import 'customer_picker_step.dart';
 import 'debt_form_step.dart';
@@ -110,12 +110,13 @@ class _NewDebtSheetState extends ConsumerState<NewDebtSheet> {
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: AppShadows.elevated,
+              color: DebtsUi.surface,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+              border: Border.all(color: DebtsUi.border, width: 1.5),
+              boxShadow: DebtsUi.shadowLg,
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -124,12 +125,12 @@ class _NewDebtSheetState extends ConsumerState<NewDebtSheet> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.borderStrong,
+                        color: DebtsUi.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   _buildStep(),
                 ],
               ),

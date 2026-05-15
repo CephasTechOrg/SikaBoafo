@@ -1,33 +1,39 @@
 import 'package:flutter/material.dart';
 
-import '../../utils/debts_ui_tokens.dart';
+import '../utils/debts_ui_tokens.dart';
 
-/// Submit button for the receive-payment sheet. Uses the shared brand
-/// gradient CTA seen in the mockup's primary action buttons.
-class ReceivePaymentConfirmButton extends StatelessWidget {
-  const ReceivePaymentConfirmButton({
+/// Brand gradient primary CTA, matching the mockup's "Receive payment" /
+/// "Set reminder" / FAB action style. Used by the various sheets and
+/// inline form buttons across the debts feature so all primary actions
+/// share the same visual language.
+class DebtsGradientButton extends StatelessWidget {
+  const DebtsGradientButton({
     super.key,
-    required this.enabled,
-    required this.submitting,
-    required this.onTap,
-    this.label = 'Confirm payment',
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.loading = false,
+    this.height = 50,
+    this.loadingLabel = 'Saving…',
   });
 
-  final bool enabled;
-  final bool submitting;
-  final VoidCallback onTap;
   final String label;
+  final String loadingLabel;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final bool loading;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
-    final isInteractive = enabled && !submitting;
+    final isInteractive = onPressed != null && !loading;
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: height,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: isInteractive ? onTap : null,
+          onTap: isInteractive ? onPressed : null,
           borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
@@ -36,8 +42,7 @@ class ReceivePaymentConfirmButton extends StatelessWidget {
               color: isInteractive ? null : DebtsUi.surface2,
               borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
               border: Border.all(
-                color:
-                    isInteractive ? Colors.transparent : DebtsUi.border,
+                color: isInteractive ? Colors.transparent : DebtsUi.border,
                 width: 1.5,
               ),
               boxShadow: isInteractive
@@ -55,7 +60,7 @@ class ReceivePaymentConfirmButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (submitting)
+                if (loading)
                   const SizedBox(
                     width: 18,
                     height: 18,
@@ -64,23 +69,20 @@ class ReceivePaymentConfirmButton extends StatelessWidget {
                       color: Colors.white,
                     ),
                   )
-                else
+                else if (icon != null)
                   Icon(
-                    Icons.check_rounded,
-                    size: 20,
-                    color: isInteractive
-                        ? Colors.white
-                        : DebtsUi.textMuted,
+                    icon,
+                    size: 18,
+                    color: isInteractive ? Colors.white : DebtsUi.textMuted,
                   ),
-                const SizedBox(width: 10),
+                if (loading || icon != null) const SizedBox(width: 10),
                 Text(
-                  submitting ? 'Saving…' : label,
+                  loading ? loadingLabel : label,
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.2,
-                    color:
-                        isInteractive ? Colors.white : DebtsUi.textMuted,
+                    color: isInteractive ? Colors.white : DebtsUi.textMuted,
                   ),
                 ),
               ],

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../data/models/local_receivable_record.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Compact horizontally-scrollable meta strip under the balance hero:
-/// invoice number, created date, due date, days overdue.
+/// Three-cell info row beneath the balance hero.
+///
+/// Visual reference: `index (2).html` `.info-row` (Invoice | Created | Due).
+/// Optional Note / Overdue badges are appended below as separate chips so
+/// the primary 3-cell grid stays clean.
 class DebtMetaRow extends StatelessWidget {
   const DebtMetaRow({super.key, required this.record});
 
@@ -13,60 +16,62 @@ class DebtMetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final daysUntilDue = DebtsUiUtils.daysUntilDue(record.dueDateIso);
-    final createdLabel = _formatDateMillis(record.createdAtMillis);
     final isOverdue = DebtsUiUtils.isOverdue(record.dueDateIso) &&
         record.status != 'settled' &&
         record.status != 'cancelled';
-    final chips = <Widget>[];
+    final daysUntilDue = DebtsUiUtils.daysUntilDue(record.dueDateIso);
+    final invoice = (record.invoiceNumber ?? '').isNotEmpty
+        ? record.invoiceNumber!
+        : '—';
+    final created = _formatDateMillis(record.createdAtMillis);
+    final due = (record.dueDateIso != null && record.dueDateIso!.isNotEmpty)
+        ? DebtsUiUtils.formatDueLabel(record.dueDateIso!)
+        : '—';
+    final note = record.note?.trim();
 
-    if (record.invoiceNumber != null && record.invoiceNumber!.isNotEmpty) {
-      chips.add(_Chip(
-        icon: Icons.receipt_long_rounded,
-        label: 'Invoice',
-        value: record.invoiceNumber!,
-      ));
-    }
-    chips.add(_Chip(
-      icon: Icons.event_available_rounded,
-      label: 'Created',
-      value: createdLabel,
-    ));
-    if (record.dueDateIso != null && record.dueDateIso!.isNotEmpty) {
-      chips.add(_Chip(
-        icon: Icons.calendar_today_rounded,
-        label: 'Due',
-        value: DebtsUiUtils.formatDueLabel(record.dueDateIso!),
-        tone: isOverdue ? AppColors.danger : null,
-      ));
-    }
-    if (isOverdue && daysUntilDue != null) {
-      chips.add(_Chip(
-        icon: Icons.warning_amber_rounded,
-        label: 'Overdue',
-        value: '${-daysUntilDue} day${(-daysUntilDue) == 1 ? '' : 's'}',
-        tone: AppColors.danger,
-      ));
-    }
-    if (record.note != null && record.note!.trim().isNotEmpty) {
-      chips.add(_Chip(
-        icon: Icons.sticky_note_2_outlined,
-        label: 'Note',
-        value: record.note!.trim(),
-        wide: true,
-      ));
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < chips.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            chips[i],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _InfoBox(
+              icon: Icons.receipt_long_outlined,
+              label: 'INVOICE',
+              value: invoice,
+            ),
+            const SizedBox(width: 10),
+            _InfoBox(
+              icon: Icons.calendar_today_outlined,
+              label: 'CREATED',
+              value: created,
+            ),
+            const SizedBox(width: 10),
+            _InfoBox(
+              icon: Icons.event_outlined,
+              label: 'DUE',
+              value: due,
+              tone: isOverdue ? DebtsUi.danger : null,
+            ),
           ],
+        ),
+        if (isOverdue && daysUntilDue != null) ...[
+          const SizedBox(height: 10),
+          _Chip(
+            icon: Icons.warning_amber_rounded,
+            label: 'Overdue',
+            value: '${-daysUntilDue} day${(-daysUntilDue) == 1 ? '' : 's'}',
+            tone: DebtsUi.danger,
+          ),
         ],
-      ),
+        if (note != null && note.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _Chip(
+            icon: Icons.sticky_note_2_outlined,
+            label: 'Note',
+            value: note,
+          ),
+        ],
+      ],
     );
   }
 
@@ -79,68 +84,123 @@ class DebtMetaRow extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({
     required this.icon,
     required this.label,
     required this.value,
     this.tone,
-    this.wide = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color? tone;
-  final bool wide;
 
   @override
   Widget build(BuildContext context) {
-    final accent = tone ?? AppColors.inkSoft;
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: wide ? 260 : 220),
+    final accent = tone ?? DebtsUi.textMuted;
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          color: DebtsUi.surface,
+          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+          border: Border.all(color: DebtsUi.border, width: 1.5),
+          boxShadow: DebtsUi.shadowSm,
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: accent),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            Row(
               children: [
-                Text(
-                  label.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 9.5,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                const SizedBox(height: 1),
+                Icon(icon, size: 11, color: accent),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
-                    value,
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: accent,
+                    style: const TextStyle(
+                      fontSize: 10,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: DebtsUi.textMuted,
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: tone ?? DebtsUi.textPrimary,
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.tone,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = tone ?? DebtsUi.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
+        boxShadow: DebtsUi.shadowSm,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: accent),
+          const SizedBox(width: 8),
+          Text(
+            '$label · ',
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: DebtsUi.textMuted,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: accent,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

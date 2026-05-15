@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../app/theme/app_theme.dart';
 import '../../../../../shared/utils/user_friendly_error.dart';
 import '../../../data/models/local_receivable_record.dart';
 import '../../../providers/debts_providers.dart';
+import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
 import 'receive_payment_amount_field.dart';
 import 'receive_payment_confirm_button.dart';
@@ -100,12 +100,13 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: AppShadows.elevated,
+              color: DebtsUi.surface,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+              border: Border.all(color: DebtsUi.border, width: 1.5),
+              boxShadow: DebtsUi.shadowLg,
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
@@ -115,12 +116,12 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.borderStrong,
+                        color: DebtsUi.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -130,9 +131,12 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                             const Text(
                               'Receive payment',
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.ink,
+                                fontFamily: 'Constantia',
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: DebtsUi.textPrimary,
+                                letterSpacing: -0.3,
+                                height: 1.1,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -140,7 +144,7 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                               'Outstanding: ${DebtsUiUtils.formatMinor(_outstandingMinor)}',
                               style: const TextStyle(
                                 fontSize: 12.5,
-                                color: AppColors.muted,
+                                color: DebtsUi.textMuted,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -172,7 +176,7 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                       _error!,
                       style: const TextStyle(
                         fontSize: 12.5,
-                        color: AppColors.danger,
+                        color: DebtsUi.danger,
                       ),
                     ),
                   ],
@@ -184,7 +188,7 @@ class _ReceivePaymentSheetState extends ConsumerState<ReceivePaymentSheet> {
                         'Enter the amount received above to continue.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.muted,
+                          color: DebtsUi.textMuted,
                         ),
                       ),
                     ),

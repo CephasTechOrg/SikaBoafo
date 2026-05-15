@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../../../app/theme/app_theme.dart';
 import '../../../data/models/local_debt_customer.dart';
+import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
 
 /// Step 1 of the new-debt flow: pick an existing customer or trigger the
-/// inline create form.
+/// inline create form. Uses the shared mockup design language.
 class CustomerPickerStep extends StatefulWidget {
   const CustomerPickerStep({
     super.key,
@@ -53,50 +53,67 @@ class _CustomerPickerStepState extends State<CustomerPickerStep> {
         const Text(
           'Pick a customer',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
+            fontFamily: 'Constantia',
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: DebtsUi.textPrimary,
+            letterSpacing: -0.3,
+            height: 1.1,
           ),
         ),
         const SizedBox(height: 4),
         const Text(
           'Choose who owes you. You can add a new one if they aren\'t saved yet.',
-          style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+          style: TextStyle(
+            fontSize: 12.5,
+            color: DebtsUi.textMuted,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 14),
         TextField(
           controller: _searchCtrl,
           autofocus: false,
           onChanged: (value) => setState(() => _query = value),
-          style: const TextStyle(fontSize: 14, color: AppColors.ink),
+          cursorColor: DebtsUi.greenMid,
+          style: const TextStyle(fontSize: 14, color: DebtsUi.textPrimary),
           decoration: InputDecoration(
             hintText: 'Search by name or phone',
+            hintStyle: const TextStyle(
+              fontSize: 14,
+              color: DebtsUi.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
             prefixIcon: const Icon(
               Icons.search_rounded,
               size: 20,
-              color: AppColors.muted,
+              color: DebtsUi.textMuted,
             ),
             filled: true,
-            fillColor: AppColors.surfaceAlt,
+            fillColor: DebtsUi.surface,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide: const BorderSide(color: DebtsUi.border, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              borderSide:
+                  const BorderSide(color: DebtsUi.greenMid, width: 1.8),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             suffixIcon: _query.isEmpty
                 ? null
                 : IconButton(
-                    icon: const Icon(Icons.close_rounded,
-                        size: 18, color: AppColors.muted),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: DebtsUi.textMuted,
+                    ),
                     onPressed: () {
                       _searchCtrl.clear();
                       setState(() => _query = '');
@@ -140,55 +157,65 @@ class _AddNewCustomerCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.forest.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(
-            color: AppColors.forest.withValues(alpha: 0.30),
-            style: BorderStyle.solid,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: DebtsUi.greenPale,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(color: DebtsUi.greenLight, width: 1.5),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.forest,
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: DebtsUi.ctaGradient,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                ),
+                child: const Icon(
+                  Icons.person_add_alt_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
-              child: const Icon(Icons.person_add_alt_rounded,
-                  color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Add a new customer',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Add a new customer',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: DebtsUi.textPrimary,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Quick — just name and phone.',
-                    style: TextStyle(fontSize: 11.5, color: AppColors.muted),
-                  ),
-                ],
+                    SizedBox(height: 2),
+                    Text(
+                      'Quick — just name and phone.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: DebtsUi.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 18, color: AppColors.inkSoft),
-          ],
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: DebtsUi.greenMid,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -205,85 +232,105 @@ class _CustomerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final outstanding = DebtsUiUtils.amountToMinor(customer.totalOutstanding);
     final hasBalance = outstanding > 0;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                customer.name.isNotEmpty
-                    ? customer.name[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(color: DebtsUi.border, width: 1.5),
+            boxShadow: DebtsUi.shadowSm,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: hasBalance
+                      ? DebtsUi.avatarGoldBg
+                      : DebtsUi.avatarGreenBg,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                  border: Border.all(
+                    color: hasBalance
+                        ? DebtsUi.avatarGoldBorder
+                        : DebtsUi.avatarGreenBorder,
+                    width: 1.5,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  customer.name.isNotEmpty
+                      ? customer.name[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: hasBalance
+                        ? DebtsUi.avatarGoldFg
+                        : DebtsUi.avatarGreenFg,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    customer.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                      color: AppColors.ink,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: DebtsUi.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    customer.phoneNumber ?? 'No phone on file',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 2),
+                    Text(
+                      customer.phoneNumber ?? 'No phone on file',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: DebtsUi.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: hasBalance
-                    ? AppColors.dangerSoft
-                    : AppColors.successSoft,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                hasBalance
-                    ? DebtsUiUtils.formatMinor(outstanding)
-                    : 'Cleared',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: hasBalance ? AppColors.danger : AppColors.success,
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasBalance ? DebtsUi.openBg : DebtsUi.settledBg,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: hasBalance
+                        ? DebtsUi.openBorder
+                        : DebtsUi.settledBorder,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  hasBalance
+                      ? DebtsUiUtils.formatMinor(outstanding)
+                      : 'Cleared',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        hasBalance ? DebtsUi.openFg : DebtsUi.settledFg,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -299,16 +346,19 @@ class _NoMatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasQuery = query.trim().isNotEmpty;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.border),
+        color: DebtsUi.surface2,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
       ),
       child: Row(
         children: [
-          const Icon(Icons.search_off_rounded,
-              size: 20, color: AppColors.muted),
+          const Icon(
+            Icons.search_off_rounded,
+            size: 20,
+            color: DebtsUi.textMuted,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -317,8 +367,9 @@ class _NoMatchCard extends StatelessWidget {
                   : 'You don\'t have any customers saved yet. Tap "Add a new customer" above.',
               style: const TextStyle(
                 fontSize: 12.5,
-                color: AppColors.muted,
+                color: DebtsUi.textSecondary,
                 fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
             ),
           ),

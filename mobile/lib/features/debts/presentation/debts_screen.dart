@@ -9,6 +9,7 @@ import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../data/debts_repository.dart';
 import '../providers/debts_providers.dart';
+import 'utils/debts_ui_tokens.dart';
 import 'utils/debts_ui_utils.dart';
 import 'widgets/debt_list_tile.dart';
 import 'widgets/debts_empty_state.dart';
@@ -49,22 +50,12 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final outstandingMinor = _sumOutstanding(allReceivables);
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.forestDark,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        onPressed: () => _openNewDebtSheet(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'New debt',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-        ),
-      ),
+      backgroundColor: DebtsUi.canvas,
+      floatingActionButton: _DebtsFab(onPressed: () => _openNewDebtSheet(context)),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 210,
+            expandedHeight: 230,
             pinned: true,
             stretch: true,
             leadingWidth: _kLeadingGutter,
@@ -83,26 +74,20 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               },
             ),
             actions: [
-              IconButton(
+              _GlassIconButton(
                 tooltip: 'Customers',
-                icon: const Icon(
-                  Icons.people_alt_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                icon: Icons.person_add_alt_1_rounded,
                 onPressed: () => context.push(AppRoute.customers.path),
               ),
-              IconButton(
+              const SizedBox(width: 8),
+              _GlassIconButton(
                 tooltip: 'Refresh',
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                icon: Icons.refresh_rounded,
                 onPressed: _refresh,
               ),
+              const SizedBox(width: 12),
             ],
-            backgroundColor: const Color(0xFF041C0B),
+            backgroundColor: DebtsUi.greenDeep,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [StretchMode.zoomBackground],
@@ -117,9 +102,11 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                   ? const Text(
                       'Debts',
                       style: TextStyle(
+                        fontFamily: 'Constantia',
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        letterSpacing: -0.3,
                       ),
                     )
                   : null,
@@ -132,8 +119,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           ),
           const SliverToBoxAdapter(
             child: ColoredBox(
-              color: Color(0xFF041C0B),
-              child: SizedBox(height: 18),
+              color: DebtsUi.greenDeep,
+              child: SizedBox(height: 10),
             ),
           ),
         ],
@@ -298,35 +285,35 @@ class _DataBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRefresh,
-      color: AppColors.forest,
+      color: DebtsUi.greenMid,
       child: ColoredBox(
-        color: const Color(0xFF041C0B),
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
+            decoration: const BoxDecoration(color: DebtsUi.surface2),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 96),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 110),
               children: [
                 const StaleBanner(
                   screenKey: 'debts',
                   kvKey: KvCacheRepository.kDebtsTs,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 DebtsSearchBar(
                   controller: searchCtrl,
                   hasQuery: query.isNotEmpty,
                   onChanged: onSearchChanged,
                   onClear: onSearchCleared,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 DebtsTabFilter(
                   activeTab: activeTab,
                   onChanged: onTabChanged,
                   counts: counts,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 if (totalReceivables == 0)
                   DebtsEmptyState(onCreateDebt: onCreateDebt)
                 else if (filtered.isEmpty)
@@ -334,7 +321,19 @@ class _DataBody extends StatelessWidget {
                     onCreateDebt: onCreateDebt,
                     filterLabel: activeTab.label.toLowerCase(),
                   )
-                else
+                else ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
+                    child: Text(
+                      'RECENT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                        color: DebtsUi.textMuted,
+                      ),
+                    ),
+                  ),
                   ...filtered.map(
                     (record) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -344,8 +343,93 @@ class _DataBody extends StatelessWidget {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rounded-square gradient FAB matching the mockup's `.fab`. Plus icon only,
+/// 56x56, with a soft green drop shadow.
+class _DebtsFab extends StatelessWidget {
+  const _DebtsFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'New debt',
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onPressed,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: DebtsUi.ctaGradient,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66166B42),
+                    blurRadius: 24,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Circular translucent icon button used in the debts hero header.
+/// Matches `index (2).html` `.icon-btn`.
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 18, color: Colors.white),
           ),
         ),
       ),
@@ -362,23 +446,25 @@ class _LoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: refresh,
-      color: AppColors.forest,
+      color: DebtsUi.greenMid,
       child: ColoredBox(
-        color: const Color(0xFF041C0B),
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
+            decoration: const BoxDecoration(color: DebtsUi.surface2),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
               children: [
                 const StaleBanner(
                   screenKey: 'debts',
                   kvKey: KvCacheRepository.kDebtsTs,
                 ),
                 SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
-                const Center(child: CircularProgressIndicator()),
+                const Center(
+                  child: CircularProgressIndicator(color: DebtsUi.greenMid),
+                ),
               ],
             ),
           ),
@@ -398,16 +484,16 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRetry,
-      color: AppColors.forest,
+      color: DebtsUi.greenMid,
       child: ColoredBox(
-        color: const Color(0xFF041C0B),
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
+            decoration: const BoxDecoration(color: DebtsUi.surface2),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
               children: [
                 const StaleBanner(
                   screenKey: 'debts',
@@ -417,9 +503,10 @@ class _ErrorState extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
+                    color: DebtsUi.surface,
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+                    border: Border.all(color: DebtsUi.border, width: 1.5),
+                    boxShadow: DebtsUi.shadowSm,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -427,16 +514,19 @@ class _ErrorState extends StatelessWidget {
                       const Icon(
                         Icons.error_outline_rounded,
                         size: 42,
-                        color: AppColors.danger,
+                        color: DebtsUi.danger,
                       ),
                       const SizedBox(height: 12),
                       Text(
                         message,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.inkSoft),
+                        style: const TextStyle(color: DebtsUi.textSecondary),
                       ),
                       const SizedBox(height: 16),
                       FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DebtsUi.greenMid,
+                        ),
                         onPressed: onRetry,
                         child: const Text('Retry'),
                       ),
