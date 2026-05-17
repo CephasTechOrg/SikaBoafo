@@ -4,6 +4,7 @@ import '../../../../data/local/kv_cache_repository.dart';
 import '../../../../shared/widgets/data_freshness_label.dart';
 import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
+import 'hero_stat_row.dart';
 
 /// Hero block at the top of the Debts list.
 ///
@@ -93,31 +94,28 @@ class DebtsHeader extends StatelessWidget {
                   height: 1.0,
                 ),
               ),
-              const SizedBox(height: 14),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _StatPill(
-                      icon: Icons.receipt_long_outlined,
-                      value: '$totalDebtsCount',
-                      label: 'total',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatPill(
-                      icon: Icons.schedule_rounded,
-                      value: '$openCount',
-                      label: 'open',
-                    ),
-                    const SizedBox(width: 8),
-                    _StatPill(
-                      icon: Icons.warning_amber_rounded,
-                      value: '$overdueCount',
-                      label: 'overdue',
-                      highlight: overdueCount > 0,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 12),
+              HeroStatRow(
+                items: [
+                  HeroStatItem(
+                    icon: Icons.receipt_long_outlined,
+                    value: '$totalDebtsCount',
+                    label: 'Total',
+                  ),
+                  HeroStatItem(
+                    icon: Icons.schedule_rounded,
+                    value: '$openCount',
+                    label: 'Open',
+                  ),
+                  HeroStatItem(
+                    icon: Icons.warning_amber_rounded,
+                    value: '$overdueCount',
+                    label: 'Overdue',
+                    accentColor: overdueCount > 0
+                        ? const Color(0xFFFFD4A8)
+                        : null,
+                  ),
+                ],
               ),
             ],
           ),
@@ -155,64 +153,6 @@ class _OutstandingLabel extends StatelessWidget {
         fontWeight: FontWeight.w600,
         letterSpacing: 1.2,
         color: Colors.white.withValues(alpha: 0.55),
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.icon,
-    required this.value,
-    required this.label,
-    this.highlight = false,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = highlight
-        ? const Color(0xFFFCC8C8)
-        : Colors.white.withValues(alpha: 0.7);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: accent),
-          const SizedBox(width: 6),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(
-                  text: ' $label',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

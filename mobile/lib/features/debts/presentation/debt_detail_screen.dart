@@ -14,7 +14,6 @@ import 'utils/debts_ui_tokens.dart';
 import 'widgets/debt_balance_hero.dart';
 import 'widgets/debt_customer_summary.dart';
 import 'widgets/debt_meta_row.dart';
-import 'widgets/debt_payment_link_panel.dart';
 import 'widgets/debt_payments_history.dart';
 import 'widgets/debt_reminders_section.dart';
 import 'widgets/receive_payment_sheet/receive_payment_sheet.dart';
@@ -49,14 +48,36 @@ Future<void> _confirmAndCancelReceivableDebt(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Cancel this debt?'),
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: DebtsUi.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+        side: const BorderSide(color: DebtsUi.border, width: 1.5),
+      ),
+      title: const Text(
+        'Cancel this debt?',
+        style: TextStyle(
+          fontFamily: 'Constantia',
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: DebtsUi.textPrimary,
+          letterSpacing: -0.2,
+        ),
+      ),
       content: const Text(
         'The debt will be marked cancelled. You can\'t undo this — '
         'create a new debt if you change your mind.',
+        style: TextStyle(
+          fontSize: 14,
+          color: DebtsUi.textSecondary,
+          fontWeight: FontWeight.w500,
+          height: 1.4,
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(false),
+          style: TextButton.styleFrom(foregroundColor: DebtsUi.textSecondary),
           child: const Text('Keep debt'),
         ),
         FilledButton(
@@ -100,8 +121,7 @@ class DebtDetailScreen extends ConsumerWidget {
         loading: () => const _LoadingShell(),
         error: (error, _) => _ErrorShell(
           message: userFriendlyError(error),
-          onRetry: () =>
-              ref.invalidate(receivableDetailProvider(receivableId)),
+          onRetry: () => ref.invalidate(receivableDetailProvider(receivableId)),
         ),
         data: (detail) {
           if (detail == null) {
@@ -134,11 +154,10 @@ class _DetailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPhone = customer.phoneNumber != null &&
-        customer.phoneNumber!.trim().isNotEmpty;
-    final initial = customer.name.isNotEmpty
-        ? customer.name[0].toUpperCase()
-        : '?';
+    final hasPhone =
+        customer.phoneNumber != null && customer.phoneNumber!.trim().isNotEmpty;
+    final initial =
+        customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?';
     final topInset = MediaQuery.of(context).padding.top;
 
     return Stack(
@@ -162,7 +181,7 @@ class _DetailHeader extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 32),
+          padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,9 +236,7 @@ class _DetailHeader extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          customer.name.isNotEmpty
-                              ? customer.name
-                              : 'Customer',
+                          customer.name.isNotEmpty ? customer.name : 'Customer',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -327,14 +344,69 @@ class _GlassIconButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
               shape: BoxShape.circle,
-              border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             ),
             alignment: Alignment.center,
             child: Icon(icon, size: 18, color: Colors.white),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Negative margin on mockup `.status-card` — card overlaps the green header
+/// and must paint *above* it (`z-index: 5` in HTML).
+const double _kDetailHeaderCardOverlap = 18;
+
+/// Green hero + floating outstanding card in one sliver so scroll-body paint
+/// never covers the card (mockup: card on top of header, not under it).
+class _DetailHeroWithStatusCard extends StatelessWidget {
+  const _DetailHeroWithStatusCard({
+    required this.customer,
+    required this.record,
+    required this.onBack,
+    required this.onRefresh,
+    required this.canCancel,
+    required this.onCancel,
+  });
+
+  final LocalDebtCustomer customer;
+  final LocalReceivableRecord record;
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
+  final bool canCancel;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _DetailHeader(
+          customer: customer,
+          onBack: onBack,
+          onRefresh: onRefresh,
+          canCancel: canCancel,
+          onCancel: onCancel,
+        ),
+        Transform.translate(
+          offset: const Offset(0, -_kDetailHeaderCardOverlap),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Material(
+              color: Colors.transparent,
+              elevation: 6,
+              shadowColor: const Color(0x330D3D2B),
+              borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+              child: DebtBalanceHero(
+                record: record,
+                bridgesIntoHeader: true,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -351,26 +423,19 @@ class _LoadedShell extends ConsumerWidget {
     final isTerminal = record.isTerminal;
 
     return CustomScrollView(
+      clipBehavior: Clip.none,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
-          child: _DetailHeader(
+          child: _DetailHeroWithStatusCard(
             customer: detail.customer,
+            record: record,
             onBack: () => context.pop(),
             onRefresh: () =>
                 _refreshDetailFromServer(context, ref, receivableId),
             canCancel: !isTerminal,
             onCancel: () =>
                 _confirmAndCancelReceivableDebt(context, ref, record),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Transform.translate(
-            offset: const Offset(0, -18),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: DebtBalanceHero(record: record),
-            ),
           ),
         ),
         SliverFillRemaining(
@@ -398,8 +463,6 @@ class _LoadedShell extends ConsumerWidget {
                   const SizedBox(height: 12),
                   DebtPaymentsHistory(payments: detail.payments),
                   if (!isTerminal) ...[
-                    const SizedBox(height: 12),
-                    _CollectOnlineCard(record: record),
                     const SizedBox(height: 18),
                     _ReceivePaymentCta(
                       onTap: () => _handleReceivePayment(context, record),
@@ -419,62 +482,6 @@ class _LoadedShell extends ConsumerWidget {
     LocalReceivableRecord record,
   ) async {
     await showReceivePaymentSheet(context, record: record);
-  }
-}
-
-class _CollectOnlineCard extends StatelessWidget {
-  const _CollectOnlineCard({required this.record});
-
-  final LocalReceivableRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: DebtsUi.surface,
-        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-        border: Border.all(color: DebtsUi.border, width: 1.5),
-        boxShadow: DebtsUi.shadowSm,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          listTileTheme: const ListTileThemeData(
-            iconColor: DebtsUi.greenMid,
-          ),
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-          collapsedShape: const RoundedRectangleBorder(),
-          shape: const RoundedRectangleBorder(),
-          leading: const Icon(
-            Icons.qr_code_scanner_rounded,
-            color: DebtsUi.greenMid,
-          ),
-          title: const Text(
-            'Collect online',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: DebtsUi.textPrimary,
-            ),
-          ),
-          subtitle: const Text(
-            'Link, QR, or MoMo',
-            style: TextStyle(
-              fontSize: 12,
-              color: DebtsUi.textMuted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          children: [
-            DebtPaymentLinkPanel(record: record, compact: true),
-          ],
-        ),
-      ),
-    );
   }
 }
 

@@ -6,12 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../shared/providers/sync_providers.dart';
 import '../../data/debts_api.dart';
 import '../../data/debts_payments_api.dart';
 import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
 /// Paystack QR + share-link sheet for a single debt.
@@ -186,10 +186,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
           // Pull the canonical receivable row right after verify so the local
           // ledger updates even when full snapshot pagination misses this debt.
           ReceivableDto? confirmedRow = serverRow;
-          if (confirmedRow == null ||
-              !_receivableFullySettled(confirmedRow)) {
+          if (confirmedRow == null || !_receivableFullySettled(confirmedRow)) {
             try {
-              confirmedRow = await debtsApi.fetchReceivable(widget.receivableId);
+              confirmedRow =
+                  await debtsApi.fetchReceivable(widget.receivableId);
             } catch (_) {
               // Fall through with whatever serverRow we had; the panel
               // watcher will reconcile the rest.
@@ -310,9 +310,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: AppShadows.elevated,
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+            border: Border.all(color: DebtsUi.border, width: 1.5),
+            boxShadow: DebtsUi.shadowLg,
           ),
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
@@ -324,7 +325,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: AppColors.borderStrong,
+                      color: DebtsUi.border,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -333,9 +334,11 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                 const Text(
                   'Scan to Pay',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
+                    fontFamily: 'Constantia',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: DebtsUi.textPrimary,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -344,8 +347,9 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   'Payment confirms automatically.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: AppColors.muted,
+                    color: DebtsUi.textMuted,
                     fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
                     height: 1.4,
                   ),
                 ),
@@ -354,14 +358,14 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.forest.withValues(alpha: 0.08),
+                    color: DebtsUi.greenPale,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     widget.amountDisplay,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: AppColors.forestDark,
+                      color: DebtsUi.greenDark,
                       fontWeight: FontWeight.w800,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
@@ -371,10 +375,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: AppShadows.card,
+                    color: DebtsUi.surface,
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+                    border: Border.all(color: DebtsUi.border, width: 1.5),
+                    boxShadow: DebtsUi.shadowSm,
                   ),
                   child: QrImageView(
                     data: widget.checkoutUrl,
@@ -382,11 +386,11 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                     size: 200,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
-                      color: AppColors.forest,
+                      color: DebtsUi.greenMid,
                     ),
                     dataModuleStyle: const QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
-                      color: AppColors.ink,
+                      color: DebtsUi.textPrimary,
                     ),
                   ),
                 ),
@@ -398,7 +402,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.inkSoft,
+                      color: DebtsUi.textSecondary,
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -410,9 +414,9 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
+                    color: DebtsUi.surface2,
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                    border: Border.all(color: DebtsUi.border, width: 1.5),
                   ),
                   child: Scrollbar(
                     thumbVisibility: true,
@@ -422,7 +426,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                         style: const TextStyle(
                           fontSize: 12.5,
                           height: 1.35,
-                          color: AppColors.ink,
+                          color: DebtsUi.textPrimary,
                           fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
@@ -438,9 +442,13 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                         icon: const Icon(Icons.copy_rounded, size: 18),
                         label: const Text('Copy'),
                         style: OutlinedButton.styleFrom(
+                          foregroundColor: DebtsUi.textPrimary,
+                          side: const BorderSide(
+                              color: DebtsUi.border, width: 1.5),
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius:
+                                BorderRadius.circular(DebtsUi.radiusMd),
                           ),
                         ),
                       ),
@@ -452,10 +460,11 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                         icon: const Icon(Icons.ios_share_rounded, size: 18),
                         label: const Text('Share'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.forest,
+                          backgroundColor: DebtsUi.greenMid,
                           minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius:
+                                BorderRadius.circular(DebtsUi.radiusMd),
                           ),
                         ),
                       ),
@@ -469,7 +478,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: AppColors.danger,
+                      color: DebtsUi.danger,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -482,19 +491,23 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                         ? const SizedBox(
                             width: 12,
                             height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: DebtsUi.greenMid,
+                            ),
                           )
                         : const Icon(
                             Icons.wifi_rounded,
                             size: 12,
-                            color: AppColors.success,
+                            color: DebtsUi.greenBright,
                           ),
                     const SizedBox(width: 6),
                     Text(
                       _checking ? 'Checking…' : 'Waiting for payment…',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: DebtsUi.textMuted,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -516,10 +529,10 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                         : const Icon(Icons.refresh_rounded, size: 18),
                     label: const Text('Check payment now'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.forest,
+                      backgroundColor: DebtsUi.greenMid,
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
                       ),
                     ),
                   ),
@@ -529,7 +542,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   onPressed: () => Navigator.of(context).pop(),
                   style: TextButton.styleFrom(
                     minimumSize: const Size.fromHeight(44),
-                    foregroundColor: AppColors.inkSoft,
+                    foregroundColor: DebtsUi.textSecondary,
                   ),
                   child: const Text('Close'),
                 ),

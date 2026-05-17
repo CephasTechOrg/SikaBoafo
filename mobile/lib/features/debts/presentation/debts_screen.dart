@@ -47,7 +47,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final allReceivables = viewData.receivables;
     final counts = _computeCounts(allReceivables);
     final filtered = _applyFilters(allReceivables);
-    final outstandingMinor = _sumOutstanding(allReceivables);
+    final outstandingMinor =
+        DebtsUiUtils.sumPortfolioOutstandingMinor(allReceivables);
 
     return Scaffold(
       backgroundColor: DebtsUi.canvas,
@@ -242,14 +243,6 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     }).toList(growable: false);
   }
 
-  int _sumOutstanding(List<LocalReceivableRecord> all) {
-    var total = 0;
-    for (final r in all) {
-      if (r.status == 'settled' || r.status == 'cancelled') continue;
-      total += DebtsUiUtils.amountToMinor(r.outstandingAmount);
-    }
-    return total;
-  }
 }
 
 class _DataBody extends StatelessWidget {
@@ -291,7 +284,7 @@ class _DataBody extends StatelessWidget {
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface2),
+            decoration: const BoxDecoration(color: DebtsUi.surface),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 20, 18, 110),
@@ -452,7 +445,7 @@ class _LoadingState extends StatelessWidget {
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface2),
+            decoration: const BoxDecoration(color: DebtsUi.surface),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
@@ -490,7 +483,7 @@ class _ErrorState extends StatelessWidget {
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface2),
+            decoration: const BoxDecoration(color: DebtsUi.surface),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),

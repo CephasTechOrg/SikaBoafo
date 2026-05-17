@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../utils/debts_ui_tokens.dart';
 
 /// Compact share-only bottom sheet used when the merchant wants to re-send
 /// an existing payment link without scanning a QR. Smaller surface than
@@ -52,9 +52,10 @@ class DebtPaymentLinkShare extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: AppShadows.elevated,
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+            border: Border.all(color: DebtsUi.border, width: 1.5),
+            boxShadow: DebtsUi.shadowLg,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -64,7 +65,7 @@ class DebtPaymentLinkShare extends StatelessWidget {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: AppColors.borderStrong,
+                    color: DebtsUi.border,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -73,9 +74,11 @@ class DebtPaymentLinkShare extends StatelessWidget {
               const Text(
                 'Share payment link',
                 style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
+                  fontFamily: 'Constantia',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: DebtsUi.textPrimary,
+                  letterSpacing: -0.2,
                 ),
               ),
               const SizedBox(height: 4),
@@ -84,8 +87,9 @@ class DebtPaymentLinkShare extends StatelessWidget {
                 'other app.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppColors.muted,
+                  color: DebtsUi.textMuted,
                   fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
                   height: 1.4,
                 ),
               ),
@@ -98,9 +102,9 @@ class DebtPaymentLinkShare extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
+                  color: DebtsUi.surface2,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                  border: Border.all(color: DebtsUi.border, width: 1.5),
                 ),
                 child: Scrollbar(
                   thumbVisibility: true,
@@ -110,7 +114,7 @@ class DebtPaymentLinkShare extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12.5,
                         height: 1.35,
-                        color: AppColors.ink,
+                        color: DebtsUi.textPrimary,
                         fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -126,9 +130,15 @@ class DebtPaymentLinkShare extends StatelessWidget {
                       icon: const Icon(Icons.copy_rounded, size: 18),
                       label: const Text('Copy'),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: DebtsUi.textPrimary,
+                        side: const BorderSide(
+                          color: DebtsUi.border,
+                          width: 1.5,
+                        ),
                         minimumSize: const Size.fromHeight(46),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius:
+                              BorderRadius.circular(DebtsUi.radiusMd),
                         ),
                       ),
                     ),
@@ -140,10 +150,11 @@ class DebtPaymentLinkShare extends StatelessWidget {
                       icon: const Icon(Icons.ios_share_rounded, size: 18),
                       label: const Text('Share'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forestDark,
+                        backgroundColor: DebtsUi.greenMid,
                         minimumSize: const Size.fromHeight(46),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius:
+                              BorderRadius.circular(DebtsUi.radiusMd),
                         ),
                       ),
                     ),

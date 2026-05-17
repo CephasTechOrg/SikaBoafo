@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../../app/theme/app_theme.dart';
+import '../../utils/debts_ui_tokens.dart';
 
 /// Six-slot OTP input. Visually shows six rounded slots while an invisible
 /// underlying TextField captures keypresses, paste, and autofill.
@@ -52,19 +52,17 @@ class DebtMomoOtpField extends StatelessWidget {
                       height: 44,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceAlt,
+                        color: DebtsUi.surface2,
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                           width: isActive ? 1.5 : 1,
-                          color: isActive
-                              ? AppColors.forest
-                              : AppColors.border,
+                          color: isActive ? DebtsUi.greenMid : DebtsUi.border,
                         ),
                         boxShadow: isActive
                             ? [
                                 BoxShadow(
-                                  color: AppColors.forest
-                                      .withValues(alpha: 0.18),
+                                  color:
+                                      DebtsUi.greenMid.withValues(alpha: 0.18),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -76,7 +74,7 @@ class DebtMomoOtpField extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
+                          color: DebtsUi.textPrimary,
                           height: 1,
                         ),
                       ),

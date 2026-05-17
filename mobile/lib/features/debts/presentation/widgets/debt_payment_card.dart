@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../data/models/local_receivable_payment_record.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
 /// Single repayment tile in the payment history list.
@@ -26,9 +26,10 @@ class DebtPaymentCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
+        boxShadow: DebtsUi.shadowSm,
       ),
       child: Row(
         children: [
@@ -36,10 +37,11 @@ class DebtPaymentCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: AppColors.successSoft,
-              borderRadius: BorderRadius.circular(12),
+              color: DebtsUi.greenPale,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+              border: Border.all(color: DebtsUi.greenLight, width: 1.5),
             ),
-            child: Icon(iconData, size: 18, color: AppColors.success),
+            child: Icon(iconData, size: 18, color: DebtsUi.greenMid),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -55,7 +57,7 @@ class DebtPaymentCard extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
-                        color: AppColors.ink,
+                        color: DebtsUi.textPrimary,
                       ),
                     ),
                     if (unsynced) ...[
@@ -66,14 +68,14 @@ class DebtPaymentCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.warningSoft,
+                          color: DebtsUi.accentGoldSoft,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Text(
                           'Unsynced',
                           style: TextStyle(
                             fontSize: 9.5,
-                            color: AppColors.warning,
+                            color: DebtsUi.accentGoldInk,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -86,7 +88,7 @@ class DebtPaymentCard extends StatelessWidget {
                   created,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: AppColors.muted,
+                    color: DebtsUi.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -98,7 +100,7 @@ class DebtPaymentCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w800,
-              color: AppColors.success,
+              color: DebtsUi.greenMid,
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),

@@ -108,11 +108,14 @@ abstract final class DebtsUi {
   static const Color avatarGoldBg = accentGoldSoft;
   static const Color avatarGoldFg = accentGoldInk;
   static const Color avatarGoldBorder = accentGoldBorder;
+  static const Color avatarNeutralBg = Color(0xFFF3F6F4);
+  static const Color avatarNeutralFg = Color(0xFF5A7268);
+  static const Color avatarNeutralBorder = Color(0xFFE5EBE8);
 
   // Status badge tones
-  static const Color settledBg = greenPale;
-  static const Color settledFg = greenMid;
-  static const Color settledBorder = greenLight;
+  static const Color settledBg = avatarNeutralBg;
+  static const Color settledFg = avatarNeutralFg;
+  static const Color settledBorder = avatarNeutralBorder;
 
   static const Color openBg = accentGoldSoft;
   static const Color openFg = accentGoldInk;

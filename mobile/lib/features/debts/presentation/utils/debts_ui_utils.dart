@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../data/models/local_receivable_record.dart';
 
 /// Money + status helpers reused across debt screens and sheets.
 abstract final class DebtsUiUtils {
@@ -29,6 +30,33 @@ abstract final class DebtsUiUtils {
   /// Format a decimal-string amount ("125.50") as "₵125.50".
   static String formatAmount(String amount) {
     return formatMinor(amountToMinor(amount));
+  }
+
+  /// Portfolio-wide outstanding from live receivables — same rule on Debts
+  /// and Customers heroes so totals always match.
+  static int sumPortfolioOutstandingMinor(
+    Iterable<LocalReceivableRecord> receivables,
+  ) {
+    var total = 0;
+    for (final r in receivables) {
+      if (r.status == 'settled' || r.status == 'cancelled') continue;
+      total += amountToMinor(r.outstandingAmount);
+    }
+    return total;
+  }
+
+  /// Per-customer outstanding using the same active-debt rules as the portfolio.
+  static int customerOutstandingMinor(
+    String customerId,
+    Iterable<LocalReceivableRecord> receivables,
+  ) {
+    var total = 0;
+    for (final r in receivables) {
+      if (r.customerId != customerId) continue;
+      if (r.status == 'settled' || r.status == 'cancelled') continue;
+      total += amountToMinor(r.outstandingAmount);
+    }
+    return total;
   }
 
   /// Returns true if the given ISO date is strictly before today (local).

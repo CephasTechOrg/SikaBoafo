@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../../app/theme/app_theme.dart';
 import '../../../../../shared/providers/sync_providers.dart';
 import '../../../data/debts_api.dart';
 import '../../../data/debts_payments_api.dart';
 import '../../../providers/debt_detail_provider.dart';
 import '../../../providers/debts_providers.dart';
+import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
 import 'debt_momo_otp_field.dart';
 import 'debt_momo_phone_field.dart';
@@ -261,8 +261,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
       });
       if (_verifyIndicatesSuccess(verify)) {
         ReceivableDto? confirmedRow = serverRow;
-        if (confirmedRow == null ||
-            !_receivableFullySettled(confirmedRow)) {
+        if (confirmedRow == null || !_receivableFullySettled(confirmedRow)) {
           try {
             confirmedRow = await debtsApi.fetchReceivable(widget.receivableId);
           } catch (_) {
@@ -403,9 +402,10 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
             ),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: AppShadows.elevated,
+              color: DebtsUi.surface,
+              borderRadius: BorderRadius.circular(DebtsUi.radiusXl),
+              border: Border.all(color: DebtsUi.border, width: 1.5),
+              boxShadow: DebtsUi.shadowLg,
             ),
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -418,7 +418,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.borderStrong,
+                        color: DebtsUi.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -431,9 +431,11 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                             ? 'Enter customer verification code'
                             : 'Waiting for customer approval',
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+                      fontFamily: 'Constantia',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: DebtsUi.textPrimary,
+                      letterSpacing: -0.2,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -448,8 +450,9 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                             : 'Ask ${widget.customerName} to check their '
                                 'phone and approve the MoMo prompt.',
                     style: const TextStyle(
-                      color: AppColors.muted,
+                      color: DebtsUi.textMuted,
                       fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
                       height: 1.4,
                     ),
                   ),
@@ -460,17 +463,18 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
+                      color: DebtsUi.surface2,
+                      borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                      border: Border.all(color: DebtsUi.border, width: 1.5),
                     ),
                     child: Row(
                       children: [
                         const Text(
                           'Outstanding ',
                           style: TextStyle(
-                            color: AppColors.muted,
+                            color: DebtsUi.textMuted,
                             fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
@@ -478,7 +482,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
-                            color: AppColors.ink,
+                            color: DebtsUi.textPrimary,
                             fontFeatures: [FontFeature.tabularFigures()],
                           ),
                         ),
@@ -518,10 +522,10 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                           : const Icon(Icons.send_rounded, size: 18),
                       label: Text(_sending ? 'Sending…' : 'Send MoMo prompt'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
+                        backgroundColor: DebtsUi.greenMid,
                         minimumSize: const Size.fromHeight(50),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
                         ),
                       ),
                     ),
@@ -535,7 +539,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
+                          color: DebtsUi.textPrimary,
                           height: 1.35,
                         ),
                       ),
@@ -561,9 +565,10 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                         style: TextStyle(
                           fontSize: 11.5,
                           color: _otpCooldownActive
-                              ? AppColors.inkSoft
-                              : AppColors.muted,
+                              ? DebtsUi.textSecondary
+                              : DebtsUi.textMuted,
                           height: 1.35,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -593,14 +598,15 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                                   : 'Submit code',
                         ),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.forest,
+                          backgroundColor: DebtsUi.greenMid,
                           disabledBackgroundColor:
-                              AppColors.forest.withValues(alpha: 0.45),
+                              DebtsUi.greenMid.withValues(alpha: 0.45),
                           disabledForegroundColor:
                               Colors.white.withValues(alpha: 0.85),
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius:
+                                BorderRadius.circular(DebtsUi.radiusMd),
                           ),
                         ),
                       ),
@@ -615,19 +621,21 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                                 height: 14,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: DebtsUi.greenMid,
                                 ),
                               )
                             : const Icon(
                                 Icons.phone_android_rounded,
                                 size: 16,
-                                color: AppColors.success,
+                                color: DebtsUi.greenBright,
                               ),
                         const SizedBox(width: 8),
                         Text(
                           _checking ? 'Checking…' : 'Waiting for payment',
                           style: const TextStyle(
                             fontSize: 13,
-                            color: AppColors.muted,
+                            color: DebtsUi.textMuted,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -639,7 +647,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 12,
-                          color: AppColors.danger,
+                          color: DebtsUi.danger,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -652,10 +660,11 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                         icon: const Icon(Icons.refresh_rounded, size: 18),
                         label: const Text('Check status'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.forest,
+                          backgroundColor: DebtsUi.greenMid,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius:
+                                BorderRadius.circular(DebtsUi.radiusMd),
                           ),
                         ),
                       ),
@@ -669,7 +678,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                       Navigator.of(context).pop();
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.inkSoft,
+                      foregroundColor: DebtsUi.textSecondary,
                       minimumSize: const Size.fromHeight(44),
                     ),
                     child: Text(_promptSent ? 'Close' : 'Cancel'),
@@ -691,9 +700,9 @@ class _TestModeBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+        color: DebtsUi.accentGoldSoft,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.accentGoldBorder, width: 1.5),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,7 +712,7 @@ class _TestModeBanner extends StatelessWidget {
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 13,
-              color: AppColors.ink,
+              color: DebtsUi.textPrimary,
             ),
           ),
           SizedBox(height: 6),
@@ -715,7 +724,7 @@ class _TestModeBanner extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               height: 1.35,
-              color: AppColors.inkSoft,
+              color: DebtsUi.textSecondary,
             ),
           ),
         ],

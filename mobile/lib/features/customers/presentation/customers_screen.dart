@@ -8,41 +8,77 @@ import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../../debts/data/debts_repository.dart';
+import '../../debts/data/models/local_receivable_record.dart';
+import '../../debts/presentation/utils/debts_ui_tokens.dart';
+import '../../debts/presentation/utils/debts_ui_utils.dart';
 import '../../debts/providers/debts_providers.dart';
+import 'widgets/add_customer_sheet.dart';
+import 'widgets/customer_list_tile.dart';
+import 'widgets/customers_empty_state.dart';
+import 'widgets/customers_filter_tab.dart';
 import 'widgets/customers_header.dart';
+import 'widgets/customers_search_bar.dart';
 
-class CustomersScreen extends ConsumerWidget {
+class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CustomersScreen> createState() => _CustomersScreenState();
+}
+
+class _CustomersScreenState extends ConsumerState<CustomersScreen> {
+  final _searchCtrl = TextEditingController();
+  CustomersFilterTab _activeTab = CustomersFilterTab.all;
+  String _query = '';
+
+  static const _kLeadingGutter = 56.0;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final debtsAsync = ref.watch(debtsControllerProvider);
-    final customers =
-        debtsAsync.valueOrNull?.customers ?? const <LocalDebtCustomer>[];
+    final viewData = debtsAsync.valueOrNull;
+    final customers = viewData?.customers ?? const <LocalDebtCustomer>[];
+    final receivables = viewData?.receivables ?? const <LocalReceivableRecord>[];
 
-    final outstandingMinor = customers.fold<int>(
-      0,
-      (sum, customer) => sum + _parseAmount(customer.totalOutstanding),
-    );
-    final clearedCount =
-        customers.where((c) => _parseAmount(c.totalOutstanding) == 0).length;
-    final withDebtCount =
-        customers.where((c) => _parseAmount(c.totalOutstanding) > 0).length;
+    final outstandingMinor =
+        DebtsUiUtils.sumPortfolioOutstandingMinor(receivables);
+    final clearedCount = customers
+        .where((c) => DebtsUiUtils.amountToMinor(c.totalOutstanding) == 0)
+        .length;
+    final withDebtCount = customers.length - clearedCount;
 
-    const kLeadingGutter = 56.0;
+    final counts = {
+      CustomersFilterTab.all: customers.length,
+      CustomersFilterTab.withBalance: withDebtCount,
+      CustomersFilterTab.cleared: clearedCount,
+    };
+
+    final filtered = _applyFilters(customers);
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: DebtsUi.canvas,
+      floatingActionButton: _CustomersFab(
+        onPressed: () => showAddCustomerSheet(context),
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 210,
+            expandedHeight: 230,
             pinned: true,
             stretch: true,
-            leadingWidth: kLeadingGutter,
+            leadingWidth: _kLeadingGutter,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               onPressed: () {
                 if (ModalRoute.of(context)?.canPop ?? false) {
                   context.pop();
@@ -52,27 +88,19 @@ class CustomersScreen extends ConsumerWidget {
               },
             ),
             actions: [
-              IconButton(
-                tooltip: 'Add customer',
-                icon: const Icon(Icons.person_add_rounded,
-                    color: Colors.white, size: 22),
-                onPressed: () =>
-                    _showAddCustomerBottomSheet(context, ref),
-              ),
-              IconButton(
+              _GlassIconButton(
                 tooltip: 'Refresh',
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 22),
-                onPressed: () =>
-                    ref.read(debtsControllerProvider.notifier).refresh(),
+                icon: Icons.refresh_rounded,
+                onPressed: _refresh,
               ),
+              const SizedBox(width: 12),
             ],
-            backgroundColor: const Color(0xFF041C0B),
+            backgroundColor: DebtsUi.greenDeep,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [StretchMode.zoomBackground],
               background: CustomersHeader(
-                leadingContentInset: kLeadingGutter,
+                leadingContentInset: _kLeadingGutter,
                 outstandingMinor: outstandingMinor,
                 customerCount: customers.length,
                 clearedCount: clearedCount,
@@ -82,23 +110,25 @@ class CustomersScreen extends ConsumerWidget {
                   ? const Text(
                       'Customers',
                       style: TextStyle(
+                        fontFamily: 'Constantia',
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                        letterSpacing: -0.3,
                       ),
                     )
                   : null,
               centerTitle: false,
               titlePadding: const EdgeInsetsDirectional.only(
-                start: kLeadingGutter,
+                start: _kLeadingGutter,
                 bottom: 16,
               ),
             ),
           ),
           const SliverToBoxAdapter(
             child: ColoredBox(
-              color: Color(0xFF041C0B),
-              child: SizedBox(height: 18),
+              color: DebtsUi.greenDeep,
+              child: SizedBox(height: 10),
             ),
           ),
         ],
@@ -106,216 +136,162 @@ class CustomersScreen extends ConsumerWidget {
           context: context,
           removeTop: true,
           child: debtsAsync.when(
-            loading: () => RefreshIndicator(
-              onRefresh: () =>
-                  ref.read(debtsControllerProvider.notifier).refresh(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                children: [
-                  const StaleBanner(
-                    screenKey: 'customers',
-                    kvKey: KvCacheRepository.kDebtsTs,
-                  ),
-                  SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
-                  const Center(child: CircularProgressIndicator()),
-                ],
-              ),
+            loading: () => _LoadingState(onRefresh: _refresh),
+            error: (e, _) => _ErrorState(
+              message: userFriendlyError(e),
+              onRetry: _refresh,
             ),
-            error: (e, _) => RefreshIndicator(
-              onRefresh: () =>
-                  ref.read(debtsControllerProvider.notifier).refresh(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                children: [
-                  const StaleBanner(
-                    screenKey: 'customers',
-                    kvKey: KvCacheRepository.kDebtsTs,
-                  ),
-                  const SizedBox(height: 24),
-                  _CustomersError(
-                    message: userFriendlyError(e),
-                    onRetry: () =>
-                        ref.read(debtsControllerProvider.notifier).refresh(),
-                  ),
-                ],
-              ),
+            data: (_) => _DataBody(
+              filtered: filtered,
+              totalCustomers: customers.length,
+              counts: counts,
+              activeTab: _activeTab,
+              query: _query,
+              searchCtrl: _searchCtrl,
+              onSearchChanged: (v) => setState(() => _query = v),
+              onSearchCleared: () {
+                _searchCtrl.clear();
+                setState(() => _query = '');
+              },
+              onTabChanged: (tab) => setState(() => _activeTab = tab),
+              onAddCustomer: () => showAddCustomerSheet(context),
+              onRefresh: _refresh,
+              onTapCustomer: (c) =>
+                  context.push('/customers/${c.customerId}'),
             ),
-            data: (viewData) {
-              final items = viewData.customers;
-              return RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(debtsControllerProvider.notifier).refresh(),
-                child: ColoredBox(
-                  color: const Color(0xFF041C0B),
-                  child: ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: AppRadii.heroRadius),
-                    child: DecoratedBox(
-                      decoration: const BoxDecoration(color: AppColors.surface),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-                        children: [
-                      const StaleBanner(
-                        screenKey: 'customers',
-                        kvKey: KvCacheRepository.kDebtsTs,
-                      ),
-                      const SizedBox(height: 10),
-                      if (items.isEmpty)
-                        _EmptyCustomers(
-                          onAddCustomer: () =>
-                              _showAddCustomerBottomSheet(context, ref),
-                        )
-                      else
-                        ...items.map(
-                          (c) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _CustomerCard(customer: c),
-                          ),
-                        ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ),
       ),
     );
   }
+
+  Future<void> _refresh() async {
+    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    if (!mounted) return;
+    final err = ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;
+    if (err != null && err.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sync paused: $err'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  List<LocalDebtCustomer> _applyFilters(List<LocalDebtCustomer> all) {
+    final lower = _query.trim().toLowerCase();
+    return all.where((c) {
+      final minor = DebtsUiUtils.amountToMinor(c.totalOutstanding);
+      final matchesTab = switch (_activeTab) {
+        CustomersFilterTab.all => true,
+        CustomersFilterTab.withBalance => minor > 0,
+        CustomersFilterTab.cleared => minor == 0,
+      };
+      if (!matchesTab) return false;
+      if (lower.isEmpty) return true;
+      if (c.name.toLowerCase().contains(lower)) return true;
+      final phone = c.phoneNumber;
+      if (phone != null && phone.toLowerCase().contains(lower)) return true;
+      return false;
+    }).toList(growable: false);
+  }
 }
 
-class _CustomerCard extends StatelessWidget {
-  const _CustomerCard({required this.customer});
+class _DataBody extends StatelessWidget {
+  const _DataBody({
+    required this.filtered,
+    required this.totalCustomers,
+    required this.counts,
+    required this.activeTab,
+    required this.query,
+    required this.searchCtrl,
+    required this.onSearchChanged,
+    required this.onSearchCleared,
+    required this.onTabChanged,
+    required this.onAddCustomer,
+    required this.onRefresh,
+    required this.onTapCustomer,
+  });
 
-  final LocalDebtCustomer customer;
+  final List<LocalDebtCustomer> filtered;
+  final int totalCustomers;
+  final Map<CustomersFilterTab, int> counts;
+  final CustomersFilterTab activeTab;
+  final String query;
+  final TextEditingController searchCtrl;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onSearchCleared;
+  final ValueChanged<CustomersFilterTab> onTabChanged;
+  final VoidCallback onAddCustomer;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<LocalDebtCustomer> onTapCustomer;
 
   @override
   Widget build(BuildContext context) {
-    final outstanding = _parseAmount(customer.totalOutstanding);
-    final hasOutstanding = outstanding > 0;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => context.push('/customers/${customer.customerId}'),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: DebtsUi.greenMid,
+      child: ColoredBox(
+        color: DebtsUi.greenDeep,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: DebtsUi.surface),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 20, 18, 110),
+              children: [
+                const StaleBanner(
+                  screenKey: 'customers',
+                  kvKey: KvCacheRepository.kDebtsTs,
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  customer.name.isNotEmpty
-                      ? customer.name[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(
-                    color: AppColors.navy,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
+                const SizedBox(height: 6),
+                CustomersSearchBar(
+                  controller: searchCtrl,
+                  hasQuery: query.isNotEmpty,
+                  onChanged: onSearchChanged,
+                  onClear: onSearchCleared,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            customer.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: AppColors.mutedSoft,
-                        ),
-                      ],
-                    ),
-                    if (customer.phoneNumber != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        customer.phoneNumber!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w500,
-                        ),
+                const SizedBox(height: 10),
+                CustomersTabFilter(
+                  activeTab: activeTab,
+                  onChanged: onTabChanged,
+                  counts: counts,
+                ),
+                const SizedBox(height: 14),
+                if (totalCustomers == 0)
+                  CustomersEmptyState(onAddCustomer: onAddCustomer)
+                else if (filtered.isEmpty)
+                  CustomersEmptyState.filtered(
+                    onAddCustomer: onAddCustomer,
+                    filterLabel: activeTab.label.toLowerCase(),
+                  )
+                else ...[
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
+                    child: Text(
+                      'YOUR CUSTOMERS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                        color: DebtsUi.textMuted,
                       ),
-                    ],
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: hasOutstanding
-                                ? AppColors.dangerSoft
-                                : AppColors.successSoft,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            hasOutstanding
-                                ? _formatMinor(outstanding)
-                                : 'Cleared',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: hasOutstanding
-                                  ? AppColors.danger
-                                  : AppColors.success,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Tap to view customer ledger',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                  ...filtered.map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: CustomerListTile(
+                        customer: c,
+                        onTap: () => onTapCustomer(c),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -323,327 +299,176 @@ class _CustomerCard extends StatelessWidget {
   }
 }
 
-class _CustomersError extends StatelessWidget {
-  const _CustomersError({
-    required this.message,
-    required this.onRetry,
+class _CustomersFab extends StatelessWidget {
+  const _CustomersFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Add customer',
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onPressed,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: DebtsUi.ctaGradient,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66166B42),
+                    blurRadius: 24,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person_add_alt_1_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
   });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 18, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState({required this.onRefresh});
+
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: DebtsUi.greenMid,
+      child: ColoredBox(
+        color: DebtsUi.greenDeep,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+          child: const DecoratedBox(
+              decoration: const BoxDecoration(color: DebtsUi.surface),
+            child: Center(
+              child: CircularProgressIndicator(color: DebtsUi.greenMid),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
-  final VoidCallback onRetry;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 42,
-                color: AppColors.danger,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.inkSoft),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: onRetry,
-                child: const Text('Retry'),
-              ),
-            ],
+    return RefreshIndicator(
+      onRefresh: onRetry,
+      color: DebtsUi.greenMid,
+      child: ColoredBox(
+        color: DebtsUi.greenDeep,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(color: DebtsUi.surface),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
+              children: [
+                const StaleBanner(
+                  screenKey: 'customers',
+                  kvKey: KvCacheRepository.kDebtsTs,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: DebtsUi.surface,
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+                    border: Border.all(color: DebtsUi.border, width: 1.5),
+                    boxShadow: DebtsUi.shadowSm,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 42,
+                        color: DebtsUi.danger,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: DebtsUi.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DebtsUi.greenMid,
+                        ),
+                        onPressed: onRetry,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class _EmptyCustomers extends StatelessWidget {
-  const _EmptyCustomers({required this.onAddCustomer});
-
-  final VoidCallback onAddCustomer;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: const Icon(
-              Icons.people_outline_rounded,
-              size: 34,
-              color: AppColors.navy,
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'No customers yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add a customer to track balances and repayment history. You can also record debts from the Debts screen.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: AppColors.muted),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onAddCustomer,
-              icon: const Icon(Icons.person_add_rounded, size: 20),
-              label: const Text('Add customer'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.forestDark,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-void _showAddCustomerBottomSheet(BuildContext context, WidgetRef _) {
-  final messenger = ScaffoldMessenger.of(context);
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    useSafeArea: true,
-    builder: (sheetContext) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: Consumer(
-          builder: (_, ref, __) {
-            return _AddCustomerBottomSheet(
-              onClose: () => Navigator.of(sheetContext).pop(),
-              onSuccessMessage: (msg) {
-                messenger.showSnackBar(SnackBar(content: Text(msg)));
-              },
-            );
-          },
-        ),
-      );
-    },
-  );
-}
-
-class _AddCustomerBottomSheet extends ConsumerStatefulWidget {
-  const _AddCustomerBottomSheet({
-    required this.onClose,
-    required this.onSuccessMessage,
-  });
-
-  final VoidCallback onClose;
-  final void Function(String message) onSuccessMessage;
-
-  @override
-  ConsumerState<_AddCustomerBottomSheet> createState() =>
-      _AddCustomerBottomSheetState();
-}
-
-class _AddCustomerBottomSheetState
-    extends ConsumerState<_AddCustomerBottomSheet> {
-  final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _phoneCtrl.dispose();
-    super.dispose();
-  }
-
-  String _humanize(Object error) => userFriendlyError(error);
-
-  Future<void> _save() async {
-    final name = _nameCtrl.text.trim();
-    if (name.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Customer name must be at least 2 characters.'),
-        ),
-      );
-      return;
-    }
-    final phoneRaw = _phoneCtrl.text.trim();
-    setState(() => _saving = true);
-    try {
-      await ref.read(debtsControllerProvider.notifier).createCustomer(
-            name: name,
-            phoneNumber: phoneRaw.isEmpty ? null : phoneRaw,
-            useLoadingState: false,
-          );
-      if (!mounted) return;
-      widget.onSuccessMessage('Customer saved.');
-      widget.onClose();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_humanize(error))),
-      );
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'New customer',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Name and optional phone — same as on the Debts screen.',
-            style: TextStyle(fontSize: 13, color: AppColors.muted),
-          ),
-          const SizedBox(height: 18),
-          _CustomerFormField(
-            controller: _nameCtrl,
-            label: 'Customer name',
-            icon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 10),
-          _CustomerFormField(
-            controller: _phoneCtrl,
-            label: 'Phone (optional)',
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.save_rounded, size: 18),
-              label: const Text('Save customer'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.forestDark,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CustomerFormField extends StatelessWidget {
-  const _CustomerFormField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 14, color: AppColors.ink),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.muted, size: 20),
-        filled: true,
-        fillColor: AppColors.surfaceAlt,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      ),
-    );
-  }
-}
-
-int _parseAmount(String value) {
-  final raw = value.trim();
-  final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-  if (match == null) return 0;
-  final parts = raw.split('.');
-  final major = int.parse(parts[0]);
-  final dec = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-  return (major * 100) + int.parse(dec);
-}
-
-String _formatMinor(int minor) {
-  final major = minor ~/ 100;
-  final cents = (minor % 100).toString().padLeft(2, '0');
-  return '₵$major.$cents';
 }

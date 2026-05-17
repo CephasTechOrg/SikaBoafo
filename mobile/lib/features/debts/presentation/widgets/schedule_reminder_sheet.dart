@@ -188,10 +188,9 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: DebtsUi.greenPale,
-                          borderRadius:
-                              BorderRadius.circular(DebtsUi.radiusSm),
-                          border: Border.all(
-                              color: DebtsUi.greenLight, width: 1.5),
+                          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                          border:
+                              Border.all(color: DebtsUi.greenLight, width: 1.5),
                         ),
                         child: const Icon(
                           Icons.notifications_active_rounded,
@@ -285,22 +284,19 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                         color: DebtsUi.textMuted,
                       ),
                       filled: true,
-                      fillColor: DebtsUi.surface,
+                      fillColor: DebtsUi.surface2,
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(DebtsUi.radiusMd),
-                        borderSide: const BorderSide(
-                            color: DebtsUi.border, width: 1.5),
+                        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                        borderSide:
+                            const BorderSide(color: DebtsUi.border, width: 1.5),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(DebtsUi.radiusMd),
-                        borderSide: const BorderSide(
-                            color: DebtsUi.border, width: 1.5),
+                        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                        borderSide:
+                            const BorderSide(color: DebtsUi.border, width: 1.5),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(DebtsUi.radiusMd),
+                        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
                         borderSide: const BorderSide(
                             color: DebtsUi.greenMid, width: 1.8),
                       ),
@@ -317,10 +313,9 @@ class _ScheduleReminderSheetState extends ConsumerState<ScheduleReminderSheet> {
                           horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: DebtsUi.dangerSoft,
-                        borderRadius:
-                            BorderRadius.circular(DebtsUi.radiusSm),
-                        border: Border.all(
-                            color: DebtsUi.dangerBorder, width: 1.5),
+                        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                        border:
+                            Border.all(color: DebtsUi.dangerBorder, width: 1.5),
                       ),
                       child: Row(
                         children: [

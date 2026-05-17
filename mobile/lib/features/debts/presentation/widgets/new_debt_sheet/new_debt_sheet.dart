@@ -131,6 +131,32 @@ class _NewDebtSheetState extends ConsumerState<NewDebtSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (_step != _Step.fillForm) ...[
+                    const Text(
+                      'New debt',
+                      style: TextStyle(
+                        fontFamily: 'Constantia',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: DebtsUi.textPrimary,
+                        letterSpacing: -0.3,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _step == _Step.createCustomer
+                          ? 'Add their name to continue to amount and due date.'
+                          : 'Choose someone you have on file, or add a new customer.',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: DebtsUi.textMuted,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   _buildStep(),
                 ],
               ),

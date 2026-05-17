@@ -11,9 +11,17 @@ import '../utils/debts_ui_utils.dart';
 /// row of Original / Paid amount boxes. Designed to overlap the green hero
 /// from above; the parent screen handles the negative-margin layout.
 class DebtBalanceHero extends StatelessWidget {
-  const DebtBalanceHero({super.key, required this.record});
+  const DebtBalanceHero({
+    super.key,
+    required this.record,
+    this.bridgesIntoHeader = false,
+  });
 
   final LocalReceivableRecord record;
+
+  /// When true, the card sits over the green hero; use a slightly deeper
+  /// shadow so it reads as one continuous surface with the header.
+  final bool bridgesIntoHeader;
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +30,11 @@ class DebtBalanceHero extends StatelessWidget {
     final originalMinor = DebtsUiUtils.amountToMinor(record.originalAmount);
     final paidMinor =
         (originalMinor - outstandingMinor).clamp(0, originalMinor);
-    final progress =
-        originalMinor == 0 ? 0.0 : paidMinor / originalMinor;
+    final progress = originalMinor == 0 ? 0.0 : paidMinor / originalMinor;
     final isSettled = record.status == 'settled';
     final isCancelled = record.status == 'cancelled';
-    final isOverdue = !isSettled &&
-        !isCancelled &&
-        DebtsUiUtils.isOverdue(record.dueDateIso);
+    final isOverdue =
+        !isSettled && !isCancelled && DebtsUiUtils.isOverdue(record.dueDateIso);
 
     final badge = _resolveBadge(
       isSettled: isSettled,
@@ -37,13 +43,24 @@ class DebtBalanceHero extends StatelessWidget {
       isPartial: record.status == 'partially_paid',
     );
 
+    final overlapShadow = <BoxShadow>[
+      const BoxShadow(
+        color: Color(0x180D3D2B),
+        blurRadius: 28,
+        offset: Offset(0, 10),
+        spreadRadius: -2,
+      ),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: DebtsUi.surface,
         borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
         border: Border.all(color: DebtsUi.border, width: 1.5),
-        boxShadow: DebtsUi.shadowMd,
+        boxShadow: bridgesIntoHeader
+            ? <BoxShadow>[...DebtsUi.shadowMd, ...overlapShadow]
+            : DebtsUi.shadowMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,9 +93,8 @@ class DebtBalanceHero extends StatelessWidget {
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.5,
-                        color: isSettled
-                            ? DebtsUi.greenMid
-                            : DebtsUi.textPrimary,
+                        color:
+                            isSettled ? DebtsUi.greenMid : DebtsUi.textPrimary,
                         height: 1.0,
                       ),
                     ),
@@ -101,9 +117,8 @@ class DebtBalanceHero extends StatelessWidget {
                       child: ColoredBox(color: DebtsUi.greenLight),
                     ),
                     FractionallySizedBox(
-                      widthFactor: isSettled
-                          ? 1.0
-                          : progress.clamp(0.0, 1.0).toDouble(),
+                      widthFactor:
+                          isSettled ? 1.0 : progress.clamp(0.0, 1.0).toDouble(),
                       child: const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: DebtsUi.progressGradient,
@@ -128,9 +143,8 @@ class DebtBalanceHero extends StatelessWidget {
                   iconColor: DebtsUi.greenBright,
                   label: 'PAID',
                   value: DebtsUiUtils.formatMinor(paidMinor),
-                  valueColor: paidMinor > 0
-                      ? DebtsUi.greenMid
-                      : DebtsUi.textPrimary,
+                  valueColor:
+                      paidMinor > 0 ? DebtsUi.greenMid : DebtsUi.textPrimary,
                 ),
               ],
             ),
@@ -249,7 +263,7 @@ class _AmountBox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: DebtsUi.surface2,
+          color: DebtsUi.surface,
           borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
           border: Border.all(color: DebtsUi.border, width: 1.5),
         ),

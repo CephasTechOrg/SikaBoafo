@@ -12,10 +12,14 @@ class DebtListTile extends StatelessWidget {
     super.key,
     required this.record,
     required this.onTap,
+    this.showCustomerName = true,
   });
 
   final LocalReceivableRecord record;
   final VoidCallback onTap;
+
+  /// When false (e.g. on customer detail), hides the customer name row.
+  final bool showCustomerName;
 
   @override
   Widget build(BuildContext context) {
@@ -62,18 +66,20 @@ class DebtListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      record.customerName ?? 'Unknown customer',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: DebtsUi.textPrimary,
-                        height: 1.2,
+                    if (showCustomerName) ...[
+                      Text(
+                        record.customerName ?? 'Unknown customer',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: DebtsUi.textPrimary,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
+                      const SizedBox(height: 3),
+                    ],
                     _MetaLine(record: record, unsynced: unsynced),
                   ],
                 ),

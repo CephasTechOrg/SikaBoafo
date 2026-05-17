@@ -22,7 +22,7 @@ class DebtPaymentsHistory extends StatelessWidget {
               icon: Icons.refresh_rounded,
               title: 'No repayments yet',
               message:
-                  'Use "Receive payment" below to record cash or mobile money.',
+                  'Use "Receive payment" below for cash or the Pay online tab.',
             )
           : Column(
               mainAxisSize: MainAxisSize.min,

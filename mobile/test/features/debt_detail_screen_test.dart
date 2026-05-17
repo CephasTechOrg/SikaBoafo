@@ -23,7 +23,8 @@ class _ReceivableDetailHarness {
         status: 'open',
         syncStatus: 'applied',
         createdAtMillis: 0,
-        paymentLink: paymentLinkActive ? 'https://checkout.paystack.com/abc123' : null,
+        paymentLink:
+            paymentLinkActive ? 'https://checkout.paystack.com/abc123' : null,
         paymentId: paymentLinkActive ? 'pay-1' : null,
         paymentAmount: paymentLinkActive ? '120.00' : null,
       );
@@ -76,7 +77,8 @@ class _FakeDebtsController extends DebtsController {
   }
 
   @override
-  Future<void> ensureReceivableCreateSyncedToBackend(String receivableId) async {}
+  Future<void> ensureReceivableCreateSyncedToBackend(
+      String receivableId) async {}
 
   @override
   Future<LocalReceivableRecord?> getReceivableById(String receivableId) async {
@@ -122,7 +124,7 @@ Widget _buildScreen(_FakeDebtsController controller) {
 
 void main() {
   testWidgets(
-    'Share link calls initiatePaymentLink after expanding Collect online',
+    'Share link calls initiatePaymentLink from Receive payment › Pay online',
     (tester) async {
       _ReceivableDetailHarness.paymentLinkActive = false;
       addTearDown(() {
@@ -142,7 +144,13 @@ void main() {
 
       expect(find.text('Share link'), findsNothing);
 
-      await tester.tap(find.text('Collect online'));
+      await tester.tap(find.text('Receive Payment'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Pay online'), findsOneWidget);
+
+      await tester.tap(find.text('Pay online'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

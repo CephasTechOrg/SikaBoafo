@@ -54,6 +54,7 @@ SELECT c.id,
          SELECT printf('%.2f', SUM(CAST(r.outstanding_amount AS REAL)))
          FROM receivables_local r
          WHERE r.customer_id = c.id
+           AND r.status NOT IN ('settled', 'cancelled')
        ), '0.00') AS total_outstanding
 FROM customers_local c
 LEFT JOIN sync_queue q
@@ -89,6 +90,7 @@ SELECT c.id,
          SELECT printf('%.2f', SUM(CAST(r.outstanding_amount AS REAL)))
          FROM receivables_local r
          WHERE r.customer_id = c.id
+           AND r.status NOT IN ('settled', 'cancelled')
        ), '0.00') AS total_outstanding
 FROM customers_local c
 LEFT JOIN sync_queue q

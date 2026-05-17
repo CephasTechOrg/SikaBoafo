@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../../../app/router.dart';
-import '../../../../app/theme/app_theme.dart';
+import '../utils/debts_ui_tokens.dart';
 import '../../../../core/services/notifications_service.dart';
 import '../../../../shared/providers/core_providers.dart';
 import '../../../../shared/providers/sync_providers.dart';
@@ -205,7 +205,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       channelDescription: 'Payment confirmation and failure alerts',
       importance: Importance.high,
       priority: Priority.high,
-      color: AppColors.forest,
+      color: DebtsUi.greenMid,
     );
     final route =
         AppRoute.debtDetail.path.replaceFirst(':id', widget.record.receivableId);
@@ -364,7 +364,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(userFriendlyError(error)),
-          backgroundColor: AppColors.danger,
+          backgroundColor: DebtsUi.danger,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -507,15 +507,19 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final body = _hasLink ? _activeLinkBody() : _generateBody();
+    if (widget.compact) {
+      return body;
+    }
     return Container(
-      padding: EdgeInsets.all(widget.compact ? 10 : 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(widget.compact ? 12 : 18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: widget.compact ? const <BoxShadow>[] : AppShadows.subtle,
+        color: DebtsUi.surface,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        border: Border.all(color: DebtsUi.border, width: 1.5),
+        boxShadow: DebtsUi.shadowSm,
       ),
-      child: _hasLink ? _activeLinkBody() : _generateBody(),
+      child: body,
     );
   }
 
@@ -530,7 +534,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  gradient: AppGradients.primaryCta,
+                  gradient: DebtsUi.ctaGradient,
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: const Icon(
@@ -549,7 +553,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                        color: DebtsUi.textPrimary,
                       ),
                     ),
                     SizedBox(height: 2),
@@ -557,7 +561,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                       'QR, link, or card.',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: DebtsUi.textMuted,
                         fontWeight: FontWeight.w500,
                         height: 1.35,
                       ),
@@ -578,7 +582,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
-            color: AppColors.forestDark,
+            color: DebtsUi.greenDark,
             fontFeatures: [FontFeature.tabularFigures()],
           ),
           decoration: InputDecoration(
@@ -586,11 +590,11 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             prefixStyle: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: AppColors.muted,
+              color: DebtsUi.textMuted,
             ),
             hintText: '0.00',
             filled: true,
-            fillColor: AppColors.forest.withValues(alpha: 0.07),
+            fillColor: DebtsUi.greenMid.withValues(alpha: 0.07),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 10,
@@ -613,7 +617,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
                   ),
                 ),
               ),
@@ -636,10 +640,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                     : const Icon(Icons.qr_code_2_rounded, size: 18),
                 label: Text(_generating ? 'Generating…' : 'Show QR'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.forestDark,
+                  backgroundColor: DebtsUi.greenDark,
                   minimumSize: const Size.fromHeight(46),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
                   ),
                   textStyle: const TextStyle(
                     fontSize: 13.5,
@@ -673,12 +677,12 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: expired ? AppColors.dangerSoft : AppColors.successSoft,
+                  color: expired ? DebtsUi.dangerSoft : DebtsUi.greenPale,
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   expired ? Icons.link_off_rounded : Icons.link_rounded,
-                  color: expired ? AppColors.danger : AppColors.success,
+                  color: expired ? DebtsUi.danger : DebtsUi.greenBright,
                   size: 20,
                 ),
               ),
@@ -692,7 +696,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                       style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                        color: DebtsUi.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -702,7 +706,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                           : 'Share or show QR. Settles when paid.',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: AppColors.muted,
+                        color: DebtsUi.textMuted,
                         fontWeight: FontWeight.w500,
                         height: 1.35,
                       ),
@@ -721,9 +725,9 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
+            color: DebtsUi.surface2,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: DebtsUi.border),
           ),
           child: Text(
             link,
@@ -731,7 +735,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 11.5,
-              color: expired ? AppColors.muted : AppColors.inkSoft,
+              color: expired ? DebtsUi.textMuted : DebtsUi.textSecondary,
               fontFeatures: const [FontFeature.tabularFigures()],
               decoration:
                   expired ? TextDecoration.lineThrough : TextDecoration.none,
@@ -756,10 +760,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             label:
                 Text(_generating ? 'Regenerating…' : 'Regenerate payment link'),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.forestDark,
+              backgroundColor: DebtsUi.greenDark,
               minimumSize: const Size.fromHeight(46),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadii.sm),
+                borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
               ),
               textStyle: const TextStyle(
                 fontSize: 13.5,
@@ -778,7 +782,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
                     ),
                   ),
                 ),
@@ -791,10 +795,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                   icon: const Icon(Icons.qr_code_2_rounded, size: 18),
                   label: const Text('Show QR'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.forestDark,
+                    backgroundColor: DebtsUi.greenDark,
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
+                      borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
                     ),
                     textStyle: const TextStyle(
                       fontSize: 13.5,
@@ -815,7 +819,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                   ? const Text('Regenerating…')
                   : const Text('Regenerate link'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.inkSoft,
+                foregroundColor: DebtsUi.textSecondary,
                 textStyle: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -837,8 +841,8 @@ class _ExpiryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = expired ? AppColors.dangerSoft : AppColors.warningSoft;
-    final fg = expired ? AppColors.danger : AppColors.warning;
+    final bg = expired ? DebtsUi.dangerSoft : DebtsUi.accentGoldSoft;
+    final fg = expired ? DebtsUi.danger : DebtsUi.accentGoldInk;
     final text = expired ? 'Expired' : (label ?? '');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -891,12 +895,12 @@ class _MomoPushButton extends StatelessWidget {
           : const Icon(Icons.phone_android_rounded, size: 16),
       label: Text(busy ? 'Preparing…' : 'Push MoMo prompt'),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.gold,
+        foregroundColor: DebtsUi.accentGold,
         minimumSize: const Size.fromHeight(46),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
         ),
-        side: BorderSide(color: AppColors.gold.withValues(alpha: 0.45)),
+        side: BorderSide(color: DebtsUi.accentGold.withValues(alpha: 0.45)),
       ),
     );
   }
