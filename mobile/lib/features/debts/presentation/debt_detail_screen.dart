@@ -116,7 +116,7 @@ class DebtDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(receivableDetailProvider(receivableId));
 
     return Scaffold(
-      backgroundColor: DebtsUi.surface2,
+      backgroundColor: DebtsUi.pageBackground,
       body: detailAsync.when(
         loading: () => const _LoadingShell(),
         error: (error, _) => _ErrorShell(
@@ -441,7 +441,7 @@ class _LoadedShell extends ConsumerWidget {
         SliverFillRemaining(
           hasScrollBody: false,
           child: ColoredBox(
-            color: DebtsUi.surface2,
+            color: DebtsUi.pageBackground,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
               child: Column(
@@ -548,7 +548,7 @@ class _LoadingShell extends StatelessWidget {
         ),
         const Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface2,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: CircularProgressIndicator(color: DebtsUi.greenMid),
             ),
@@ -576,7 +576,7 @@ class _ErrorShell extends StatelessWidget {
         ),
         Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface2,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -585,8 +585,8 @@ class _ErrorShell extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: DebtsUi.surface,
                     borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-                    border: Border.all(color: DebtsUi.border, width: 1.5),
-                    boxShadow: DebtsUi.shadowSm,
+                    border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+                    boxShadow: DebtsUi.shadowNeutralSm,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -636,7 +636,7 @@ class _MissingShell extends StatelessWidget {
         ),
         Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface2,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(28),
@@ -645,8 +645,8 @@ class _MissingShell extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: DebtsUi.surface,
                     borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-                    border: Border.all(color: DebtsUi.border, width: 1.5),
-                    boxShadow: DebtsUi.shadowSm,
+                    border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+                    boxShadow: DebtsUi.shadowNeutralSm,
                   ),
                   child: const Column(
                     mainAxisSize: MainAxisSize.min,

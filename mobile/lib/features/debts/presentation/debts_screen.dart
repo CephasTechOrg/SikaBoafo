@@ -13,6 +13,7 @@ import 'utils/debts_ui_tokens.dart';
 import 'utils/debts_ui_utils.dart';
 import 'widgets/debt_list_tile.dart';
 import 'widgets/debts_empty_state.dart';
+import 'widgets/debts_list_content_shell.dart';
 import 'widgets/debts_header.dart';
 import 'widgets/debts_search_bar.dart';
 import 'widgets/debts_tab_filter.dart';
@@ -51,7 +52,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
         DebtsUiUtils.sumPortfolioOutstandingMinor(allReceivables);
 
     return Scaffold(
-      backgroundColor: DebtsUi.canvas,
+      backgroundColor: DebtsUi.pageBackground,
       floatingActionButton: _DebtsFab(onPressed: () => _openNewDebtSheet(context)),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
@@ -120,7 +121,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           ),
           const SliverToBoxAdapter(
             child: ColoredBox(
-              color: DebtsUi.greenDeep,
+              color: DebtsUi.pageBackground,
               child: SizedBox(height: 10),
             ),
           ),
@@ -276,72 +277,55 @@ class _DataBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
+    return DebtsListContentShell(
       onRefresh: onRefresh,
-      color: DebtsUi.greenMid,
-      child: ColoredBox(
-        color: DebtsUi.greenDeep,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 110),
-              children: [
-                const StaleBanner(
-                  screenKey: 'debts',
-                  kvKey: KvCacheRepository.kDebtsTs,
-                ),
-                const SizedBox(height: 6),
-                DebtsSearchBar(
-                  controller: searchCtrl,
-                  hasQuery: query.isNotEmpty,
-                  onChanged: onSearchChanged,
-                  onClear: onSearchCleared,
-                ),
-                const SizedBox(height: 10),
-                DebtsTabFilter(
-                  activeTab: activeTab,
-                  onChanged: onTabChanged,
-                  counts: counts,
-                ),
-                const SizedBox(height: 14),
-                if (totalReceivables == 0)
-                  DebtsEmptyState(onCreateDebt: onCreateDebt)
-                else if (filtered.isEmpty)
-                  DebtsEmptyState.filtered(
-                    onCreateDebt: onCreateDebt,
-                    filterLabel: activeTab.label.toLowerCase(),
-                  )
-                else ...[
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
-                    child: Text(
-                      'RECENT',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                        color: DebtsUi.textMuted,
-                      ),
-                    ),
-                  ),
-                  ...filtered.map(
-                    (record) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: DebtListTile(
-                        record: record,
-                        onTap: () => onTapDebt(record),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+      staleBanner: const StaleBanner(
+        screenKey: 'debts',
+        kvKey: KvCacheRepository.kDebtsTs,
+      ),
+      searchBar: DebtsSearchBar(
+        controller: searchCtrl,
+        hasQuery: query.isNotEmpty,
+        onChanged: onSearchChanged,
+        onClear: onSearchCleared,
+      ),
+      tabFilter: DebtsTabFilter(
+        activeTab: activeTab,
+        onChanged: onTabChanged,
+        counts: counts,
+      ),
+      children: [
+        if (totalReceivables == 0)
+          DebtsEmptyState(onCreateDebt: onCreateDebt)
+        else if (filtered.isEmpty)
+          DebtsEmptyState.filtered(
+            onCreateDebt: onCreateDebt,
+            filterLabel: activeTab.label.toLowerCase(),
+          )
+        else ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
+            child: Text(
+              'RECENT',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1,
+                color: DebtsUi.textMuted,
+              ),
             ),
           ),
-        ),
-      ),
+          ...filtered.map(
+            (record) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: DebtListTile(
+                record: record,
+                onTap: () => onTapDebt(record),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -439,27 +423,25 @@ class _LoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: refresh,
-      color: DebtsUi.greenMid,
+      color: DebtsUi.textMuted,
+      backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.greenDeep,
+        color: DebtsUi.pageBackground,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
-              children: [
-                const StaleBanner(
-                  screenKey: 'debts',
-                  kvKey: KvCacheRepository.kDebtsTs,
-                ),
-                SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
-                const Center(
-                  child: CircularProgressIndicator(color: DebtsUi.greenMid),
-                ),
-              ],
-            ),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 32),
+            children: [
+              const StaleBanner(
+                screenKey: 'debts',
+                kvKey: KvCacheRepository.kDebtsTs,
+              ),
+              SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
+              const Center(
+                child: CircularProgressIndicator(color: DebtsUi.greenMid),
+              ),
+            ],
           ),
         ),
       ),
@@ -477,57 +459,57 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRetry,
-      color: DebtsUi.greenMid,
+      color: DebtsUi.textMuted,
+      backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.greenDeep,
+        color: DebtsUi.pageBackground,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: DebtsUi.surface),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
-              children: [
-                const StaleBanner(
-                  screenKey: 'debts',
-                  kvKey: KvCacheRepository.kDebtsTs,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
+            children: [
+              const StaleBanner(
+                screenKey: 'debts',
+                kvKey: KvCacheRepository.kDebtsTs,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: DebtsUi.surface,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
+                  border:
+                      Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+                  boxShadow: DebtsUi.shadowNeutralSm,
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: DebtsUi.surface,
-                    borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-                    border: Border.all(color: DebtsUi.border, width: 1.5),
-                    boxShadow: DebtsUi.shadowSm,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        size: 42,
-                        color: DebtsUi.danger,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      size: 42,
+                      color: DebtsUi.danger,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style:
+                          const TextStyle(color: DebtsUi.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: DebtsUi.greenMid,
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        message,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: DebtsUi.textSecondary),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: DebtsUi.greenMid,
-                        ),
-                        onPressed: onRetry,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
+                      onPressed: onRetry,
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -72,10 +72,11 @@ class _Pill extends StatelessWidget {
         duration: DebtsUiTokens.tabSwitchAnimation,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? DebtsUi.greenDeep : DebtsUi.surface,
+          color: selected ? DebtsUi.tabSelectedFill : DebtsUi.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? DebtsUi.greenDeep : DebtsUi.border,
+            color:
+                selected ? DebtsUi.tabSelectedFill : DebtsUi.borderNeutral,
             width: 1.5,
           ),
         ),
@@ -87,7 +88,8 @@ class _Pill extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : DebtsUi.textSecondary,
+                color:
+                    selected ? DebtsUi.tabSelectedFg : DebtsUi.textSecondary,
               ),
             ),
             if (badge != null) ...[
@@ -99,13 +101,18 @@ class _Pill extends StatelessWidget {
                       ? Colors.white.withValues(alpha: 0.18)
                       : DebtsUi.avatarNeutralBg,
                   borderRadius: BorderRadius.circular(10),
+                  border: selected
+                      ? null
+                      : Border.all(color: DebtsUi.avatarNeutralBorder),
                 ),
                 child: Text(
                   '$badge',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: selected ? Colors.white : DebtsUi.textSecondary,
+                    color: selected
+                        ? DebtsUi.tabSelectedFg
+                        : DebtsUi.textSecondary,
                   ),
                 ),
               ),

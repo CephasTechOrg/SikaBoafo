@@ -22,13 +22,13 @@ class CustomersSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: DebtsUi.surface,
         borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-        border: Border.all(color: DebtsUi.border, width: 1.5),
+        border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        cursorColor: DebtsUi.greenMid,
+        cursorColor: DebtsUi.textPrimary,
         style: const TextStyle(
           fontSize: 14,
           color: DebtsUi.textPrimary,

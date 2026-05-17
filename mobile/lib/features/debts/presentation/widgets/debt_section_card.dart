@@ -19,7 +19,7 @@ class DebtSectionCard extends StatelessWidget {
   final IconData icon;
   final Widget child;
 
-  /// Optional integer count rendered as a small green-pale pill in the header.
+  /// Optional integer count rendered as a small neutral pill in the header.
   final int? countBadge;
 
   /// Optional widget rendered at the far end of the header (e.g. an action
@@ -33,8 +33,8 @@ class DebtSectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: DebtsUi.surface,
         borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-        border: Border.all(color: DebtsUi.border, width: 1.5),
-        boxShadow: DebtsUi.shadowSm,
+        border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+        boxShadow: DebtsUi.shadowNeutralSm,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -62,16 +62,16 @@ class DebtSectionCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: DebtsUi.greenPale,
+                      color: DebtsUi.avatarNeutralBg,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: DebtsUi.greenLight),
+                      border: Border.all(color: DebtsUi.avatarNeutralBorder),
                     ),
                     child: Text(
                       '$countBadge',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: DebtsUi.greenMid,
+                        color: DebtsUi.textSecondary,
                       ),
                     ),
                   )
@@ -80,7 +80,7 @@ class DebtSectionCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, thickness: 1.5, color: DebtsUi.border),
+          const Divider(height: 1, thickness: 1.5, color: DebtsUi.borderNeutral),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: child,
@@ -118,9 +118,9 @@ class DebtSectionEmptyState extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: DebtsUi.surface2,
+              color: DebtsUi.avatarNeutralBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: DebtsUi.border, width: 1.5),
+              border: Border.all(color: DebtsUi.avatarNeutralBorder, width: 1.5),
             ),
             child: Icon(icon, size: 18, color: DebtsUi.textMuted),
           ),

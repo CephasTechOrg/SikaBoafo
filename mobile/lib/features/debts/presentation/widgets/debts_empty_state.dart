@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/debts_ui_tokens.dart';
 
 /// Empty state shown on Debts list when no debts match the filter / search.
-/// Mockup-aligned: surface card with green-tinted icon tile, title, copy,
-/// and a gradient CTA button.
+/// Surface card with neutral icon tile, title, copy, and gradient CTA.
 class DebtsEmptyState extends StatelessWidget {
   const DebtsEmptyState({
     super.key,
@@ -41,8 +40,8 @@ class DebtsEmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: DebtsUi.surface,
         borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-        border: Border.all(color: DebtsUi.border, width: 1.5),
-        boxShadow: DebtsUi.shadowSm,
+        border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+        boxShadow: DebtsUi.shadowNeutralSm,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -51,14 +50,15 @@ class DebtsEmptyState extends StatelessWidget {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: DebtsUi.greenPale,
+              color: DebtsUi.avatarNeutralBg,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: DebtsUi.greenLight, width: 1.5),
+              border:
+                  Border.all(color: DebtsUi.avatarNeutralBorder, width: 1.5),
             ),
             child: const Icon(
               Icons.handshake_outlined,
               size: 32,
-              color: DebtsUi.greenMid,
+              color: DebtsUi.avatarNeutralFg,
             ),
           ),
           const SizedBox(height: 18),

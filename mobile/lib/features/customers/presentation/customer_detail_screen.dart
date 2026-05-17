@@ -5,8 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../debts/data/debts_repository.dart';
-import '../../debts/data/models/local_debt_customer.dart';
-import '../../debts/data/models/local_receivable_record.dart';
 import '../../debts/presentation/utils/debts_ui_tokens.dart';
 import '../../debts/presentation/utils/debts_ui_utils.dart';
 import '../../debts/presentation/widgets/debt_customer_summary.dart';
@@ -53,7 +51,7 @@ class CustomerDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(_customerDetailProvider(customerId));
 
     return Scaffold(
-      backgroundColor: DebtsUi.surface,
+      backgroundColor: DebtsUi.pageBackground,
       body: detailAsync.when(
         loading: () => const _LoadingShell(),
         error: (error, _) => _ErrorShell(
@@ -131,7 +129,7 @@ class _LoadedShell extends ConsumerWidget {
         SliverFillRemaining(
           hasScrollBody: false,
           child: ColoredBox(
-            color: DebtsUi.surface,
+            color: DebtsUi.pageBackground,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
               child: Column(
@@ -529,7 +527,7 @@ class _InfoRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: DebtsUi.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: DebtsUi.border, width: 1.5),
+              border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
             ),
             child: Icon(icon, size: 16, color: DebtsUi.textSecondary),
           ),
@@ -580,7 +578,7 @@ class _LoadingShell extends StatelessWidget {
         ),
         const Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: CircularProgressIndicator(color: DebtsUi.greenMid),
             ),
@@ -608,7 +606,7 @@ class _ErrorShell extends StatelessWidget {
         ),
         Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -617,8 +615,9 @@ class _ErrorShell extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: DebtsUi.surface,
                     borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-                    border: Border.all(color: DebtsUi.border, width: 1.5),
-                    boxShadow: DebtsUi.shadowSm,
+                    border:
+                        Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+                    boxShadow: DebtsUi.shadowNeutralSm,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -668,7 +667,7 @@ class _MissingShell extends StatelessWidget {
         ),
         Expanded(
           child: ColoredBox(
-            color: DebtsUi.surface,
+            color: DebtsUi.pageBackground,
             child: Center(
               child: Text(
                 'Customer not found.',

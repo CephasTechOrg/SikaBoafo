@@ -39,8 +39,8 @@ class CustomersEmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: DebtsUi.surface,
         borderRadius: BorderRadius.circular(DebtsUi.radiusLg),
-        border: Border.all(color: DebtsUi.border, width: 1.5),
-        boxShadow: DebtsUi.shadowSm,
+        border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+        boxShadow: DebtsUi.shadowNeutralSm,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

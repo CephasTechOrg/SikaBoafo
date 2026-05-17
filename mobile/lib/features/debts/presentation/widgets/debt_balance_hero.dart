@@ -171,9 +171,9 @@ class DebtBalanceHero extends StatelessWidget {
     if (isCancelled) {
       return const _BadgeStyle(
         label: 'Cancelled',
-        bg: DebtsUi.surface2,
+        bg: DebtsUi.surface,
         fg: DebtsUi.textMuted,
-        border: DebtsUi.border,
+        border: DebtsUi.borderNeutral,
       );
     }
     if (isSettled) {
@@ -265,7 +265,7 @@ class _AmountBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: DebtsUi.surface,
           borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-          border: Border.all(color: DebtsUi.border, width: 1.5),
+          border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

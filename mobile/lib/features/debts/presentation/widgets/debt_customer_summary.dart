@@ -94,8 +94,9 @@ class _ContactButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = primary ? DebtsUi.greenPale : DebtsUi.surface2;
-    final border = primary ? DebtsUi.greenLight : DebtsUi.border;
+    final bg = primary ? DebtsUi.surface : DebtsUi.avatarNeutralBg;
+    final border =
+        primary ? DebtsUi.greenMid : DebtsUi.borderNeutral;
     final fg = primary ? DebtsUi.greenMid : DebtsUi.textSecondary;
 
     return Material(

@@ -32,8 +32,8 @@ class CustomerListTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: DebtsUi.surface,
             borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-            border: Border.all(color: DebtsUi.border, width: 1.5),
-            boxShadow: DebtsUi.shadowSm,
+            border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+            boxShadow: DebtsUi.shadowNeutralSm,
           ),
           child: Row(
             children: [

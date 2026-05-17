@@ -5,7 +5,7 @@ import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
 /// Single row in the debts list, modelled after `index (2).html` `.debt-card`:
-/// rounded-square avatar (green for settled, gold for open/overdue) → name +
+/// rounded-square avatar (neutral for settled/cancelled, gold for open) → name +
 /// `INV · date` meta → amount with status pill stacked beneath → chevron.
 class DebtListTile extends StatelessWidget {
   const DebtListTile({
@@ -53,13 +53,16 @@ class DebtListTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: DebtsUi.surface,
             borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-            border: Border.all(color: DebtsUi.border, width: 1.5),
-            boxShadow: DebtsUi.shadowSm,
+            border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+            boxShadow: DebtsUi.shadowNeutralSm,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _Avatar(initial: customerInitial, settled: isSettled),
+              _Avatar(
+                initial: customerInitial,
+                neutral: isSettled || isCancelled,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -126,9 +129,9 @@ class DebtListTile extends StatelessWidget {
     if (isCancelled) {
       return const _BadgeStyle(
         label: 'Cancelled',
-        bg: DebtsUi.surface2,
+        bg: DebtsUi.surface,
         fg: DebtsUi.textMuted,
-        border: DebtsUi.border,
+        border: DebtsUi.borderNeutral,
       );
     }
     if (isSettled) {
@@ -226,16 +229,21 @@ class _MetaLine extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initial, required this.settled});
+  const _Avatar({required this.initial, required this.neutral});
 
   final String initial;
-  final bool settled;
+
+  /// Settled / cancelled debts use slate avatar; active use gold accent.
+  final bool neutral;
 
   @override
   Widget build(BuildContext context) {
-    final bg = settled ? DebtsUi.avatarGreenBg : DebtsUi.avatarGoldBg;
-    final fg = settled ? DebtsUi.avatarGreenFg : DebtsUi.avatarGoldFg;
-    final border = settled ? DebtsUi.avatarGreenBorder : DebtsUi.avatarGoldBorder;
+    final bg =
+        neutral ? DebtsUi.avatarNeutralBg : DebtsUi.avatarGoldBg;
+    final fg =
+        neutral ? DebtsUi.avatarNeutralFg : DebtsUi.avatarGoldFg;
+    final border =
+        neutral ? DebtsUi.avatarNeutralBorder : DebtsUi.avatarGoldBorder;
     return Container(
       width: 46,
       height: 46,

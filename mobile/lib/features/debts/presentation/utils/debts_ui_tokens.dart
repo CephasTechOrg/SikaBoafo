@@ -49,7 +49,16 @@ abstract final class DebtsUi {
   // Surfaces
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surface2 = Color(0xFFF5FAF7);
-  static const Color canvas = Color(0xFFE8F2EC);
+  /// Main background behind Debts / Customers list + detail feeds (neutral gray).
+  static const Color pageBackground = Color(0xFFF4F6F5);
+  /// Toolbar band under rounded header — search + filter pills sit here.
+  static const Color toolbarBackground = Color(0xFFF7F8F8);
+  /// Borders on list tiles / neutral cards — less mint than [border].
+  static const Color borderNeutral = Color(0xFFE5E8E6);
+  /// Legacy mint canvas; prefer [pageBackground] for new layouts.
+  static const Color canvas = pageBackground;
+
+  /// Inset stroke for forms and tinted panels (warm gray-green hint).
   static const Color border = Color(0xFFE0EDE8);
 
   // Radii
@@ -58,10 +67,19 @@ abstract final class DebtsUi {
   static const double radiusLg = 24;
   static const double radiusXl = 32;
 
-  // Shadows
+  /// Soft gray shadow — list cards on neutral page (no green cast).
+  static const List<BoxShadow> shadowNeutralSm = <BoxShadow>[
+    BoxShadow(
+      color: Color(0x14000000),
+      blurRadius: 8,
+      offset: Offset(0, 2),
+    ),
+  ];
+
+  /// Green-tinted shadow (FAB, emphasis on greens).
   static const List<BoxShadow> shadowSm = <BoxShadow>[
     BoxShadow(
-      color: Color(0x1207401A), // rgba(13,61,43,0.07)
+      color: Color(0x1207401A),
       blurRadius: 8,
       offset: Offset(0, 2),
     ),
@@ -124,4 +142,8 @@ abstract final class DebtsUi {
   static const Color overdueBg = dangerSoft;
   static const Color overdueFg = danger;
   static const Color overdueBorder = dangerBorder;
+
+  /// Selected filter pill (charcoal fill, white label).
+  static const Color tabSelectedFill = textPrimary;
+  static const Color tabSelectedFg = Color(0xFFFFFFFF);
 }
