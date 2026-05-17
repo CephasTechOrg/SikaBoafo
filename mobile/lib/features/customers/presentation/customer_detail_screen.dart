@@ -665,7 +665,7 @@ class _MissingShell extends StatelessWidget {
           height: topInset + 130,
           decoration: const BoxDecoration(gradient: DebtsUi.heroGradient),
         ),
-        Expanded(
+        const Expanded(
           child: ColoredBox(
             color: DebtsUi.pageBackground,
             child: Center(
