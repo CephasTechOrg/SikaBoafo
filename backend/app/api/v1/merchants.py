@@ -8,9 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_merchant_owner
 from app.models.merchant import Merchant
-from app.models.store import Store
 from app.models.user import User
 from app.schemas.merchant import (
     MerchantContextOut,
@@ -18,6 +17,7 @@ from app.schemas.merchant import (
     MerchantUpdateIn,
     StoreProfileOut,
 )
+from app.services.store_context import StoreContextError, get_merchant_and_store
 
 router = APIRouter(prefix="/merchants", tags=["merchants"])
 
@@ -31,21 +31,13 @@ def get_my_context(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> MerchantContextOut:
-    merchant = _get_owner_merchant(db=db, user_id=current_user.id)
-    if merchant is None:
+    try:
+        merchant, default_store = get_merchant_and_store(user_id=current_user.id, db=db)
+    except StoreContextError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Merchant profile not found. Complete onboarding first.",
-        )
-
-    default_store = db.scalar(
-        select(Store).where(Store.merchant_id == merchant.id, Store.is_default.is_(True))
-    )
-    if default_store is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Default store not found.",
-        )
+            detail=str(exc),
+        ) from exc
 
     return MerchantContextOut(
         merchant=MerchantProfileOut(
@@ -67,7 +59,7 @@ def get_my_context(
 def update_my_merchant(
     payload: MerchantUpdateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_merchant_owner)],
 ) -> MerchantProfileOut:
     merchant = _get_owner_merchant(db=db, user_id=current_user.id)
     if merchant is None:
