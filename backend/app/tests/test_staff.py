@@ -21,38 +21,46 @@ from app.core.constants import (
 from app.main import app
 from app.models.merchant import Merchant
 from app.models.staff_invite import StaffInvite
+from app.models.store import Store
 from app.models.user import User
 
 
 def _build_staff_test_stack(
     *,
     role: str = USER_ROLE_MERCHANT_OWNER,
-) -> tuple[TestClient, sessionmaker[Session], User, Merchant]:
+) -> tuple[TestClient, sessionmaker[Session], User, UUID]:
     engine = create_engine(
         "sqlite+pysqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    for table in (User.__table__, Merchant.__table__, StaffInvite.__table__):
+    for table in (
+        User.__table__,
+        Merchant.__table__,
+        Store.__table__,
+        StaffInvite.__table__,
+    ):
         table.create(bind=engine)
 
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     user_id = uuid4()
-    user = User(phone_number="233244123456", role=role)
+    user_phone = "233244123456"
+    merchant_id = uuid4()
+    user = User(phone_number=user_phone, role=role)
     user.id = user_id
     user.is_active = True
     merchant = Merchant(
-        owner_user_id=user.id,
+        owner_user_id=user_id,
         business_name="Test Shop",
         business_type="Retail",
     )
-    merchant.id = uuid4()
+    merchant.id = merchant_id
     with session_local() as db:
         db.add(user)
         db.add(merchant)
         db.commit()
 
-    current_user = User(phone_number=user.phone_number, role=role)
+    current_user = User(phone_number=user_phone, role=role)
     current_user.id = user_id
     current_user.is_active = True
 
@@ -65,18 +73,19 @@ def _build_staff_test_stack(
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _override_get_current_user
-    return TestClient(app), session_local, current_user, merchant
+    return TestClient(app), session_local, current_user, merchant_id
 
 
 def test_cancel_invite_marks_cancelled() -> None:
-    client, session_local, owner, merchant = _build_staff_test_stack()
+    client, session_local, owner, merchant_id = _build_staff_test_stack()
+    owner_id = owner.id
     try:
         with session_local() as db:
             invite = StaffInvite(
-                merchant_id=merchant.id,
+                merchant_id=merchant_id,
                 phone_number="233200000001",
                 role=USER_ROLE_CASHIER,
-                invited_by_user_id=owner.id,
+                invited_by_user_id=owner_id,
                 status=STAFF_INVITE_STATUS_PENDING,
                 expires_at=datetime.now(UTC) + timedelta(days=7),
             )
@@ -99,14 +108,14 @@ def test_cancel_invite_marks_cancelled() -> None:
 
 
 def test_reactivate_staff_sets_active() -> None:
-    client, session_local, owner, merchant = _build_staff_test_stack()
+    client, session_local, _, merchant_id = _build_staff_test_stack()
     try:
         staff_id = uuid4()
         with session_local() as db:
             staff = User(
                 phone_number="233200000002",
                 role=USER_ROLE_CASHIER,
-                merchant_id=merchant.id,
+                merchant_id=merchant_id,
             )
             staff.id = staff_id
             staff.is_active = False
