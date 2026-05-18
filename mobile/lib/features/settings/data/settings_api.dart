@@ -117,6 +117,62 @@ class PaystackModeState {
   }
 }
 
+class AuditLogEntry {
+  const AuditLogEntry({
+    required this.auditLogId,
+    required this.action,
+    required this.createdAt,
+    this.actorUserId,
+    this.actorLabel,
+    this.entityType,
+    this.entityId,
+    this.meta,
+  });
+
+  final String auditLogId;
+  final String? actorUserId;
+  final String? actorLabel;
+  final String action;
+  final String? entityType;
+  final String? entityId;
+  final Map<String, dynamic>? meta;
+  final DateTime createdAt;
+
+  factory AuditLogEntry.fromJson(Map<String, dynamic> json) => AuditLogEntry(
+        auditLogId: json['audit_log_id'] as String,
+        actorUserId: json['actor_user_id'] as String?,
+        actorLabel: json['actor_label'] as String?,
+        action: json['action'] as String,
+        entityType: json['entity_type'] as String?,
+        entityId: json['entity_id'] as String?,
+        meta: json['meta'] is Map<String, dynamic>
+            ? json['meta'] as Map<String, dynamic>
+            : null,
+        createdAt: DateTime.parse(json['created_at'] as String),
+      );
+}
+
+class AuditLogPage {
+  const AuditLogPage({required this.items, this.nextCursor});
+
+  final List<AuditLogEntry> items;
+  final String? nextCursor;
+
+  factory AuditLogPage.fromJson(Map<String, dynamic> json) {
+    final items = json['items'];
+    if (items is! List) {
+      throw const FormatException('Unexpected activity payload.');
+    }
+    return AuditLogPage(
+      items: items
+          .cast<Map<String, dynamic>>()
+          .map(AuditLogEntry.fromJson)
+          .toList(growable: false),
+      nextCursor: json['next_cursor'] as String?,
+    );
+  }
+}
+
 class SettingsApi {
   SettingsApi(this._apiClient, {KvCacheRepository? cache}) : _cache = cache;
 
@@ -300,6 +356,26 @@ class SettingsApi {
       throw const FormatException('Unexpected paystack connection payload.');
     }
     return PaystackConnectionSettings.fromJson(body);
+  }
+
+  Future<AuditLogPage> fetchAuditLogs({
+    int limit = 50,
+    String? cursor,
+    String? action,
+  }) async {
+    final response = await _apiClient.dio.get<dynamic>(
+      '/audit-logs',
+      queryParameters: {
+        'limit': limit,
+        if (cursor != null) 'cursor': cursor,
+        if (action != null && action.trim().isNotEmpty) 'action': action.trim(),
+      },
+    );
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected activity payload.');
+    }
+    return AuditLogPage.fromJson(body);
   }
 
   bool _isOfflineish(DioException e) {

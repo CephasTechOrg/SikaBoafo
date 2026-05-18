@@ -16,6 +16,7 @@ import '../features/customers/presentation/customers_screen.dart';
 import '../features/debts/presentation/debt_detail_screen.dart';
 import '../features/debts/presentation/debts_screen.dart';
 import '../features/notifications/presentation/notifications_inbox_screen.dart';
+import '../features/settings/presentation/activity_log_screen.dart';
 import '../features/settings/presentation/connect_paystack_screen.dart';
 import '../features/settings/presentation/business_profile_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -36,6 +37,7 @@ enum AppRoute {
   businessProfile('/settings/business-profile'),
   staff('/settings/staff'),
   paystack('/settings/payments/paystack'),
+  activity('/settings/activity'),
   customers('/customers'),
   customerDetail('/customers/:id'),
   debtDetail('/debts/:id'),
@@ -84,7 +86,8 @@ bool _isProtectedPath(String path) {
 bool _isOwnerOnlySettingsPath(String path) {
   return path == AppRoute.businessProfile.path ||
       path == AppRoute.staff.path ||
-      path == AppRoute.paystack.path;
+      path == AppRoute.paystack.path ||
+      path == AppRoute.activity.path;
 }
 
 Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
@@ -189,6 +192,10 @@ GoRouter createAppRouter(Ref ref) {
       GoRoute(
         path: AppRoute.paystack.path,
         builder: (context, state) => const ConnectPaystackScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.activity.path,
+        builder: (context, state) => const ActivityLogScreen(),
       ),
       GoRoute(
         path: AppRoute.customers.path,
