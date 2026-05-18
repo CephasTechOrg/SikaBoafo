@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_merchant_owner
 from app.models.user import User
 from app.schemas.inventory import (
     InventoryItemOut,
@@ -135,7 +135,7 @@ def adjust_stock(
 def delete_item(
     item_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_merchant_owner)],
 ) -> Response:
     service = InventoryService(db=db)
     try:

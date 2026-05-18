@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_merchant_owner
 from app.core.config import Settings, get_settings
 from app.models.user import User
 from app.schemas.auth import (
@@ -178,7 +178,7 @@ def complete_onboarding(
 @router.delete("/account", response_model=AccountDeleteOut)
 def delete_account(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_merchant_owner)],
 ) -> AccountDeleteOut:
     # Soft-delete: deactivate and anonymize PII while preserving referential integrity.
     if not current_user.is_active:
