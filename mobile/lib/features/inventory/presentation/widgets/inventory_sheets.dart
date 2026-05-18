@@ -13,6 +13,7 @@ class InventoryItemDetailSheet extends StatelessWidget {
     required this.onArchive,
     required this.onRestore,
     required this.onDelete,
+    required this.canDelete,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class InventoryItemDetailSheet extends StatelessWidget {
   final VoidCallback onArchive;
   final VoidCallback onRestore;
   final VoidCallback onDelete;
+  final bool canDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -158,17 +160,19 @@ class InventoryItemDetailSheet extends StatelessWidget {
                 onRestore();
               },
             ),
-            const SizedBox(height: 8),
-            _ActionTile(
-              icon: Icons.delete_forever_rounded,
-              title: 'Delete Forever',
-              subtitle: 'Permanently remove this item',
-              color: AppColors.danger,
-              onTap: () {
-                Navigator.of(context).pop();
-                onDelete();
-              },
-            ),
+            if (canDelete) ...[
+              const SizedBox(height: 8),
+              _ActionTile(
+                icon: Icons.delete_forever_rounded,
+                title: 'Delete Forever',
+                subtitle: 'Permanently remove this item',
+                color: AppColors.danger,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onDelete();
+                },
+              ),
+            ],
           ],
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
@@ -251,6 +252,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _openItemDetail(LocalInventoryItem item) {
+    final canDelete = ref.read(isMerchantOwnerProvider).valueOrNull ?? true;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -264,6 +266,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         onArchive: () => _archiveItem(item),
         onRestore: () => _restoreItem(item),
         onDelete: () => _deleteItem(item),
+        canDelete: canDelete,
       ),
     );
   }

@@ -81,6 +81,12 @@ bool _isProtectedPath(String path) {
       path.startsWith('${AppRoute.customers.path}/');
 }
 
+bool _isOwnerOnlySettingsPath(String path) {
+  return path == AppRoute.businessProfile.path ||
+      path == AppRoute.staff.path ||
+      path == AppRoute.paystack.path;
+}
+
 Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
   if (!_isProtectedPath(state.uri.path)) {
     return null;
@@ -109,7 +115,7 @@ Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
     return AppRoute.onboarding.path;
   }
 
-  if (state.uri.path == AppRoute.staff.path) {
+  if (_isOwnerOnlySettingsPath(state.uri.path)) {
     final role = await ref.read(appDatabaseProvider).getActiveUserRole();
     if (!isMerchantOwnerRole(role)) {
       return AppRoute.settings.path;

@@ -267,7 +267,7 @@ class SettingsScreen extends ConsumerWidget {
     final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
     final notifPrefsAsync = ref.watch(notificationPrefsProvider);
     final isOwnerAsync = ref.watch(isMerchantOwnerProvider);
-    final showStaffTeam = isOwnerAsync.valueOrNull ?? true;
+    final showOwnerOnly = isOwnerAsync.valueOrNull ?? true;
 
     const kLeadingGutter = 56.0;
 
@@ -333,15 +333,15 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 const _SectionLabel('Business'),
                 const SizedBox(height: 12),
-                _SettingsTile(
-                  icon: Icons.business_outlined,
-                  iconBg: AppColors.infoSoft,
-                  iconColor: AppColors.navy,
-                  label: 'Business Profile',
-                  caption: 'Edit name, type and store details',
-                  onTap: () => context.push(AppRoute.businessProfile.path),
-                ),
-                if (showStaffTeam) ...[
+                if (showOwnerOnly) ...[
+                  _SettingsTile(
+                    icon: Icons.business_outlined,
+                    iconBg: AppColors.infoSoft,
+                    iconColor: AppColors.navy,
+                    label: 'Business Profile',
+                    caption: 'Edit name, type and store details',
+                    onTap: () => context.push(AppRoute.businessProfile.path),
+                  ),
                   const SizedBox(height: 10),
                   _SettingsTile(
                     icon: Icons.group_outlined,
@@ -351,16 +351,16 @@ class SettingsScreen extends ConsumerWidget {
                     caption: 'Invite teammates and manage access',
                     onTap: () => context.push(AppRoute.staff.path),
                   ),
+                  const SizedBox(height: 10),
+                  _SettingsTile(
+                    icon: Icons.payment_outlined,
+                    iconBg: AppColors.warningSoft,
+                    iconColor: AppColors.warning,
+                    label: 'Paystack Payments',
+                    caption: 'Connect your Paystack account',
+                    onTap: () => context.push(AppRoute.paystack.path),
+                  ),
                 ],
-                const SizedBox(height: 10),
-                _SettingsTile(
-                  icon: Icons.payment_outlined,
-                  iconBg: AppColors.warningSoft,
-                  iconColor: AppColors.warning,
-                  label: 'Paystack Payments',
-                  caption: 'Connect your Paystack account',
-                  onTap: () => context.push(AppRoute.paystack.path),
-                ),
                 const SizedBox(height: 24),
                 const _SectionLabel('Notifications'),
                 const SizedBox(height: 12),
@@ -496,16 +496,18 @@ class SettingsScreen extends ConsumerWidget {
                   isDestructive: true,
                   onTap: () => _signOut(context, ref),
                 ),
-                const SizedBox(height: 10),
-                _SettingsTile(
-                  icon: Icons.delete_forever_rounded,
-                  iconBg: AppColors.dangerSoft,
-                  iconColor: AppColors.danger,
-                  label: 'Delete account',
-                  caption: 'Permanently delete your account access',
-                  isDestructive: true,
-                  onTap: () => _deleteAccount(context, ref),
-                ),
+                if (showOwnerOnly) ...[
+                  const SizedBox(height: 10),
+                  _SettingsTile(
+                    icon: Icons.delete_forever_rounded,
+                    iconBg: AppColors.dangerSoft,
+                    iconColor: AppColors.danger,
+                    label: 'Delete account',
+                    caption: 'Permanently delete your account access',
+                    isDestructive: true,
+                    onTap: () => _deleteAccount(context, ref),
+                  ),
+                ],
               ],
             ),
           ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/stale_banner.dart';
 import '../data/models/local_debt_customer.dart';
@@ -421,6 +422,7 @@ class _LoadedShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final record = detail.receivable;
     final isTerminal = record.isTerminal;
+    final canCancelDebt = (ref.watch(isMerchantOwnerProvider).valueOrNull ?? true) && !isTerminal;
 
     return CustomScrollView(
       clipBehavior: Clip.none,
@@ -433,7 +435,7 @@ class _LoadedShell extends ConsumerWidget {
             onBack: () => context.pop(),
             onRefresh: () =>
                 _refreshDetailFromServer(context, ref, receivableId),
-            canCancel: !isTerminal,
+            canCancel: canCancelDebt,
             onCancel: () =>
                 _confirmAndCancelReceivableDebt(context, ref, record),
           ),

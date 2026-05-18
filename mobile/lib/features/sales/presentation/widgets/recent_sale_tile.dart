@@ -13,12 +13,12 @@ class RecentSaleTile extends ConsumerWidget {
     super.key,
     required this.sale,
     required this.onEdit,
-    required this.onVoid,
+    this.onVoid,
   });
 
   final LocalSaleRecord sale;
   final VoidCallback onEdit;
-  final VoidCallback onVoid;
+  final VoidCallback? onVoid;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -134,11 +134,11 @@ class RecentSaleTile extends ConsumerWidget {
                       if (action == SaleAction.edit) {
                         onEdit();
                       } else {
-                        onVoid();
+                        onVoid?.call();
                       }
                     },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem<SaleAction>(
+                    itemBuilder: (context) => [
+                      const PopupMenuItem<SaleAction>(
                         value: SaleAction.edit,
                         child: ListTile(
                           contentPadding: EdgeInsets.zero,
@@ -146,14 +146,15 @@ class RecentSaleTile extends ConsumerWidget {
                           title: Text('Edit sale'),
                         ),
                       ),
-                      PopupMenuItem<SaleAction>(
-                        value: SaleAction.voidSale,
-                        child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.delete_outline_rounded),
-                          title: Text('Void sale'),
+                      if (onVoid != null)
+                        const PopupMenuItem<SaleAction>(
+                          value: SaleAction.voidSale,
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.delete_outline_rounded),
+                            title: Text('Void sale'),
+                          ),
                         ),
-                      ),
                     ],
                   ),
               ],

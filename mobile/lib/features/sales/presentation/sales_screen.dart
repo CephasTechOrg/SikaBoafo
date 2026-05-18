@@ -10,6 +10,7 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/services/notifications_service.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/session_role_providers.dart';
 import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../inventory/data/inventory_api.dart';
@@ -382,10 +383,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Widget _buildRecentSaleTile(LocalSaleRecord sale) {
+    final canVoidSales = ref.watch(isMerchantOwnerProvider).valueOrNull ?? true;
     return RecentSaleTile(
       sale: sale,
       onEdit: () => _showEditSaleDialog(sale),
-      onVoid: () => _showVoidSaleDialog(sale),
+      onVoid: canVoidSales ? () => _showVoidSaleDialog(sale) : null,
     );
   }
 
