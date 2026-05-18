@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_merchant_owner
 from app.models.user import User
 from app.schemas.receivable import (
     CustomerCreateIn,
@@ -220,7 +220,7 @@ def record_repayment(
 def cancel_receivable(
     receivable_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_merchant_owner)],
 ) -> ReceivableOut:
     service = ReceivablesService(db=db)
     try:
