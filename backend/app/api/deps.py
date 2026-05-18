@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import AUTH_TOKEN_TYPE_ACCESS
+from app.core.rbac import is_merchant_owner
 from app.core.security import decode_and_verify_session_token
 from app.db.session import get_db
 from app.models.user import User
@@ -70,4 +71,15 @@ def require_role(*allowed_roles: str) -> Callable[[User], User]:
     return _check
 
 
-__all__ = ["get_current_user", "get_db", "require_role"]
+def get_merchant_owner(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if not is_merchant_owner(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner access required.",
+        )
+    return current_user
+
+
+__all__ = ["get_current_user", "get_db", "get_merchant_owner", "require_role"]
