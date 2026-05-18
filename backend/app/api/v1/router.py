@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    audit_logs,
     auth,
     expenses,
     health,
@@ -20,6 +21,7 @@ from app.api.v1 import (
 
 router = APIRouter()
 router.include_router(health.router, tags=["health"])
+router.include_router(audit_logs.router)
 router.include_router(auth.router)
 router.include_router(merchants.router)
 router.include_router(stores.router)
