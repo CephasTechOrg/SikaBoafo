@@ -15,6 +15,7 @@ from app.schemas.staff import InviteStaffIn, StaffInviteOut, StaffMemberOut, Upd
 from app.services.staff_service import (
     InviteConflictError,
     StaffContextError,
+    StaffInviteNotFoundError,
     StaffNotFoundError,
     StaffService,
 )
@@ -98,4 +99,40 @@ def deactivate_staff(
     except StaffContextError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except StaffNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.patch("/{staff_user_id}/reactivate", response_model=StaffMemberOut)
+def reactivate_staff(
+    staff_user_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _OwnerOnly,
+) -> StaffMemberOut:
+    service = StaffService(db=db)
+    try:
+        return service.reactivate_staff(
+            owner_user_id=current_user.id,
+            staff_user_id=staff_user_id,
+        )
+    except StaffContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StaffNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.delete("/invites/{invite_id}", response_model=StaffInviteOut)
+def cancel_invite(
+    invite_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: _OwnerOnly,
+) -> StaffInviteOut:
+    service = StaffService(db=db)
+    try:
+        return service.cancel_invite(
+            owner_user_id=current_user.id,
+            invite_id=invite_id,
+        )
+    except StaffContextError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except StaffInviteNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc

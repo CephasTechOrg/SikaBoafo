@@ -13,6 +13,7 @@ const _schemaVersion = 19;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
+const _activeUserRoleMetaKey = 'active_user_role';
 
 /// Local SQLite (offline-first). Sync queue aligns with server idempotency:
 /// `source_device_id` + `local_operation_id` unique per logical write.
@@ -565,10 +566,17 @@ CREATE TABLE IF NOT EXISTS notifications_local (
     return _readMeta(db, _activeMerchantIdMetaKey);
   }
 
+  /// Session role from auth (`merchant_owner`, `manager`, `cashier`, …).
+  Future<String?> getActiveUserRole() async {
+    final db = await database;
+    return _readMeta(db, _activeUserRoleMetaKey);
+  }
+
   /// Reset local business data when a different account signs in on this device.
   Future<void> prepareForSession({
     required String userId,
     String? merchantId,
+    String? role,
   }) async {
     final db = await database;
     final normalizedMerchantId = _normalizeMetaValue(merchantId);
@@ -584,6 +592,7 @@ CREATE TABLE IF NOT EXISTS notifications_local (
       }
       await _writeMeta(tx, _activeUserIdMetaKey, userId);
       await _writeMeta(tx, _activeMerchantIdMetaKey, normalizedMerchantId);
+      await _writeMeta(tx, _activeUserRoleMetaKey, _normalizeMetaValue(role));
     });
   }
 
@@ -630,8 +639,12 @@ CREATE TABLE IF NOT EXISTS notifications_local (
     if (clearSessionMarkers) {
       await executor.delete(
         'local_meta',
-        where: 'key IN (?, ?)',
-        whereArgs: [_activeUserIdMetaKey, _activeMerchantIdMetaKey],
+        where: 'key IN (?, ?, ?)',
+        whereArgs: [
+          _activeUserIdMetaKey,
+          _activeMerchantIdMetaKey,
+          _activeUserRoleMetaKey,
+        ],
       );
     }
   }

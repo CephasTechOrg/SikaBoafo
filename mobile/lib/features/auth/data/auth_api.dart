@@ -12,6 +12,7 @@ class AuthSession {
     required this.isNewUser,
     required this.onboardingRequired,
     required this.pinSet,
+    required this.role,
   });
 
   final String userId;
@@ -23,6 +24,9 @@ class AuthSession {
   final bool onboardingRequired;
   final bool pinSet;
 
+  /// `merchant_owner`, `manager`, `cashier`, `stock_keeper`, …
+  final String role;
+
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     return AuthSession(
       userId: (json['user_id'] ?? '') as String,
@@ -33,6 +37,9 @@ class AuthSession {
       isNewUser: (json['is_new_user'] ?? false) as bool,
       onboardingRequired: (json['onboarding_required'] ?? false) as bool,
       pinSet: (json['pin_set'] ?? false) as bool,
+      role: (json['role'] as String?)?.trim().isNotEmpty == true
+          ? (json['role'] as String).trim()
+          : 'merchant_owner',
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'navigation_keys.dart';
 import '../shared/providers/core_providers.dart';
+import '../shared/providers/session_role_providers.dart';
 import '../features/auth/presentation/auth_shell_screen.dart';
 import '../features/auth/presentation/set_pin_screen.dart';
 import '../features/dashboard/presentation/dashboard_shell_screen.dart';
@@ -106,6 +107,13 @@ Future<String?> _redirectGuard(Ref ref, GoRouterState state) async {
   final merchantId = await ref.read(appDatabaseProvider).getActiveMerchantId();
   if (merchantId == null) {
     return AppRoute.onboarding.path;
+  }
+
+  if (state.uri.path == AppRoute.staff.path) {
+    final role = await ref.read(appDatabaseProvider).getActiveUserRole();
+    if (!isMerchantOwnerRole(role)) {
+      return AppRoute.settings.path;
+    }
   }
 
   return null;

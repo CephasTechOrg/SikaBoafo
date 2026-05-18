@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
@@ -31,6 +32,16 @@ class StaffScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOwnerAsync = ref.watch(isMerchantOwnerProvider);
+    if (isOwnerAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (isOwnerAsync.hasError || isOwnerAsync.valueOrNull == false) {
+      return const _OwnerOnlyGate();
+    }
+
     final staffAsync = ref.watch(_staffListProvider);
     final members = staffAsync.valueOrNull ?? const <StaffMember>[];
     final activeCount = members.where((m) => m.isActive).length;
@@ -204,7 +215,28 @@ class _PendingInvitesSection extends StatelessWidget {
               return Column(
                 children: [
                   for (var i = 0; i < invites.length; i++) ...[
-                    _InviteTile(invite: invites[i]),
+                    _InviteTile(
+                      invite: invites[i],
+                      onCancel: () async {
+                        try {
+                          await ref
+                              .read(_settingsApiProvider)
+                              .cancelInvite(invites[i].inviteId);
+                          ref.invalidate(_pendingInvitesProvider);
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Could not cancel invitation. Try again.',
+                              ),
+                              backgroundColor: AppColors.danger,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                     if (i != invites.length - 1) const SizedBox(height: 10),
                   ],
                 ],
@@ -217,10 +249,62 @@ class _PendingInvitesSection extends StatelessWidget {
   }
 }
 
+class _OwnerOnlyGate extends StatelessWidget {
+  const _OwnerOnlyGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF041C0B),
+        foregroundColor: Colors.white,
+        title: const Text('Staff'),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 48,
+                color: AppColors.muted,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Owner access only',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Only the business owner can invite and manage team members.',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => context.pop(),
+                child: const Text('Back to Settings'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _InviteTile extends StatelessWidget {
-  const _InviteTile({required this.invite});
+  const _InviteTile({
+    required this.invite,
+    required this.onCancel,
+  });
 
   final StaffInvite invite;
+  final Future<void> Function() onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -271,6 +355,39 @@ class _InviteTile extends StatelessWidget {
             label: 'Pending',
             foreground: AppColors.warning,
             background: AppColors.warningSoft,
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Cancel invitation',
+            icon: const Icon(Icons.close_rounded, size: 20),
+            color: AppColors.muted,
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Cancel invitation?'),
+                  content: Text(
+                    'Revoke the pending invite for ${invite.phoneNumber}?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Keep'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                      ),
+                      child: const Text('Cancel invite'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                await onCancel();
+              }
+            },
           ),
         ],
       ),
@@ -353,6 +470,24 @@ class _ActiveStaffSection extends StatelessWidget {
                           );
                         }
                       },
+                      onReactivate: () async {
+                        try {
+                          await ref
+                              .read(_settingsApiProvider)
+                              .reactivateStaff(members[i].userId);
+                          ref.invalidate(_staffListProvider);
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Failed to reactivate staff. Please try again.'),
+                              backgroundColor: AppColors.danger,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      },
                     ),
                     if (i != members.length - 1) const SizedBox(height: 10),
                   ],
@@ -371,11 +506,13 @@ class _StaffTile extends StatelessWidget {
     required this.member,
     required this.onRoleChanged,
     required this.onDeactivate,
+    required this.onReactivate,
   });
 
   final StaffMember member;
   final Future<void> Function(String role) onRoleChanged;
   final Future<void> Function() onDeactivate;
+  final Future<void> Function() onReactivate;
 
   @override
   Widget build(BuildContext context) {
@@ -465,6 +602,34 @@ class _StaffTile extends StatelessWidget {
                       ),
                     ),
                   ],
+                )
+              else
+                TextButton(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Reactivate staff member?'),
+                        content: Text(
+                          '${member.fullName ?? member.phoneNumber} will be able to sign in again.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Reactivate'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await onReactivate();
+                    }
+                  },
+                  child: const Text('Reactivate'),
                 ),
             ],
           ),

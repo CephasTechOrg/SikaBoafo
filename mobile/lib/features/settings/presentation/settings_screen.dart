@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../../shared/widgets/premium_ui.dart';
 import '../../../shared/widgets/streak_hero_header.dart';
@@ -265,6 +266,8 @@ class SettingsScreen extends ConsumerWidget {
     final biometricAsync = ref.watch(biometricPrefProvider);
     final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
     final notifPrefsAsync = ref.watch(notificationPrefsProvider);
+    final isOwnerAsync = ref.watch(isMerchantOwnerProvider);
+    final showStaffTeam = isOwnerAsync.valueOrNull ?? true;
 
     const kLeadingGutter = 56.0;
 
@@ -338,15 +341,17 @@ class SettingsScreen extends ConsumerWidget {
                   caption: 'Edit name, type and store details',
                   onTap: () => context.push(AppRoute.businessProfile.path),
                 ),
-                const SizedBox(height: 10),
-                _SettingsTile(
-                  icon: Icons.group_outlined,
-                  iconBg: AppColors.successSoft,
-                  iconColor: AppColors.forest,
-                  label: 'Staff & Team',
-                  caption: 'Invite teammates and manage access',
-                  onTap: () => context.push(AppRoute.staff.path),
-                ),
+                if (showStaffTeam) ...[
+                  const SizedBox(height: 10),
+                  _SettingsTile(
+                    icon: Icons.group_outlined,
+                    iconBg: AppColors.successSoft,
+                    iconColor: AppColors.forest,
+                    label: 'Staff & Team',
+                    caption: 'Invite teammates and manage access',
+                    onTap: () => context.push(AppRoute.staff.path),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 _SettingsTile(
                   icon: Icons.payment_outlined,

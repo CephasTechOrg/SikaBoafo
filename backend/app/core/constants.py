@@ -45,6 +45,7 @@ USER_ROLE_STOCK_KEEPER: Final[str] = "stock_keeper"
 STAFF_INVITE_STATUS_PENDING: Final[str] = "pending"
 STAFF_INVITE_STATUS_ACCEPTED: Final[str] = "accepted"
 STAFF_INVITE_STATUS_EXPIRED: Final[str] = "expired"
+STAFF_INVITE_STATUS_CANCELLED: Final[str] = "cancelled"
 
 # inventory movement_type
 INVENTORY_MOVEMENT_STOCK_IN: Final[str] = "stock_in"

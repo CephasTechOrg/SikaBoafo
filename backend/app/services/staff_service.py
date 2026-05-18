@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
+    STAFF_INVITE_STATUS_CANCELLED,
     STAFF_INVITE_STATUS_PENDING,
     USER_ROLE_MERCHANT_OWNER,
 )
@@ -38,6 +39,10 @@ class StaffNotFoundError(Exception):
 
 class InviteConflictError(Exception):
     """A pending invite already exists for this phone number."""
+
+
+class StaffInviteNotFoundError(Exception):
+    """Pending invite does not exist for this merchant."""
 
 
 @dataclass(slots=True)
@@ -75,10 +80,12 @@ class StaffService:
 
     def list_pending_invites(self, *, owner_user_id: UUID) -> list[StaffInviteOut]:
         merchant = self._get_merchant(owner_user_id=owner_user_id)
+        now = datetime.now(UTC)
         invites = self.db.scalars(
             select(StaffInvite).where(
                 StaffInvite.merchant_id == merchant.id,
                 StaffInvite.status == STAFF_INVITE_STATUS_PENDING,
+                StaffInvite.expires_at > now,
             )
         ).all()
         return [_to_invite_out(inv) for inv in invites]
@@ -133,6 +140,33 @@ class StaffService:
         self.db.commit()
         self.db.refresh(member)
         return _to_member_out(member)
+
+    def reactivate_staff(self, *, owner_user_id: UUID, staff_user_id: UUID) -> StaffMemberOut:
+        merchant = self._get_merchant(owner_user_id=owner_user_id)
+        member = self._get_staff_member(merchant_id=merchant.id, staff_user_id=staff_user_id)
+        member.is_active = True
+        self.db.add(member)
+        self.db.commit()
+        self.db.refresh(member)
+        return _to_member_out(member)
+
+    def cancel_invite(self, *, owner_user_id: UUID, invite_id: UUID) -> StaffInviteOut:
+        merchant = self._get_merchant(owner_user_id=owner_user_id)
+        invite = self.db.scalar(
+            select(StaffInvite).where(
+                StaffInvite.id == invite_id,
+                StaffInvite.merchant_id == merchant.id,
+                StaffInvite.status == STAFF_INVITE_STATUS_PENDING,
+            )
+        )
+        if invite is None:
+            msg = "Pending invitation not found."
+            raise StaffInviteNotFoundError(msg)
+        invite.status = STAFF_INVITE_STATUS_CANCELLED
+        self.db.add(invite)
+        self.db.commit()
+        self.db.refresh(invite)
+        return _to_invite_out(invite)
 
     def _get_staff_member(self, *, merchant_id: UUID, staff_user_id: UUID) -> User:
         member = self.db.scalar(

@@ -16,8 +16,13 @@ class SessionService {
     String? merchantId,
     required String accessToken,
     required String refreshToken,
+    String? role,
   }) async {
-    await _appDb.prepareForSession(userId: userId, merchantId: merchantId);
+    await _appDb.prepareForSession(
+      userId: userId,
+      merchantId: merchantId,
+      role: role,
+    );
     await _tokenStorage.writeAccessToken(accessToken);
     await _tokenStorage.writeRefreshToken(refreshToken);
     await _tokenStorage.markSessionGateComplete(DateTime.now());

@@ -227,6 +227,21 @@ class SettingsApi {
     return StaffMember.fromJson(body);
   }
 
+  Future<StaffMember> reactivateStaff(String staffUserId) async {
+    final response = await _apiClient.dio.patch<dynamic>(
+      '/staff/$staffUserId/reactivate',
+    );
+    final body = response.data;
+    if (body is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected member payload.');
+    }
+    return StaffMember.fromJson(body);
+  }
+
+  Future<void> cancelInvite(String inviteId) async {
+    await _apiClient.dio.delete<dynamic>('/staff/invites/$inviteId');
+  }
+
   Future<PaystackConnectionSettings> fetchPaystackConnection() async {
     try {
       final response =

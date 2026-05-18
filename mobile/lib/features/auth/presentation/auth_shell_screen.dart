@@ -54,6 +54,7 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
           merchantId: session.merchantId,
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
+          role: session.role,
         );
     if (!mounted) return;
     // Backend may not reliably send `onboarding_required` for brand new accounts.
