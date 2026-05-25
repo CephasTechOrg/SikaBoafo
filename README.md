@@ -125,6 +125,7 @@ Dev tooling and bootstrap scripts:
 | [`docs/development/`](docs/development/) | Setup guide, USB debugging, mobile backend debugging |
 | [`docs/product/`](docs/product/) | AI strategy, feature roadmap |
 | [`docs/auth/`](docs/auth/) | PIN + OTP flow design |
+| [`docs/audits/CODEBASE_AUDIT.md`](docs/audits/CODEBASE_AUDIT.md) | **Codebase audit**, grouped findings, and fix checklists |
 | [`scripts/`](scripts/) | Bootstrap and dev tooling |
 
 ---

@@ -1,5 +1,9 @@
 # Debt Payment Flow Audit — Paystack Link / QR / Receivables
 
+> **Superseded for planning:** Use the consolidated audit and checklists in  
+> [`docs/audits/CODEBASE_AUDIT.md`](docs/audits/CODEBASE_AUDIT.md) (Audit 3 — Debt payment flow).  
+> This file is kept for historical detail and code snippets.
+
 ## Scope
 
 Reviewed the uploaded backend and Flutter debt-payment files:
