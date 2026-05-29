@@ -179,12 +179,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `partial` |
+| **Status** | `done` |
 | **Severity** | High (UX) |
-| **What's happening** | Mobile UX fixes applied (provider invalidate + server row). **Backend test added:** `test_webhook_then_verify_receivable_payment_reports_settled_to_client` — webhook settles debt, then `/payments/.../verify` returns `settled` + `0.00` outstanding (what the app polls). |
+| **What's happening** | Mobile polls `fetchReceivable` then `verifyPayment` when still open (QR sheet + link panel). Backend: `test_webhook_then_verify_receivable_payment_reports_settled_to_client`. Mobile: `debt_paystack_qr_sheet_test.dart` covers webhook-delay (stale fetch → verify settles) and webhook-first (fetch already settled, verify skipped). |
 | **Why it matters** | Trust in digital collections; merchants think money was not received. |
-| **Where** | `test_paystack_webhooks.py`, debt payment sheets on mobile |
-| **Fix** | Optional: Flutter widget test for poll-after-verify; manual QA on slow networks. |
+| **Where** | `test_paystack_webhooks.py`, `debt_paystack_qr_sheet.dart`, `debt_paystack_qr_sheet_test.dart` |
+| **Fix applied** | Widget tests + scroll controller on payment-link `Scrollbar` (testability). Manual QA on slow networks still recommended before prod cutover. |
 
 ### DEBT-02 · Payment link not cleared after settlement
 
@@ -439,8 +439,8 @@ When you fix an item, change its status here and tick the checklist box.
 |-------|--------|
 | **Status** | `partial` |
 | **Severity** | High |
-| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. Manual Render checklist still needed for Arkesel, Paystack live key, CORS, migrations `020`–`023`. |
-| **Fix** | Run manual checklist below on deploy. |
+| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. **Runbook:** `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md`. **Pre-flight script:** `backend/scripts/check_deploy_env.py` (same boot checks + env advisories). Manual Render sign-off still required (Arkesel, Paystack live, migrations, smoke tests). |
+| **Fix** | Run checklist + script on each production deploy; tick sign-off in runbook. |
 
 ### OPS-02 · No structured security headers / HSTS
 
@@ -492,8 +492,8 @@ Use for release gates and security reviews.
 - [x] **AUTH-05** — Confirm `AUTH_MOCK_OTP_CODE` unset in production (automated boot check)
 - [x] **AUTH-06** — Confirm strong `SECRET_KEY` in production (automated boot check)
 - [x] **MOB-01** — Fix failing `app_routing_test` (Debts quick action)
-- [ ] **OPS-01** — Run production env checklist on Render (see below)
-- [ ] **DEBT-01** — Add E2E or integration test: Paystack debt pay → UI settled (verify webhook-delay path)
+- [ ] **OPS-01** — Run production env checklist on Render (`docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` + `scripts/check_deploy_env.py`)
+- [x] **DEBT-01** — Widget tests: poll-after-verify when fetch stale; fetch-settled skips verify
 
 ### Production env checklist (copy into deploy runbook)
 
@@ -556,7 +556,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | PAY-01 | PaymentService size | done |
 | PAY-02 | Paystack role split | monitor |
 | PAY-03 | Webhook shared verify | done |
-| DEBT-01 | Stuck “waiting” UI | partial |
+| DEBT-01 | Stuck “waiting” UI | done |
 | DEBT-02 | Clear link on settle | done |
 | DEBT-03 | Cancelled + Paystack | done |
 | DEBT-04 | Cash + stale link | done |
@@ -593,7 +593,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 1. ~~**MOB-01** — Green CI~~ ✓ done  
 2. ~~**OPS-01 + AUTH-05 + AUTH-06** — Production env hardening (boot checks)~~ ✓ partial — manual Render checklist remains  
 3. ~~**AUTH-01** — PIN lockout~~ ✓ done  
-4. ~~**DEBT-01** — Backend verify-after-webhook test~~ ✓ partial (mobile E2E optional)  
+4. ~~**DEBT-01** — Poll-after-verify (backend + mobile widget tests)~~ ✓ done  
 5. ~~**AUTH-02 + AUTH-03** — Session lifecycle~~ ✓ done  
 6. ~~**AUTH-08b** — Sync rate limiting~~ ✓ done  
 7. ~~**RBAC-01** — Role matrix~~ ✓ done  
@@ -610,6 +610,8 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 
 | Path | Notes |
 |------|--------|
+| `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` | OPS-01 deploy runbook |
+| `backend/scripts/check_deploy_env.py` | OPS-01 pre-flight env validation |
 | `debt_payment_flow_audit.md` (repo root) | Historical debt audit — see header for pointer here |
 | `docs/auth/pin-and-otp-flow.md` | Auth flow design |
 | `ghana_sme_os_docs/` | Architecture & API contracts |
