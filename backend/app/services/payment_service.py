@@ -49,7 +49,50 @@ from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale
 from app.models.store import Store
 from app.services.audit_service import log_audit
+from app.services.payment_errors import (
+    PaymentGatewayError,
+    PaymentInitiationContextError,
+    PaymentInitiationStateError,
+    PaymentInitiationTargetNotFoundError,
+    PaystackConnectionMissingError,
+    PaystackSecretKeyMissingError,
+    PaystackWebhookPayloadError,
+    PaystackWebhookSignatureError,
+)
+from app.services.payment_helpers import (
+    customer_email as _customer_email,
+)
+from app.services.payment_helpers import (
+    normalize_ghana_momo_phone as _normalize_ghana_momo_phone,
+)
+from app.services.payment_helpers import (
+    parse_iso_datetime as _parse_iso_datetime,
+)
+from app.services.payment_helpers import (
+    payment_is_momo_number_charge as _payment_is_momo_number_charge,
+)
+from app.services.payment_helpers import (
+    paystack_channel_label as _paystack_channel_label,
+)
+from app.services.payment_helpers import (
+    paystack_display_text_from_raw as _paystack_display_text_from_raw,
+)
+from app.services.payment_helpers import (
+    paystack_gh_momo_provider_code as _paystack_gh_momo_provider_code,
+)
+from app.services.payment_helpers import (
+    sale_contact_email as _sale_contact_email,
+)
 from app.services.payment_settings_service import get_decrypted_secret_for_mode
+from app.services.payment_snapshots import (
+    PaymentInitiationSnapshot,
+    PaymentVerifySnapshot,
+    PaymentWebhookSnapshot,
+    ReceivableMomoChargeSnapshot,
+    ReceivablePaymentVerifySnapshot,
+    SaleMomoChargeSnapshot,
+    SalePaymentInitiationSnapshot,
+)
 from app.services.store_context import StoreContextError, get_merchant_and_store
 
 _MONEY_SCALE = Decimal("0.01")
@@ -62,144 +105,6 @@ _TERMINAL_RECEIVABLE_STATUSES = {RECEIVABLE_STATUS_SETTLED, RECEIVABLE_STATUS_CA
 # minted. Authoritative on the server; clients render the countdown from
 # `payment_link_expires_at` only.
 RECEIVABLE_PAYMENT_LINK_TTL = timedelta(hours=24)
-
-
-def _paystack_display_text_from_raw(raw: dict[str, Any]) -> str | None:
-    data = raw.get("data")
-    if not isinstance(data, dict):
-        return None
-    dt = data.get("display_text")
-    if isinstance(dt, str) and dt.strip():
-        return dt.strip()
-    return None
-
-
-def _payment_is_momo_number_charge(payment: Payment) -> bool:
-    """True when this payment was started via our MoMo-on-number `/charge` flow."""
-    raw = payment.raw_provider_payload
-    if not isinstance(raw, dict):
-        return False
-    data = raw.get("data")
-    if not isinstance(data, dict):
-        return False
-    meta = data.get("metadata")
-    if not isinstance(meta, dict):
-        return False
-    return meta.get("payment_flow") == "momo_number_charge"
-
-
-class PaymentInitiationContextError(Exception):
-    """Caller has no merchant/store context."""
-
-
-class PaymentInitiationTargetNotFoundError(Exception):
-    """Requested payment target does not exist in caller scope."""
-
-
-class PaymentInitiationStateError(Exception):
-    """Receivable target exists but is not payable."""
-
-
-class PaystackConnectionMissingError(Exception):
-    """Merchant has no active Paystack connection."""
-
-
-class PaystackSecretKeyMissingError(Exception):
-    """Server-side Paystack secret key is not configured for selected mode."""
-
-
-class PaymentGatewayError(Exception):
-    """Downstream payment provider rejected the initiation request."""
-
-
-class PaystackWebhookSignatureError(Exception):
-    """Webhook signature failed validation."""
-
-
-class PaystackWebhookPayloadError(Exception):
-    """Webhook payload is malformed."""
-
-
-@dataclass(slots=True)
-class PaymentInitiationSnapshot:
-    payment_id: UUID
-    provider: str
-    provider_reference: str
-    checkout_url: str
-    access_code: str | None
-    amount: Decimal
-    currency: str
-    status: str
-    receivable_id: UUID
-
-
-@dataclass(slots=True)
-class SalePaymentInitiationSnapshot:
-    payment_id: UUID
-    provider: str
-    provider_reference: str
-    checkout_url: str
-    access_code: str | None
-    amount: Decimal
-    currency: str
-    status: str
-    sale_id: UUID
-
-
-@dataclass(slots=True)
-class SaleMomoChargeSnapshot:
-    payment_id: UUID
-    provider: str
-    provider_reference: str
-    amount: Decimal
-    currency: str
-    status: str
-    sale_id: UUID
-    display_text: str | None = None
-    needs_otp: bool = False
-
-
-@dataclass(slots=True)
-class PaymentVerifySnapshot:
-    payment_id: UUID
-    sale_id: UUID
-    provider_payment_status: str
-    sale_payment_status: str
-    paystack_transaction_status: str
-    display_text: str | None = None
-    needs_otp: bool = False
-
-
-@dataclass(slots=True)
-class ReceivableMomoChargeSnapshot:
-    payment_id: UUID
-    provider: str
-    provider_reference: str
-    amount: Decimal
-    currency: str
-    status: str
-    receivable_id: UUID
-    display_text: str | None = None
-    needs_otp: bool = False
-
-
-@dataclass(slots=True)
-class ReceivablePaymentVerifySnapshot:
-    payment_id: UUID
-    receivable_id: UUID
-    provider_payment_status: str
-    receivable_status: str
-    outstanding_amount: Decimal
-    paystack_transaction_status: str
-    display_text: str | None = None
-    needs_otp: bool = False
-
-
-@dataclass(slots=True)
-class PaymentWebhookSnapshot:
-    status: str
-    payment_id: UUID | None = None
-    provider_reference: str | None = None
 
 
 @dataclass(slots=True)
@@ -2234,86 +2139,6 @@ class PaymentService:
             if hmac.compare_digest(digest, normalized):
                 return
         raise PaystackWebhookSignatureError("Invalid Paystack signature.")
-
-
-def _customer_email(customer: Customer) -> str:
-    if customer.email is not None:
-        candidate = customer.email.strip()
-        if candidate and "@" in candidate:
-            return candidate
-    phone = customer.phone_number or ""
-    digits = re.sub(r"\D", "", phone)
-    if digits:
-        return f"{digits}@pay.biztrackgh.com"
-    return f"customer-{customer.id.hex[:12]}@pay.biztrackgh.com"
-
-
-def _sale_contact_email(*, sale: Sale) -> str:
-    if sale.customer is not None:
-        return _customer_email(sale.customer)
-    return f"sale-{sale.id.hex[:12]}@pay.biztrackgh.com"
-
-
-_PAYSTACK_CHANNEL_MAP: dict[str, str] = {
-    "mobile_money": PAYMENT_METHOD_MOBILE_MONEY,
-    "bank_transfer": PAYMENT_METHOD_BANK_TRANSFER,
-    "bank": PAYMENT_METHOD_BANK_TRANSFER,
-}
-
-
-def _paystack_channel_label(channel: str | None) -> str:
-    """Map a Paystack channel string to our internal payment_method_label constant."""
-    if channel and isinstance(channel, str):
-        normalized = channel.strip().lower()
-        if normalized in _PAYSTACK_CHANNEL_MAP:
-            return _PAYSTACK_CHANNEL_MAP[normalized]
-    return PAYMENT_METHOD_MOBILE_MONEY
-
-
-def _parse_iso_datetime(value: str | None) -> datetime | None:
-    if value is None:
-        return None
-    candidate = value.strip()
-    if not candidate:
-        return None
-    if candidate.endswith("Z"):
-        candidate = f"{candidate[:-1]}+00:00"
-    try:
-        parsed = datetime.fromisoformat(candidate)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
-
-
-def _normalize_ghana_momo_phone(phone: str) -> str:
-    """Digits-only local 0XXXXXXXXX for Paystack Ghana mobile money."""
-    digits = re.sub(r"\D", "", phone.strip())
-    if digits.startswith("233") and len(digits) >= 12:
-        local = digits[3:]
-        if local.startswith("0"):
-            return local[:10]
-        return f"0{local[:9]}"
-    if digits.startswith("0") and len(digits) >= 10:
-        return digits[:10]
-    if len(digits) >= 9 and not digits.startswith("0"):
-        return f"0{digits[-9:]}"
-    return digits
-
-
-def _paystack_gh_momo_provider_code(provider: str) -> str:
-    """Map API provider codes to Paystack's Ghana mobile_money.provider values."""
-    key = provider.strip().lower()
-    mapping = {
-        "mtn": "mtn",
-        "vod": "vod",
-        "atl": "tgo",
-    }
-    if key not in mapping:
-        msg = f"Unsupported MoMo provider: {provider!r}."
-        raise PaymentInitiationStateError(msg)
-    return mapping[key]
 
 
 __all__ = [
