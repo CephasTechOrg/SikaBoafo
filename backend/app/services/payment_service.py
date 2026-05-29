@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -19,7 +18,6 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import Settings, get_settings
 from app.core.constants import (
     DEFAULT_CURRENCY,
-    PAYMENT_METHOD_BANK_TRANSFER,
     PAYMENT_METHOD_MOBILE_MONEY,
     PAYMENT_PROVIDER_PAYSTACK,
     PAYMENT_STATUS_FAILED,
@@ -40,7 +38,6 @@ from app.integrations.paystack.client import (
     PaystackClientError,
     PaystackVerifyResult,
 )
-from app.models.customer import Customer
 from app.models.merchant import Merchant
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
