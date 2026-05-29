@@ -3,7 +3,7 @@
 **Product:** SikaBoafo (BizTrackGh) — offline-first merchant OS for Ghana  
 **Stack:** Flutter · FastAPI · PostgreSQL · Paystack  
 **Last reviewed:** May 2026  
-**Test snapshot:** Backend 137/137 pytest pass · Mobile 82/83 tests pass (1 routing test failing)
+**Test snapshot:** Backend 150/150 pytest pass · Mobile 83/83 tests pass
 
 This is the **single audit document** for the repo. Use it to see what is wrong, what was already fixed, and what to tackle next. Older notes (e.g. root `debt_payment_flow_audit.md`) are folded in here; prefer **this file** for planning work.
 
@@ -44,34 +44,33 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | High |
-| **What's happening** | `/api/v1/auth/pin/login` accepts unlimited PIN attempts per phone. Only OTP verify has attempt limits (`otp_provider.py`, `_MAX_VERIFY_ATTEMPTS = 5`). |
-| **Why it matters** | 4–6 digit PIN = 10,000–1,000,000 combinations. An attacker with network access can brute-force accounts. |
-| **Where** | `backend/app/services/auth_service.py`, `backend/app/api/v1/auth.py` |
-| **Fix** | Per-phone lockout after N failures (DB or Redis), exponential backoff, optional CAPTCHA; generic error message on failure. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What was wrong** | Unlimited PIN attempts per phone on `/auth/pin/login`. |
+| **Fix applied** | `PinLoginGuard` tracks failures in `pin_login_lockouts` (migration `020`); 5 failures → 15-minute lockout (configurable via `AUTH_PIN_MAX_ATTEMPTS`, `AUTH_PIN_LOCKOUT_MINUTES`); returns HTTP 429. Successful login clears the row. `pin_not_set` does not count toward lockout. |
+| **Where** | `backend/app/services/pin_login_guard.py`, `auth_service.py`, `api/v1/auth.py` |
 
 ### AUTH-02 · Refresh tokens are not revoked or rotated
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `done` |
 | **Severity** | Medium–High |
-| **What's happening** | Refresh returns new access + refresh JWTs, but old refresh tokens remain valid until expiry (~7 days default). No server-side session table or denylist. |
+| **What's happening** | ~~Refresh returns new tokens but old refresh JWTs stayed valid until expiry.~~ |
 | **Why it matters** | Stolen refresh token = long-lived account access even after user “logs out” on device. |
-| **Where** | `backend/app/services/auth_service.py`, `mobile/lib/core/services/api_client.dart` |
-| **Fix** | Refresh token rotation (invalidate previous on use); optional `session_version` on `User`; store refresh jti in DB/Redis. |
+| **Fix applied** | `users.session_version` (migration `022`); JWT `sv` claim; refresh increments version and rejects replayed refresh tokens. |
+| **Where** | `backend/app/core/security.py`, `auth_service.py`, `api/deps.py` |
 
 ### AUTH-03 · Logout does not invalidate tokens server-side
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `done` |
 | **Severity** | Medium |
-| **What's happening** | Mobile `signOut` clears secure storage only. Access token still works until `exp`. |
+| **What's happening** | ~~Mobile `signOut` cleared secure storage only.~~ |
 | **Why it matters** | Lost phone or staff dismissal: token usable until expiry unless you add revocation. |
-| **Where** | `mobile/lib/shared/providers/core_providers.dart`, session service |
-| **Fix** | Pair with AUTH-02; optional `POST /auth/logout` that bumps session version or blocklists jti. |
+| **Fix applied** | `POST /api/v1/auth/logout` bumps `session_version`; mobile `signOut` calls it before clearing local storage (best-effort if offline). |
+| **Where** | `backend/app/api/v1/auth.py`, `mobile/lib/core/services/session_service.dart`, `core_providers.dart` |
 
 ### AUTH-04 · Custom JWT implementation
 
@@ -88,23 +87,21 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `monitor` |
-| **Severity** | Critical if misconfigured |
+| **Status** | `done` |
+| **Severity** | — |
 | **What's happening** | If `AUTH_MOCK_OTP_CODE` is set, any user can verify with that fixed code—no SMS. |
-| **Why it matters** | Full account takeover for any known phone number. |
-| **Where** | `backend/app/services/otp_provider.py`, `backend/app/core/config.py` |
-| **Fix** | Production deploy checklist: env must have **empty** mock OTP; fail deploy if `app_env=production` and mock is set. |
+| **Fix applied** | `validate_settings_or_raise()` in app lifespan **refuses to boot** when `APP_ENV=production` and mock OTP is set. Staging still allows mock OTP for QA. |
+| **Where** | `backend/app/core/startup_checks.py`, `backend/app/main.py` |
 
 ### AUTH-06 · Default `secret_key` in config
 
 | Field | Value |
 |-------|--------|
-| **Status** | `monitor` |
-| **Severity** | Critical if misconfigured |
+| **Status** | `done` |
+| **Severity** | — |
 | **What's happening** | Default `secret_key="change-me-in-production"` in settings. |
-| **Why it matters** | Anyone can forge JWTs if production uses default. |
-| **Where** | `backend/app/core/config.py` |
-| **Fix** | Require strong key in production startup; refuse to boot if default detected. |
+| **Fix applied** | Startup check rejects default secret in **production** and **staging**. |
+| **Where** | `backend/app/core/config.py`, `backend/app/core/startup_checks.py` |
 
 ### AUTH-07 · CORS allows `*` by default
 
@@ -117,16 +114,16 @@ When you fix an item, change its status here and tick the checklist box.
 | **Where** | `backend/app/main.py`, `backend/app/core/config.py` |
 | **Fix** | Set explicit origins per environment in Render/env. |
 
-### AUTH-08 · No API-wide rate limiting
+### AUTH-08 · No API-wide rate limiting (sync still open — PIN + OTP request done)
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `partial` |
 | **Severity** | Medium |
-| **What's happening** | No global throttle on sync, auth, or payment endpoints. `redis_url` exists but is unused. |
-| **Why it matters** | Abuse, credential stuffing, sync flooding. |
-| **Where** | `backend/app/core/config.py` (redis unused) |
-| **Fix** | Redis + middleware or reverse-proxy limits; prioritize `/auth/*` and `/sync/apply`. |
+| **What's happening** | **`/auth/pin/login`** — AUTH-01. **`/auth/otp/request`** — `OtpSendGuard` (5 sends / 15 min per phone, migration `021`). Still no throttle on **`/sync/apply`** or payment endpoints. OTP *verify* has per-code attempt limits in `otp_provider.py`. |
+| **Why it matters** | Sync flooding and payment API spam remain possible. |
+| **Where** | `otp_send_guard.py`, `sync.py`, `config.py` |
+| **Fix** | Rate-limit `/sync/apply` (Redis or DB window). |
 
 ---
 
@@ -176,10 +173,10 @@ When you fix an item, change its status here and tick the checklist box.
 |-------|--------|
 | **Status** | `partial` |
 | **Severity** | High (UX) |
-| **What's happening** | Merchants reported sheet staying on “checking” until they leave and return. **Fixes applied:** `_onSheetPaymentConfirmed` invalidates `receivableDetailProvider`, applies server row, `refreshFromServer()`; QR/MoMo sheets also invalidate. |
+| **What's happening** | Mobile UX fixes applied (provider invalidate + server row). **Backend test added:** `test_webhook_then_verify_receivable_payment_reports_settled_to_client` — webhook settles debt, then `/payments/.../verify` returns `settled` + `0.00` outstanding (what the app polls). |
 | **Why it matters** | Trust in digital collections; merchants think money was not received. |
-| **Where** | `mobile/lib/features/debts/presentation/widgets/debt_payment_link_panel.dart`, `debt_paystack_qr_sheet.dart`, `debt_paystack_momo_sheet.dart` |
-| **Fix** | E2E test: pay → webhook/verify → UI shows settled without navigation. Monitor slow webhook regions; tune poll/verify interval. |
+| **Where** | `test_paystack_webhooks.py`, debt payment sheets on mobile |
+| **Fix** | Optional: Flutter widget test for poll-after-verify; manual QA on slow networks. |
 
 ### DEBT-02 · Payment link not cleared after settlement
 
@@ -344,12 +341,11 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Medium (CI) |
-| **What's happening** | `app_routing_test.dart` — `dashboard Debts quick action opens Debts` fails locally (82 pass, 1 fail). |
-| **Why it matters** | Mobile CI on `main`/`develop` will fail. |
-| **Where** | `mobile/test/features/app_routing_test.dart`, `dashboard_quick_actions.dart` |
-| **Fix** | Align finder with current label/route or update test expectations. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What was wrong** | Routing worked; test failed because `DebtsHeader` overflowed (16px) inside `SliverAppBar` flexible space (~162px tall). |
+| **Fix applied** | `debts_header.dart`: `LayoutBuilder` + compact spacing / `FittedBox` when height &lt; 190px; `debts_screen.dart`: `expandedHeight` 230→252; test uses `pumpAndSettle`. |
+| **Where** | `mobile/test/features/app_routing_test.dart`, `debts_header.dart`, `debts_screen.dart` |
 
 ### MOB-02 · Large payment/debt widgets
 
@@ -433,10 +429,10 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `partial` |
 | **Severity** | High |
-| **What's happening** | Several footguns rely on manual env discipline. |
-| **Fix** | See **Checklist A** below; automate in Render/deploy script where possible. |
+| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. Manual Render checklist still needed for Arkesel, Paystack live key, CORS, migrations `020`–`022`. |
+| **Fix** | Run manual checklist below on deploy. |
 
 ### OPS-02 · No structured security headers / HSTS
 
@@ -484,20 +480,23 @@ When you fix an item, change its status here and tick the checklist box.
 
 Use for release gates and security reviews.
 
-- [ ] **AUTH-01** — PIN login rate limiting / lockout
-- [ ] **AUTH-05** — Confirm `AUTH_MOCK_OTP_CODE` unset in production (automate check)
-- [ ] **AUTH-06** — Confirm strong `SECRET_KEY` in production (fail boot if default)
-- [ ] **MOB-01** — Fix failing `app_routing_test` (Debts quick action)
+- [x] **AUTH-01** — PIN login rate limiting / lockout
+- [x] **AUTH-05** — Confirm `AUTH_MOCK_OTP_CODE` unset in production (automated boot check)
+- [x] **AUTH-06** — Confirm strong `SECRET_KEY` in production (automated boot check)
+- [x] **MOB-01** — Fix failing `app_routing_test` (Debts quick action)
 - [ ] **OPS-01** — Run production env checklist on Render (see below)
 - [ ] **DEBT-01** — Add E2E or integration test: Paystack debt pay → UI settled (verify webhook-delay path)
 
 ### Production env checklist (copy into deploy runbook)
 
+Items marked *(boot)* are enforced at API startup in production/staging — still confirm in the Render dashboard.
+
 - [ ] `APP_ENV=production`
-- [ ] `SECRET_KEY` — long random value, not default
-- [ ] `AUTH_MOCK_OTP_CODE` — **empty / unset**
+- [ ] `SECRET_KEY` — long random value, not default *(boot)*
+- [ ] `AUTH_MOCK_OTP_CODE` — **empty / unset** *(boot, production only)*
+- [ ] `alembic upgrade head` — migrations `020` (`pin_login_lockouts`), `021` (`otp_send_throttles`), `022` (`users.session_version`)
+- [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — valid Fernet key *(boot, production only)*
 - [ ] `ARKESEL_API_KEY` — set for live SMS
-- [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — valid Fernet key
 - [ ] `PAYSTACK_SECRET_KEY_LIVE` — live key only on production
 - [ ] `CORS_ORIGINS` — explicit list (not `*`) if any browser client exists
 
@@ -505,9 +504,10 @@ Use for release gates and security reviews.
 
 # Master Checklist B — Should complete (next sprint)
 
-- [ ] **AUTH-02** — Refresh token rotation + optional session version on user
-- [ ] **AUTH-03** — Server-aware logout (paired with AUTH-02)
-- [ ] **AUTH-08** — Rate limiting on `/auth/pin/login`, `/auth/otp/request`, `/sync/apply`
+- [x] **AUTH-02** — Refresh token rotation + `session_version` on user (migration `022`)
+- [x] **AUTH-03** — Server-aware logout (`POST /auth/logout` + mobile signOut)
+- [x] **AUTH-08** — Rate limiting on `/auth/otp/request` (PIN done — AUTH-01; sync still open)
+- [ ] **AUTH-08b** — Rate limiting on `/sync/apply`
 - [ ] **PAY-01** — Split `payment_service.py` into smaller modules
 - [ ] **RBAC-01** — Define and enforce manager vs cashier matrix; extend tests
 - [ ] **DEBT-03** — Test: cancel receivable invalidates pending Paystack payments
@@ -536,14 +536,15 @@ Use for release gates and security reviews.
 
 | ID | Title | Status |
 |----|--------|--------|
-| AUTH-01 | PIN rate limiting | open |
-| AUTH-02 | Refresh token revocation | open |
-| AUTH-03 | Logout server-side | open |
+| AUTH-01 | PIN rate limiting | done |
+| AUTH-02 | Refresh token revocation | done |
+| AUTH-03 | Logout server-side | done |
 | AUTH-04 | Custom JWT | open |
-| AUTH-05 | Mock OTP in prod | monitor |
-| AUTH-06 | Default secret key | monitor |
+| AUTH-05 | Mock OTP in prod | done |
+| AUTH-06 | Default secret key | done |
 | AUTH-07 | CORS `*` | open |
-| AUTH-08 | API rate limiting | open |
+| AUTH-08 | OTP request rate limit | done |
+| AUTH-08b | Sync rate limit | open |
 | PAY-01 | PaymentService size | open |
 | PAY-02 | Paystack role split | monitor |
 | PAY-03 | Webhook shared verify | done |
@@ -563,7 +564,7 @@ Use for release gates and security reviews.
 | RBAC-01 | Manager role enforcement | open |
 | RBAC-02 | Owner destructive ops | done |
 | RBAC-03 | Staff daily ops | done |
-| MOB-01 | Routing test fail | open |
+| MOB-01 | Routing test fail | done |
 | MOB-02 | Large widgets | open |
 | MOB-03 | Silent refresh errors | open |
 | MOB-04 | Build-time config | monitor |
@@ -571,7 +572,7 @@ Use for release gates and security reviews.
 | ARCH-02 | Redis unused | open |
 | ARCH-03 | Admin stub | open |
 | ARCH-04 | Thin routers | done |
-| OPS-01 | Prod checklist | open |
+| OPS-01 | Prod checklist | partial |
 | OPS-02 | Security headers | open |
 | OPS-03 | Webhook HMAC | done |
 | REPO-01 | Scratch files | open |
@@ -581,14 +582,14 @@ Use for release gates and security reviews.
 
 # Suggested fix order (one path through the audits)
 
-1. **MOB-01** — Green CI (fast win)  
-2. **AUTH-01 + AUTH-08** — PIN + auth rate limits  
-3. **OPS-01 + AUTH-05 + AUTH-06** — Production env hardening  
-4. **AUTH-02 + AUTH-03** — Session lifecycle  
-5. **DEBT-01** — E2E payment UX test + monitor webhook delay  
-6. **RBAC-01** — Role matrix  
-7. **PAY-01** — Payment module split  
-8. **SYNC-02 + SYNC-01** — Sync UX and scale  
+1. ~~**MOB-01** — Green CI~~ ✓ done  
+2. ~~**OPS-01 + AUTH-05 + AUTH-06** — Production env hardening (boot checks)~~ ✓ partial — manual Render checklist remains  
+3. ~~**AUTH-01** — PIN lockout~~ ✓ done  
+4. ~~**DEBT-01** — Backend verify-after-webhook test~~ ✓ partial (mobile E2E optional)  
+5. ~~**AUTH-02 + AUTH-03** — Session lifecycle~~ ✓ done  
+6. **AUTH-08b** — Sync rate limiting  
+7. **RBAC-01** — Role matrix  
+8. **PAY-01** — Payment module split  
 
 ---
 

@@ -18,7 +18,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_db
+from app.api.deps import get_current_user, get_db
 from app.core.config import get_settings
 from app.core.constants import (
     PAYMENT_PROVIDER_PAYSTACK,
@@ -316,6 +316,63 @@ def _body_and_signature(*, reference: str, secret: str) -> tuple[bytes, str]:
     ).encode("utf-8")
     signature = hmac.new(secret.encode("utf-8"), body, hashlib.sha512).hexdigest()
     return body, signature
+
+
+def test_webhook_then_verify_receivable_payment_reports_settled_to_client() -> None:
+    """DEBT-01: Mobile polls verify after Paystack success — must see settled state."""
+    env = _configure_env()
+    client, session_local, reference = _build_sqlite_receivable_stack()
+    body, signature = _body_and_signature(reference=reference, secret="sk_test_webhook_123")
+    try:
+        with session_local() as db:
+            payment = db.scalar(select(Payment).where(Payment.provider_reference == reference))
+            assert payment is not None
+            payment_id = payment.id
+            owner = db.scalar(select(User).where(User.phone_number == "233244123456"))
+            assert owner is not None
+            db.expunge(owner)
+
+        def _override_get_current_user() -> User:
+            return owner
+
+        app.dependency_overrides[get_current_user] = _override_get_current_user
+
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.verify_transaction",
+            return_value=PaystackVerifyResult(
+                reference=reference,
+                status="success",
+                amount_kobo=12000,
+                paid_at="2026-04-24T12:30:00Z",
+                raw_payload={"status": True, "data": {"status": "success"}},
+            ),
+        ):
+            webhook_resp = client.post(
+                "/api/v1/webhooks/paystack",
+                content=body,
+                headers={"x-paystack-signature": signature, "content-type": "application/json"},
+            )
+            assert webhook_resp.status_code == 200
+
+            verify_resp = client.post(
+                f"/api/v1/payments/receivable-payments/{payment_id}/verify",
+            )
+
+        assert verify_resp.status_code == 200, verify_resp.text
+        payload = verify_resp.json()
+        assert payload["receivable_status"] == "settled"
+        assert payload["outstanding_amount"] == "0.00"
+        assert payload["provider_payment_status"] in {"succeeded", "success"}
+
+        with session_local() as db:
+            receivable = db.get(Receivable, payment.receivable_id)
+            assert receivable is not None
+            assert receivable.status == "settled"
+            assert receivable.payment_link is None
+            assert receivable.payment_provider_reference is None
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
 
 
 def test_paystack_webhook_success_settles_receivable_using_payment_mode_secret() -> None:

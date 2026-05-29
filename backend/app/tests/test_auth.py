@@ -18,6 +18,7 @@ from app.core.constants import (
 from app.core.security import create_session_token
 from app.main import app
 from app.models.merchant import Merchant
+from app.models.pin_login_lockout import PinLoginLockout
 from app.models.store import Store
 from app.models.user import User
 from app.services.auth_service import AuthService
@@ -30,6 +31,7 @@ class _FakeDbSession:
         self.users_by_id: dict[object, User] = {}
         self.merchants_by_owner: dict[object, Merchant] = {}
         self.stores_by_merchant: dict[object, Store] = {}
+        self.pin_lockouts_by_phone: dict[str, PinLoginLockout] = {}
 
     def scalar(self, statement: object):
         if not isinstance(statement, Select):
@@ -46,6 +48,8 @@ class _FakeDbSession:
             return self.merchants_by_owner.get(params.get("owner_user_id_1"))
         if table == "stores":
             return self.stores_by_merchant.get(params.get("merchant_id_1"))
+        if table == "pin_login_lockouts" and isinstance(phone_number, str):
+            return self.pin_lockouts_by_phone.get(phone_number)
         return None
 
     def add(self, entity) -> None:
@@ -63,12 +67,21 @@ class _FakeDbSession:
             if getattr(entity, "id", None) is None:
                 entity.id = uuid4()
             self.stores_by_merchant[entity.merchant_id] = entity
+            return
+        if isinstance(entity, PinLoginLockout):
+            self.pin_lockouts_by_phone[entity.phone_number] = entity
+
+    def delete(self, entity) -> None:
+        if isinstance(entity, PinLoginLockout):
+            self.pin_lockouts_by_phone.pop(entity.phone_number, None)
 
     def commit(self) -> None:
         return None
 
     def flush(self) -> None:
-        return None
+        for lockout in self.pin_lockouts_by_phone.values():
+            if getattr(lockout, "id", None) is None:
+                lockout.id = uuid4()
 
     def refresh(self, entity) -> None:
         if getattr(entity, "id", None) is None:
@@ -275,6 +288,47 @@ def test_pin_login_rejects_wrong_pin() -> None:
         app.dependency_overrides.clear()
 
 
+def test_pin_login_locks_after_repeated_failures() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    user.pin_hash = hash_pin("4242")
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return Settings(
+            app_env="local",
+            database_url="sqlite:///unused.db",
+            secret_key="test-secret-key-1234",
+            auth_pin_max_attempts=3,
+            auth_pin_lockout_minutes=10,
+        )
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        for _ in range(3):
+            resp = client.post(
+                "/api/v1/auth/pin/login",
+                json={"phone_number": "0244123456", "pin": "9999"},
+            )
+            assert resp.status_code == 401
+
+        locked = client.post(
+            "/api/v1/auth/pin/login",
+            json={"phone_number": "0244123456", "pin": "9999"},
+        )
+        assert locked.status_code == 429
+        assert "Too many PIN attempts" in locked.json()["detail"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_pin_set_saves_hash() -> None:
     fake_db = _FakeDbSession()
     user = User(phone_number="233244123456")
@@ -344,6 +398,102 @@ def test_refresh_session_issues_new_tokens_for_valid_refresh_token() -> None:
         assert body["user_id"] == str(user.id)
         assert body["phone_number"] == "233244123456"
         assert body["pin_set"] is True
+        assert user.session_version == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_refresh_session_rejects_replayed_refresh_token() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        refresh_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_REFRESH,
+            expires_in_minutes=60,
+            session_version=0,
+        )
+        first = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert first.status_code == 200
+
+        replay = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert replay.status_code == 401
+        assert replay.json()["detail"] == "Invalid refresh token."
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_logout_invalidates_access_and_refresh_tokens() -> None:
+    fake_db = _FakeDbSession()
+    user = User(phone_number="233244123456")
+    user.id = uuid4()
+    user.is_active = True
+    fake_db.add(user)
+
+    def _override_get_db() -> Generator[_FakeDbSession, None, None]:
+        yield fake_db
+
+    def _override_get_settings() -> Settings:
+        return _test_settings()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_settings] = _override_get_settings
+    client = TestClient(app)
+    try:
+        access_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_ACCESS,
+            expires_in_minutes=60,
+            session_version=0,
+        )
+        refresh_token = create_session_token(
+            user_id=user.id,
+            phone_number=user.phone_number,
+            token_type=AUTH_TOKEN_TYPE_REFRESH,
+            expires_in_minutes=60,
+            session_version=0,
+        )
+        logout_resp = client.post(
+            "/api/v1/auth/logout",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert logout_resp.status_code == 200
+        assert user.session_version == 1
+
+        protected = client.post(
+            "/api/v1/auth/pin/set",
+            json={"pin": "1234"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert protected.status_code == 401
+        assert protected.json()["detail"] == "Session expired."
+
+        refresh_resp = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert refresh_resp.status_code == 401
     finally:
         app.dependency_overrides.clear()
 

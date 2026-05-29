@@ -12,6 +12,7 @@ from app.core.config import Settings, get_settings
 from app.models.user import User
 from app.schemas.auth import (
     AccountDeleteOut,
+    LogoutOut,
     OnboardingIn,
     OnboardingOut,
     OtpRequestIn,
@@ -30,6 +31,8 @@ from app.services.auth_service import (
     OtpVerificationFailedError,
     PinNotSetError,
 )
+from app.services.otp_send_guard import OtpSendRateLimitedError
+from app.services.pin_login_guard import PinLoginLockedError
 from app.services.onboarding_service import (
     OnboardingPermissionError,
     OnboardingService,
@@ -60,6 +63,11 @@ def request_otp(
     except InvalidPhoneNumberError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except OtpSendRateLimitedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=str(exc),
         ) from exc
     except OtpProviderError as exc:
@@ -118,11 +126,27 @@ def login_with_pin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="pin_not_set",
         ) from exc
+    except PinLoginLockedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
     except InvalidPinLoginError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid phone number or PIN.",
         ) from exc
+
+
+@router.post("/logout", response_model=LogoutOut)
+def logout(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> LogoutOut:
+    service = _build_auth_service(db=db, settings=settings)
+    service.logout(user=current_user)
+    return LogoutOut()
 
 
 @router.post("/refresh", response_model=UserSessionOut)

@@ -5,11 +5,14 @@ class SessionService {
   SessionService({
     required AppDatabase appDb,
     required SecureTokenStorage tokenStorage,
+    Future<void> Function()? serverLogout,
   })  : _appDb = appDb,
-        _tokenStorage = tokenStorage;
+        _tokenStorage = tokenStorage,
+        _serverLogout = serverLogout;
 
   final AppDatabase _appDb;
   final SecureTokenStorage _tokenStorage;
+  final Future<void> Function()? _serverLogout;
 
   Future<void> applyAuthenticatedSession({
     required String userId,
@@ -33,6 +36,14 @@ class SessionService {
   }
 
   Future<void> signOut() async {
+    final serverLogout = _serverLogout;
+    if (serverLogout != null) {
+      try {
+        await serverLogout();
+      } catch (_) {
+        // Offline or already-invalid token — still clear local session.
+      }
+    }
     await _tokenStorage.clearSession();
     await _appDb.clearBusinessData();
   }

@@ -9,11 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.startup_checks import validate_settings_or_raise
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    configure_logging(get_settings().app_env)
+    settings = get_settings()
+    validate_settings_or_raise(settings)
+    configure_logging(settings.app_env)
     yield
 
 

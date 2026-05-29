@@ -17,7 +17,11 @@ from app.core.constants import (
     STAFF_INVITE_STATUS_PENDING,
     USER_ROLE_MERCHANT_OWNER,
 )
-from app.core.security import create_session_token, decode_and_verify_session_token
+from app.core.security import (
+    create_session_token,
+    decode_and_verify_session_token,
+    session_version_from_payload,
+)
 from app.models.merchant import Merchant
 from app.models.staff_invite import StaffInvite
 from app.models.user import User
@@ -30,6 +34,8 @@ from app.services.otp_provider import (
 from app.services.phone_number import normalize_phone_number
 from app.services.pin_hash import hash_pin, is_valid_pin_format
 from app.services.pin_hash import verify_pin as verify_pin_hash
+from app.services.otp_send_guard import OtpSendGuard, OtpSendRateLimitedError
+from app.services.pin_login_guard import PinLoginGuard, PinLoginLockedError
 
 
 class PinNotSetError(Exception):
@@ -44,6 +50,12 @@ class InvalidRefreshTokenError(Exception):
     """Refresh token is missing, expired, malformed, or not a refresh token."""
 
 
+def _effective_session_version(user: User) -> int:
+    """ORM default may not populate ``session_version`` until flush."""
+    version = user.session_version
+    return 0 if version is None else version
+
+
 @dataclass(slots=True)
 class AuthService:
     db: Session
@@ -52,7 +64,10 @@ class AuthService:
 
     def request_otp(self, *, phone_number: str) -> GenerateOtpResult:
         normalized = normalize_phone_number(phone_number)
+        send_guard = OtpSendGuard(db=self.db, settings=self.settings)
+        send_guard.assert_can_send(phone_number=normalized)
         result = self.otp_provider.generate(phone_number=normalized)
+        send_guard.record_send(phone_number=normalized)
         self.db.commit()
         return result
 
@@ -85,13 +100,23 @@ class AuthService:
 
     def login_with_pin(self, *, phone_number: str, pin: str) -> UserSessionOut:
         normalized = normalize_phone_number(phone_number)
+        guard = PinLoginGuard(db=self.db, settings=self.settings)
+        guard.assert_can_attempt(phone_number=normalized)
+
         user = self._get_user_by_phone(normalized)
         if user is None or not user.is_active:
+            guard.record_failure(phone_number=normalized)
+            self.db.commit()
             raise InvalidPinLoginError
         if user.pin_hash is None:
             raise PinNotSetError
         if not verify_pin_hash(pin, user.pin_hash):
+            guard.record_failure(phone_number=normalized)
+            self.db.commit()
             raise InvalidPinLoginError
+
+        guard.clear_failures(phone_number=normalized)
+        self.db.commit()
         return self._issue_session(user=user, is_new_user=False)
 
     def set_pin(self, *, user: User, pin: str) -> None:
@@ -108,13 +133,27 @@ class AuthService:
             if payload.get("type") != AUTH_TOKEN_TYPE_REFRESH:
                 raise ValueError("Refresh token required.")
             user_id = UUID(str(payload["sub"]))
+            token_version = session_version_from_payload(payload)
         except (KeyError, ValueError) as exc:
             raise InvalidRefreshTokenError from exc
 
         user = self.db.get(User, user_id)
         if user is None or not user.is_active:
             raise InvalidRefreshTokenError
+        if token_version != _effective_session_version(user):
+            raise InvalidRefreshTokenError
+
+        user.session_version = _effective_session_version(user) + 1
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
         return self._issue_session(user=user, is_new_user=False)
+
+    def logout(self, *, user: User) -> None:
+        """Invalidate all outstanding access/refresh tokens for this user."""
+        user.session_version = _effective_session_version(user) + 1
+        self.db.add(user)
+        self.db.commit()
 
     def _issue_session(self, *, user: User, is_new_user: bool) -> UserSessionOut:
         access_token = create_session_token(
@@ -122,12 +161,14 @@ class AuthService:
             phone_number=user.phone_number,
             token_type=AUTH_TOKEN_TYPE_ACCESS,
             expires_in_minutes=self.settings.auth_access_token_exp_minutes,
+            session_version=_effective_session_version(user),
         )
         refresh_token = create_session_token(
             user_id=user.id,
             phone_number=user.phone_number,
             token_type=AUTH_TOKEN_TYPE_REFRESH,
             expires_in_minutes=self.settings.auth_refresh_token_exp_minutes,
+            session_version=_effective_session_version(user),
         )
         owner_merchant = self._get_owner_merchant(user_id=user.id)
         if user.role not in {None, USER_ROLE_MERCHANT_OWNER} and user.merchant_id is not None:

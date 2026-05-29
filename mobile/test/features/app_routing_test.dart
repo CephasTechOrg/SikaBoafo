@@ -396,8 +396,7 @@ void main() {
         matching: find.text('Debts'),
       ),
     );
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
 
     expect(find.text('Debts'), findsWidgets);
     expect(find.text('Ama'), findsOneWidget);

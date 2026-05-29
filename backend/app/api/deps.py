@@ -12,10 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import AUTH_TOKEN_TYPE_ACCESS
-from app.core.rbac import is_merchant_owner
-from app.core.security import decode_and_verify_session_token
+from app.core.rbac import has_permission, is_merchant_owner
+from app.core.security import decode_and_verify_session_token, session_version_from_payload
 from app.db.session import get_db
 from app.models.user import User
+from app.services.auth_service import _effective_session_version
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -45,6 +46,11 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive.",
+        )
+    if session_version_from_payload(payload) != _effective_session_version(user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired.",
         )
     return user
 
@@ -82,4 +88,28 @@ def get_merchant_owner(
     return current_user
 
 
-__all__ = ["get_current_user", "get_db", "get_merchant_owner", "require_role"]
+def require_permission(permission: str) -> Callable[[User], User]:
+    """Return a FastAPI dependency enforcing a single RBAC permission.
+
+    Owners (and legacy NULL-role users) implicitly pass. See
+    ``app.core.rbac.ROLE_PERMISSIONS`` for the role → permission matrix.
+    """
+
+    def _check(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+        if not has_permission(current_user, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions.",
+            )
+        return current_user
+
+    return _check
+
+
+__all__ = [
+    "get_current_user",
+    "get_db",
+    "get_merchant_owner",
+    "require_permission",
+    "require_role",
+]

@@ -31,6 +31,10 @@ String userFriendlyError(Object error) {
     if (status == 401) {
       return 'Your session has expired. Please sign in again.';
     }
+    if (status == 429) {
+      return detail ??
+          'Too many attempts. Please wait a moment and try again.';
+    }
     if (status == 403) {
       return "You don't have permission to do that.";
     }

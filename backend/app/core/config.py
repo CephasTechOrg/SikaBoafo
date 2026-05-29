@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     auth_token_issuer: str = Field(default="biztrack-gh")
     auth_access_token_exp_minutes: int = Field(default=60, ge=5, le=1440)
     auth_refresh_token_exp_minutes: int = Field(default=10080, ge=60, le=43200)
+    auth_pin_max_attempts: int = Field(default=5, ge=3, le=20)
+    auth_pin_lockout_minutes: int = Field(default=15, ge=1, le=1440)
+    auth_otp_send_max_per_window: int = Field(default=5, ge=1, le=30)
+    auth_otp_send_window_minutes: int = Field(default=15, ge=1, le=1440)
+    sync_apply_max_per_window: int = Field(default=120, ge=1, le=10000)
+    sync_apply_window_minutes: int = Field(default=5, ge=1, le=1440)
     auth_mock_otp_code: str | None = Field(
         default=None,
         description="Dev-only fallback code when SMS provider is unavailable.",

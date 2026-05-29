@@ -8,8 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, get_merchant_owner
+from app.api.deps import get_current_user, get_db, require_permission
+from app.core.rbac import PERM_INVENTORY_DELETE, PERM_INVENTORY_WRITE
 from app.models.user import User
+
+_InventoryWriter = Annotated[User, Depends(require_permission(PERM_INVENTORY_WRITE))]
+_InventoryDeleter = Annotated[User, Depends(require_permission(PERM_INVENTORY_DELETE))]
 from app.schemas.inventory import (
     InventoryItemOut,
     InventoryMutationOut,
@@ -50,7 +54,7 @@ def list_items(
 def create_item(
     payload: ItemCreateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _InventoryWriter,
 ) -> InventoryItemOut:
     service = InventoryService(db=db)
     try:
@@ -65,7 +69,7 @@ def update_item(
     item_id: UUID,
     payload: ItemUpdateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _InventoryWriter,
 ) -> InventoryItemOut:
     service = InventoryService(db=db)
     try:
@@ -87,7 +91,7 @@ def stock_in(
     item_id: UUID,
     payload: StockInIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _InventoryWriter,
 ) -> InventoryMutationOut:
     service = InventoryService(db=db)
     try:
@@ -109,7 +113,7 @@ def adjust_stock(
     item_id: UUID,
     payload: StockAdjustIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _InventoryWriter,
 ) -> InventoryMutationOut:
     service = InventoryService(db=db)
     try:
@@ -135,7 +139,7 @@ def adjust_stock(
 def delete_item(
     item_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_merchant_owner)],
+    current_user: _InventoryDeleter,
 ) -> Response:
     service = InventoryService(db=db)
     try:

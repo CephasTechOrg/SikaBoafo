@@ -7,8 +7,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, require_permission
+from app.core.rbac import PERM_EXPENSES_WRITE
 from app.models.user import User
+
+_ExpensesWriter = Annotated[User, Depends(require_permission(PERM_EXPENSES_WRITE))]
 from app.schemas.expense import ExpenseCreateIn, ExpenseOut
 from app.services.expense_service import ExpenseContextMissingError, ExpenseService
 
@@ -45,7 +48,7 @@ def list_expenses(
 def create_expense(
     payload: ExpenseCreateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _ExpensesWriter,
 ) -> ExpenseOut:
     service = ExpenseService(db=db)
     try:

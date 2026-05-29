@@ -22,6 +22,7 @@ from app.models.item import Item, ItemVariant
 from app.models.merchant import Merchant
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
+from app.models.sync_apply_throttle import SyncApplyThrottle
 from app.models.sync_operation import SyncOperation
 from app.models.user import User
 from app.schemas.sale import SyncSaleCreateIn
@@ -45,6 +46,7 @@ def _make_stack() -> tuple[TestClient, sessionmaker[Session], UUID, UUID]:
         Sale.__table__,
         SaleItem.__table__,
         SyncOperation.__table__,
+        SyncApplyThrottle.__table__,
         AuditLog.__table__,
     ):
         table.create(bind=engine)

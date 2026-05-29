@@ -50,75 +50,112 @@ class DebtsHeader extends StatelessWidget {
           height: 140,
           child: _HeroOrb(opacity: 0.03),
         ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(leadingContentInset, 50, 20, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'Debts',
-                    style: TextStyle(
-                      fontFamily: 'Constantia',
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                      height: 1.0,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // FlexibleSpaceBar shrinks while scrolling; fixed padding caused
+            // bottom overflow in widget tests and on short expanded heights.
+            final compact =
+                constraints.hasBoundedHeight && constraints.maxHeight < 190;
+            final topPad = compact ? 40.0 : 50.0;
+            final bottomPad = compact ? 10.0 : 18.0;
+            final sectionGap = compact ? 10.0 : 18.0;
+            final statsGap = compact ? 8.0 : 12.0;
+            final amountSize = compact ? 34.0 : 40.0;
+
+            final content = Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Debts',
+                      style: TextStyle(
+                        fontFamily: 'Constantia',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                        height: 1.0,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: DataFreshnessLabel(
-                      kvKey: KvCacheRepository.kDebtsTs,
-                      color: Color(0xCCFFFFFF),
+                    SizedBox(width: 10),
+                    Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: DataFreshnessLabel(
+                        kvKey: KvCacheRepository.kDebtsTs,
+                        color: Color(0xCCFFFFFF),
+                      ),
                     ),
+                  ],
+                ),
+                SizedBox(height: sectionGap),
+                const _OutstandingLabel(),
+                const SizedBox(height: 4),
+                Text(
+                  DebtsUiUtils.formatMinor(outstandingMinor),
+                  style: TextStyle(
+                    fontFamily: 'Constantia',
+                    fontSize: amountSize,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                    height: 1.0,
                   ),
-                ],
+                ),
+                SizedBox(height: statsGap),
+                HeroStatRow(
+                  items: [
+                    HeroStatItem(
+                      icon: Icons.receipt_long_outlined,
+                      value: '$totalDebtsCount',
+                      label: 'Total',
+                    ),
+                    HeroStatItem(
+                      icon: Icons.schedule_rounded,
+                      value: '$openCount',
+                      label: 'Open',
+                    ),
+                    HeroStatItem(
+                      icon: Icons.warning_amber_rounded,
+                      value: '$overdueCount',
+                      label: 'Overdue',
+                      accentColor: overdueCount > 0
+                          ? const Color(0xFFFFD4A8)
+                          : null,
+                    ),
+                  ],
+                ),
+              ],
+            );
+
+            final padded = Padding(
+              padding: EdgeInsets.fromLTRB(
+                leadingContentInset,
+                topPad,
+                20,
+                bottomPad,
               ),
-              const SizedBox(height: 18),
-              const _OutstandingLabel(),
-              const SizedBox(height: 4),
-              Text(
-                DebtsUiUtils.formatMinor(outstandingMinor),
-                style: const TextStyle(
-                  fontFamily: 'Constantia',
-                  fontSize: 40,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  letterSpacing: -1,
-                  height: 1.0,
+              child: content,
+            );
+
+            if (!compact) {
+              return padded;
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(leadingContentInset, topPad, 20, bottomPad),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: constraints.maxWidth - leadingContentInset - 20,
+                  child: content,
                 ),
               ),
-              const SizedBox(height: 12),
-              HeroStatRow(
-                items: [
-                  HeroStatItem(
-                    icon: Icons.receipt_long_outlined,
-                    value: '$totalDebtsCount',
-                    label: 'Total',
-                  ),
-                  HeroStatItem(
-                    icon: Icons.schedule_rounded,
-                    value: '$openCount',
-                    label: 'Open',
-                  ),
-                  HeroStatItem(
-                    icon: Icons.warning_amber_rounded,
-                    value: '$overdueCount',
-                    label: 'Overdue',
-                    accentColor: overdueCount > 0
-                        ? const Color(0xFFFFD4A8)
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ],
     );

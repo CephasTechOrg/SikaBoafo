@@ -8,8 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, get_merchant_owner
+from app.api.deps import get_current_user, get_db, require_permission
+from app.core.rbac import PERM_SALES_VOID, PERM_SALES_WRITE
 from app.models.user import User
+
+_SalesWriter = Annotated[User, Depends(require_permission(PERM_SALES_WRITE))]
+_SalesVoider = Annotated[User, Depends(require_permission(PERM_SALES_VOID))]
 from app.schemas.sale import (
     SaleCreateIn,
     SaleLineOut,
@@ -94,7 +98,7 @@ def list_sales(
 def create_sale(
     payload: SaleCreateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _SalesWriter,
 ) -> SaleOut:
     service = SalesService(db=db)
     try:
@@ -118,7 +122,7 @@ def update_sale(
     sale_id: UUID,
     payload: SaleUpdateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _SalesWriter,
 ) -> SaleOut:
     service = SalesService(db=db)
     try:
@@ -151,7 +155,7 @@ def void_sale(
     sale_id: UUID,
     payload: SaleVoidIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_merchant_owner)],
+    current_user: _SalesVoider,
 ) -> SaleOut:
     service = SalesService(db=db)
     try:

@@ -71,6 +71,11 @@ class PinSetOut(BaseModel):
     detail: str = "PIN saved."
 
 
+class LogoutOut(BaseModel):
+    status: str = "ok"
+    detail: str = "Logged out."
+
+
 class OnboardingIn(BaseModel):
     business_name: str = Field(min_length=2, max_length=255)
     business_type: str | None = Field(default=None, max_length=128)

@@ -135,6 +135,10 @@ class AuthApi {
     return OnboardingResult.fromJson(body);
   }
 
+  Future<void> logout() async {
+    await _apiClient.dio.post<dynamic>('/auth/logout');
+  }
+
   Future<void> deleteAccount() async {
     await _apiClient.dio.delete<dynamic>('/auth/account');
   }

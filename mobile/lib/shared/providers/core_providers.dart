@@ -51,6 +51,10 @@ final sessionServiceProvider = Provider<SessionService>((ref) {
   return SessionService(
     appDb: ref.watch(appDatabaseProvider),
     tokenStorage: ref.watch(secureTokenStorageProvider),
+    serverLogout: () async {
+      final dio = ref.read(apiClientProvider).dio;
+      await dio.post<dynamic>('/auth/logout');
+    },
   );
 });
 
@@ -61,7 +65,11 @@ final apiClientProvider = Provider<ApiClient>((ref) {
       final context = rootNavigatorKey.currentContext;
       final router = context == null ? null : GoRouter.maybeOf(context);
       final messenger = rootScaffoldMessengerKey.currentState;
-      await ref.read(sessionServiceProvider).signOut();
+      // The token is already invalid here, so skip the server logout call and
+      // just clear local state. (Avoids a provider dependency cycle with
+      // sessionServiceProvider.)
+      await ref.read(secureTokenStorageProvider).clearSession();
+      await ref.read(appDatabaseProvider).clearBusinessData();
       if (router == null) {
         return;
       }

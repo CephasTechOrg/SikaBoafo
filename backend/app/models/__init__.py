@@ -10,6 +10,8 @@ from app.models.inventory import InventoryBalance, InventoryMovement
 from app.models.item import Item
 from app.models.merchant import Merchant
 from app.models.otp_code import OtpCode
+from app.models.otp_send_throttle import OtpSendThrottle
+from app.models.pin_login_lockout import PinLoginLockout
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.payment_webhook_event import PaymentWebhookEvent
@@ -17,6 +19,7 @@ from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
 from app.models.staff_invite import StaffInvite
 from app.models.store import Store
+from app.models.sync_apply_throttle import SyncApplyThrottle
 from app.models.sync_operation import SyncOperation
 from app.models.user import User
 
@@ -29,6 +32,8 @@ __all__ = [
     "Item",
     "Merchant",
     "OtpCode",
+    "OtpSendThrottle",
+    "PinLoginLockout",
     "Payment",
     "PaymentProviderConnection",
     "PaymentWebhookEvent",
@@ -38,6 +43,7 @@ __all__ = [
     "SaleItem",
     "StaffInvite",
     "Store",
+    "SyncApplyThrottle",
     "SyncOperation",
     "User",
 ]

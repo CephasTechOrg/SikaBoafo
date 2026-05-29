@@ -8,8 +8,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, get_merchant_owner
+from app.api.deps import get_current_user, get_db, require_permission
+from app.core.rbac import PERM_RECEIVABLES_CANCEL, PERM_RECEIVABLES_WRITE
 from app.models.user import User
+
+_ReceivablesWriter = Annotated[User, Depends(require_permission(PERM_RECEIVABLES_WRITE))]
+_ReceivablesCanceller = Annotated[
+    User, Depends(require_permission(PERM_RECEIVABLES_CANCEL))
+]
 from app.schemas.receivable import (
     CustomerCreateIn,
     CustomerDetailOut,
@@ -83,7 +89,7 @@ def list_customers(
 def create_customer(
     payload: CustomerCreateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _ReceivablesWriter,
 ) -> CustomerOut:
     service = ReceivablesService(db=db)
     try:
@@ -168,7 +174,7 @@ def get_receivable(
 def create_receivable(
     payload: ReceivableCreateIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _ReceivablesWriter,
 ) -> ReceivableOut:
     service = ReceivablesService(db=db)
     try:
@@ -185,7 +191,7 @@ def record_repayment(
     receivable_id: UUID,
     payload: ReceivableRepaymentIn,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: _ReceivablesWriter,
 ) -> ReceivablePaymentOut:
     service = ReceivablesService(db=db)
     try:
@@ -220,7 +226,7 @@ def record_repayment(
 def cancel_receivable(
     receivable_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_merchant_owner)],
+    current_user: _ReceivablesCanceller,
 ) -> ReceivableOut:
     service = ReceivablesService(db=db)
     try:

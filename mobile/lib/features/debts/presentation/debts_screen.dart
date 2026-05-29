@@ -57,7 +57,7 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 230,
+            expandedHeight: 252,
             pinned: true,
             stretch: true,
             leadingWidth: _kLeadingGutter,

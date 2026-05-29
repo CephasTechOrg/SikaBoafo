@@ -171,6 +171,19 @@ WHERE id = ?
     );
   }
 
+  /// Resets a row back to [pending] WITHOUT incrementing attempts. Use for
+  /// transient, server-driven backpressure (HTTP 429/503) so rate limiting
+  /// never burns the retry budget and dead-letters valid operations.
+  Future<void> markRetryable(int id, String message) async {
+    final db = await _appDb.database;
+    await db.update(
+      'sync_queue',
+      {'status': pending, 'last_error': message},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> markConflict(int id, String message) async {
     final db = await _appDb.database;
     await db.rawUpdate(

@@ -39,18 +39,28 @@ def _encode_jwt(payload: dict[str, str | int]) -> str:
     return f"{signing_input}.{signature}"
 
 
+def session_version_from_payload(payload: dict[str, str | int]) -> int:
+    """Read ``sv`` claim; legacy tokens without the claim default to 0."""
+    raw = payload.get("sv", 0)
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return 0
+    return raw
+
+
 def create_session_token(
     *,
     user_id: UUID,
     phone_number: str,
     token_type: str,
     expires_in_minutes: int,
+    session_version: int = 0,
 ) -> str:
     now = datetime.now(tz=UTC)
     payload = {
         "sub": str(user_id),
         "phone": phone_number,
         "type": token_type,
+        "sv": session_version,
         "iss": get_settings().auth_token_issuer,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=expires_in_minutes)).timestamp()),

@@ -198,9 +198,20 @@ class SyncQueueRunner {
           failed += 1;
         }
       } on DioException catch (e) {
+        // 429 (rate limited) and 503 (unavailable) are transient backpressure:
+        // requeue without burning a retry attempt instead of failing the rows.
+        final statusCode = e.response?.statusCode;
+        final isTransient = statusCode == 429 || statusCode == 503;
         for (final row in liveRows) {
           final queueId = row['id'] as int;
           final opId = (row['local_operation_id'] ?? '') as String;
+          if (isTransient) {
+            await _appDb.syncQueue.markRetryable(
+              queueId,
+              e.message ?? 'Server busy. Will retry shortly.',
+            );
+            continue;
+          }
           await _appDb.syncQueue.markFailed(
             queueId,
             e.message ?? 'Sync request failed.',

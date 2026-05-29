@@ -12,7 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_current_user, get_db
-from app.core.constants import USER_ROLE_CASHIER, USER_ROLE_MERCHANT_OWNER
+from app.core.constants import (
+    USER_ROLE_CASHIER,
+    USER_ROLE_MANAGER,
+    USER_ROLE_MERCHANT_OWNER,
+    USER_ROLE_STOCK_KEEPER,
+)
 from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.customer import Customer
@@ -293,6 +298,121 @@ def test_delete_account_is_owner_only() -> None:
         set_current_user(owner)
         owner_response = client.delete("/api/v1/auth/account")
         assert owner_response.status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+
+def _as_role(staff: User, role: str | None) -> User:
+    """Clone the persisted staff user with a role override for set_current_user."""
+    clone = User(phone_number=staff.phone_number, role=role)
+    clone.id = staff.id
+    clone.is_active = True
+    return clone
+
+
+def test_manager_has_elevated_operational_permissions() -> None:
+    client, session_local, owner, staff, store_id, set_current_user = (
+        _build_permission_test_stack()
+    )
+    try:
+        manager = _as_role(staff, USER_ROLE_MANAGER)
+        set_current_user(manager)
+
+        # Inventory write (stock-in) — denied for cashier, allowed for manager.
+        active_item_id = _seed_item(session_local, store_id=store_id)
+        stock_in = client.post(
+            f"/api/v1/items/{active_item_id}/stock-in",
+            json={"quantity": 5, "reason": "manager restock"},
+        )
+        assert stock_in.status_code == 200
+
+        # Void a sale (owner-or-manager only).
+        sale_id = _create_sale(client, item_id=active_item_id)
+        void = client.post(
+            f"/api/v1/sales/{sale_id}/void",
+            json={"reason": "manager void"},
+        )
+        assert void.status_code == 200
+
+        # Cancel a receivable (owner-or-manager only).
+        receivable_id = _create_receivable(client)
+        cancel = client.post(f"/api/v1/receivables/{receivable_id}/cancel")
+        assert cancel.status_code == 200
+
+        # Delete an (inactive) item (owner-or-manager only).
+        delete_item_id = _seed_item(session_local, store_id=store_id, is_active=False)
+        deleted = client.delete(f"/api/v1/items/{delete_item_id}")
+        assert deleted.status_code == 204
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cashier_cannot_modify_inventory_but_can_sell() -> None:
+    client, session_local, owner, staff, store_id, set_current_user = (
+        _build_permission_test_stack()
+    )
+    try:
+        cashier = _as_role(staff, USER_ROLE_CASHIER)
+        set_current_user(cashier)
+
+        item_id = _seed_item(session_local, store_id=store_id)
+
+        # Cashier can record sales (daily money movement).
+        sale = client.post(
+            "/api/v1/sales",
+            json={
+                "payment_method_label": "cash",
+                "lines": [
+                    {"item_id": str(item_id), "quantity": 1, "unit_price": "35.00"}
+                ],
+            },
+        )
+        assert sale.status_code == 201
+
+        # ...but cannot mutate inventory.
+        stock_in = client.post(
+            f"/api/v1/items/{item_id}/stock-in",
+            json={"quantity": 5, "reason": "cashier restock"},
+        )
+        assert stock_in.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_stock_keeper_manages_inventory_but_not_money() -> None:
+    client, session_local, owner, staff, store_id, set_current_user = (
+        _build_permission_test_stack()
+    )
+    try:
+        stock_keeper = _as_role(staff, USER_ROLE_STOCK_KEEPER)
+        set_current_user(stock_keeper)
+
+        item_id = _seed_item(session_local, store_id=store_id)
+
+        # Stock keeper can manage inventory.
+        stock_in = client.post(
+            f"/api/v1/items/{item_id}/stock-in",
+            json={"quantity": 5, "reason": "stock keeper restock"},
+        )
+        assert stock_in.status_code == 200
+
+        # ...but cannot record sales or create customers/receivables.
+        sale = client.post(
+            "/api/v1/sales",
+            json={
+                "payment_method_label": "cash",
+                "lines": [
+                    {"item_id": str(item_id), "quantity": 1, "unit_price": "35.00"}
+                ],
+            },
+        )
+        assert sale.status_code == 403
+
+        customer = client.post(
+            "/api/v1/receivables/customers",
+            json={"name": "Walk-in", "phone_number": "233200000009"},
+        )
+        assert customer.status_code == 403
     finally:
         app.dependency_overrides.clear()
 
