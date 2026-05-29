@@ -3,7 +3,7 @@
 **Product:** SikaBoafo (BizTrackGh) — offline-first merchant OS for Ghana  
 **Stack:** Flutter · FastAPI · PostgreSQL · Paystack  
 **Last reviewed:** May 2026  
-**Test snapshot:** Backend 150/150 pytest pass · Mobile 83/83 tests pass
+**Test snapshot:** Backend 157/157 pytest pass · Mobile tests pass
 
 This is the **single audit document** for the repo. Use it to see what is wrong, what was already fixed, and what to tackle next. Older notes (e.g. root `debt_payment_flow_audit.md`) are folded in here; prefer **this file** for planning work.
 
@@ -141,11 +141,11 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `partial` |
+| **Status** | `done` |
 | **Severity** | Medium (maintainability) |
-| **What's happening** | Orchestration still in `payment_service.py` (~2,000 lines). Exceptions, snapshots, and pure helpers extracted. |
-| **Why it matters** | Further split (sale vs receivable vs webhook handlers) remains optional. |
-| **Fix applied** | `payment_errors.py`, `payment_snapshots.py`, `payment_helpers.py`; re-exported from `payment_service` for backward-compatible imports. |
+| **What's happening** | Exceptions, snapshots, pure helpers, **and Paystack secret/connection resolution** extracted. Orchestration (sale/receivable/webhook flows) remains in `payment_service.py` by design; further flow-level splits are optional. |
+| **Why it matters** | Credential plumbing was the densest non-flow code; isolating it makes the orchestrator easier to read. |
+| **Fix applied** | `payment_errors.py`, `payment_snapshots.py`, `payment_helpers.py`, `payment_secret_resolver.py` (`PaymentSecretResolverMixin` — `_client`, connection lookup, secret resolution + env fallback); re-exported from `payment_service` for backward-compatible imports. |
 | **Where** | `backend/app/services/payment_*.py` |
 
 ### PAY-02 · Paystack connection vs initiation permissions
@@ -201,9 +201,9 @@ When you fix an item, change its status here and tick the checklist box.
 |-------|--------|
 | **Status** | `done` |
 | **Severity** | — |
-| **What's happening** | Settlement refuses cancelled receivables; audit event `payment.ignored_cancelled_receivable`. Cancel flow should invalidate pending payments (verify in `receivables_service.cancel_receivable`). |
+| **What's happening** | Settlement refuses cancelled receivables; audit event `payment.ignored_cancelled_receivable`. `cancel_receivable` calls `_invalidate_pending_online_payments` (fails pending [Payment] rows, clears cached link/reference). |
 | **Where** | `backend/app/services/payment_service.py`, `receivables_service.py` |
-| **Fix** | Confirm cancel path calls `_invalidate_pending_online_payments` — add test if missing. |
+| **Fix applied** | Confirmed cancel path; added regression test `test_cancel_receivable_invalidates_pending_paystack_payment` (initiate → cancel → pending payment is `failed` with `failure_reason=receivable_cancelled`, link/reference cleared). |
 
 ### DEBT-04 · Cash repayment leaves stale online link
 
@@ -254,12 +254,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `monitor` |
+| **Status** | `done` |
 | **Severity** | Medium |
-| **What's happening** | Online Paystack flows expect server-side receivable ID. Offline-created debt must sync first (`_ensureSyncedForOnlinePayment` in UI). |
+| **What's happening** | Online Paystack flows expect server-side receivable ID. Offline-created debt must sync first. The panel now **replaces the pay buttons** (Share / Show QR / Push MoMo) with a plain-language notice + "Sync now" CTA whenever the receivable's local row is not `applied`. |
 | **Why it matters** | Merchant offline → tries QR → confusing error if sync failed. |
 | **Where** | `debt_payment_link_panel.dart`, sync queue |
-| **Fix** | Clear UI copy + disable pay buttons until sync success; surface sync pill. |
+| **Fix applied** | `_PendingSyncNotice` gates online pay until synced; `_syncNow()` kicks the global queue, confirms the receivable create reached the server, refreshes, and unlocks pay. Lazy `_ensureSyncedForOnlinePayment` retained as a safety net. |
 
 ---
 
@@ -280,12 +280,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `done` |
 | **Severity** | Medium (UX) |
-| **What's happening** | Conflicts mark queue row `conflict` and refresh server snapshot; no “keep mine / use server” screen. |
+| **What's happening** | Conflicts mark queue row `conflict` and refresh server snapshot (server-wins). The sync sheet now has a dedicated **"Sync Conflicts"** section, split out from generic failures, with plain-language copy and per-row actions. |
 | **Why it matters** | Merchants may not understand `SyncStatusPill` counts. |
-| **Where** | `sync_queue_runner.dart`, `sync_status_pill.dart` |
-| **Fix** | Conflict detail screen with plain language and actions. |
+| **Where** | `sync_queue_runner.dart`, `sync_status_pill.dart`, `sync_providers.dart`, `sync_queue_repository.dart` |
+| **Fix applied** | New `conflictRows()` / `discardConflict()` / `requeueConflict()` repo methods + `conflictEntries` snapshot field + controller `keepServerVersion()` / `retryConflict()`. `_ConflictRow` widget offers "Keep latest" (accept server version, drop local op) and "Try again" (re-queue local change). `failedRows()` now returns only `failed` so conflicts read cleanly. |
 
 ### SYNC-03 · Dead-letter queue after max attempts
 
@@ -517,10 +517,10 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 - [x] **AUTH-08** — Rate limiting on `/auth/otp/request` + `/sync/apply` (AUTH-08b)
 - [x] **AUTH-08b** — Rate limiting on `/sync/apply` (migration `023`)
 - [x] **RBAC-01** — Role permission matrix + `require_permission` on mutating routes
-- [ ] **PAY-01** — Further split `payment_service.py` (helpers/errors/snapshots extracted; orchestration remains)
-- [ ] **DEBT-03** — Test: cancel receivable invalidates pending Paystack payments
-- [ ] **DEBT-09** — UX: block/disable online pay until debt synced; clear messaging
-- [ ] **SYNC-02** — Merchant-visible conflict resolution (not only sync pill count)
+- [x] **PAY-01** — Split `payment_service.py` (errors/snapshots/helpers + `payment_secret_resolver.py` mixin; orchestration kept by design)
+- [x] **DEBT-03** — Test: cancel receivable invalidates pending Paystack payments
+- [x] **DEBT-09** — UX: block/disable online pay until debt synced; clear messaging
+- [x] **SYNC-02** — Merchant-visible conflict resolution (dedicated "Sync Conflicts" section + keep/retry actions)
 
 ---
 
@@ -553,7 +553,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | AUTH-07 | CORS `*` | open |
 | AUTH-08 | OTP + sync rate limits | done |
 | AUTH-08b | Sync rate limit | done |
-| PAY-01 | PaymentService size | partial |
+| PAY-01 | PaymentService size | done |
 | PAY-02 | Paystack role split | monitor |
 | PAY-03 | Webhook shared verify | done |
 | DEBT-01 | Stuck “waiting” UI | partial |
@@ -564,9 +564,9 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | DEBT-06 | Partial amount API | done |
 | DEBT-07 | Active link semantics | done |
 | DEBT-08 | Webhook/verify parity | done |
-| DEBT-09 | Sync before online pay | monitor |
+| DEBT-09 | Sync before online pay | done |
 | SYNC-01 | Push-only sync | open |
-| SYNC-02 | Conflict UX | open |
+| SYNC-02 | Conflict UX | done |
 | SYNC-03 | Dead letter queue | done |
 | SYNC-04 | Batch transaction | monitor |
 | RBAC-01 | Manager role enforcement | done |
@@ -597,9 +597,12 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 5. ~~**AUTH-02 + AUTH-03** — Session lifecycle~~ ✓ done  
 6. ~~**AUTH-08b** — Sync rate limiting~~ ✓ done  
 7. ~~**RBAC-01** — Role matrix~~ ✓ done  
-8. ~~**PAY-01** — Payment module split~~ ✓ partial (helpers extracted; full handler split optional)  
+8. ~~**PAY-01** — Payment module split~~ ✓ done (errors/snapshots/helpers + secret-resolver mixin; flow orchestration kept by design)  
+9. ~~**DEBT-03** — Cancel invalidates pending Paystack payment (regression test)~~ ✓ done  
+10. ~~**DEBT-09** — Block online pay until debt synced + clear messaging~~ ✓ done  
+11. ~~**SYNC-02** — Merchant-visible conflict resolution~~ ✓ done  
 
-**Next suggested:** DEBT-03 / DEBT-09, SYNC-02, or finish PAY-01 handler modules.
+**Next suggested:** SYNC-01 (incremental pull), MOB-02/MOB-03 (large widgets / silent refresh errors), or OPS-02 (security headers).
 
 ---
 
