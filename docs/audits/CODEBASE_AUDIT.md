@@ -114,16 +114,24 @@ When you fix an item, change its status here and tick the checklist box.
 | **Where** | `backend/app/main.py`, `backend/app/core/config.py` |
 | **Fix** | Set explicit origins per environment in Render/env. |
 
-### AUTH-08 · No API-wide rate limiting (sync still open — PIN + OTP request done)
+### AUTH-08 · No API-wide rate limiting (sync done — AUTH-08b)
 
 | Field | Value |
 |-------|--------|
-| **Status** | `partial` |
+| **Status** | `done` |
 | **Severity** | Medium |
-| **What's happening** | **`/auth/pin/login`** — AUTH-01. **`/auth/otp/request`** — `OtpSendGuard` (5 sends / 15 min per phone, migration `021`). Still no throttle on **`/sync/apply`** or payment endpoints. OTP *verify* has per-code attempt limits in `otp_provider.py`. |
-| **Why it matters** | Sync flooding and payment API spam remain possible. |
-| **Where** | `otp_send_guard.py`, `sync.py`, `config.py` |
-| **Fix** | Rate-limit `/sync/apply` (Redis or DB window). |
+| **What's happening** | PIN (AUTH-01), OTP request (`OtpSendGuard`, migration `021`), and **`/sync/apply`** (`SyncApplyGuard`, migration `023`, default 120 req / 5 min per user). Payment initiation endpoints are not throttled separately. |
+| **Why it matters** | Abuse of auth, sync, and SMS paths is mitigated. |
+| **Fix applied** | `sync_apply_guard.py`, `api/v1/sync.py`; mobile `markRetryable` for HTTP 429/503 so rate limits do not burn retry budget. |
+| **Where** | `otp_send_guard.py`, `sync_apply_guard.py`, `config.py`, `mobile/lib/data/sync/sync_queue_runner.dart` |
+
+### AUTH-08b · `/sync/apply` rate limiting
+
+| Field | Value |
+|-------|--------|
+| **Status** | `done` |
+| **Severity** | Medium |
+| **Fix applied** | `SyncApplyGuard` + `sync_apply_throttles` table (migration `023`); HTTP 429; env `SYNC_APPLY_MAX_PER_WINDOW`, `SYNC_APPLY_WINDOW_MINUTES`. |
 
 ---
 
@@ -133,12 +141,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `partial` |
 | **Severity** | Medium (maintainability) |
-| **What's happening** | Sales QR, receivable links, MoMo, webhooks, settlement, and verify paths live in one file. |
-| **Why it matters** | Regressions in one flow break another; hard onboarding for new devs. |
-| **Where** | `backend/app/services/payment_service.py` |
-| **Fix** | Split into `sale_payments.py`, `receivable_payments.py`, `paystack_webhook.py`; keep tests as safety net. |
+| **What's happening** | Orchestration still in `payment_service.py` (~2,000 lines). Exceptions, snapshots, and pure helpers extracted. |
+| **Why it matters** | Further split (sale vs receivable vs webhook handlers) remains optional. |
+| **Fix applied** | `payment_errors.py`, `payment_snapshots.py`, `payment_helpers.py`; re-exported from `payment_service` for backward-compatible imports. |
+| **Where** | `backend/app/services/payment_*.py` |
 
 ### PAY-02 · Paystack connection vs initiation permissions
 
@@ -308,12 +316,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `done` |
 | **Severity** | Medium |
-| **What's happening** | Constants define `manager`, `cashier`, `stock_keeper`. Enforcement is mostly **owner** (`get_merchant_owner`) vs **everyone else** (`get_current_user`). |
-| **Why it matters** | Product may promise tiered permissions; backend treats non-owners similarly. |
-| **Where** | `backend/app/core/constants.py`, `backend/app/api/deps.py`, routers |
-| **Fix** | Permission matrix doc + `require_role` on routes; extend `test_owner_permissions.py` for manager. |
+| **What's happening** | ~~Non-owners were treated uniformly via `get_current_user`.~~ |
+| **Why it matters** | Cashiers, managers, and stock keepers now have distinct write permissions. |
+| **Fix applied** | `ROLE_PERMISSIONS` matrix in `rbac.py`; `require_permission()` on items/sales/receivables/expenses mutating routes. Owner-only config unchanged (`get_merchant_owner`). Tests for manager, cashier, stock_keeper. |
+| **Where** | `backend/app/core/rbac.py`, `api/deps.py`, `api/v1/{items,sales,receivables,expenses}.py`, `test_owner_permissions.py` |
 
 ### RBAC-02 · Destructive actions owner-only
 
@@ -431,7 +439,7 @@ When you fix an item, change its status here and tick the checklist box.
 |-------|--------|
 | **Status** | `partial` |
 | **Severity** | High |
-| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. Manual Render checklist still needed for Arkesel, Paystack live key, CORS, migrations `020`–`022`. |
+| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. Manual Render checklist still needed for Arkesel, Paystack live key, CORS, migrations `020`–`023`. |
 | **Fix** | Run manual checklist below on deploy. |
 
 ### OPS-02 · No structured security headers / HSTS
@@ -494,7 +502,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 - [ ] `APP_ENV=production`
 - [ ] `SECRET_KEY` — long random value, not default *(boot)*
 - [ ] `AUTH_MOCK_OTP_CODE` — **empty / unset** *(boot, production only)*
-- [ ] `alembic upgrade head` — migrations `020` (`pin_login_lockouts`), `021` (`otp_send_throttles`), `022` (`users.session_version`)
+- [ ] `alembic upgrade head` — migrations `020`–`023` (`pin_login_lockouts`, `otp_send_throttles`, `users.session_version`, `sync_apply_throttles`)
 - [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — valid Fernet key *(boot, production only)*
 - [ ] `ARKESEL_API_KEY` — set for live SMS
 - [ ] `PAYSTACK_SECRET_KEY_LIVE` — live key only on production
@@ -506,10 +514,10 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 
 - [x] **AUTH-02** — Refresh token rotation + `session_version` on user (migration `022`)
 - [x] **AUTH-03** — Server-aware logout (`POST /auth/logout` + mobile signOut)
-- [x] **AUTH-08** — Rate limiting on `/auth/otp/request` (PIN done — AUTH-01; sync still open)
-- [ ] **AUTH-08b** — Rate limiting on `/sync/apply`
-- [ ] **PAY-01** — Split `payment_service.py` into smaller modules
-- [ ] **RBAC-01** — Define and enforce manager vs cashier matrix; extend tests
+- [x] **AUTH-08** — Rate limiting on `/auth/otp/request` + `/sync/apply` (AUTH-08b)
+- [x] **AUTH-08b** — Rate limiting on `/sync/apply` (migration `023`)
+- [x] **RBAC-01** — Role permission matrix + `require_permission` on mutating routes
+- [ ] **PAY-01** — Further split `payment_service.py` (helpers/errors/snapshots extracted; orchestration remains)
 - [ ] **DEBT-03** — Test: cancel receivable invalidates pending Paystack payments
 - [ ] **DEBT-09** — UX: block/disable online pay until debt synced; clear messaging
 - [ ] **SYNC-02** — Merchant-visible conflict resolution (not only sync pill count)
@@ -543,9 +551,9 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | AUTH-05 | Mock OTP in prod | done |
 | AUTH-06 | Default secret key | done |
 | AUTH-07 | CORS `*` | open |
-| AUTH-08 | OTP request rate limit | done |
-| AUTH-08b | Sync rate limit | open |
-| PAY-01 | PaymentService size | open |
+| AUTH-08 | OTP + sync rate limits | done |
+| AUTH-08b | Sync rate limit | done |
+| PAY-01 | PaymentService size | partial |
 | PAY-02 | Paystack role split | monitor |
 | PAY-03 | Webhook shared verify | done |
 | DEBT-01 | Stuck “waiting” UI | partial |
@@ -561,7 +569,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | SYNC-02 | Conflict UX | open |
 | SYNC-03 | Dead letter queue | done |
 | SYNC-04 | Batch transaction | monitor |
-| RBAC-01 | Manager role enforcement | open |
+| RBAC-01 | Manager role enforcement | done |
 | RBAC-02 | Owner destructive ops | done |
 | RBAC-03 | Staff daily ops | done |
 | MOB-01 | Routing test fail | done |
@@ -587,9 +595,11 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 3. ~~**AUTH-01** — PIN lockout~~ ✓ done  
 4. ~~**DEBT-01** — Backend verify-after-webhook test~~ ✓ partial (mobile E2E optional)  
 5. ~~**AUTH-02 + AUTH-03** — Session lifecycle~~ ✓ done  
-6. **AUTH-08b** — Sync rate limiting  
-7. **RBAC-01** — Role matrix  
-8. **PAY-01** — Payment module split  
+6. ~~**AUTH-08b** — Sync rate limiting~~ ✓ done  
+7. ~~**RBAC-01** — Role matrix~~ ✓ done  
+8. ~~**PAY-01** — Payment module split~~ ✓ partial (helpers extracted; full handler split optional)  
+
+**Next suggested:** DEBT-03 / DEBT-09, SYNC-02, or finish PAY-01 handler modules.
 
 ---
 

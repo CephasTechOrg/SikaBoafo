@@ -22,6 +22,7 @@ class SyncStatusSnapshot {
     required this.isSyncing,
     required this.stats,
     required this.failedEntries,
+    required this.conflictEntries,
     required this.deadEntries,
     this.lastError,
     this.lastSyncedAt,
@@ -31,6 +32,7 @@ class SyncStatusSnapshot {
   final bool isSyncing;
   final SyncQueueStats stats;
   final List<SyncQueueEntry> failedEntries;
+  final List<SyncQueueEntry> conflictEntries;
   final List<SyncQueueEntry> deadEntries;
   final String? lastError;
   final DateTime? lastSyncedAt;
@@ -143,6 +145,21 @@ class SyncStatusController
     await refreshStatus(attemptSync: true);
   }
 
+  /// SYNC-02: merchant accepts the server's version of a conflicted record.
+  /// The snapshot was already refreshed from the server when the conflict was
+  /// detected, so this just clears the queue row.
+  Future<void> keepServerVersion({required int queueId}) async {
+    await _appDb.syncQueue.discardConflict(queueId);
+    await refreshStatus();
+  }
+
+  /// SYNC-02: merchant chooses to re-send their local change for a conflicted
+  /// record (e.g. after re-applying their edit on top of refreshed data).
+  Future<void> retryConflict({required int queueId}) async {
+    await _appDb.syncQueue.requeueConflict(queueId);
+    await refreshStatus(attemptSync: true);
+  }
+
   void _scheduleNextPoll() {
     _pollTimer?.cancel();
     final delaySecs = _consecutiveFailures == 0
@@ -219,6 +236,7 @@ class SyncStatusController
   }) async {
     final stats = await _appDb.syncQueue.stats();
     final failedEntries = await _appDb.syncQueue.failedRows();
+    final conflictEntries = await _appDb.syncQueue.conflictRows();
     final deadEntries = await _appDb.syncQueue.deadRows();
     final snapshot = SyncStatusSnapshot(
       // Use _lastKnownReachable as the default if backendReachable is not
@@ -229,6 +247,7 @@ class SyncStatusController
       isSyncing: isSyncing || stats.sendingCount > 0,
       stats: stats,
       failedEntries: failedEntries,
+      conflictEntries: conflictEntries,
       deadEntries: deadEntries,
       lastError: _lastError,
       lastSyncedAt: _lastSyncedAt,

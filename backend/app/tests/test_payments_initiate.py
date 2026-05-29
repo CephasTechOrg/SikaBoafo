@@ -1249,6 +1249,69 @@ def test_receivable_snapshot_omits_payment_context_for_succeeded_payment() -> No
         app.dependency_overrides.clear()
 
 
+def test_cancel_receivable_invalidates_pending_paystack_payment() -> None:
+    """DEBT-03: cancelling a debt must kill its live online payment.
+
+    Otherwise a customer who pays the previously-shared link would
+    un-cancel the receivable via the Paystack webhook / verify path. The
+    cancel flow calls ``_invalidate_pending_online_payments`` which fails
+    the pending [Payment] row and clears the cached link/reference.
+    """
+    env = _configure_env()
+    client, session_local, receivable_id, _ = _build_sqlite_test_stack()
+    try:
+        with patch(
+            "app.integrations.paystack.client.PaystackClient.initialize_transaction",
+            return_value=PaystackInitializeResult(
+                authorization_url="https://checkout.paystack.com/cancel-link-1",
+                access_code="ACCESS_CANCEL_1",
+                reference="PSK_CANCEL_REF_1",
+                raw_payload={"status": True, "data": {"reference": "PSK_CANCEL_REF_1"}},
+            ),
+        ):
+            initiate = client.post(
+                "/api/v1/payments/initiate",
+                json={"receivable_id": str(receivable_id)},
+            )
+        assert initiate.status_code == 200, initiate.text
+
+        with session_local() as db:
+            payment = db.scalar(
+                select(Payment).where(
+                    Payment.provider_reference == "PSK_CANCEL_REF_1"
+                )
+            )
+            assert payment is not None
+            assert payment.status == PROVIDER_PAYMENT_PENDING
+
+        cancel = client.post(f"/api/v1/receivables/{receivable_id}/cancel")
+        assert cancel.status_code == 200, cancel.text
+        assert cancel.json()["status"] == RECEIVABLE_STATUS_CANCELLED
+
+        with session_local() as db:
+            payment = db.scalar(
+                select(Payment).where(
+                    Payment.provider_reference == "PSK_CANCEL_REF_1"
+                )
+            )
+            assert payment is not None
+            assert payment.status == PROVIDER_PAYMENT_FAILED
+            assert payment.raw_provider_payload["failure_reason"] == (
+                "receivable_cancelled"
+            )
+
+            receivable = db.scalar(
+                select(Receivable).where(Receivable.id == receivable_id)
+            )
+            assert receivable is not None
+            assert receivable.status == RECEIVABLE_STATUS_CANCELLED
+            assert receivable.payment_link is None
+            assert receivable.payment_provider_reference is None
+    finally:
+        _restore_env(env)
+        app.dependency_overrides.clear()
+
+
 def test_initiate_receivable_momo_charge_forwards_optional_amount() -> None:
     env = _configure_env()
     client, _, receivable_id, _ = _build_sqlite_test_stack()

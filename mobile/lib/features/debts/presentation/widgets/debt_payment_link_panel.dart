@@ -47,6 +47,7 @@ class DebtPaymentLinkPanel extends ConsumerStatefulWidget {
 class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool _generating = false;
   bool _openingMomo = false;
+  bool _syncing = false;
   bool _statusWatchInFlight = false;
   String? _lastStatusToastKey;
   late final TextEditingController _amountCtrl;
@@ -285,6 +286,33 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       return false;
     }
     return true;
+  }
+
+  /// Explicit "Sync now" action shown when a debt has not yet reached the
+  /// server. Online Paystack collection needs a server-side receivable id, so
+  /// we block the pay buttons (DEBT-09) until the local row is `applied`. This
+  /// nudges the global queue, then confirms the receivable create synced and
+  /// refreshes so the panel rebuilds with the pay buttons enabled.
+  Future<void> _syncNow() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+    try {
+      await ref.read(syncStatusControllerProvider.notifier).syncNow();
+      if (!mounted) return;
+      final ok = await _ensureSyncedForOnlinePayment();
+      if (!mounted || !ok) return;
+      ref.invalidate(receivableDetailProvider(widget.record.receivableId));
+      await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Debt synced. You can now collect online.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
   Future<bool> _ensureSyncedForOnlinePayment() async {
@@ -606,59 +634,66 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed:
-                    _generating ? null : () => _generate(openQrAfter: false),
-                icon: const Icon(Icons.ios_share_rounded, size: 16),
-                label: const Text('Share link'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+        if (!_isSynced)
+          _PendingSyncNotice(
+            onSyncNow: _syncing ? null : _syncNow,
+            busy: _syncing,
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      _generating ? null : () => _generate(openQrAfter: false),
+                  icon: const Icon(Icons.ios_share_rounded, size: 16),
+                  label: const Text('Share link'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: FilledButton.icon(
-                onPressed:
-                    _generating ? null : () => _generate(openQrAfter: true),
-                icon: _generating
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.qr_code_2_rounded, size: 18),
-                label: Text(_generating ? 'Generating…' : 'Show QR'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: DebtsUi.greenDark,
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed:
+                      _generating ? null : () => _generate(openQrAfter: true),
+                  icon: _generating
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.qr_code_2_rounded, size: 18),
+                  label: Text(_generating ? 'Generating…' : 'Show QR'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: DebtsUi.greenDark,
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _MomoPushButton(
-          onTap: (_generating || _openingMomo) ? null : _openMomoPush,
-          busy: _openingMomo,
-        ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _MomoPushButton(
+            onTap: (_generating || _openingMomo) ? null : _openMomoPush,
+            busy: _openingMomo,
+          ),
+        ],
       ],
     );
   }
@@ -868,6 +903,96 @@ class _ExpiryBadge extends StatelessWidget {
               fontSize: 11.5,
               color: fg,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown in place of the online-pay buttons while a debt has not yet synced to
+/// the server (DEBT-09). Online Paystack collection (QR / link / MoMo) all need
+/// a server-side receivable id, so we explain the block in plain language and
+/// offer a single "Sync now" action instead of letting the merchant tap a pay
+/// button that would only fail.
+class _PendingSyncNotice extends StatelessWidget {
+  const _PendingSyncNotice({required this.onSyncNow, required this.busy});
+
+  final VoidCallback? onSyncNow;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: DebtsUi.accentGoldSoft,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+        border: Border.all(
+          color: DebtsUi.accentGoldInk.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 18,
+                color: DebtsUi.accentGoldInk,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Sync this debt before collecting online',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: DebtsUi.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'This debt was saved offline. QR, payment link, and MoMo prompts '
+            'need it on the server first. Connect to the internet and sync to '
+            'unlock online payment.',
+            style: TextStyle(
+              fontSize: 12,
+              color: DebtsUi.textSecondary,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: onSyncNow,
+            icon: busy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.sync_rounded, size: 18),
+            label: Text(busy ? 'Syncing…' : 'Sync now'),
+            style: FilledButton.styleFrom(
+              backgroundColor: DebtsUi.greenDark,
+              minimumSize: const Size.fromHeight(44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

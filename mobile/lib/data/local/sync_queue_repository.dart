@@ -267,12 +267,50 @@ GROUP BY status
     final db = await _appDb.database;
     final rows = await db.query(
       'sync_queue',
-      where: 'status IN (?, ?)',
-      whereArgs: [failed, conflict],
+      where: 'status = ?',
+      whereArgs: [failed],
       orderBy: 'created_at DESC',
       limit: limit,
     );
     return rows.map(SyncQueueEntry.fromRow).toList(growable: false);
+  }
+
+  Future<List<SyncQueueEntry>> conflictRows({int limit = 20}) async {
+    final db = await _appDb.database;
+    final rows = await db.query(
+      'sync_queue',
+      where: 'status = ?',
+      whereArgs: [conflict],
+      orderBy: 'created_at DESC',
+      limit: limit,
+    );
+    return rows.map(SyncQueueEntry.fromRow).toList(growable: false);
+  }
+
+  /// Resolves a conflict by accepting the server's version. The runner already
+  /// refreshed the local snapshot from the server when the conflict was
+  /// detected (server-wins), so the local operation is superseded — we simply
+  /// drop the queue row so it stops nagging the merchant.
+  Future<void> discardConflict(int id) async {
+    final db = await _appDb.database;
+    await db.delete(
+      'sync_queue',
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, conflict],
+    );
+  }
+
+  /// Re-queues a conflicted operation so the merchant can try pushing their
+  /// local change again (e.g. after they re-apply an edit on top of the
+  /// refreshed server data).
+  Future<void> requeueConflict(int id) async {
+    final db = await _appDb.database;
+    await db.update(
+      'sync_queue',
+      {'status': pending, 'last_error': null},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, conflict],
+    );
   }
 
   Future<List<SyncQueueEntry>> deadRows({int limit = 20}) async {

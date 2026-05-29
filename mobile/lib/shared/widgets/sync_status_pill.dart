@@ -103,6 +103,32 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
                                 ),
                               ),
                             ],
+                            if ((snapshot?.conflictEntries.isNotEmpty ??
+                                false)) ...[
+                              const SizedBox(height: 16),
+                              Text('Sync Conflicts',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
+                              const SizedBox(height: 6),
+                              Text(
+                                'These were changed on another device or by '
+                                'your team while you were offline. We kept the '
+                                'latest saved version. Choose what to do with '
+                                'your offline change.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: AppColors.muted),
+                              ),
+                              const SizedBox(height: 10),
+                              ...snapshot!.conflictEntries.map(
+                                (entry) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _ConflictRow(entry: entry),
+                                ),
+                              ),
+                            ],
                             if ((snapshot?.deadEntries.isNotEmpty ??
                                 false)) ...[
                               const SizedBox(height: 16),
@@ -358,6 +384,85 @@ class _DeadRow extends ConsumerWidget {
                     ? null
                     : () => controller.reviveEntry(queueId: entry.id),
                 child: const Text('Restore'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConflictRow extends ConsumerWidget {
+  const _ConflictRow({required this.entry});
+
+  final SyncQueueEntry entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(syncStatusControllerProvider.notifier);
+    final syncAsync = ref.watch(syncStatusControllerProvider);
+    final busy = syncAsync.isLoading;
+    final rawError = entry.lastError ?? '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _StatusPill(status: 'conflict'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _humanizeOperationLabel(entry.entityType, entry.operation),
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'We\'re showing the latest version that was saved. You can keep that '
+            'and drop your offline change, or try sending your change again.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              if (rawError.isNotEmpty)
+                TextButton(
+                  onPressed: () => _showErrorDetails(context, rawError),
+                  child: const Text('Details'),
+                ),
+              const Spacer(),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => controller.retryConflict(queueId: entry.id),
+                child: const Text('Try again'),
+              ),
+              const SizedBox(width: 4),
+              FilledButton(
+                onPressed: busy
+                    ? null
+                    : () => controller.keepServerVersion(queueId: entry.id),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(0, 36),
+                ),
+                child: const Text('Keep latest'),
               ),
             ],
           ),

@@ -94,6 +94,7 @@ class _FakeSyncStatusController extends SyncStatusController {
         appliedCount: 0,
       ),
       failedEntries: <SyncQueueEntry>[],
+      conflictEntries: <SyncQueueEntry>[],
       deadEntries: <SyncQueueEntry>[],
     );
   }
