@@ -937,15 +937,15 @@ class _PendingSyncNotice extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(
                 Icons.cloud_off_rounded,
                 size: 18,
                 color: DebtsUi.accentGoldInk,
               ),
-              const SizedBox(width: 8),
-              const Expanded(
+              SizedBox(width: 8),
+              Expanded(
                 child: Text(
                   'Sync this debt before collecting online',
                   style: TextStyle(
