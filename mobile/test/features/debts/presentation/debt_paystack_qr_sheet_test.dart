@@ -33,9 +33,22 @@ class _StaleFetchDebtsApi extends DebtsApi {
   @override
   Future<ReceivableDto> fetchReceivable(String receivableId) async {
     fetchCalls += 1;
-    return _staleOpen;
+    // First poll: receivable row not updated yet (webhook delay). After verify,
+    // the sheet re-fetches and should see settled — mirrors production.
+    if (fetchCalls == 1) return _staleOpen;
+    return _settledReceivable;
   }
 }
+
+const _settledReceivable = ReceivableDto(
+  receivableId: _receivableId,
+  customerId: 'cust-1',
+  customerName: 'Ama Owusu',
+  originalAmount: '120.00',
+  outstandingAmount: '0.00',
+  status: 'settled',
+  createdAtIso: '2026-01-01T00:00:00Z',
+);
 
 class _SettledVerifyDebtsPaymentsApi extends DebtsPaymentsApi {
   _SettledVerifyDebtsPaymentsApi() : super(_StaleFetchDebtsApi._api());

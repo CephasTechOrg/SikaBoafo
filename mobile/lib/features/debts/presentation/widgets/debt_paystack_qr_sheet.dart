@@ -55,10 +55,12 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
   bool _confirmed = false;
   int _autoCheckFailures = 0;
   String? _statusError;
+  late final ScrollController _linkScrollController;
 
   @override
   void initState() {
     super.initState();
+    _linkScrollController = ScrollController();
     _timer = Timer.periodic(
       const Duration(seconds: 3),
       (_) => _check(auto: true),
@@ -68,6 +70,7 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
   @override
   void dispose() {
     _timer?.cancel();
+    _linkScrollController.dispose();
     super.dispose();
   }
 
@@ -420,7 +423,9 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
                   ),
                   child: Scrollbar(
                     thumbVisibility: true,
+                    controller: _linkScrollController,
                     child: SingleChildScrollView(
+                      controller: _linkScrollController,
                       child: SelectableText(
                         widget.checkoutUrl,
                         style: const TextStyle(
