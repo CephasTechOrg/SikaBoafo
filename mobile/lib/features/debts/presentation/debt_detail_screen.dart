@@ -27,7 +27,9 @@ Future<void> _refreshDetailFromServer(
   WidgetRef ref,
   String receivableId,
 ) async {
-  await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+  await ref
+      .read(debtsControllerProvider.notifier)
+      .refreshFromServer(userInitiated: true);
   ref.invalidate(receivableDetailProvider(receivableId));
   if (!context.mounted) return;
   final err = ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;

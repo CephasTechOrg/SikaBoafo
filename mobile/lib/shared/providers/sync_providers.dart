@@ -13,6 +13,7 @@ import '../../features/debts/data/debts_api.dart';
 import '../../features/debts/data/debts_payments_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
 import '../utils/user_friendly_error.dart';
+import 'background_refresh_feedback.dart';
 import 'core_providers.dart';
 import '../../features/settings/providers/notification_prefs_provider.dart';
 
@@ -39,7 +40,10 @@ class SyncStatusSnapshot {
 
   bool get hasFailures => stats.failedCount > 0;
   bool get hasConflicts => stats.conflictCount > 0;
+  bool get hasDead => stats.deadCount > 0;
   bool get hasPendingWork => stats.pendingCount > 0 || stats.sendingCount > 0;
+  int get attentionCount =>
+      stats.failedCount + stats.conflictCount + stats.deadCount;
 }
 
 final syncApiProvider = Provider<SyncApi>((ref) {
@@ -115,11 +119,15 @@ class SyncStatusController
     return _refreshInternal(attemptSync: true);
   }
 
-  Future<void> refreshStatus({bool attemptSync = false}) async {
+  Future<void> refreshStatus({
+    bool attemptSync = false,
+    bool userInitiated = false,
+  }) async {
     state = AsyncValue.data(
       await _refreshInternal(
         attemptSync: attemptSync,
         keepSyncingStateWhileRunning: true,
+        userInitiated: userInitiated,
       ),
     );
   }
@@ -127,12 +135,12 @@ class SyncStatusController
   Future<void> syncNow() async {
     _consecutiveFailures = 0;
     _scheduleNextPoll();
-    await refreshStatus(attemptSync: true);
+    await refreshStatus(attemptSync: true, userInitiated: true);
   }
 
   Future<void> retryFailed({int? queueId}) async {
     await _appDb.syncQueue.requeueFailed(id: queueId);
-    await refreshStatus(attemptSync: true);
+    await refreshStatus(attemptSync: true, userInitiated: true);
   }
 
   Future<void> moveToDeadLetter({required int queueId}) async {
@@ -142,7 +150,19 @@ class SyncStatusController
 
   Future<void> reviveEntry({required int queueId}) async {
     await _appDb.syncQueue.reviveFromDead(queueId);
-    await refreshStatus(attemptSync: true);
+    await refreshStatus(attemptSync: true, userInitiated: true);
+  }
+
+  /// SYNC-03: re-queue all dead-letter rows and attempt sync.
+  Future<void> reviveAllDead() async {
+    await _appDb.syncQueue.reviveAllDead();
+    await refreshStatus(attemptSync: true, userInitiated: true);
+  }
+
+  /// SYNC-03: permanently drop a dead-letter row.
+  Future<void> deleteDeadEntry({required int queueId}) async {
+    await _appDb.syncQueue.deleteDead(queueId);
+    await refreshStatus();
   }
 
   /// SYNC-02: merchant accepts the server's version of a conflicted record.
@@ -157,7 +177,7 @@ class SyncStatusController
   /// record (e.g. after re-applying their edit on top of refreshed data).
   Future<void> retryConflict({required int queueId}) async {
     await _appDb.syncQueue.requeueConflict(queueId);
-    await refreshStatus(attemptSync: true);
+    await refreshStatus(attemptSync: true, userInitiated: true);
   }
 
   void _scheduleNextPoll() {
@@ -175,6 +195,7 @@ class SyncStatusController
   Future<SyncStatusSnapshot> _refreshInternal({
     required bool attemptSync,
     bool keepSyncingStateWhileRunning = false,
+    bool userInitiated = false,
   }) async {
     if (_busy) {
       return state.valueOrNull ?? await _readSnapshot();
@@ -205,9 +226,11 @@ class SyncStatusController
         if (result.failed > 0) {
           _lastError = 'Some operations need retry.';
           _consecutiveFailures++;
+          _reportBackgroundSyncFailure(_lastError!, userInitiated: userInitiated);
         } else if (result.conflicts > 0) {
           _lastError = 'Server state changed. Local snapshot was refreshed.';
           _consecutiveFailures++;
+          _reportBackgroundSyncFailure(_lastError!, userInitiated: userInitiated);
         } else {
           _lastError = null;
           _consecutiveFailures = 0;
@@ -218,12 +241,14 @@ class SyncStatusController
       } else if (attemptSync && !reachable) {
         _lastError = 'Backend unreachable.';
         _consecutiveFailures++;
+        _reportBackgroundSyncFailure(_lastError!, userInitiated: userInitiated);
       }
 
       return _readSnapshot(backendReachable: reachable);
     } catch (error) {
       _lastError = _humanizeError(error);
       _consecutiveFailures++;
+      _reportBackgroundSyncFailure(_lastError!, userInitiated: userInitiated);
       return _readSnapshot(backendReachable: false);
     } finally {
       _busy = false;
@@ -261,13 +286,17 @@ class SyncStatusController
     if (prefs == null || prefs.syncStatusEnabled != true) {
       _lastBackendReachable = snapshot.backendReachable;
       _lastPendingCount = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
-      _lastFailedCount = snapshot.stats.failedCount + snapshot.stats.conflictCount;
+      _lastFailedCount = snapshot.stats.failedCount +
+          snapshot.stats.conflictCount +
+          snapshot.stats.deadCount;
       return;
     }
 
     final backendReachable = snapshot.backendReachable;
     final pendingNow = snapshot.stats.pendingCount + snapshot.stats.sendingCount;
-    final failedNow = snapshot.stats.failedCount + snapshot.stats.conflictCount;
+    final failedNow = snapshot.stats.failedCount +
+        snapshot.stats.conflictCount +
+        snapshot.stats.deadCount;
 
     final notifications = ref.read(notificationsServiceProvider);
 
@@ -331,6 +360,17 @@ class SyncStatusController
 
   String _humanizeError(Object error) {
     return userFriendlyError(error);
+  }
+
+  void _reportBackgroundSyncFailure(
+    String message, {
+    required bool userInitiated,
+  }) {
+    if (userInitiated) return;
+    ref.read(backgroundRefreshFeedbackProvider).reportFailure(
+          scope: BackgroundRefreshScope.sync,
+          message: message,
+        );
   }
 
   Future<void> _maybePruneApplied() async {

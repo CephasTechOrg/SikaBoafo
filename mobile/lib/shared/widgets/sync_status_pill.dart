@@ -74,6 +74,10 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
                                   value:
                                       '${snapshot?.stats.conflictCount ?? 0}',
                                 ),
+                                _MetricCard(
+                                  label: 'Stopped',
+                                  value: '${snapshot?.stats.deadCount ?? 0}',
+                                ),
                               ],
                             ),
                             if (lastSynced != null) ...[
@@ -132,10 +136,21 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
                             if ((snapshot?.deadEntries.isNotEmpty ??
                                 false)) ...[
                               const SizedBox(height: 16),
-                              Text('Discarded',
+                              Text('Stopped syncing',
                                   style: Theme.of(context)
                                       .textTheme
                                       .titleMedium),
+                              const SizedBox(height: 6),
+                              Text(
+                                'These changes hit the retry limit and were '
+                                'paused so they would not keep failing in the '
+                                'background. Retry when the issue is fixed, or '
+                                'remove if you no longer need the change.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: AppColors.muted),
+                              ),
                               const SizedBox(height: 10),
                               ...snapshot!.deadEntries.map(
                                 (entry) => Padding(
@@ -150,28 +165,47 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
-                      child: Row(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: syncAsync.isLoading
-                                  ? null
-                                  : () async {
-                                      await controller.retryFailed();
-                                    },
-                              child: const Text('Retry Failed'),
+                          if ((snapshot?.deadEntries.isNotEmpty ?? false)) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: syncAsync.isLoading
+                                    ? null
+                                    : () async {
+                                        await controller.reviveAllDead();
+                                      },
+                                child: const Text('Retry all stopped'),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: syncAsync.isLoading
-                                  ? null
-                                  : () async {
-                                      await controller.syncNow();
-                                    },
-                              child: const Text('Sync Now'),
-                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: syncAsync.isLoading
+                                      ? null
+                                      : () async {
+                                          await controller.retryFailed();
+                                        },
+                                  child: const Text('Retry Failed'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: FilledButton(
+                                  onPressed: syncAsync.isLoading
+                                      ? null
+                                      : () async {
+                                          await controller.syncNow();
+                                        },
+                                  child: const Text('Sync Now'),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -337,19 +371,27 @@ class _DeadRow extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.muted.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _humanizeOperationLabel(entry.entityType, entry.operation),
-            style: const TextStyle(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              const _StatusPill(status: 'dead'),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _humanizeOperationLabel(entry.entityType, entry.operation),
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
           if (friendly.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -363,27 +405,42 @@ class _DeadRow extends ConsumerWidget {
                   ?.copyWith(color: AppColors.muted),
             ),
           ],
+          const SizedBox(height: 6),
+          Text(
+            '${entry.attempts} attempt${entry.attempts == 1 ? '' : 's'} before pausing',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.muted),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Text(
-                '${entry.attempts} attempt${entry.attempts == 1 ? '' : 's'}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: AppColors.muted),
-              ),
-              const Spacer(),
               if (rawError.isNotEmpty)
                 TextButton(
                   onPressed: () => _showErrorDetails(context, rawError),
                   child: const Text('Details'),
                 ),
+              const Spacer(),
               TextButton(
                 onPressed: busy
                     ? null
+                    : () => controller.deleteDeadEntry(queueId: entry.id),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                ),
+                child: const Text('Remove'),
+              ),
+              const SizedBox(width: 4),
+              FilledButton(
+                onPressed: busy
+                    ? null
                     : () => controller.reviveEntry(queueId: entry.id),
-                child: const Text('Restore'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(0, 36),
+                ),
+                child: const Text('Retry'),
               ),
             ],
           ),
@@ -529,10 +586,16 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isConflict = status == 'conflict';
-    final color = isConflict ? AppColors.warning : AppColors.danger;
+    final isDead = status == 'dead';
+    final color = isConflict
+        ? AppColors.warning
+        : isDead
+            ? AppColors.muted
+            : AppColors.danger;
     final label = switch (status) {
       'conflict' => 'Conflict',
       'failed' => 'Failed',
+      'dead' => 'Stopped',
       'sending' => 'Sending',
       _ => status,
     };

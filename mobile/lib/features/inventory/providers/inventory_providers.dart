@@ -5,9 +5,11 @@ import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/services/notifications_service.dart';
 import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/providers/background_refresh_feedback.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/freshness_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
+import '../../../shared/utils/user_friendly_error.dart';
 import '../../settings/providers/notification_prefs_provider.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
@@ -57,8 +59,11 @@ class InventoryController
       try {
         await _repo.refreshFromServer();
         local = await _repo.listLocalItems();
-      } catch (_) {
-        // Keep local-first behavior: fallback to whatever is available locally.
+      } catch (error) {
+        ref.read(backgroundRefreshFeedbackProvider).reportFailure(
+              scope: BackgroundRefreshScope.inventory,
+              message: userFriendlyError(error),
+            );
       }
     }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
@@ -66,7 +71,7 @@ class InventoryController
     return local;
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool userInitiated = false}) async {
     try {
       await _repo.syncPendingQueue();
     } catch (_) {
@@ -75,8 +80,12 @@ class InventoryController
     try {
       await _repo.refreshFromServer();
       ref.invalidate(freshnessTsProvider(KvCacheRepository.kInventoryTs));
-    } catch (_) {
-      // Ignore network errors during refresh to keep local data visible.
+    } catch (error) {
+      ref.read(backgroundRefreshFeedbackProvider).reportFailure(
+            scope: BackgroundRefreshScope.inventory,
+            message: userFriendlyError(error),
+            userInitiated: userInitiated,
+          );
     }
     await ref.read(syncStatusControllerProvider.notifier).refreshStatus();
     final items = await _repo.listLocalItems();

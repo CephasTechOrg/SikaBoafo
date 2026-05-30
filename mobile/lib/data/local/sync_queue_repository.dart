@@ -216,6 +216,29 @@ WHERE id = ?
     );
   }
 
+  /// Re-queue every dead-letter row so the merchant can retry after fixing the
+  /// underlying issue (SYNC-03).
+  Future<void> reviveAllDead() async {
+    final db = await _appDb.database;
+    await db.update(
+      'sync_queue',
+      {'status': pending, 'last_error': null},
+      where: 'status = ?',
+      whereArgs: [dead],
+    );
+  }
+
+  /// Permanently removes a dead-letter row. The local change is dropped; use
+  /// when the merchant accepts the server state or the op is no longer needed.
+  Future<void> deleteDead(int id) async {
+    final db = await _appDb.database;
+    await db.delete(
+      'sync_queue',
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, dead],
+    );
+  }
+
   Future<SyncQueueStats> stats() async {
     final db = await _appDb.database;
     final rows = await db.rawQuery('''

@@ -110,7 +110,9 @@ class _LoadedShell extends ConsumerWidget {
             totalDebtCount: activeReceivables.length,
             onBack: () => context.pop(),
             onRefresh: () async {
-              await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+              await ref
+                  .read(debtsControllerProvider.notifier)
+                  .refreshFromServer(userInitiated: true);
               ref.invalidate(_customerDetailProvider(customerId));
               if (!context.mounted) return;
               final err =

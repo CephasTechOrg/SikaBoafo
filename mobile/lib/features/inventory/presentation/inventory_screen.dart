@@ -181,8 +181,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           context: context,
           removeTop: true,
           child: RefreshIndicator(
-            onRefresh: () =>
-                ref.read(inventoryControllerProvider.notifier).refresh(),
+            onRefresh: () => ref
+                .read(inventoryControllerProvider.notifier)
+                .refresh(userInitiated: true),
             child: DecoratedBox(
               decoration: const BoxDecoration(color: AppColors.surface),
               child: ListView(

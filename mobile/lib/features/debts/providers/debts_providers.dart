@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/providers/background_refresh_feedback.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/sync_providers.dart';
 import '../data/debts_api.dart';
@@ -53,12 +54,17 @@ class DebtsController extends AutoDisposeAsyncNotifier<DebtsViewData> {
   /// Errors are captured (so callers don't crash) but surfaced via
   /// [DebtsViewData.lastSyncError] for the next snapshot read. This avoids
   /// the previous behaviour of silently swallowing snapshot pull failures.
-  Future<void> refreshFromServer() async {
+  Future<void> refreshFromServer({bool userInitiated = false}) async {
     try {
       await ref.read(syncRefreshServiceProvider).refreshDebtSnapshot();
       _lastSyncError = null;
     } catch (error) {
       _lastSyncError = _humanizeRefreshError(error);
+      ref.read(backgroundRefreshFeedbackProvider).reportFailure(
+            scope: BackgroundRefreshScope.debts,
+            message: _lastSyncError!,
+            userInitiated: userInitiated,
+          );
     }
     await refresh();
   }

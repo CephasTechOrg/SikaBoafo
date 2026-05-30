@@ -76,7 +76,7 @@ class _FakeDebtsController extends DebtsController {
   }
 
   @override
-  Future<void> refreshFromServer() async {}
+  Future<void> refreshFromServer({bool userInitiated = false}) async {}
 }
 
 const _staleOpen = ReceivableDto(

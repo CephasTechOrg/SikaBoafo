@@ -163,7 +163,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   }
 
   Future<void> _refresh() async {
-    await ref.read(debtsControllerProvider.notifier).refreshFromServer();
+    await ref
+        .read(debtsControllerProvider.notifier)
+        .refreshFromServer(userInitiated: true);
     if (!mounted) return;
     final err = ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;
     if (err != null && err.isNotEmpty) {

@@ -100,7 +100,10 @@ class _FakeSyncStatusController extends SyncStatusController {
   }
 
   @override
-  Future<void> refreshStatus({bool attemptSync = false}) async {}
+  Future<void> refreshStatus({
+    bool attemptSync = false,
+    bool userInitiated = false,
+  }) async {}
 }
 
 void main() {

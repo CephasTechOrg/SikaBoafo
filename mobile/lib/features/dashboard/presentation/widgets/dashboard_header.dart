@@ -128,6 +128,7 @@ class DashboardHeader extends ConsumerWidget {
                       ref.read(syncStatusControllerProvider).valueOrNull;
                   final reachable = latest?.backendReachable ?? false;
                   final failed = latest?.stats.failedCount ?? 0;
+                  final dead = latest?.stats.deadCount ?? 0;
                   final pending = latest == null
                       ? 0
                       : latest.stats.pendingCount + latest.stats.sendingCount;
@@ -136,9 +137,11 @@ class DashboardHeader extends ConsumerWidget {
                       ? 'Offline — will sync when back online.'
                       : failed > 0
                           ? 'Sync completed with $failed failed items.'
-                          : pending > 0
-                              ? 'Sync in progress — $pending pending.'
-                              : 'All synced.';
+                          : dead > 0
+                              ? '$dead stopped item${dead == 1 ? '' : 's'} need review.'
+                              : pending > 0
+                                  ? 'Sync in progress — $pending pending.'
+                                  : 'All synced.';
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -379,6 +382,15 @@ class SyncPill extends StatelessWidget {
         icon: Icons.error_outline_rounded,
         spinner: false,
         background: const Color(0xFFB54848).withValues(alpha: 0.85),
+        border: Colors.white.withValues(alpha: 0.22),
+      );
+    }
+    if (s.hasDead) {
+      return SyncPillDescriptor(
+        label: 'Stopped: ${s.stats.deadCount}',
+        icon: Icons.pause_circle_outline_rounded,
+        spinner: false,
+        background: const Color(0xFF6B7280).withValues(alpha: 0.92),
         border: Colors.white.withValues(alpha: 0.22),
       );
     }

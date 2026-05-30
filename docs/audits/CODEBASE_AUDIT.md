@@ -293,9 +293,9 @@ When you fix an item, change its status here and tick the checklist box.
 |-------|--------|
 | **Status** | `done` |
 | **Severity** | — |
-| **What's happening** | After `maxAttempts` (10), rows move to `dead` status. |
-| **Where** | `mobile/lib/data/local/sync_queue_repository.dart`, `sync_queue_runner.dart` |
-| **Fix** | UI to retry or discard dead ops (Checklist C). |
+| **What's happening** | After `maxAttempts` (10), rows move to `dead` status. Sync sheet **"Stopped syncing"** section with plain-language copy; per-row **Retry** / **Remove**; footer **Retry all stopped**. Dashboard pill shows `Stopped: N`. Repo: `reviveAllDead()`, `deleteDead()`. |
+| **Where** | `sync_queue_repository.dart`, `sync_status_pill.dart`, `sync_providers.dart` |
+| **Fix applied** | Merchant-visible dead-letter review + retry/discard actions (SYNC-03). Tests: `sync_queue_dead_letter_test.dart`. |
 
 ### SYNC-04 · Sync apply not transactional across batch
 
@@ -370,12 +370,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
+| **Status** | `done` |
 | **Severity** | Low |
-| **What's happening** | Many `unawaited(refreshFromServer())` / sync runs swallow errors unless user watches sync pill. |
+| **What's happening** | Background sync/refresh failures now show a deduped floating SnackBar via `BackgroundRefreshFeedback` + `rootScaffoldMessengerKey`. Covers automatic sync poll, debts `refreshFromServer`, and inventory refresh. Manual pull-to-refresh passes `userInitiated: true` and keeps existing inline SnackBars. |
 | **Why it matters** | Merchant thinks data is current when refresh failed. |
-| **Where** | Debts controller, sync providers |
-| **Fix** | Snackbar or badge when background refresh fails. |
+| **Where** | `background_refresh_feedback.dart`, `sync_providers.dart`, `debts_providers.dart`, `inventory_providers.dart` |
+| **Fix applied** | MOB-03. Tests: `background_refresh_feedback_test.dart`. |
 
 ### MOB-04 · API base URL and Supabase keys via dart-define
 
@@ -529,9 +529,9 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 - [ ] **AUTH-04** — Migrate JWT to maintained library (`PyJWT`)
 - [ ] **AUTH-07** — Tighten CORS per environment
 - [ ] **SYNC-01** — Incremental server pull / sync cursors
-- [ ] **SYNC-03** — UI to review/retry **dead** sync queue rows
+- [x] **SYNC-03** — UI to review/retry **dead** sync queue rows
 - [ ] **MOB-02** — Refactor large debt/payment widgets for testability
-- [ ] **MOB-03** — Surface background refresh/sync failures to user
+- [x] **MOB-03** — Surface background refresh/sync failures to user
 - [ ] **ARCH-01** — Multi-store product design (if roadmap requires)
 - [ ] **ARCH-02** — Wire Redis for sessions/rate limits or remove from architecture docs
 - [ ] **ARCH-03** — Admin console or remove from public architecture
@@ -574,7 +574,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | RBAC-03 | Staff daily ops | done |
 | MOB-01 | Routing test fail | done |
 | MOB-02 | Large widgets | open |
-| MOB-03 | Silent refresh errors | open |
+| MOB-03 | Silent refresh errors | done |
 | MOB-04 | Build-time config | monitor |
 | ARCH-01 | Single store | open |
 | ARCH-02 | Redis unused | open |
@@ -602,7 +602,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 10. ~~**DEBT-09** — Block online pay until debt synced + clear messaging~~ ✓ done  
 11. ~~**SYNC-02** — Merchant-visible conflict resolution~~ ✓ done  
 
-**Next suggested:** SYNC-01 (incremental pull), MOB-02/MOB-03 (large widgets / silent refresh errors), or OPS-02 (security headers).
+**Next suggested:** MOB-02 (widget refactors), OPS-02 (security headers), or SYNC-01 (incremental pull).
 
 ---
 
