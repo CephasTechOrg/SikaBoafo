@@ -42,5 +42,16 @@ void main() {
         isNot(contains('Inventory request failed')),
       );
     });
+
+    test('surfaces variant column database errors with actionable copy', () {
+      expect(
+        humanizeSaleSyncError(
+          Exception(
+            'DatabaseException(no column named variant_id)',
+          ),
+        ),
+        contains('database update'),
+      );
+    });
   });
 }

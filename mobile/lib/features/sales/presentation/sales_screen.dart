@@ -853,22 +853,34 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   List<SaleDraftLine> _buildSaleDraftLines(List<LocalInventoryItem> items) {
     final cart = ref.read(salesCartProvider);
     final itemById = {for (final item in items) item.id: item};
-    final lines = <SaleDraftLine>[];
+    final aggregatedQty = <String, int>{};
+    final prices = <String, String>{};
+
     for (final entry in cart.qtyByItemId.entries) {
       final qty = entry.value;
       if (qty <= 0) continue;
-      final item = itemById[itemIdFromKey(entry.key)];
+      final itemId = itemIdFromKey(entry.key);
+      final item = itemById[itemId];
       if (item == null) continue;
-      final price = cart.priceOverrideByItemId[entry.key] ?? item.defaultPrice;
-      lines.add(SaleDraftLine(
-        itemId: item.id,
-        quantity: qty,
-        unitPrice: price,
-        variantId: variantIdFromKey(entry.key),
-        variantLabel: cart.variantLabelByKey[entry.key],
-      ));
+      aggregatedQty[itemId] = (aggregatedQty[itemId] ?? 0) + qty;
+      final override = cart.priceOverrideByItemId[entry.key] ??
+          cart.priceOverrideByItemId[itemId];
+      if (override != null) {
+        prices[itemId] = override;
+      } else {
+        prices.putIfAbsent(itemId, () => item.defaultPrice);
+      }
     }
-    return lines;
+
+    return aggregatedQty.entries
+        .map(
+          (entry) => SaleDraftLine(
+            itemId: entry.key,
+            quantity: entry.value,
+            unitPrice: prices[entry.key] ?? itemById[entry.key]!.defaultPrice,
+          ),
+        )
+        .toList(growable: false);
   }
 
   void _resetDraftAfterSale() {
@@ -950,9 +962,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     final cart = ref.read(salesCartProvider);
-    final pendingVariantId =
-        item.hasVariants ? cart.pendingVariantByItemId[item.id] : null;
-    final key = cartKey(item.id, pendingVariantId);
+    final key = item.id;
     final ctrl = TextEditingController(
       text: cart.priceOverrideByItemId[key] ?? item.defaultPrice,
     );

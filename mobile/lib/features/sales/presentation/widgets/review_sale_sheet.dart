@@ -143,8 +143,6 @@ class ReviewSaleSheet extends ConsumerWidget {
                                 cartState.priceOverrideByItemId[entry.key] ??
                                     item.defaultPrice;
                             final lineTotal = moneyToMinor(price) * qty;
-                            final variantLabel =
-                                cartState.variantLabelByKey[entry.key];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: Row(
@@ -172,17 +170,6 @@ class ReviewSaleSheet extends ConsumerWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        if (variantLabel != null) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            variantLabel,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.forest,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
                                         const SizedBox(height: 2),
                                         Text(
                                           '$qty × ₵$price',

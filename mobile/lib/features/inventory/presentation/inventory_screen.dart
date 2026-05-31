@@ -1,20 +1,16 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/widgets/product_image_catalog.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
-import '../data/local_variant.dart';
 import '../providers/inventory_providers.dart';
 import 'widgets/inventory_carousel.dart';
 import 'widgets/inventory_item_card.dart';
 import 'widgets/inventory_sheets.dart';
-
-const _uuid = Uuid();
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -564,9 +560,7 @@ class _EditSheetState extends State<_EditSheet> {
   late final TextEditingController _skuCtrl;
   late final TextEditingController _categoryCtrl;
   late final TextEditingController _thresholdCtrl;
-  final _customVariantCtrl = TextEditingController();
   late String? _imageUrl;
-  late final List<_VariantDraft> _variants;
   bool _saving = false;
 
   @override
@@ -579,13 +573,6 @@ class _EditSheetState extends State<_EditSheet> {
     _thresholdCtrl = TextEditingController(
         text: widget.item.lowStockThreshold?.toString() ?? '');
     _imageUrl = widget.item.imageUrl;
-    _variants = widget.item.variants
-        .map((v) => _VariantDraft(
-              id: v.id,
-              label: v.label,
-              priceOverride: v.priceOverride,
-            ))
-        .toList();
   }
 
   @override
@@ -595,10 +582,6 @@ class _EditSheetState extends State<_EditSheet> {
     _skuCtrl.dispose();
     _categoryCtrl.dispose();
     _thresholdCtrl.dispose();
-    _customVariantCtrl.dispose();
-    for (final v in _variants) {
-      v.dispose();
-    }
     super.dispose();
   }
 
@@ -616,7 +599,7 @@ class _EditSheetState extends State<_EditSheet> {
             InventoryIField(
                 controller: _nameCtrl,
                 label: 'Item Name',
-                hint: 'e.g. Sachet Water',
+                hint: 'e.g. Mug (Small) — include size in name',
                 prefixIcon: Icons.label_rounded),
             const SizedBox(height: 10),
             InventoryIField(
@@ -660,12 +643,6 @@ class _EditSheetState extends State<_EditSheet> {
               selected: _imageUrl,
               onChanged: (v) => setState(() => _imageUrl = v),
             ),
-            const SizedBox(height: 16),
-            _VariantsSection(
-              variants: _variants,
-              customCtrl: _customVariantCtrl,
-              onChanged: () => setState(() {}),
-            ),
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
@@ -703,30 +680,6 @@ class _EditSheetState extends State<_EditSheet> {
       final threshold = thresholdText.isEmpty
           ? widget.item.lowStockThreshold
           : int.tryParse(thresholdText);
-      final variants = _variants
-          .map((d) => LocalVariant(
-                id: d.id,
-                itemId: widget.item.id,
-                label: d.label,
-                priceOverride: d.priceCtrl.text.trim().isEmpty
-                    ? null
-                    : d.priceCtrl.text.trim(),
-                sortOrder: _variants.indexOf(d),
-              ))
-          .toList();
-      final originalIds = widget.item.variants.map((v) => v.id).toSet();
-      final newIds = variants.map((v) => v.id).toSet();
-      final variantsChanged = originalIds.length != newIds.length ||
-          !originalIds.containsAll(newIds) ||
-          _variants.any((d) {
-            final orig =
-                widget.item.variants.where((v) => v.id == d.id).firstOrNull;
-            if (orig == null) return true;
-            final newPrice = d.priceCtrl.text.trim().isEmpty
-                ? null
-                : d.priceCtrl.text.trim();
-            return orig.label != d.label || orig.priceOverride != newPrice;
-          });
       await widget.ref.read(inventoryControllerProvider.notifier).updateItem(
             itemId: widget.item.id,
             name: _nameCtrl.text,
@@ -739,8 +692,8 @@ class _EditSheetState extends State<_EditSheet> {
             isActive: widget.item.isActive,
             imageUrl: _imageUrl,
             imageUrlChanged: _imageUrl != widget.item.imageUrl,
-            variants: variants,
-            variantsChanged: variantsChanged,
+            variants: const [],
+            variantsChanged: widget.item.variants.isNotEmpty,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -1329,9 +1282,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
   final _categoryCtrl = TextEditingController();
   final _thresholdCtrl = TextEditingController();
   final _qtyCtrl = TextEditingController();
-  final _customVariantCtrl = TextEditingController();
   String? _imageUrl;
-  final List<_VariantDraft> _variants = [];
   bool _saving = false;
 
   @override
@@ -1342,10 +1293,6 @@ class _AddItemSheetState extends State<_AddItemSheet> {
     _categoryCtrl.dispose();
     _thresholdCtrl.dispose();
     _qtyCtrl.dispose();
-    _customVariantCtrl.dispose();
-    for (final v in _variants) {
-      v.dispose();
-    }
     super.dispose();
   }
 
@@ -1363,7 +1310,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
             InventoryIField(
               controller: _nameCtrl,
               label: 'Product Name',
-              hint: 'e.g. Sachet Water',
+              hint: 'e.g. Mug (Small) — include size in name',
               prefixIcon: Icons.label_rounded,
             ),
             const SizedBox(height: 12),
@@ -1426,12 +1373,6 @@ class _AddItemSheetState extends State<_AddItemSheet> {
               selected: _imageUrl,
               onChanged: (v) => setState(() => _imageUrl = v),
             ),
-            const SizedBox(height: 20),
-            _VariantsSection(
-              variants: _variants,
-              customCtrl: _customVariantCtrl,
-              onChanged: () => setState(() {}),
-            ),
             const SizedBox(height: 24),
             InventorySaveBtn(
               label: _saving ? 'Saving...' : 'Save Product',
@@ -1461,17 +1402,6 @@ class _AddItemSheetState extends State<_AddItemSheet> {
     }
     setState(() => _saving = true);
     try {
-      final variants = _variants
-          .map((d) => LocalVariant(
-                id: d.id,
-                itemId: '',
-                label: d.label,
-                priceOverride: d.priceCtrl.text.trim().isEmpty
-                    ? null
-                    : d.priceCtrl.text.trim(),
-                sortOrder: _variants.indexOf(d),
-              ))
-          .toList();
       await widget.ref.read(inventoryControllerProvider.notifier).createItem(
             name: name,
             defaultPrice: price,
@@ -1482,7 +1412,6 @@ class _AddItemSheetState extends State<_AddItemSheet> {
             lowStockThreshold: int.tryParse(_thresholdCtrl.text.trim()),
             initialQuantity: initialQty ?? 0,
             imageUrl: _imageUrl,
-            variants: variants,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
@@ -1494,251 +1423,5 @@ class _AddItemSheetState extends State<_AddItemSheet> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-}
-
-// ─── Variant helpers ──────────────────────────────────────────────────────────
-
-class _VariantDraft {
-  _VariantDraft({required this.label, String? priceOverride, String? id})
-      : id = id ?? _uuid.v4(),
-        priceCtrl = TextEditingController(text: priceOverride ?? '');
-
-  final String id;
-  final String label;
-  final TextEditingController priceCtrl;
-
-  void dispose() => priceCtrl.dispose();
-}
-
-const _kPresetLabels = ['S', 'M', 'L', 'XL', 'XXL'];
-
-class _VariantsSection extends StatelessWidget {
-  const _VariantsSection({
-    required this.variants,
-    required this.customCtrl,
-    required this.onChanged,
-  });
-
-  final List<_VariantDraft> variants;
-  final TextEditingController customCtrl;
-  final VoidCallback onChanged;
-
-  void _addLabel(String label) {
-    final trimmed = label.trim();
-    if (trimmed.isEmpty) return;
-    if (variants.any((v) => v.label.toLowerCase() == trimmed.toLowerCase())) {
-      return;
-    }
-    variants.add(_VariantDraft(label: trimmed));
-    onChanged();
-  }
-
-  void _removeAt(int index) {
-    variants[index].dispose();
-    variants.removeAt(index);
-    onChanged();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final activeLabels = variants.map((v) => v.label.toLowerCase()).toSet();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.straighten_rounded,
-                size: 16, color: AppColors.forest),
-            const SizedBox(width: 6),
-            const Text(
-              'Sizes / Variants',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'optional',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.muted.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _kPresetLabels.map((label) {
-            final active = activeLabels.contains(label.toLowerCase());
-            return GestureDetector(
-              onTap: () {
-                if (active) {
-                  final idx = variants.indexWhere(
-                      (v) => v.label.toLowerCase() == label.toLowerCase());
-                  if (idx >= 0) _removeAt(idx);
-                } else {
-                  _addLabel(label);
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.forest
-                      : AppColors.forest.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: active
-                        ? AppColors.forest
-                        : AppColors.forest.withValues(alpha: 0.22),
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: active ? Colors.white : AppColors.forest,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: customCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  hintText: 'Custom size or variant…',
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  filled: true,
-                  fillColor: AppColors.surfaceAlt,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        const BorderSide(color: AppColors.forest, width: 1.4),
-                  ),
-                ),
-                onSubmitted: (v) {
-                  _addLabel(v);
-                  customCtrl.clear();
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                _addLabel(customCtrl.text);
-                customCtrl.clear();
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.forest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.add_rounded,
-                    color: Colors.white, size: 20),
-              ),
-            ),
-          ],
-        ),
-        if (variants.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ...variants.asMap().entries.map((e) {
-            final idx = e.key;
-            final draft = e.value;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 44),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.mint,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      draft.label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.forest,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: draft.priceCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        hintText: 'Price override (optional)',
-                        prefixText: '₵ ',
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 10),
-                        filled: true,
-                        fillColor: AppColors.surfaceAlt,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                              color: AppColors.forest, width: 1.2),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => _removeAt(idx),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: AppColors.danger.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          size: 16, color: AppColors.danger),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ],
-    );
   }
 }

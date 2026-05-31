@@ -9,7 +9,7 @@ import 'kv_cache_repository.dart';
 import 'sync_queue_repository.dart';
 
 const _dbName = 'biztrack_gh.db';
-const _schemaVersion = 19;
+const _schemaVersion = 20;
 const _deviceIdMetaKey = 'device_id';
 const _activeUserIdMetaKey = 'active_user_id';
 const _activeMerchantIdMetaKey = 'active_merchant_id';
@@ -91,8 +91,12 @@ class AppDatabase {
         if (oldVersion < 19) {
           await _upgradeReceivablesSchemaV19(db);
         }
+        if (oldVersion < 20) {
+          await _ensureSaleItemsVariantColumns(db);
+        }
       },
     );
+    await _ensureSaleItemsVariantColumns(_db!);
     return _db!;
   }
 
@@ -223,6 +227,8 @@ CREATE TABLE IF NOT EXISTS sale_items_local (
   unit_price TEXT NOT NULL,
   line_total TEXT NOT NULL,
   created_at INTEGER NOT NULL,
+  variant_id TEXT,
+  variant_label TEXT,
   FOREIGN KEY (sale_id) REFERENCES sales_local(id) ON DELETE CASCADE,
   FOREIGN KEY (item_id) REFERENCES items_local(id) ON DELETE RESTRICT
 );
@@ -362,6 +368,12 @@ CREATE TABLE IF NOT EXISTS item_variants_local (
       'CREATE INDEX IF NOT EXISTS idx_item_variants_item '
       'ON item_variants_local (item_id, sort_order ASC)',
     );
+    await _ensureSaleItemsVariantColumns(db);
+  }
+
+  /// Variant-aware sale lines (inventory v15). Also re-run on v20 for installs
+  /// that reached schema 19 via [onCreate] before sale_items had these columns.
+  Future<void> _ensureSaleItemsVariantColumns(Database db) async {
     final saleCols =
         await db.rawQuery('PRAGMA table_info(sale_items_local)');
     final saleColNames =

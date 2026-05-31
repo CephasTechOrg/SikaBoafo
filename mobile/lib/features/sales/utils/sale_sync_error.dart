@@ -28,6 +28,16 @@ String humanizeSaleSyncError(Object error) {
   if (error is DioException) {
     return _humanizeDio(error);
   }
+  final message = error.toString();
+  if (message.contains('DatabaseException') ||
+      message.contains('SQLITE_ERROR') ||
+      message.contains('no column named')) {
+    if (message.contains('variant_id') || message.contains('variant_label')) {
+      return 'This app needs a quick database update. Close and reopen the '
+          'app, then try again.';
+    }
+    return 'Local database error. Close and reopen the app, then try again.';
+  }
   return userFriendlyError(error);
 }
 

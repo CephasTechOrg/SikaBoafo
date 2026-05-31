@@ -1,62 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../inventory/data/inventory_repository.dart';
-import '../../inventory/data/local_variant.dart';
 import '../../inventory/providers/inventory_providers.dart';
 
-// ─── Cart-key helpers ────────────────────────────────────────────────────────
-// Items without variants:   key == itemId
-// Items with a variant:     key == "$itemId::$variantId"
-
-String cartKey(String itemId, String? variantId) =>
-    variantId != null ? '$itemId::$variantId' : itemId;
+// Legacy carts may still use itemId::variantId keys; itemIdFromKey normalizes reads.
 
 String itemIdFromKey(String key) => key.split('::').first;
-
-String? variantIdFromKey(String key) {
-  final parts = key.split('::');
-  return parts.length > 1 ? parts[1] : null;
-}
-
-// ─── State ───────────────────────────────────────────────────────────────────
 
 class SalesCartState {
   const SalesCartState({
     this.qtyByItemId = const {},
     this.priceOverrideByItemId = const {},
-    this.variantLabelByKey = const {},
-    this.pendingVariantByItemId = const {},
     this.searchQuery = '',
     this.paymentMethod = 'cash',
     this.selectedCategory,
   });
 
-  /// Keyed by cartKey (itemId or itemId::variantId).
+  /// Keyed by item id (flat inventory). Legacy variant keys are collapsed on write.
   final Map<String, int> qtyByItemId;
-
-  /// Price override keyed by cartKey.
   final Map<String, String> priceOverrideByItemId;
-
-  /// Variant label for display in cart/review, keyed by cartKey.
-  final Map<String, String> variantLabelByKey;
-
-  /// Which variant chip is "pending" (selected in the card before tapping +).
-  /// Keyed by itemId only.
-  final Map<String, String?> pendingVariantByItemId;
-
   final String searchQuery;
   final String paymentMethod;
 
   /// Active category filter. Null means "All".
   final String? selectedCategory;
 
-  // Sentinel so copyWith can distinguish "not passed" from "explicitly null".
   static const _kUnset = Object();
 
   SalesCartState copyWith({
     Map<String, int>? qtyByItemId,
     Map<String, String>? priceOverrideByItemId,
-    Map<String, String>? variantLabelByKey,
-    Map<String, String?>? pendingVariantByItemId,
     String? searchQuery,
     String? paymentMethod,
     Object? selectedCategory = _kUnset,
@@ -65,9 +37,6 @@ class SalesCartState {
       qtyByItemId: qtyByItemId ?? this.qtyByItemId,
       priceOverrideByItemId:
           priceOverrideByItemId ?? this.priceOverrideByItemId,
-      variantLabelByKey: variantLabelByKey ?? this.variantLabelByKey,
-      pendingVariantByItemId:
-          pendingVariantByItemId ?? this.pendingVariantByItemId,
       searchQuery: searchQuery ?? this.searchQuery,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       selectedCategory: identical(selectedCategory, _kUnset)
@@ -77,92 +46,34 @@ class SalesCartState {
   }
 }
 
-// ─── Notifier ────────────────────────────────────────────────────────────────
-
 class SalesCartNotifier extends Notifier<SalesCartState> {
   @override
   SalesCartState build() => const SalesCartState();
 
-  /// Select a variant chip (before the item is added to the cart).
-  void selectPendingVariant(String itemId, String? variantId) {
-    final newMap = Map<String, String?>.from(state.pendingVariantByItemId);
-    newMap[itemId] = variantId;
-    state = state.copyWith(pendingVariantByItemId: newMap);
-  }
-
-  /// Add/increment an item that has a specific variant selected.
-  void addVariantItem(LocalInventoryItem item, LocalVariant variant) {
-    final key = cartKey(item.id, variant.id);
-
-    // Stock check: total qty across ALL variant lines for this item.
+  void incrementQty(LocalInventoryItem item) {
     final totalQty = _totalQtyForItem(item.id);
     if (totalQty >= item.quantityOnHand) return;
 
-    final newQty = Map<String, int>.from(state.qtyByItemId);
-    final newLabels = Map<String, String>.from(state.variantLabelByKey);
-    newQty[key] = (newQty[key] ?? 0) + 1;
-    newLabels[key] = variant.label;
-
-    if (variant.priceOverride != null) {
-      final newOverrides =
-          Map<String, String>.from(state.priceOverrideByItemId);
-      newOverrides[key] = variant.priceOverride!;
-      state = state.copyWith(
-        qtyByItemId: newQty,
-        variantLabelByKey: newLabels,
-        priceOverrideByItemId: newOverrides,
-      );
-    } else {
-      state = state.copyWith(
-        qtyByItemId: newQty,
-        variantLabelByKey: newLabels,
-      );
-    }
+    final collapsed = _collapseLegacyKeys(item.id);
+    final current = collapsed.qty[item.id] ?? 0;
+    final newQty = Map<String, int>.from(collapsed.qty);
+    newQty[item.id] = current + 1;
+    state = state.copyWith(
+      qtyByItemId: newQty,
+      priceOverrideByItemId: collapsed.overrides,
+    );
   }
 
-  /// Increment qty for a non-variant item. Do not call for items with variants.
-  void incrementQty(LocalInventoryItem item) {
-    final current = state.qtyByItemId[item.id] ?? 0;
-    if (current >= item.quantityOnHand) return;
-    final newMap = Map<String, int>.from(state.qtyByItemId);
-    newMap[item.id] = current + 1;
-    state = state.copyWith(qtyByItemId: newMap);
-  }
-
-  /// Smart increment: handles variants if needed.
-  void smartIncrement(LocalInventoryItem item) {
-    if (!item.hasVariants) {
-      incrementQty(item);
+  void decrementItem(String itemId) {
+    if (state.qtyByItemId.containsKey(itemId)) {
+      decrementQty(itemId);
       return;
     }
-
-    final pendingId = state.pendingVariantByItemId[item.id];
-    if (pendingId != null) {
-      final v = item.variants.where((v) => v.id == pendingId).firstOrNull;
-      if (v != null) {
-        addVariantItem(item, v);
-        return;
-      }
-    }
-
-    // Fallback: if no variant is pending, but item is already in cart, increment the first existing variant line.
-    final existingKey = state.qtyByItemId.keys
-        .where((k) => itemIdFromKey(k) == item.id)
+    final legacyKey = state.qtyByItemId.keys
+        .where((k) => itemIdFromKey(k) == itemId)
         .firstOrNull;
-    if (existingKey != null) {
-      final current = state.qtyByItemId[existingKey] ?? 0;
-      if (_totalQtyForItem(item.id) >= item.quantityOnHand) return;
-      final newMap = Map<String, int>.from(state.qtyByItemId);
-      newMap[existingKey] = current + 1;
-      state = state.copyWith(qtyByItemId: newMap);
-      return;
-    }
-
-    // Final fallback: select the first active variant and add it.
-    final firstV = item.variants.where((v) => v.isActive).firstOrNull;
-    if (firstV != null) {
-      selectPendingVariant(item.id, firstV.id);
-      addVariantItem(item, firstV);
+    if (legacyKey != null) {
+      decrementQty(legacyKey);
     }
   }
 
@@ -171,40 +82,16 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
     if (current == 0) return;
     final newMap = Map<String, int>.from(state.qtyByItemId);
     final newOverrides = Map<String, String>.from(state.priceOverrideByItemId);
-    final newLabels = Map<String, String>.from(state.variantLabelByKey);
     if (current <= 1) {
       newMap.remove(key);
-      // Keep derived cart maps in sync when the line disappears.
       newOverrides.remove(key);
-      newLabels.remove(key);
     } else {
       newMap[key] = current - 1;
     }
     state = state.copyWith(
       qtyByItemId: newMap,
       priceOverrideByItemId: newOverrides,
-      variantLabelByKey: newLabels,
     );
-  }
-
-  /// Decrements the current pending variant, or the first found variant for this item.
-  /// This ensures "minus" button always works on grouped item cards.
-  void decrementAnyVariant(String itemId) {
-    final pendingId = state.pendingVariantByItemId[itemId];
-    final key = cartKey(itemId, pendingId);
-
-    if (state.qtyByItemId.containsKey(key)) {
-      decrementQty(key);
-      return;
-    }
-
-    // Fallback: decrement the first variant of this item found in the cart
-    final fallbackKey = state.qtyByItemId.keys
-        .where((k) => itemIdFromKey(k) == itemId)
-        .firstOrNull;
-    if (fallbackKey != null) {
-      decrementQty(fallbackKey);
-    }
   }
 
   void overridePrice(String key, String priceStr) {
@@ -229,8 +116,6 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
     state = state.copyWith(
       qtyByItemId: const {},
       priceOverrideByItemId: const {},
-      variantLabelByKey: const {},
-      pendingVariantByItemId: const {},
       paymentMethod: 'cash',
       selectedCategory: null,
     );
@@ -239,14 +124,11 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
   void removeItem(String key) {
     final newQty = Map<String, int>.from(state.qtyByItemId);
     final newOverrides = Map<String, String>.from(state.priceOverrideByItemId);
-    final newLabels = Map<String, String>.from(state.variantLabelByKey);
     newQty.remove(key);
     newOverrides.remove(key);
-    newLabels.remove(key);
     state = state.copyWith(
       qtyByItemId: newQty,
       priceOverrideByItemId: newOverrides,
-      variantLabelByKey: newLabels,
     );
   }
 
@@ -256,15 +138,35 @@ class SalesCartNotifier extends Notifier<SalesCartState> {
     state = state.copyWith(priceOverrideByItemId: newMap);
   }
 
-  /// Total qty across all variant lines for [itemId].
   int _totalQtyForItem(String itemId) {
     return state.qtyByItemId.entries
         .where((e) => itemIdFromKey(e.key) == itemId)
         .fold(0, (sum, e) => sum + e.value);
   }
-}
 
-// ─── Providers ───────────────────────────────────────────────────────────────
+  ({Map<String, int> qty, Map<String, String> overrides}) _collapseLegacyKeys(
+    String itemId,
+  ) {
+    final newQty = Map<String, int>.from(state.qtyByItemId);
+    final newOverrides = Map<String, String>.from(state.priceOverrideByItemId);
+    final legacyKeys = newQty.keys
+        .where((k) => itemIdFromKey(k) == itemId && k != itemId)
+        .toList(growable: false);
+    var total = newQty[itemId] ?? 0;
+    String? mergedOverride = newOverrides[itemId];
+    for (final key in legacyKeys) {
+      total += newQty.remove(key) ?? 0;
+      mergedOverride ??= newOverrides.remove(key);
+    }
+    if (total > 0) {
+      newQty[itemId] = total;
+    }
+    if (mergedOverride != null) {
+      newOverrides[itemId] = mergedOverride;
+    }
+    return (qty: newQty, overrides: newOverrides);
+  }
+}
 
 final salesCartProvider = NotifierProvider<SalesCartNotifier, SalesCartState>(
   SalesCartNotifier.new,
@@ -282,7 +184,8 @@ final salesCartTotalProvider = Provider.autoDispose<String>((ref) {
     final iId = itemIdFromKey(entry.key);
     final item = itemById[iId];
     if (item == null) continue;
-    final overrideStr = cart.priceOverrideByItemId[entry.key];
+    final overrideStr = cart.priceOverrideByItemId[entry.key] ??
+        cart.priceOverrideByItemId[iId];
     final unitPriceMinor = _moneyToMinorSafe(overrideStr ?? item.defaultPrice);
     totalMinor += unitPriceMinor * qty;
   }
