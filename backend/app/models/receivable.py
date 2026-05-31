@@ -17,14 +17,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import RECEIVABLE_STATUS_OPEN
 from app.db.base import Base
-from app.models.mixins import SyncableWriteMixin, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.mixins import SyncableWriteMixin, TimestampMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.customer import Customer
     from app.models.store import Store
 
 
-class Receivable(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
+class Receivable(UUIDPrimaryKeyMixin, TimestampMixin, UpdatedAtMixin, SyncableWriteMixin, Base):
     __tablename__ = "receivables"
     __table_args__ = (
         Index(

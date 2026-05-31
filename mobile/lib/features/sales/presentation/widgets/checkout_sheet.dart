@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../providers/sales_cart_provider.dart';
 import '../widgets/checkout_method_button.dart';
+import 'sales_paystack_sync_notice.dart';
 import '../../../inventory/data/inventory_repository.dart';
 
 /// The payment-method selection + confirm sheet shown before a sale is finalised.
@@ -20,6 +21,9 @@ class CheckoutSheet extends ConsumerStatefulWidget {
     required this.onRecordMomo,
     required this.onPayWithMomoNumber,
     required this.formatMajor,
+    this.cartReadyForOnlinePay = true,
+    this.syncingForOnlinePay = false,
+    this.onSyncCartForOnlinePay,
   });
 
   final List<LocalInventoryItem> items;
@@ -29,6 +33,10 @@ class CheckoutSheet extends ConsumerStatefulWidget {
   final Future<void> Function(String method) onRecordMomo;
   final Future<void> Function(String method) onPayWithMomoNumber;
   final String Function(String value, {String symbol}) formatMajor;
+  final bool cartReadyForOnlinePay;
+  final bool syncingForOnlinePay;
+  /// Runs global sync + refreshes cart readiness; returns whether online pay is allowed.
+  final Future<bool> Function()? onSyncCartForOnlinePay;
 
   @override
   ConsumerState<CheckoutSheet> createState() => _CheckoutSheetState();
@@ -36,11 +44,27 @@ class CheckoutSheet extends ConsumerStatefulWidget {
 
 class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
   late String _selectedMethod;
+  late bool _cartReadyForOnlinePay;
+  bool _syncingForOnlinePay = false;
 
   @override
   void initState() {
     super.initState();
     _selectedMethod = ref.read(salesCartProvider).paymentMethod;
+    _cartReadyForOnlinePay = widget.cartReadyForOnlinePay;
+  }
+
+  Future<void> _syncCartForOnlinePay() async {
+    final sync = widget.onSyncCartForOnlinePay;
+    if (sync == null || _syncingForOnlinePay) return;
+    setState(() => _syncingForOnlinePay = true);
+    try {
+      final ready = await sync();
+      if (!mounted) return;
+      setState(() => _cartReadyForOnlinePay = ready);
+    } finally {
+      if (mounted) setState(() => _syncingForOnlinePay = false);
+    }
   }
 
   @override
@@ -156,59 +180,71 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
               ]
               // MoMo — Paystack: QR/link OR MoMo number (keypad customer)
               else if (_selectedMethod == 'mobile_money') ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      ref.read(salesCartProvider.notifier).setPaymentMethod(_selectedMethod);
-                      await widget.onRecordMomo(_selectedMethod);
-                    },
-                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                    label: Text(
-                      'Pay by QR / link — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.gold,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                if (!_cartReadyForOnlinePay) ...[
+                  SalesPaystackPendingSyncNotice(
+                    onSyncNow: _syncingForOnlinePay ? null : _syncCartForOnlinePay,
+                    busy: _syncingForOnlinePay || widget.syncingForOnlinePay,
+                  ),
+                ] else ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        Navigator.of(context).pop();
+                        ref
+                            .read(salesCartProvider.notifier)
+                            .setPaymentMethod(_selectedMethod);
+                        await widget.onRecordMomo(_selectedMethod);
+                      },
+                      icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                      label: Text(
+                        'Pay by QR / link — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-                      ref.read(salesCartProvider.notifier).setPaymentMethod(_selectedMethod);
-                      await widget.onPayWithMomoNumber(_selectedMethod);
-                    },
-                    icon: const Icon(Icons.phone_callback_rounded, size: 18),
-                    label: Text(
-                      'Pay with MoMo number — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.forest,
-                      side: const BorderSide(color: AppColors.forest, width: 1.5),
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        Navigator.of(context).pop();
+                        ref
+                            .read(salesCartProvider.notifier)
+                            .setPaymentMethod(_selectedMethod);
+                        await widget.onPayWithMomoNumber(_selectedMethod);
+                      },
+                      icon: const Icon(Icons.phone_callback_rounded, size: 18),
+                      label: Text(
+                        'Pay with MoMo number — ${widget.formatMajor(widget.totalAmount, symbol: '₵')}',
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.forest,
+                        side: const BorderSide(
+                            color: AppColors.forest, width: 1.5),
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ]
               // Bank — coming soon
               else if (_selectedMethod == 'bank_transfer') ...[

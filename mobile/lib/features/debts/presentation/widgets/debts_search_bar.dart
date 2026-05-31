@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../utils/debts_ui_tokens.dart';
 
-/// Compact search input matching `index (2).html` `.search-bar`: white surface
+/// Compact search input matching `debts UI mockup` `.search-bar`: white surface
 /// with a 1.5px border, leading magnifier icon, muted hint copy.
 class DebtsSearchBar extends StatelessWidget {
   const DebtsSearchBar({

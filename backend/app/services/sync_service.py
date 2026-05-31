@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -79,6 +80,8 @@ from app.services.sales_service import (
     SaleUpdateScopeError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class UnsupportedSyncOperationError(Exception):
     """Operation is not supported by current sync dispatcher."""
@@ -93,6 +96,24 @@ class SyncApplyResult:
     entity_id: UUID | None = None
     detail: str | None = None
     server_version: int | None = None
+
+
+def _log_sale_create_sync_issue(
+    *,
+    operation: SyncOperationIn,
+    status: str,
+    detail: str | None,
+) -> None:
+    if operation.entity_type.strip().lower() != "sale":
+        return
+    if operation.action_type.strip().lower() != "create":
+        return
+    logger.info(
+        "sync sale create %s local_operation_id=%s detail=%s",
+        status,
+        operation.local_operation_id,
+        detail,
+    )
 
 
 @dataclass(slots=True)
@@ -197,6 +218,11 @@ class SyncService:
                         detail=detail,
                     )
                 )
+                _log_sale_create_sync_issue(
+                    operation=operation,
+                    status=SYNC_STATUS_CONFLICT,
+                    detail=detail,
+                )
             except (
                 ValidationError,
                 UnsupportedSyncOperationError,
@@ -216,6 +242,11 @@ class SyncService:
                         status=SYNC_STATUS_REJECTED,
                         detail=str(exc),
                     )
+                )
+                _log_sale_create_sync_issue(
+                    operation=operation,
+                    status=SYNC_STATUS_REJECTED,
+                    detail=str(exc),
                 )
             except (
                 InventoryItemNotFoundError,
@@ -242,6 +273,11 @@ class SyncService:
                         detail=str(exc),
                     )
                 )
+                _log_sale_create_sync_issue(
+                    operation=operation,
+                    status=SYNC_STATUS_CONFLICT,
+                    detail=str(exc),
+                )
             except Exception as exc:  # pragma: no cover - safety net for unexpected failures
                 self.db.rollback()
                 results.append(
@@ -252,6 +288,11 @@ class SyncService:
                         status=SYNC_STATUS_FAILED,
                         detail=str(exc),
                     )
+                )
+                _log_sale_create_sync_issue(
+                    operation=operation,
+                    status=SYNC_STATUS_FAILED,
+                    detail=str(exc),
                 )
 
         return results

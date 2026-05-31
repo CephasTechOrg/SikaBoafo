@@ -681,6 +681,7 @@ ORDER BY sl.created_at ASC
     Duration budget = const Duration(seconds: 60),
   }) async {
     final deadline = DateTime.now().add(budget);
+    var pollsWhileFailed = 0;
     while (DateTime.now().isBefore(deadline)) {
       await syncPendingQueue();
       final row = await _appDb.syncQueue.rowForSaleCreate(saleId);
@@ -690,23 +691,37 @@ ORDER BY sl.created_at ASC
         );
       }
       final status = (row['status'] ?? '') as String;
+      final detail = (row['last_error'] as String?)?.trim();
+      final attempts = row['attempts'] as int? ?? 0;
       switch (status) {
         case SyncQueueRepository.applied:
           return;
         case SyncQueueRepository.conflict:
         case SyncQueueRepository.dead:
-          final detail = (row['last_error'] as String?)?.trim();
           throw StateError(
             detail?.isNotEmpty == true
                 ? detail!
                 : 'Sale could not sync with the server (conflict).',
           );
         case SyncQueueRepository.failed:
+          pollsWhileFailed += 1;
+          if (attempts >= SyncQueueRepository.maxAttempts ||
+              pollsWhileFailed >= 3) {
+            throw StateError(
+              detail?.isNotEmpty == true
+                  ? detail!
+                  : 'Sale could not sync with the server.',
+            );
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+          continue;
         case SyncQueueRepository.pending:
         case SyncQueueRepository.sending:
+          pollsWhileFailed = 0;
           await Future<void>.delayed(const Duration(milliseconds: 220));
           continue;
         default:
+          pollsWhileFailed = 0;
           await Future<void>.delayed(const Duration(milliseconds: 220));
           continue;
       }

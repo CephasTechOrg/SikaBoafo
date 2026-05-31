@@ -8,6 +8,7 @@ class KvCacheRepository {
   static const kInventoryTs = 'last_synced_inventory';
   static const kDebtsTs = 'last_synced_debts';
   static const kSalesTs = 'last_synced_sales';
+  static const kSyncPullCursor = 'last_sync_pull_cursor';
 
   final AppDatabase _appDb;
 

@@ -305,6 +305,7 @@ class ReceivablesService:
             receivable.status = RECEIVABLE_STATUS_SETTLED
         else:
             receivable.status = RECEIVABLE_STATUS_PARTIALLY_PAID
+        receivable.updated_at = datetime.now(tz=UTC)
         if source_device_id is not None:
             receivable.source_device_id = source_device_id
         if local_operation_id is not None:

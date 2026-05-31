@@ -378,7 +378,7 @@ class _DebtsFab extends StatelessWidget {
 }
 
 /// Circular translucent icon button used in the debts hero header.
-/// Matches `index (2).html` `.icon-btn`.
+/// Matches `debts UI mockup` `.icon-btn`.
 class _GlassIconButton extends StatelessWidget {
   const _GlassIconButton({
     required this.tooltip,

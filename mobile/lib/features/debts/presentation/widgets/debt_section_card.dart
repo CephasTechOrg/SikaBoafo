@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/debts_ui_tokens.dart';
 
 /// Bordered card with a titled header and divider, matching `.section-card`
-/// in `index (2).html`. Used for Reminders and Repayments groups on the
+/// in `debts UI mockup`. Used for Reminders and Repayments groups on the
 /// debt detail screen.
 class DebtSectionCard extends StatelessWidget {
   const DebtSectionCard({

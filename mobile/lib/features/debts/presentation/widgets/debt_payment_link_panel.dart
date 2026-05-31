@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../../../app/router.dart';
+import '../utils/debt_payment_amount_validator.dart';
+import '../utils/debt_payment_link_state.dart';
+import '../utils/debt_payment_progress.dart';
 import '../utils/debts_ui_tokens.dart';
 import '../../../../core/services/notifications_service.dart';
 import '../../../../shared/providers/core_providers.dart';
@@ -18,6 +21,7 @@ import '../../data/models/local_receivable_record.dart';
 import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debts_ui_utils.dart';
+import 'debt_payment_link_panel_widgets.dart';
 import 'debt_payment_link_share.dart';
 import 'debt_paystack_momo_sheet/debt_paystack_momo_sheet.dart';
 import 'debt_paystack_qr_sheet.dart';
@@ -90,13 +94,18 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
 
   bool get _isSynced => widget.record.syncStatus == 'applied';
 
-  bool get _hasLink {
-    final link = widget.record.paymentLink;
-    return link != null && link.trim().isNotEmpty;
-  }
+  DebtPaymentLinkState get _linkState => DebtPaymentLinkState(
+        paymentLink: widget.record.paymentLink,
+        paymentLinkExpiresAtIso: widget.record.paymentLinkExpiresAtIso,
+      );
+
+  bool get _hasLink => _linkState.hasLink;
 
   bool get _isWatchableStatus =>
-      widget.record.status == 'open' || widget.record.status == 'partially_paid';
+      DebtPaymentLinkState.shouldWatchPassiveStatus(
+        hasLink: _hasLink,
+        receivableStatus: widget.record.status,
+      );
 
   void _syncStatusWatcher() {
     _statusWatchTicker?.cancel();
@@ -117,11 +126,13 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           .read(debtsApiProvider)
           .fetchReceivable(widget.record.receivableId);
       if (!mounted) return;
-      final localMinor = DebtsUiUtils.amountToMinor(widget.record.outstandingAmount);
-      int serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
-      bool settled = server.status == 'settled' || serverMinor == 0;
-      bool progressed =
-          settled || serverMinor < localMinor || server.status != widget.record.status;
+      final localOutstanding = widget.record.outstandingAmount;
+      final localStatus = widget.record.status;
+      bool progressed = DebtPaymentProgress.hasReceivableProgressed(
+        server: server,
+        localOutstandingAmount: localOutstanding,
+        localStatus: localStatus,
+      );
 
       // Verify fallback: webhook may have been missed or delayed. If
       // fetchReceivable shows no progress and we have a known paymentId,
@@ -137,11 +148,11 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
               .read(debtsApiProvider)
               .fetchReceivable(widget.record.receivableId);
           if (!mounted) return;
-          serverMinor = DebtsUiUtils.amountToMinor(server.outstandingAmount);
-          settled = server.status == 'settled' || serverMinor == 0;
-          progressed = settled ||
-              serverMinor < localMinor ||
-              server.status != widget.record.status;
+          progressed = DebtPaymentProgress.hasReceivableProgressed(
+            server: server,
+            localOutstandingAmount: localOutstanding,
+            localStatus: localStatus,
+          );
         } catch (_) {
           // Verify is best-effort here; rely on next tick / webhook.
         }
@@ -157,12 +168,14 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
       ref.invalidate(receivableDetailProvider(widget.record.receivableId));
       await ref.read(debtsControllerProvider.notifier).refreshFromServer();
       if (!mounted) return;
+      final settled = DebtPaymentProgress.isReceivableFullySettled(server);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            settled
-                ? 'Payment received. Debt settled.'
-                : 'Payment received. Remaining balance: ${DebtsUiUtils.formatAmount(server.outstandingAmount)}.',
+            DebtPaymentProgress.watcherProgressMessage(
+              server: server,
+              settled: settled,
+            ),
           ),
           duration: const Duration(seconds: 3),
         ),
@@ -224,68 +237,23 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     }
   }
 
-  /// Parsed UTC expiry instant for the active payment link, or `null` if the
-  /// server has not yet attached one (e.g. legacy local row before refresh).
-  /// Treated as "active, no countdown" when null.
-  DateTime? get _linkExpiresAt {
-    final iso = widget.record.paymentLinkExpiresAtIso;
-    if (iso == null || iso.isEmpty) return null;
-    return DateTime.tryParse(iso)?.toLocal();
-  }
-
-  bool get _linkExpired {
-    final at = _linkExpiresAt;
-    if (at == null) return false;
-    return !DateTime.now().isBefore(at);
-  }
-
-  /// Compact "Expires in 23h 12m" / "Expires in 4m" copy. Returns `null` when
-  /// expiry is unknown so callers can hide the badge entirely.
-  String? _expiryCountdownLabel() {
-    final at = _linkExpiresAt;
-    if (at == null) return null;
-    final remaining = at.difference(DateTime.now());
-    if (!remaining.isNegative && remaining.inSeconds <= 60) {
-      return 'Expires in <1m';
-    }
-    if (remaining.isNegative) return null;
-    final hours = remaining.inHours;
-    final minutes = remaining.inMinutes.remainder(60);
-    if (hours <= 0) return 'Expires in ${minutes}m';
-    return 'Expires in ${hours}h ${minutes}m';
-  }
-
-  int _minorFromAmount(String raw) {
-    final value = raw.trim();
-    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(value);
-    if (match == null) return -1;
-    final parts = value.split('.');
-    final major = int.tryParse(parts.first) ?? -1;
-    if (major < 0) return -1;
-    final decimal = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-    final cents = int.tryParse(decimal) ?? -1;
-    if (cents < 0) return -1;
-    return (major * 100) + cents;
-  }
-
   bool _validateAmountInput() {
-    final amountRaw = _amountCtrl.text.trim();
-    final amountMinor = _minorFromAmount(amountRaw);
-    final outstandingMinor = _minorFromAmount(widget.record.outstandingAmount);
-    if (amountMinor <= 0 ||
-        outstandingMinor <= 0 ||
-        amountMinor > outstandingMinor) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Enter an amount between GHS 0.01 and ${DebtsUiUtils.formatAmount(widget.record.outstandingAmount)}.',
+    final validation = DebtPaymentAmountValidation.validate(
+      amountRaw: _amountCtrl.text,
+      outstandingAmount: widget.record.outstandingAmount,
+    );
+    if (validation.isValid) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          validation.validationSnackMessage(
+            DebtsUiUtils.formatAmount(widget.record.outstandingAmount),
           ),
-          duration: const Duration(seconds: 3),
         ),
-      );
-      return false;
-    }
-    return true;
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    return false;
   }
 
   /// Explicit "Sync now" action shown when a debt has not yet reached the
@@ -404,7 +372,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   Future<void> _openExistingQr() async {
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
-    if (_linkExpired) {
+    if (_linkState.isExpired) {
       _showExpiredSnack();
       return;
     }
@@ -424,7 +392,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   Future<void> _openExistingShare() async {
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
-    if (_linkExpired) {
+    if (_linkState.isExpired) {
       _showExpiredSnack();
       return;
     }
@@ -443,9 +411,8 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   /// local snapshot, then the previous "settled" assumption. Without this,
   /// partial payments were misleadingly reported as fully settled.
   String _paymentConfirmedMessage(ReceivableDto? serverRow) {
-    String? status = serverRow?.status;
-    String? outstandingAmount = serverRow?.outstandingAmount;
-
+    String? fallbackStatus;
+    String? fallbackOutstanding;
     if (serverRow == null) {
       final localRecord = ref
           .read(debtsControllerProvider)
@@ -454,21 +421,14 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           .where((r) => r.receivableId == widget.record.receivableId)
           .cast<LocalReceivableRecord?>()
           .firstOrNull;
-      status = localRecord?.status;
-      outstandingAmount = localRecord?.outstandingAmount;
+      fallbackStatus = localRecord?.status;
+      fallbackOutstanding = localRecord?.outstandingAmount;
     }
-
-    final outstandingMinor = outstandingAmount == null
-        ? 0
-        : DebtsUiUtils.amountToMinor(outstandingAmount);
-
-    final settled = status == 'settled' || outstandingMinor == 0;
-    if (settled) return 'Payment received. Debt settled.';
-    if (outstandingAmount != null) {
-      return 'Partial payment received. Remaining: '
-          '${DebtsUiUtils.formatAmount(outstandingAmount)}.';
-    }
-    return 'Payment received.';
+    return DebtPaymentProgress.paymentConfirmedMessage(
+      serverRow: serverRow,
+      fallbackStatus: fallbackStatus,
+      fallbackOutstanding: fallbackOutstanding,
+    );
   }
 
   void _onSheetPaymentConfirmed(ReceivableDto? serverRow) {
@@ -635,7 +595,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
         ),
         const SizedBox(height: 14),
         if (!_isSynced)
-          _PendingSyncNotice(
+          DebtPaymentPendingSyncNotice(
             onSyncNow: _syncing ? null : _syncNow,
             busy: _syncing,
           )
@@ -689,7 +649,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ],
           ),
           const SizedBox(height: 8),
-          _MomoPushButton(
+          DebtPaymentMomoPushButton(
             onTap: (_generating || _openingMomo) ? null : _openMomoPush,
             busy: _openingMomo,
           ),
@@ -700,8 +660,8 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
 
   Widget _activeLinkBody() {
     final link = widget.record.paymentLink!;
-    final expired = _linkExpired;
-    final countdownLabel = _expiryCountdownLabel();
+    final expired = _linkState.isExpired;
+    final countdownLabel = _linkState.expiryCountdownLabel;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -754,7 +714,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           const SizedBox(height: 10),
         ],
         if (expired || countdownLabel != null) ...[
-          _ExpiryBadge(expired: expired, label: countdownLabel),
+          DebtPaymentExpiryBadge(expired: expired, label: countdownLabel),
           const SizedBox(height: 10),
         ],
         Container(
@@ -864,169 +824,6 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _ExpiryBadge extends StatelessWidget {
-  const _ExpiryBadge({required this.expired, required this.label});
-
-  final bool expired;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = expired ? DebtsUi.dangerSoft : DebtsUi.accentGoldSoft;
-    final fg = expired ? DebtsUi.danger : DebtsUi.accentGoldInk;
-    final text = expired ? 'Expired' : (label ?? '');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: fg.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            expired
-                ? Icons.lock_clock_rounded
-                : Icons.schedule_rounded,
-            size: 14,
-            color: fg,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: fg,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shown in place of the online-pay buttons while a debt has not yet synced to
-/// the server (DEBT-09). Online Paystack collection (QR / link / MoMo) all need
-/// a server-side receivable id, so we explain the block in plain language and
-/// offer a single "Sync now" action instead of letting the merchant tap a pay
-/// button that would only fail.
-class _PendingSyncNotice extends StatelessWidget {
-  const _PendingSyncNotice({required this.onSyncNow, required this.busy});
-
-  final VoidCallback? onSyncNow;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: DebtsUi.accentGoldSoft,
-        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-        border: Border.all(
-          color: DebtsUi.accentGoldInk.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.cloud_off_rounded,
-                size: 18,
-                color: DebtsUi.accentGoldInk,
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Sync this debt before collecting online',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: DebtsUi.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'This debt was saved offline. QR, payment link, and MoMo prompts '
-            'need it on the server first. Connect to the internet and sync to '
-            'unlock online payment.',
-            style: TextStyle(
-              fontSize: 12,
-              color: DebtsUi.textSecondary,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: onSyncNow,
-            icon: busy
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.sync_rounded, size: 18),
-            label: Text(busy ? 'Syncing…' : 'Sync now'),
-            style: FilledButton.styleFrom(
-              backgroundColor: DebtsUi.greenDark,
-              minimumSize: const Size.fromHeight(44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MomoPushButton extends StatelessWidget {
-  const _MomoPushButton({required this.onTap, required this.busy});
-
-  final VoidCallback? onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: busy
-          ? const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.phone_android_rounded, size: 16),
-      label: Text(busy ? 'Preparing…' : 'Push MoMo prompt'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: DebtsUi.accentGold,
-        minimumSize: const Size.fromHeight(46),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-        ),
-        side: BorderSide(color: DebtsUi.accentGold.withValues(alpha: 0.45)),
-      ),
     );
   }
 }

@@ -6,7 +6,7 @@ import '../utils/debts_ui_tokens.dart';
 
 /// Contact row under the meta strip on a debt detail screen.
 ///
-/// Visual reference: `index (2).html` `.contact-row` — Call (primary green
+/// Visual reference: `debts UI mockup` `.contact-row` — Call (primary green
 /// pale) + Message (neutral surface) buttons sharing a row. Hidden when the
 /// customer has no phone on file.
 class DebtCustomerSummary extends StatelessWidget {

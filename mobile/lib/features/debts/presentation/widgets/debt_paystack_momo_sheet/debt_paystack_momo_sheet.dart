@@ -8,6 +8,7 @@ import '../../../data/debts_api.dart';
 import '../../../data/debts_payments_api.dart';
 import '../../../providers/debt_detail_provider.dart';
 import '../../../providers/debts_providers.dart';
+import '../../utils/debt_payment_progress.dart';
 import '../../utils/debts_ui_tokens.dart';
 import '../../utils/debts_ui_utils.dart';
 import 'debt_momo_otp_field.dart';
@@ -170,19 +171,11 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
     }
   }
 
-  bool _receivableFullySettled(ReceivableDto dto) {
-    final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
-    return dto.status == 'settled' || outstandingMinor == 0;
-  }
+  bool _receivableFullySettled(ReceivableDto dto) =>
+      DebtPaymentProgress.isReceivableFullySettled(dto);
 
-  /// Same broadened detection used by the QR sheet — trust the server's
-  /// receivable_status / outstanding so a webhook race never strands the
-  /// merchant on "Waiting for payment".
-  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) {
-    if (verify.isPaymentSuccessful) return true;
-    if (verify.isSettled) return true;
-    return DebtsUiUtils.amountToMinor(verify.outstandingAmount) == 0;
-  }
+  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) =>
+      DebtPaymentProgress.verifyIndicatesSuccess(verify);
 
   /// Close the sheet immediately, then reconcile the local snapshot in the
   /// background. Without this the sheet stays on "Checking…" while the

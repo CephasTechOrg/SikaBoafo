@@ -35,12 +35,13 @@ cd backend
 alembic upgrade head
 ```
 
-Recent migrations to confirm (020–023):
+Recent migrations to confirm (020–024):
 
 - `020` — `pin_login_lockouts`
 - `021` — `otp_send_throttles`
 - `022` — `users.session_version` (refresh rotation / logout)
 - `023` — `sync_apply_throttles`
+- `024` — `updated_at` on items/customers/receivables (SYNC-01 incremental pull)
 
 ## 3. Pre-deploy local check (optional)
 
@@ -78,12 +79,12 @@ Exit code `0` = automated checks passed. Warnings list manual dashboard items.
 
 ## 5. Sign-off
 
-- [ ] All env vars in §1 set on Render
-- [ ] `alembic upgrade head` applied on production DB
-- [ ] `/health` returns ok
-- [ ] OTP SMS works (Arkesel)
-- [ ] Paystack connect + one test collection
-- [ ] Mobile app points at production API
+- [x] All env vars in §1 set on Render
+- [x] `alembic upgrade head` applied on production DB
+- [x] `/health` returns ok
+- [x] OTP SMS works (Arkesel)
+- [x] Paystack connect + one test collection
+- [x] Mobile app points at production API
 
 ---
 

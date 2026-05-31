@@ -4,7 +4,7 @@ import '../../data/models/local_receivable_record.dart';
 import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Single row in the debts list, modelled after `index (2).html` `.debt-card`:
+/// Single row in the debts list, modelled after `debts UI mockup` `.debt-card`:
 /// rounded-square avatar (neutral for settled/cancelled, gold for open) → name +
 /// `INV · date` meta → amount with status pill stacked beneath → chevron.
 class DebtListTile extends StatelessWidget {

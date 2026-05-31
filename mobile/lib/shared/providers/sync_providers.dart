@@ -65,7 +65,7 @@ final debtsPaymentsApiProvider = Provider<DebtsPaymentsApi>((ref) {
 final syncRefreshServiceProvider = Provider<SyncRefreshService>((ref) {
   return SyncRefreshService(
     appDb: ref.watch(appDatabaseProvider),
-    inventoryApi: ref.watch(inventoryApiProvider),
+    syncApi: ref.watch(syncApiProvider),
     debtsApi: ref.watch(debtsApiProvider),
   );
 });

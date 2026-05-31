@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -247,6 +248,7 @@ class InventoryService:
             raise OptimisticLockError(msg)
         balance.quantity_on_hand += quantity
         balance.version = balance.version + 1
+        item.updated_at = datetime.now(tz=UTC)
 
         movement = InventoryMovement(
             item_id=item.id,
@@ -299,6 +301,7 @@ class InventoryService:
             raise InvalidInventoryAdjustmentError(msg)
         balance.quantity_on_hand = updated_quantity
         balance.version = balance.version + 1
+        item.updated_at = datetime.now(tz=UTC)
 
         movement = InventoryMovement(
             item_id=item.id,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,8 @@ import '../../inventory/data/inventory_repository.dart';
 import '../../inventory/providers/inventory_providers.dart';
 import 'package:dio/dio.dart';
 
+import '../../../shared/providers/sync_providers.dart';
+import '../utils/sale_sync_error.dart';
 import '../data/sales_payments_api.dart';
 import '../data/sales_repository.dart';
 import '../providers/sales_providers.dart';
@@ -52,6 +55,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   SalesViewTab _activeTab = SalesViewTab.newSale;
   bool _showVoided = false;
+  bool _cartReadyForOnlinePay = true;
+  bool _cartSyncingForOnlinePay = false;
 
   @override
   void dispose() {
@@ -354,6 +359,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }) async {
     if (SalesUiUtils.parseTotal(totalAmount) <= 0 || isBusy) return;
     if (!mounted) return;
+    await _refreshCartOnlinePayReadiness(items);
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -362,6 +369,9 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         items: items,
         itemCount: itemCount,
         totalAmount: totalAmount,
+        cartReadyForOnlinePay: _cartReadyForOnlinePay,
+        syncingForOnlinePay: _cartSyncingForOnlinePay,
+        onSyncCartForOnlinePay: () => _syncCartForOnlinePayment(items),
         formatMajor: (val, {symbol = 'GHS '}) => SalesUiUtils.formatMinor(
             SalesUiUtils.parseTotal(val),
             symbol: symbol),
@@ -380,6 +390,91 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         ),
       ),
     );
+  }
+
+  Set<String> _cartItemIdsForOnlinePay(List<LocalInventoryItem> items) {
+    final cart = ref.read(salesCartProvider);
+    final knownIds = {for (final item in items) item.id};
+    return cart.qtyByItemId.entries
+        .where((e) => e.value > 0)
+        .map((e) => itemIdFromKey(e.key))
+        .where(knownIds.contains)
+        .toSet();
+  }
+
+  Future<void> _refreshCartOnlinePayReadiness(
+    List<LocalInventoryItem> items,
+  ) async {
+    final itemIds = _cartItemIdsForOnlinePay(items);
+    if (itemIds.isEmpty) {
+      if (mounted) setState(() => _cartReadyForOnlinePay = true);
+      return;
+    }
+    final blocked = await ref
+        .read(appDatabaseProvider)
+        .syncQueue
+        .hasUnresolvedItemCreatesForIds(itemIds);
+    if (!mounted) return;
+    setState(() => _cartReadyForOnlinePay = !blocked);
+  }
+
+  Future<bool> _ensureCartReadyForOnlinePayment(
+    List<LocalInventoryItem> items,
+  ) async {
+    await _refreshCartOnlinePayReadiness(items);
+    if (!mounted) return false;
+    if (_cartReadyForOnlinePay) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Some items must sync before online payment. Tap Sync now in checkout.',
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+    return false;
+  }
+
+  Future<bool> _syncCartForOnlinePayment(
+    List<LocalInventoryItem> items,
+  ) async {
+    if (_cartSyncingForOnlinePay) return _cartReadyForOnlinePay;
+    setState(() => _cartSyncingForOnlinePay = true);
+    try {
+      await ref.read(syncStatusControllerProvider.notifier).syncNow();
+      if (!mounted) return _cartReadyForOnlinePay;
+      await _refreshCartOnlinePayReadiness(items);
+      if (!mounted) return _cartReadyForOnlinePay;
+      if (_cartReadyForOnlinePay) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Items synced. You can collect online now.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Some items still need to sync. Check your connection and try again.',
+            ),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return _cartReadyForOnlinePay;
+    } finally {
+      if (mounted) setState(() => _cartSyncingForOnlinePay = false);
+    }
+  }
+
+  void _logSaleFlowError(String flow, Object error, StackTrace? stackTrace) {
+    if (kDebugMode) {
+      debugPrint('[$flow] ${error.runtimeType}: $error');
+      if (stackTrace != null) {
+        debugPrintStack(stackTrace: stackTrace, label: flow);
+      }
+    }
   }
 
   Widget _buildRecentSaleTile(LocalSaleRecord sale) {
@@ -471,10 +566,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             );
       }
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logSaleFlowError('recordSale', error, stackTrace);
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(humanizeInventoryError(error))),
+        SnackBar(content: Text(humanizeSaleSyncError(error))),
       );
       return false;
     }
@@ -493,6 +589,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required List<LocalInventoryItem> items,
     required String paymentMethodLabel,
   }) async {
+    if (!await _ensureCartReadyForOnlinePayment(items)) return;
+
     final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -545,7 +643,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
         amount: initiated.amount,
         currency: initiated.currency,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logSaleFlowError('paystackQrLink', error, stackTrace);
       if (loadingShown && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         loadingShown = false;
@@ -566,7 +665,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       }
       final message = saleSaved
           ? 'Sale recorded, but payment link failed: ${humanizeSalesPaymentsError(error)}'
-          : humanizeInventoryError(error);
+          : humanizeSaleSyncError(error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -578,6 +677,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String paymentMethodLabel,
     required String totalAmount,
   }) async {
+    if (!await _ensureCartReadyForOnlinePayment(items)) return;
+
     final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -683,7 +784,8 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           method: 'mobile_money',
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logSaleFlowError('paystackMomoNumber', error, stackTrace);
       if (loadingShown && mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         loadingShown = false;
@@ -703,7 +805,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       }
       final message = saleSaved
           ? 'Sale recorded, but MoMo prompt failed: ${humanizeSalesPaymentsError(error)}'
-          : humanizeInventoryError(error);
+          : humanizeSaleSyncError(error);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -905,7 +1007,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(humanizeInventoryError(error))),
+        SnackBar(content: Text(humanizeSaleSyncError(error))),
       );
       return;
     }
@@ -954,7 +1056,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(humanizeInventoryError(error))),
+        SnackBar(content: Text(humanizeSaleSyncError(error))),
       );
     } finally {
       reasonCtrl.dispose();

@@ -72,7 +72,7 @@ def main() -> int:
             _ok("CORS_ORIGINS empty — mobile-only API (no browser CORS)")
 
     print("\nManual steps (cannot verify from env alone):")
-    print("  • Run: alembic upgrade head  (migrations 020–023)")
+    print("  • Run: alembic upgrade head  (migrations through 024)")
     print('  • curl https://<host>/health  → {"status":"ok"}')
     print("  • See docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md")
     print()

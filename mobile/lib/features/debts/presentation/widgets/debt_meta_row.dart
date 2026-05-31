@@ -6,7 +6,7 @@ import '../utils/debts_ui_utils.dart';
 
 /// Three-cell info row beneath the balance hero.
 ///
-/// Visual reference: `index (2).html` `.info-row` (Invoice | Created | Due).
+/// Visual reference: `debts UI mockup` `.info-row` (Invoice | Created | Due).
 /// Optional Note / Overdue badges are appended below as separate chips so
 /// the primary 3-cell grid stays clean.
 class DebtMetaRow extends StatelessWidget {

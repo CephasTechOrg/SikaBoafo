@@ -137,7 +137,7 @@ class DebtDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Top-of-screen header matching `index (2).html` `.detail-header`. Renders
+/// Top-of-screen header matching `debts UI mockup` `.detail-header`. Renders
 /// a green gradient with the back button + refresh icon and an avatar /
 /// name / phone block underneath.
 class _DetailHeader extends StatelessWidget {

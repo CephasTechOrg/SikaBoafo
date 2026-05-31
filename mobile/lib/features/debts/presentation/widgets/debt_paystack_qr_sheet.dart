@@ -11,6 +11,7 @@ import '../../data/debts_api.dart';
 import '../../data/debts_payments_api.dart';
 import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
+import '../utils/debt_payment_progress.dart';
 import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
@@ -137,24 +138,11 @@ class _DebtPaystackQrSheetState extends ConsumerState<DebtPaystackQrSheet> {
     Navigator.of(context).pop();
   }
 
-  bool _receivableFullySettled(ReceivableDto dto) {
-    final outstandingMinor = DebtsUiUtils.amountToMinor(dto.outstandingAmount);
-    return dto.status == 'settled' || outstandingMinor == 0;
-  }
+  bool _receivableFullySettled(ReceivableDto dto) =>
+      DebtPaymentProgress.isReceivableFullySettled(dto);
 
-  /// A verify response counts as "payment landed" when **any** of these hold:
-  /// - Paystack/our payment row reports success (legacy rule), OR
-  /// - the receivable is already settled server-side (webhook beat us), OR
-  /// - outstanding has dropped to zero (settled by another route).
-  ///
-  /// Without the latter two checks the sheet polls forever when the webhook
-  /// settles first but Paystack verify briefly returns a non-success string
-  /// for transient reasons.
-  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) {
-    if (verify.isPaymentSuccessful) return true;
-    if (verify.isSettled) return true;
-    return DebtsUiUtils.amountToMinor(verify.outstandingAmount) == 0;
-  }
+  bool _verifyIndicatesSuccess(ReceivablePaymentVerifyOutDto verify) =>
+      DebtPaymentProgress.verifyIndicatesSuccess(verify);
 
   Future<void> _check({bool auto = false}) async {
     if (_checking || _confirmed) return;

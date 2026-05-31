@@ -2,24 +2,85 @@ import 'package:sqflite/sqflite.dart';
 
 import '../local/app_database.dart';
 import '../local/kv_cache_repository.dart';
+import '../remote/sync_api.dart';
 import '../../features/debts/data/debts_api.dart';
 import '../../features/inventory/data/inventory_api.dart';
 
 class SyncRefreshService {
   SyncRefreshService({
     required AppDatabase appDb,
-    required InventoryApi inventoryApi,
+    required SyncApi syncApi,
     required DebtsApi debtsApi,
   })  : _appDb = appDb,
-        _inventoryApi = inventoryApi,
+        _syncApi = syncApi,
         _debtsApi = debtsApi;
 
   final AppDatabase _appDb;
-  final InventoryApi _inventoryApi;
+  final SyncApi _syncApi;
   final DebtsApi _debtsApi;
 
   Future<void> refreshInventorySnapshot() async {
-    final items = await _inventoryApi.fetchItems();
+    await _pullAndApply(includeInventory: true, includeDebts: false);
+  }
+
+  Future<void> refreshDebtSnapshot() async {
+    await _pullAndApply(includeInventory: false, includeDebts: true);
+  }
+
+  /// Single round-trip when both domains need reconciliation (e.g. sync conflicts).
+  Future<void> refreshInventoryAndDebtSnapshots() async {
+    await _pullAndApply(includeInventory: true, includeDebts: true);
+  }
+
+  Future<void> _pullAndApply({
+    required bool includeInventory,
+    required bool includeDebts,
+  }) async {
+    final since =
+        await _appDb.kv.getTimestamp(KvCacheRepository.kSyncPullCursor);
+    final includeParts = <String>[];
+    if (includeInventory) includeParts.add('inventory');
+    if (includeDebts) includeParts.add('debts');
+
+    final pull = await _syncApi.pull(
+      since: since,
+      include: includeParts.join(','),
+    );
+
+    if (includeInventory && pull.inventory.isNotEmpty) {
+      await _mergeInventory(pull.inventory);
+    } else if (includeInventory && pull.fullRefresh) {
+      await _mergeInventory(const []);
+    }
+
+    if (includeDebts &&
+        (pull.customers.isNotEmpty ||
+            pull.receivables.isNotEmpty ||
+            pull.fullRefresh)) {
+      await _mergeDebts(
+        customers: pull.customers,
+        receivables: pull.receivables,
+        fullRefresh: pull.fullRefresh,
+      );
+    }
+
+    await _appDb.kv.putTimestamp(
+      KvCacheRepository.kSyncPullCursor,
+      pull.cursor,
+    );
+    if (includeInventory) {
+      await _appDb.kv.putTimestamp(
+        KvCacheRepository.kInventoryTs,
+        pull.cursor,
+      );
+    }
+    if (includeDebts) {
+      await _appDb.kv.putTimestamp(KvCacheRepository.kDebtsTs, pull.cursor);
+    }
+  }
+
+  Future<void> _mergeInventory(List<Map<String, dynamic>> rows) async {
+    final items = rows.map(InventoryItemDto.fromJson).toList(growable: false);
     final db = await _appDb.database;
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((tx) async {
@@ -42,22 +103,33 @@ class SyncRefreshService {
         );
       }
     });
-    await _appDb.kv
-        .putTimestamp(KvCacheRepository.kInventoryTs, DateTime.now().toUtc());
   }
 
-  Future<void> refreshDebtSnapshot() async {
-    final customers = await _debtsApi.fetchCustomers();
-    final receivables = await _debtsApi.fetchReceivables(
-      limit: DebtsApi.maxReceivablesListQueryLimit,
-    );
+  Future<void> _mergeDebts({
+    required List<Map<String, dynamic>> customers,
+    required List<Map<String, dynamic>> receivables,
+    required bool fullRefresh,
+  }) async {
+    var customerDtos =
+        customers.map(DebtCustomerDto.fromJson).toList(growable: false);
+    var receivableDtos =
+        receivables.map(ReceivableDto.fromJson).toList(growable: false);
+
+    if (fullRefresh && receivableDtos.isEmpty) {
+      receivableDtos = await _debtsApi.fetchReceivables(
+        limit: DebtsApi.maxReceivablesListQueryLimit,
+      );
+    }
+    if (fullRefresh && customerDtos.isEmpty) {
+      customerDtos = await _debtsApi.fetchCustomers();
+    }
+
     final db = await _appDb.database;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final fetchedIds = receivables.map((r) => r.receivableId).toSet();
+    final fetchedIds = receivableDtos.map((r) => r.receivableId).toSet();
 
     // Backfill rows that can be missing from paged list responses (older but
-    // still active debts, or rows with a still-shared payment link). This
-    // prevents "paid on server but still open locally" until manual revisit.
+    // still active debts, or rows with a still-shared payment link).
     final trackedRows = await db.query(
       'receivables_local',
       columns: ['id'],
@@ -78,10 +150,13 @@ class SyncRefreshService {
         // not block the entire debt snapshot refresh.
       }
     }
-    final allReceivables = <ReceivableDto>[...receivables, ...extraReceivables];
+    final allReceivables = <ReceivableDto>[
+      ...receivableDtos,
+      ...extraReceivables,
+    ];
 
     await db.transaction((tx) async {
-      for (final customer in customers) {
+      for (final customer in customerDtos) {
         final existing = await tx.query(
           'customers_local',
           columns: ['local_operation_id', 'source_device_id', 'created_at'],
@@ -113,8 +188,6 @@ class SyncRefreshService {
         );
       }
     });
-    await _appDb.kv
-        .putTimestamp(KvCacheRepository.kDebtsTs, DateTime.now().toUtc());
   }
 
   Future<void> _upsertCustomer({

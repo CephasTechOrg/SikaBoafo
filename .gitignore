@@ -52,6 +52,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Local one-off dev scripts (not part of the product)
+scripts/scratch/
+
 # devtools
 devtools_*.yaml
 .claude/

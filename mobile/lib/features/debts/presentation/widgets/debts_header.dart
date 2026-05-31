@@ -8,7 +8,7 @@ import 'hero_stat_row.dart';
 
 /// Hero block at the top of the Debts list.
 ///
-/// Visual reference: `index (2).html` → `.debts-header`. Uses the mockup's
+/// Visual reference: `debts UI mockup` → `.debts-header`. Uses the mockup's
 /// green gradient with two soft "orb" highlights, a serif outstanding total,
 /// and a single-line stat-pill row.
 class DebtsHeader extends StatelessWidget {

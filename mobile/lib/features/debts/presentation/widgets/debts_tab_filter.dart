@@ -19,7 +19,7 @@ extension DebtsFilterTabX on DebtsFilterTab {
   }
 }
 
-/// Horizontally-arranged filter pills (`index (2).html` `.filter-tabs`).
+/// Horizontally-arranged filter pills (`debts UI mockup` `.filter-tabs`).
 ///
 /// Active tab fills with `green-deep` and shows white text + translucent
 /// badge. Inactive tabs are bordered surface chips with green-pale badges.

@@ -10,13 +10,13 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.mixins import SyncableWriteMixin, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.mixins import SyncableWriteMixin, TimestampMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
     from app.models.store import Store
 
 
-class Item(UUIDPrimaryKeyMixin, TimestampMixin, SyncableWriteMixin, Base):
+class Item(UUIDPrimaryKeyMixin, TimestampMixin, UpdatedAtMixin, SyncableWriteMixin, Base):
     __tablename__ = "items"
 
     store_id: Mapped[UUID] = mapped_column(

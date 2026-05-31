@@ -3,7 +3,7 @@
 **Product:** SikaBoafo (BizTrackGh) — offline-first merchant OS for Ghana  
 **Stack:** Flutter · FastAPI · PostgreSQL · Paystack  
 **Last reviewed:** May 2026  
-**Test snapshot:** Backend 161/161 pytest pass · Mobile tests pass
+**Test snapshot:** Backend 164/164 pytest pass · Mobile tests pass
 
 This is the **single audit document** for the repo. Use it to see what is wrong, what was already fixed, and what to tackle next. Older notes (e.g. root `debt_payment_flow_audit.md`) are folded in here; prefer **this file** for planning work.
 
@@ -76,12 +76,12 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Medium |
-| **What's happening** | HS256 JWT built manually in `security.py` (encode/decode/sign). Works and uses `hmac.compare_digest` for signatures. |
-| **Why it matters** | Easier to miss edge cases (alg none, claim validation) than with battle-tested library. |
+| **Status** | `monitor` |
+| **Severity** | Low (for current scope) |
+| **What's happening** | HS256 JWT built manually in `security.py` (encode/decode/sign). Uses `hmac.compare_digest`; verifies `exp`, `iss`, and session claims. Adequate for single-issuer HS256 access/refresh tokens in production. |
+| **Why it matters** | A maintained library (e.g. PyJWT) reduces long-term crypto maintenance and edge-case risk if auth grows (OAuth, RS256, JWKS). Not a release blocker today. |
 | **Where** | `backend/app/core/security.py` |
-| **Fix** | Migrate to `PyJWT` (or similar) with explicit `algorithms=["HS256"]`, `aud`/`iss` checks. |
+| **Fix** | Revisit PyJWT migration only when auth scope expands or a security review requires it. |
 
 ### AUTH-05 · Mock OTP bypass in production
 
@@ -268,12 +268,11 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Low (MVP OK) |
-| **What's happening** | Device pushes operations; server does not stream full change feed. Conflicts trigger **snapshot refresh** (inventory/debts). |
-| **Why it matters** | Large catalogs / multi-device: more bandwidth and race windows. |
-| **Where** | `mobile/lib/data/sync/`, `backend/app/services/sync_service.py` |
-| **Fix** | Cursor-based pull per entity type (P2). |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | `GET /api/v1/sync/pull?since=<cursor>` returns changed inventory + debt rows; mobile stores `last_sync_pull_cursor` and upserts deltas instead of always full-list fetching. |
+| **Fix applied** | Migration `024` (`updated_at` on items/customers/receivables); `SyncPullService`; mobile `SyncRefreshService` + `SyncApi.pull()`. |
+| **Where** | `backend/app/services/sync_pull_service.py`, `backend/app/api/v1/sync.py`, `mobile/lib/data/sync/sync_refresh_service.dart` |
 
 ### SYNC-02 · Conflict resolution is technical, not merchant-guided
 
@@ -358,12 +357,10 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Low |
-| **What's happening** | Debt sheets and payment panels are large, multi-state files. |
-| **Why it matters** | Harder unit tests and reviews. |
-| **Where** | `debt_payment_link_panel.dart`, paystack sheets |
-| **Fix** | Extract polling, amount validation, and link state into testable classes. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | Link expiry, charge validation, and Paystack progress rules extracted to testable utils; panel sub-widgets split out. QR/MoMo sheets share `DebtPaymentProgress`. |
+| **Fix applied** | `debt_payment_link_state.dart`, `debt_payment_amount_validator.dart`, `debt_payment_progress.dart`, `debt_payment_link_panel_widgets.dart`; tests in `debt_payment_logic_test.dart`. |
 
 ### MOB-03 · Silent background errors
 
@@ -436,10 +433,10 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `partial` |
-| **Severity** | High |
-| **What's happening** | **Automated at boot:** default `SECRET_KEY`, production `AUTH_MOCK_OTP_CODE`, production `PAYMENT_CONFIG_ENCRYPTION_KEY`. **Runbook:** `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md`. **Pre-flight script:** `backend/scripts/check_deploy_env.py` (same boot checks + env advisories). Manual Render sign-off still required (Arkesel, Paystack live, migrations, smoke tests). |
-| **Fix** | Run checklist + script on each production deploy; tick sign-off in runbook. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | Boot checks + runbook + `check_deploy_env.py` in place; Render production sign-off completed (env, migrations through `024`, smoke tests). |
+| **Fix applied** | Re-run checklist + script on each production deploy; see `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md`. |
 
 ### OPS-02 · No structured security headers / HSTS
 
@@ -467,10 +464,10 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Low |
-| **What's happening** | `scripts/scratch/`, `index (2).html` at repo root. |
-| **Fix** | Move to `scripts/scratch/README` only in dev branches or delete; add to `.gitignore` if local-only. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | Removed root `index (2).html` and tracked `scripts/scratch/*.py`; `scripts/scratch/` added to `.gitignore` for future local one-offs. |
+| **Fix applied** | Deleted artifacts; updated debts widget comments that referenced the mockup file. |
 
 ### REPO-02 · Duplicate audit doc at root
 
@@ -491,21 +488,21 @@ Use for release gates and security reviews.
 - [x] **AUTH-05** — Confirm `AUTH_MOCK_OTP_CODE` unset in production (automated boot check)
 - [x] **AUTH-06** — Confirm strong `SECRET_KEY` in production (automated boot check)
 - [x] **MOB-01** — Fix failing `app_routing_test` (Debts quick action)
-- [ ] **OPS-01** — Run production env checklist on Render (`docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` + `scripts/check_deploy_env.py`)
+- [x] **OPS-01** — Run production env checklist on Render (`docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` + `scripts/check_deploy_env.py`)
 - [x] **DEBT-01** — Widget tests: poll-after-verify when fetch stale; fetch-settled skips verify
 
 ### Production env checklist (copy into deploy runbook)
 
 Items marked *(boot)* are enforced at API startup in production/staging — still confirm in the Render dashboard.
 
-- [ ] `APP_ENV=production`
-- [ ] `SECRET_KEY` — long random value, not default *(boot)*
-- [ ] `AUTH_MOCK_OTP_CODE` — **empty / unset** *(boot, production only)*
-- [ ] `alembic upgrade head` — migrations `020`–`023` (`pin_login_lockouts`, `otp_send_throttles`, `users.session_version`, `sync_apply_throttles`)
-- [ ] `PAYMENT_CONFIG_ENCRYPTION_KEY` — valid Fernet key *(boot, production only)*
-- [ ] `ARKESEL_API_KEY` — set for live SMS
-- [ ] `PAYSTACK_SECRET_KEY_LIVE` — live key only on production
-- [ ] `CORS_ORIGINS` — explicit list (not `*`) if any browser client exists
+- [x] `APP_ENV=production`
+- [x] `SECRET_KEY` — long random value, not default *(boot)*
+- [x] `AUTH_MOCK_OTP_CODE` — **empty / unset** *(boot, production only)*
+- [x] `alembic upgrade head` — migrations `020`–`024` (through SYNC-01 `updated_at`)
+- [x] `PAYMENT_CONFIG_ENCRYPTION_KEY` — valid Fernet key *(boot, production only)*
+- [x] `ARKESEL_API_KEY` — set for live SMS
+- [x] `PAYSTACK_SECRET_KEY_LIVE` — live key only on production
+- [x] `CORS_ORIGINS` — explicit list or empty for mobile-only *(not `*` in production)*
 
 ---
 
@@ -525,16 +522,15 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 
 # Master Checklist C — Do better (quality & growth)
 
-- [ ] **AUTH-04** — Migrate JWT to maintained library (`PyJWT`)
 - [x] **AUTH-07** — Tighten CORS per environment
-- [ ] **SYNC-01** — Incremental server pull / sync cursors
+- [x] **SYNC-01** — Incremental server pull / sync cursors
 - [x] **SYNC-03** — UI to review/retry **dead** sync queue rows
-- [ ] **MOB-02** — Refactor large debt/payment widgets for testability
+- [x] **MOB-02** — Refactor large debt/payment widgets for testability
 - [x] **MOB-03** — Surface background refresh/sync failures to user
 - [ ] **ARCH-01** — Multi-store product design (if roadmap requires)
 - [ ] **ARCH-02** — Wire Redis for sessions/rate limits or remove from architecture docs
 - [ ] **ARCH-03** — Admin console or remove from public architecture
-- [ ] **REPO-01** — Clean scratch artifacts from main branch
+- [x] **REPO-01** — Clean scratch artifacts from main branch
 - [x] **OPS-02** — Security headers at edge or in FastAPI
 
 ---
@@ -546,7 +542,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | AUTH-01 | PIN rate limiting | done |
 | AUTH-02 | Refresh token revocation | done |
 | AUTH-03 | Logout server-side | done |
-| AUTH-04 | Custom JWT | open |
+| AUTH-04 | Custom JWT | monitor |
 | AUTH-05 | Mock OTP in prod | done |
 | AUTH-06 | Default secret key | done |
 | AUTH-07 | CORS `*` | done |
@@ -564,7 +560,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | DEBT-07 | Active link semantics | done |
 | DEBT-08 | Webhook/verify parity | done |
 | DEBT-09 | Sync before online pay | done |
-| SYNC-01 | Push-only sync | open |
+| SYNC-01 | Push-only sync | done |
 | SYNC-02 | Conflict UX | done |
 | SYNC-03 | Dead letter queue | done |
 | SYNC-04 | Batch transaction | monitor |
@@ -572,17 +568,17 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | RBAC-02 | Owner destructive ops | done |
 | RBAC-03 | Staff daily ops | done |
 | MOB-01 | Routing test fail | done |
-| MOB-02 | Large widgets | open |
+| MOB-02 | Large widgets | done |
 | MOB-03 | Silent refresh errors | done |
 | MOB-04 | Build-time config | monitor |
 | ARCH-01 | Single store | open |
 | ARCH-02 | Redis unused | open |
 | ARCH-03 | Admin stub | open |
 | ARCH-04 | Thin routers | done |
-| OPS-01 | Prod checklist | partial |
+| OPS-01 | Prod checklist | done |
 | OPS-02 | Security headers | done |
 | OPS-03 | Webhook HMAC | done |
-| REPO-01 | Scratch files | open |
+| REPO-01 | Scratch files | done |
 | REPO-02 | Audit consolidation | done |
 
 ---
@@ -590,7 +586,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 # Suggested fix order (one path through the audits)
 
 1. ~~**MOB-01** — Green CI~~ ✓ done  
-2. ~~**OPS-01 + AUTH-05 + AUTH-06** — Production env hardening (boot checks)~~ ✓ partial — manual Render checklist remains  
+2. ~~**OPS-01 + AUTH-05 + AUTH-06** — Production env hardening + Render sign-off~~ ✓ done  
 3. ~~**AUTH-01** — PIN lockout~~ ✓ done  
 4. ~~**DEBT-01** — Poll-after-verify (backend + mobile widget tests)~~ ✓ done  
 5. ~~**AUTH-02 + AUTH-03** — Session lifecycle~~ ✓ done  
@@ -601,8 +597,11 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 10. ~~**DEBT-09** — Block online pay until debt synced + clear messaging~~ ✓ done  
 11. ~~**SYNC-02** — Merchant-visible conflict resolution~~ ✓ done  
 12. ~~**OPS-02 + AUTH-07** — Security headers + production CORS hardening~~ ✓ done  
+13. ~~**REPO-01** — Remove scratch scripts and stray mockup HTML~~ ✓ done  
+14. ~~**MOB-02** — Extract testable payment link/progress logic from large widgets~~ ✓ done  
+15. ~~**SYNC-01** — Incremental `/sync/pull` with mobile cursor storage~~ ✓ done  
 
-**Next suggested:** REPO-01 (scratch cleanup), MOB-02 (widget refactors), or SYNC-01 (incremental pull).
+**Checklist A is complete.** **Monitor (no action now):** AUTH-04, PAY-02, SYNC-04, MOB-04. **Open on C:** ARCH-01/02/03.
 
 ---
 
@@ -612,6 +611,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 |------|--------|
 | `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` | OPS-01 deploy runbook |
 | `backend/app/core/security_headers.py` | OPS-02 response headers |
+| `backend/app/services/sync_pull_service.py` | SYNC-01 incremental pull |
 | `backend/scripts/check_deploy_env.py` | OPS-01 pre-flight env validation |
 | `debt_payment_flow_audit.md` (repo root) | Historical debt audit — see header for pointer here |
 | `docs/auth/pin-and-otp-flow.md` | Auth flow design |

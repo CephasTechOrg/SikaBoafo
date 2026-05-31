@@ -6,7 +6,7 @@ import '../utils/debts_ui_utils.dart';
 
 /// Floating "status card" for the debt detail screen.
 ///
-/// Visual reference: `index (2).html` `.status-card`. Shows the outstanding
+/// Visual reference: `debts UI mockup` `.status-card`. Shows the outstanding
 /// label + amount (or "Cleared"), status badge, progress bar, and a two-cell
 /// row of Original / Paid amount boxes. Designed to overlap the green hero
 /// from above; the parent screen handles the negative-margin layout.

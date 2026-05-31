@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from app.schemas.inventory import InventoryItemOut
+from app.schemas.receivable import CustomerOut, ReceivableOut
 
 
 class SyncOperationIn(BaseModel):
@@ -32,3 +36,13 @@ class SyncApplyOperationOut(BaseModel):
 
 class SyncApplyOut(BaseModel):
     results: list[SyncApplyOperationOut]
+
+
+class SyncPullOut(BaseModel):
+    """Incremental server snapshot for inventory + debts domains."""
+
+    cursor: datetime
+    full_refresh: bool = False
+    inventory: list[InventoryItemOut] = Field(default_factory=list)
+    customers: list[CustomerOut] = Field(default_factory=list)
+    receivables: list[ReceivableOut] = Field(default_factory=list)

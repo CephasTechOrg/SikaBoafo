@@ -244,21 +244,21 @@ class SyncQueueRunner {
     if (_refreshService == null || refreshTargets.isEmpty) {
       return;
     }
-    if (refreshTargets.any((value) =>
-        value == 'inventory' || value == 'sale' || value == 'item')) {
-      try {
+    final needsInventory = refreshTargets.any((value) =>
+        value == 'inventory' || value == 'sale' || value == 'item');
+    final needsDebts = refreshTargets.any(
+        (value) => value == 'receivable' || value == 'receivable_payment');
+    if (!needsInventory && !needsDebts) return;
+    try {
+      if (needsInventory && needsDebts) {
+        await _refreshService.refreshInventoryAndDebtSnapshots();
+      } else if (needsInventory) {
         await _refreshService.refreshInventorySnapshot();
-      } catch (_) {
-        // Keep the conflict row visible even if refresh itself fails.
-      }
-    }
-    if (refreshTargets.any(
-        (value) => value == 'receivable' || value == 'receivable_payment')) {
-      try {
+      } else {
         await _refreshService.refreshDebtSnapshot();
-      } catch (_) {
-        // Keep the conflict row visible even if refresh itself fails.
       }
+    } catch (_) {
+      // Keep the conflict row visible even if refresh itself fails.
     }
   }
 }

@@ -77,4 +77,63 @@ class SyncApi {
         .map(SyncApplyResult.fromJson)
         .toList(growable: false);
   }
+
+  Future<SyncPullResult> pull({
+    DateTime? since,
+    String? include,
+    int limit = 500,
+  }) async {
+    final query = <String, dynamic>{'limit': limit};
+    if (since != null) {
+      query['since'] = since.toUtc().toIso8601String();
+    }
+    if (include != null && include.trim().isNotEmpty) {
+      query['include'] = include;
+    }
+    final response = await _apiClient.dio.get<dynamic>(
+      '/sync/pull',
+      queryParameters: query,
+    );
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Unexpected sync pull payload.');
+    }
+    return SyncPullResult.fromJson(data);
+  }
+}
+
+class SyncPullResult {
+  const SyncPullResult({
+    required this.cursor,
+    required this.fullRefresh,
+    required this.inventory,
+    required this.customers,
+    required this.receivables,
+  });
+
+  final DateTime cursor;
+  final bool fullRefresh;
+  final List<Map<String, dynamic>> inventory;
+  final List<Map<String, dynamic>> customers;
+  final List<Map<String, dynamic>> receivables;
+
+  factory SyncPullResult.fromJson(Map<String, dynamic> json) {
+    final cursorRaw = (json['cursor'] ?? '') as String;
+    final parsedCursor = DateTime.tryParse(cursorRaw)?.toUtc();
+    if (parsedCursor == null) {
+      throw FormatException('Invalid sync pull cursor: $cursorRaw');
+    }
+    List<Map<String, dynamic>> rows(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+
+    return SyncPullResult(
+      cursor: parsedCursor,
+      fullRefresh: json['full_refresh'] == true,
+      inventory: rows(json['inventory']),
+      customers: rows(json['customers']),
+      receivables: rows(json['receivables']),
+    );
+  }
 }

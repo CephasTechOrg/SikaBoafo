@@ -101,6 +101,33 @@ class SyncQueueRepository {
     );
   }
 
+  /// True when any cart item still has an unresolved outbound `item`/`create` op.
+  Future<bool> hasUnresolvedItemCreatesForIds(Iterable<String> itemIds) async {
+    final ids = itemIds.where((id) => id.trim().isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return false;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final db = await _appDb.database;
+    final rows = await db.rawQuery(
+      '''
+SELECT 1 FROM sync_queue
+WHERE entity_type = 'item'
+  AND operation = 'create'
+  AND entity_id IN ($placeholders)
+  AND status IN (?, ?, ?, ?, ?)
+LIMIT 1
+''',
+      [
+        ...ids,
+        pending,
+        sending,
+        failed,
+        conflict,
+        dead,
+      ],
+    );
+    return rows.isNotEmpty;
+  }
+
   /// Latest queue row for an outbound sale create (used to verify server sync).
   Future<Map<String, Object?>?> rowForSaleCreate(String saleId) async {
     final db = await _appDb.database;

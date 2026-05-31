@@ -27,6 +27,16 @@ class TimestampMixin:
 
 
 @declarative_mixin
+class UpdatedAtMixin:
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
+@declarative_mixin
 class SyncableWriteMixin:
     """Offline-originated writes: idempotent apply via (source_device_id, local_operation_id)."""
 
