@@ -75,6 +75,11 @@ class Settings(BaseSettings):
             return ["*"]
         return [o.strip() for o in raw.split(",") if o.strip()]
 
+    @property
+    def cors_allow_credentials(self) -> bool:
+        """Browsers reject credentials with a wildcard origin."""
+        return self.cors_origin_list != ["*"]
+
 
 @lru_cache
 def get_settings() -> Settings:

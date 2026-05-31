@@ -3,7 +3,7 @@
 **Product:** SikaBoafo (BizTrackGh) — offline-first merchant OS for Ghana  
 **Stack:** Flutter · FastAPI · PostgreSQL · Paystack  
 **Last reviewed:** May 2026  
-**Test snapshot:** Backend 157/157 pytest pass · Mobile tests pass
+**Test snapshot:** Backend 161/161 pytest pass · Mobile tests pass
 
 This is the **single audit document** for the repo. Use it to see what is wrong, what was already fixed, and what to tackle next. Older notes (e.g. root `debt_payment_flow_audit.md`) are folded in here; prefer **this file** for planning work.
 
@@ -107,12 +107,11 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Medium (when web clients exist) |
-| **What's happening** | `cors_origins` defaults to `*` with `allow_credentials=True`. |
-| **Why it matters** | Fine for mobile-only MVP; risky if you add a browser admin or web app. |
-| **Where** | `backend/app/main.py`, `backend/app/core/config.py` |
-| **Fix** | Set explicit origins per environment in Render/env. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | Boot check rejects `CORS_ORIGINS=*` in **production** and **staging**; empty list allowed for mobile-only. Local dev keeps `*`. |
+| **Fix applied** | `startup_checks.py`; `cors_allow_credentials=False` when wildcard; `.env.example` + deploy script updated. |
+| **Where** | `backend/app/main.py`, `backend/app/core/config.py`, `backend/app/core/startup_checks.py` |
 
 ### AUTH-08 · No API-wide rate limiting (sync done — AUTH-08b)
 
@@ -446,10 +445,10 @@ When you fix an item, change its status here and tick the checklist box.
 
 | Field | Value |
 |-------|--------|
-| **Status** | `open` |
-| **Severity** | Low |
-| **What's happening** | FastAPI app does not set security headers middleware. |
-| **Fix** | Add middleware or terminate at CDN/load balancer. |
+| **Status** | `done` |
+| **Severity** | — |
+| **What's happening** | `SecurityHeadersMiddleware` sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`; HSTS on production/staging and HTTPS requests. |
+| **Fix applied** | `backend/app/core/security_headers.py`, wired in `main.py`. |
 
 ### OPS-03 · Webhook endpoint public by design
 
@@ -527,7 +526,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 # Master Checklist C — Do better (quality & growth)
 
 - [ ] **AUTH-04** — Migrate JWT to maintained library (`PyJWT`)
-- [ ] **AUTH-07** — Tighten CORS per environment
+- [x] **AUTH-07** — Tighten CORS per environment
 - [ ] **SYNC-01** — Incremental server pull / sync cursors
 - [x] **SYNC-03** — UI to review/retry **dead** sync queue rows
 - [ ] **MOB-02** — Refactor large debt/payment widgets for testability
@@ -536,7 +535,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 - [ ] **ARCH-02** — Wire Redis for sessions/rate limits or remove from architecture docs
 - [ ] **ARCH-03** — Admin console or remove from public architecture
 - [ ] **REPO-01** — Clean scratch artifacts from main branch
-- [ ] **OPS-02** — Security headers at edge or in FastAPI
+- [x] **OPS-02** — Security headers at edge or in FastAPI
 
 ---
 
@@ -550,7 +549,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | AUTH-04 | Custom JWT | open |
 | AUTH-05 | Mock OTP in prod | done |
 | AUTH-06 | Default secret key | done |
-| AUTH-07 | CORS `*` | open |
+| AUTH-07 | CORS `*` | done |
 | AUTH-08 | OTP + sync rate limits | done |
 | AUTH-08b | Sync rate limit | done |
 | PAY-01 | PaymentService size | done |
@@ -581,7 +580,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | ARCH-03 | Admin stub | open |
 | ARCH-04 | Thin routers | done |
 | OPS-01 | Prod checklist | partial |
-| OPS-02 | Security headers | open |
+| OPS-02 | Security headers | done |
 | OPS-03 | Webhook HMAC | done |
 | REPO-01 | Scratch files | open |
 | REPO-02 | Audit consolidation | done |
@@ -601,8 +600,9 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 9. ~~**DEBT-03** — Cancel invalidates pending Paystack payment (regression test)~~ ✓ done  
 10. ~~**DEBT-09** — Block online pay until debt synced + clear messaging~~ ✓ done  
 11. ~~**SYNC-02** — Merchant-visible conflict resolution~~ ✓ done  
+12. ~~**OPS-02 + AUTH-07** — Security headers + production CORS hardening~~ ✓ done  
 
-**Next suggested:** MOB-02 (widget refactors), OPS-02 (security headers), or SYNC-01 (incremental pull).
+**Next suggested:** REPO-01 (scratch cleanup), MOB-02 (widget refactors), or SYNC-01 (incremental pull).
 
 ---
 
@@ -611,6 +611,7 @@ Items marked *(boot)* are enforced at API startup in production/staging — stil
 | Path | Notes |
 |------|--------|
 | `docs/operations/PRODUCTION_DEPLOY_CHECKLIST.md` | OPS-01 deploy runbook |
+| `backend/app/core/security_headers.py` | OPS-02 response headers |
 | `backend/scripts/check_deploy_env.py` | OPS-01 pre-flight env validation |
 | `debt_payment_flow_audit.md` (repo root) | Historical debt audit — see header for pointer here |
 | `docs/auth/pin-and-otp-flow.md` | Auth flow design |

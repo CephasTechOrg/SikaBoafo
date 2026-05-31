@@ -69,3 +69,39 @@ def test_staging_rejects_default_secret_but_allows_mock_otp() -> None:
             auth_mock_otp_code="123456",
         )
     )
+
+
+def test_production_rejects_wildcard_cors() -> None:
+    with pytest.raises(ProductionConfigError, match="CORS_ORIGINS"):
+        validate_settings_or_raise(
+            Settings(
+                app_env="production",
+                secret_key="production-secret-key-value",
+                auth_mock_otp_code=None,
+                payment_config_encryption_key="payment-encryption-key",
+                cors_origins="*",
+            )
+        )
+
+
+def test_staging_rejects_wildcard_cors() -> None:
+    with pytest.raises(ProductionConfigError, match="CORS_ORIGINS"):
+        validate_settings_or_raise(
+            Settings(
+                app_env="staging",
+                secret_key="staging-secret-key-value",
+                cors_origins="*",
+            )
+        )
+
+
+def test_production_allows_empty_cors_for_mobile_only() -> None:
+    validate_settings_or_raise(
+        Settings(
+            app_env="production",
+            secret_key="production-secret-key-value",
+            auth_mock_otp_code=None,
+            payment_config_encryption_key="payment-encryption-key",
+            cors_origins="",
+        )
+    )

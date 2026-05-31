@@ -38,5 +38,13 @@ def validate_settings_or_raise(settings: Settings) -> None:
         )
         raise ProductionConfigError(msg)
 
+    if settings.cors_origin_list == ["*"]:
+        msg = (
+            "CORS_ORIGINS must not be '*' in production or staging. "
+            "Use an empty value for mobile-only APIs, or a comma-separated "
+            "list of explicit browser origins."
+        )
+        raise ProductionConfigError(msg)
+
 
 __all__ = ["ProductionConfigError", "validate_settings_or_raise"]

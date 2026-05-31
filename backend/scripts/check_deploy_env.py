@@ -62,13 +62,14 @@ def main() -> int:
         else:
             _ok("PAYSTACK_SECRET_KEY_LIVE is set")
 
-        cors = settings.cors_origins
-        if "*" in cors:
-            _warn("CORS_ORIGINS includes '*' — tighten before any browser client.")
-        elif cors:
-            _ok(f"CORS_ORIGINS configured ({len(cors)} origin(s))")
+        cors = settings.cors_origins.strip()
+        if cors == "*":
+            print("  FAIL  CORS_ORIGINS is '*' — boot check rejects this in production.")
+            return 1
+        if cors:
+            _ok(f"CORS_ORIGINS configured ({len(settings.cors_origin_list)} origin(s))")
         else:
-            _warn("CORS_ORIGINS empty — OK for mobile-only; set if web clients exist.")
+            _ok("CORS_ORIGINS empty — mobile-only API (no browser CORS)")
 
     print("\nManual steps (cannot verify from env alone):")
     print("  • Run: alembic upgrade head  (migrations 020–023)")
