@@ -93,7 +93,7 @@ class _ProfitCard extends StatelessWidget {
       onTap: () => onNavigate(1),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        padding: const EdgeInsets.fromLTRB(18, 13, 18, 13),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -143,15 +143,15 @@ class _ProfitCard extends StatelessWidget {
                 Text(
                   '₵$todayProfit',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
-                    letterSpacing: -0.6,
+                    letterSpacing: -0.5,
                     height: 1,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 // Progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),

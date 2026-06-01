@@ -181,7 +181,7 @@ class _HomeDashboard extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       DashboardMockup.gutter,
-                      4,
+                      0,
                       DashboardMockup.gutter,
                       24,
                     ),

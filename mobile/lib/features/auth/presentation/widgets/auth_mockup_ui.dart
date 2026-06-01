@@ -326,26 +326,31 @@ class AuthWelcomeHero extends StatelessWidget {
   }
 }
 
-// ── Login hero (green gradient + glows + back + brand) ───────────────────────
+// ── Shared green hero — used by login, OTP, and any future auth step ─────────
 
-/// The hero contains the white rounded sheet-cap at its bottom so the
-/// rounded corners are never clipped by a parent scroll viewport.
-class AuthLoginHero extends StatelessWidget {
-  const AuthLoginHero({super.key, required this.onBack});
+class AuthGreenHero extends StatelessWidget {
+  const AuthGreenHero({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.onBack,
+    this.sheetColor = AuthMockup.bg,
+  });
 
+  final String title;
+  final String subtitle;
   final VoidCallback? onBack;
+  final Color sheetColor;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          // Gradient background
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(bottom: AuthMockup.loginSheetRadius),
-            decoration: const BoxDecoration(
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        // Full-height gradient fills whatever height the Column drives
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -354,98 +359,115 @@ class AuthLoginHero extends StatelessWidget {
               ),
             ),
           ),
-          // Glow orb — top right
-          Positioned(
-            right: -70,
-            top: -80,
-            child: _GlowOrb(
-              size: 230,
-              color: const Color(0xFF2EA06E).withValues(alpha: 0.40),
-            ),
-          ),
-          // Glow orb — bottom left
-          Positioned(
-            left: -70,
-            bottom: -40,
-            child: _GlowOrb(
-              size: 200,
-              color: const Color(0xFF145A3C).withValues(alpha: 0.50),
-            ),
-          ),
-          // Content
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AuthMockup.gutter - 6, 2, AuthMockup.gutter, 0,
-                  ),
-                  child: Column(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Material(
-                          color: Colors.white.withValues(alpha: 0.12),
+        ),
+
+        // Glow orb — top right
+        Positioned(
+          right: -70, top: -80,
+          child: _GlowOrb(size: 230, color: const Color(0xFF2EA06E).withValues(alpha: 0.40)),
+        ),
+
+        // Glow orb — bottom left
+        Positioned(
+          left: -70, bottom: -40,
+          child: _GlowOrb(size: 200, color: const Color(0xFF145A3C).withValues(alpha: 0.50)),
+        ),
+
+        // Content column drives Stack height
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AuthMockup.gutter - 6, 4, AuthMockup.gutter, 0,
+                ),
+                child: Column(
+                  children: [
+                    // Back button
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Material(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          onTap: onBack,
                           borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            onTap: onBack,
-                            borderRadius: BorderRadius.circular(12),
-                            child: const SizedBox(
-                              width: 38,
-                              height: 38,
-                              child: Icon(
-                                Icons.arrow_back_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
+                          child: const SizedBox(
+                            width: 38, height: 38,
+                            child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const AuthMockupBrandMark(size: 62, radius: 18, light: true),
-                      const SizedBox(height: 14),
-                      const _BrandName(text: 'SikaBoafo', size: 24),
-                      const SizedBox(height: 4),
+                    ),
+                    const SizedBox(height: 18),
+                    const AuthMockupBrandMark(size: 62, radius: 18, light: true),
+                    const SizedBox(height: 14),
+                    const _BrandName(text: 'SikaBoafo', size: 24),
+                    const SizedBox(height: 5),
+                    Text(
+                      title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.90),
+                        height: 1.2,
+                      ),
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        'Welcome back',
+                        subtitle,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.72),
-                          height: 1.2,
+                          color: Colors.white.withValues(alpha: 0.60),
+                          height: 1.3,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-              // White rounded cap baked inside the hero (prevents viewport clip)
-              const SizedBox(height: 16),
-              const _LoginSheetCap(),
-            ],
-          ),
-        ],
-      ),
+            ),
+
+            // Rounded cap — baked in so it is never viewport-clipped
+            const SizedBox(height: 18),
+            _AuthSheetCap(radius: AuthMockup.loginSheetRadius, color: sheetColor),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _LoginSheetCap extends StatelessWidget {
-  const _LoginSheetCap();
+/// Login hero — thin wrapper that keeps the original public API intact.
+class AuthLoginHero extends StatelessWidget {
+  const AuthLoginHero({super.key, required this.onBack});
+  final VoidCallback? onBack;
 
   @override
-  Widget build(BuildContext context) => const SizedBox(
-        height: AuthMockup.loginSheetRadius,
+  Widget build(BuildContext context) => AuthGreenHero(
+        title: 'Welcome back',
+        subtitle: '',
+        onBack: onBack,
+      );
+}
+
+class _AuthSheetCap extends StatelessWidget {
+  const _AuthSheetCap({required this.radius, required this.color});
+  final double radius;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: radius,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: AuthMockup.bg,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AuthMockup.loginSheetRadius),
-            ),
+            color: color,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
           ),
         ),
       );

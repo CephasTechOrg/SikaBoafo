@@ -41,7 +41,7 @@ class DashboardHeroSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.only(top: topInset + 8),
+              padding: EdgeInsets.only(top: topInset + 4),
               child: DashboardHeader(
                 mc: mc,
                 summaryAsync: summaryAsync,
@@ -50,7 +50,7 @@ class DashboardHeroSection extends StatelessWidget {
             ),
 
             // Short green breathing room between quick-actions and cap
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
 
             // White rounded cap — the visible "curve" of the sheet
             const _SheetCap(),
