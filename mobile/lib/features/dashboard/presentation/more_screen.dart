@@ -45,7 +45,7 @@ class MoreScreen extends ConsumerWidget {
                   Text(
                     'Manage your business operations and settings',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
                       color: DashboardMockup.ink2,
                       height: 1.4,

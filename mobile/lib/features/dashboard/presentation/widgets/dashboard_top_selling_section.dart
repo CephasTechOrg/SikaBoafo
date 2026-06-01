@@ -201,7 +201,7 @@ class _ProductRow extends StatelessWidget {
           Text(
             '₵${product.salesTotal}',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 15.5,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               color: DashboardMockup.ink,
               fontFeatures: const [FontFeature.tabularFigures()],

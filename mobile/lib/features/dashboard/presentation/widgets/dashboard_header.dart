@@ -74,7 +74,7 @@ class DashboardHeader extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 17.5,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         letterSpacing: -0.2,
@@ -154,7 +154,7 @@ class _BusinessAvatar extends StatelessWidget {
       child: Text(
         DashboardUiUtils.initials(name),
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 15.5,
+          fontSize: 16,
           fontWeight: FontWeight.w800,
           color: Colors.white,
           height: 1,
@@ -192,7 +192,7 @@ class _TrendBadge extends StatelessWidget {
           Text(
             trend,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12.5,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: const Color(0xFFCFEFDD),
             ),

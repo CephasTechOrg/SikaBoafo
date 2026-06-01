@@ -164,45 +164,37 @@ class _HomeDashboard extends ConsumerWidget {
                 ),
               ),
 
-              // ── Sheet (overlaps hero) ──────────────────────────────────
+              // ── Sheet content — follows the cap baked into the hero ────
               SliverToBoxAdapter(
-                child: Transform.translate(
-                  offset: const Offset(0, -DashboardMockup.sheetOverlap),
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: DashboardMockup.bg,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(DashboardMockup.sheetRadius),
-                      ),
+                child: ColoredBox(
+                  color: DashboardMockup.bg,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      DashboardMockup.gutter,
+                      10,
+                      DashboardMockup.gutter,
+                      24,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        DashboardMockup.gutter,
-                        20,
-                        DashboardMockup.gutter,
-                        24,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DashboardKpiStrip(
-                            summaryAsync: summaryAsync,
-                            overlayAsync: overlayAsync,
-                            onNavigate: onNavigate,
-                          ),
-                          const SizedBox(height: 22),
-                          DashboardTopSellingSection(
-                            insightsAsync: insightsAsync,
-                            overlayAsync: overlayAsync,
-                            onNavigate: onNavigate,
-                          ),
-                          const SizedBox(height: 20),
-                          DashboardRecentActivity(
-                            activityAsync: activityAsync,
-                          ),
-                          const SizedBox(height: 4),
-                        ],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DashboardKpiStrip(
+                          summaryAsync: summaryAsync,
+                          overlayAsync: overlayAsync,
+                          onNavigate: onNavigate,
+                        ),
+                        const SizedBox(height: 22),
+                        DashboardTopSellingSection(
+                          insightsAsync: insightsAsync,
+                          overlayAsync: overlayAsync,
+                          onNavigate: onNavigate,
+                        ),
+                        const SizedBox(height: 20),
+                        DashboardRecentActivity(
+                          activityAsync: activityAsync,
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                     ),
                   ),
                 ),

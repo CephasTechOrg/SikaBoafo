@@ -96,7 +96,7 @@ abstract final class DSText {
 
   // ── Link ─────────────────────────────────────────────────────────────────
   static TextStyle link() => pjs(
-        size: 13.5,
+        size: 14,
         weight: FontWeight.w600,
         color: DashboardMockup.green700,
       );
@@ -112,14 +112,14 @@ abstract final class DSText {
 
   // ── Card label ───────────────────────────────────────────────────────────
   static TextStyle cardLabel() => pjs(
-        size: 12.5,
+        size: 13,
         weight: FontWeight.w500,
         color: DashboardMockup.ink2,
       );
 
   // ── Row title ────────────────────────────────────────────────────────────
   static TextStyle rowTitle() => pjs(
-        size: 15.5,
+        size: 16,
         weight: FontWeight.w700,
         color: DashboardMockup.ink,
       );
@@ -133,33 +133,33 @@ abstract final class DSText {
 
   // ── Activity title / amount ──────────────────────────────────────────────
   static TextStyle activityTitle() => pjs(
-        size: 14.5,
+        size: 15,
         weight: FontWeight.w700,
         color: DashboardMockup.ink,
       );
 
   static TextStyle activitySub() => pjs(
-        size: 12.5,
+        size: 13,
         weight: FontWeight.w500,
         color: DashboardMockup.ink2,
       );
 
   static TextStyle activityAmount({required bool income}) => pjs(
-        size: 14.5,
+        size: 15,
         weight: FontWeight.w800,
         color: income ? DashboardMockup.green700 : DashboardMockup.ink,
         fontFeatures: const [FontFeature.tabularFigures()],
       );
 
   static TextStyle activityPayLabel() => pjs(
-        size: 11.5,
+        size: 12,
         weight: FontWeight.w600,
         color: DashboardMockup.ink3,
       );
 
   // ── Nav label ────────────────────────────────────────────────────────────
   static TextStyle navLabel({required bool selected}) => pjs(
-        size: 11,
+        size: 12,
         weight: FontWeight.w600,
         letterSpacing: 0.1,
         color:
