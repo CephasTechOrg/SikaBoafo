@@ -16,9 +16,9 @@ class DashboardRecentActivity extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const DashSectionHead(title: 'Recent Activity', actionLabel: 'View all'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardCard(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: activityAsync.when(
             loading: () => const _SkeletonRows(),
             error: (_, __) => Padding(
@@ -145,7 +145,7 @@ class _ActivityRow extends StatelessWidget {
             : v.payLabel);
 
     return Padding(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
       child: Row(
         children: [
           // ── Icon badge ─────────────────────────────────────────────────

@@ -93,7 +93,7 @@ class _ProfitCard extends StatelessWidget {
       onTap: () => onNavigate(1),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -112,16 +112,16 @@ class _ProfitCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // Coins watermark
+            // SikaBoafo logo watermark
             Positioned(
-              right: -10,
-              bottom: -16,
+              right: -8,
+              bottom: -8,
               child: Opacity(
-                opacity: 0.14,
+                opacity: 0.12,
                 child: Image.asset(
-                  'assets/images/coins.png',
-                  width: 108,
-                  height: 108,
+                  'assets/images/sikaboafo.png',
+                  width: 96,
+                  height: 96,
                   fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
@@ -220,40 +220,49 @@ class _StatTile extends StatelessWidget {
         ? DashboardMockup.dangerTint
         : DashboardMockup.warnTint;
 
-    return DashboardCard(
-      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
+    return Container(
+      decoration: BoxDecoration(
+        color: DashboardMockup.card,
+        borderRadius: BorderRadius.circular(DashboardMockup.tileRadius),
+        border: Border.all(color: DashboardMockup.lineSoft),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
       child: Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(DashboardMockup.tileRadius),
         child: InkWell(
           onTap: onTap != null ? () => onTap!(context) : null,
-          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(DashboardMockup.tileRadius),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(13, 13, 13, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
                 ),
-                child: Icon(icon, color: iconColor, size: 19),
-              ),
-              const SizedBox(height: 11),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: DSText.cardValue(),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: DSText.cardLabel(),
-              ),
-            ],
+                const SizedBox(height: 9),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DSText.cardValue(size: 19),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DSText.cardLabel(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

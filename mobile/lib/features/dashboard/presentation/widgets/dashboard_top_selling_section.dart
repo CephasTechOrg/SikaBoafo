@@ -37,9 +37,9 @@ class DashboardTopSellingSection extends ConsumerWidget {
           actionLabel: 'See all',
           onAction: () => onNavigate(2),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardCard(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           child: insightsAsync.when(
             loading: () => const _SkeletonRows(),
             error: (_, __) => Padding(
@@ -111,7 +111,7 @@ class _ProductRow extends StatelessWidget {
         rank == 1 ? DashboardMockup.green700 : DashboardMockup.ink;
 
     return Padding(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
       child: Row(
         children: [
           // ── Thumbnail + rank badge ─────────────────────────────────────

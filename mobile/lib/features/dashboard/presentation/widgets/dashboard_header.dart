@@ -88,7 +88,7 @@ class DashboardHeader extends ConsumerWidget {
             ],
           ),
 
-          const SizedBox(height: 26),
+          const SizedBox(height: 22),
 
           // ── Sales label ───────────────────────────────────────────────────
           const DashSecLabel('Sales Today', onDark: true),
@@ -119,11 +119,11 @@ class DashboardHeader extends ConsumerWidget {
             _TrendBadge(trend: trend),
           ],
 
-          const SizedBox(height: 26),
+          const SizedBox(height: 22),
 
           // ── Quick actions ─────────────────────────────────────────────────
           DashboardHeroQuickActions(onNavigate: onNavigate),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
       ),
     );

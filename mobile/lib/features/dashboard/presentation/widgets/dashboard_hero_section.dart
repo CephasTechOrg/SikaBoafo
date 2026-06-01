@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/dashboard_api.dart';
 import 'dashboard_header.dart';
 import 'dashboard_hero_backdrop.dart';
+import 'dashboard_mockup_ui.dart';
 
-/// Mockup `Hero tall map` — gradient + header scrolls with the sheet below.
+/// Hero tall area: dark-green backdrop + all header content.
+/// Height is driven by content; backdrop fills it via Positioned.fill.
 class DashboardHeroSection extends StatelessWidget {
   const DashboardHeroSection({
     super.key,
@@ -23,13 +25,13 @@ class DashboardHeroSection extends StatelessWidget {
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Stack(
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       children: [
         const Positioned.fill(child: DashboardHeroBackdrop()),
         Padding(
           padding: EdgeInsets.only(
             top: topInset + 8,
-            bottom: 64,
+            bottom: DashboardMockup.sheetOverlap + 36,
           ),
           child: DashboardHeader(
             mc: mc,

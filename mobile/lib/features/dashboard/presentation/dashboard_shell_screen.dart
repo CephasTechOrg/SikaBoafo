@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
-import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/utils/user_friendly_error.dart';
 import '../../inventory/presentation/inventory_screen.dart';
@@ -12,10 +12,10 @@ import '../providers/dashboard_providers.dart';
 import 'more_screen.dart';
 import 'widgets/dashboard_hero_section.dart';
 import 'widgets/dashboard_kpi_strip.dart';
-import 'widgets/dashboard_top_selling_section.dart';
-import 'widgets/dashboard_recent_activity.dart';
-import 'widgets/dashboard_mockup_ui.dart';
 import 'widgets/dashboard_mockup_nav_bar.dart';
+import 'widgets/dashboard_mockup_ui.dart';
+import 'widgets/dashboard_recent_activity.dart';
+import 'widgets/dashboard_top_selling_section.dart';
 
 class DashboardShellScreen extends ConsumerStatefulWidget {
   const DashboardShellScreen({this.initialIndex = 0, super.key});
@@ -27,7 +27,8 @@ class DashboardShellScreen extends ConsumerStatefulWidget {
       _DashboardShellScreenState();
 }
 
-class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
+class _DashboardShellScreenState
+    extends ConsumerState<DashboardShellScreen> {
   late int _index;
 
   @override
@@ -42,7 +43,7 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
     context.go(AppRoute.auth.path);
   }
 
-  void _onTabSelected(int v) {
+  void _onTab(int v) {
     if (v == 0 && _index != 0) {
       ref.read(dashboardApiProvider).clearDashboardCache();
       ref.invalidate(dashboardSummaryProvider);
@@ -55,30 +56,36 @@ class _DashboardShellScreenState extends ConsumerState<DashboardShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = <Widget>[
-      _HomeDashboard(
-        onSignOut: _signOut,
-        onNavigate: _onTabSelected,
-      ),
-      const SalesScreen(),
-      const InventoryScreen(),
-      const MoreScreen(),
-    ];
-
-    return Scaffold(
-      backgroundColor: DashboardMockup.bg,
-      body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: DashboardMockupNavBar(
-        selectedIndex: _index,
-        onSelected: _onTabSelected,
+    // Force light status-bar icons on the dark-green hero.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: DashboardMockup.bg,
+        body: IndexedStack(
+          index: _index,
+          children: [
+            _HomeDashboard(onSignOut: _signOut, onNavigate: _onTab),
+            const SalesScreen(),
+            const InventoryScreen(),
+            const MoreScreen(),
+          ],
+        ),
+        bottomNavigationBar: DashboardMockupNavBar(
+          selectedIndex: _index,
+          onSelected: _onTab,
+        ),
       ),
     );
   }
 }
 
-/// Mockup `Screen` + `screen__scroll` + `sheet` — one scroll, hero then overlapping content.
+// ── Home dashboard tab ────────────────────────────────────────────────────────
+
 class _HomeDashboard extends ConsumerWidget {
-  const _HomeDashboard({required this.onSignOut, required this.onNavigate});
+  const _HomeDashboard({
+    required this.onSignOut,
+    required this.onNavigate,
+  });
 
   final Future<void> Function() onSignOut;
   final ValueChanged<int> onNavigate;
@@ -98,17 +105,19 @@ class _HomeDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ctxAsync = ref.watch(merchantContextProvider);
-    final summaryAsync = ref.watch(dashboardSummaryProvider);
+    final ctxAsync      = ref.watch(merchantContextProvider);
+    final summaryAsync  = ref.watch(dashboardSummaryProvider);
     final activityAsync = ref.watch(dashboardRecentActivityProvider);
     final insightsAsync = ref.watch(dashboardInsightsProvider);
-    final overlayAsync = ref.watch(localDashboardOverlayProvider);
+    final overlayAsync  = ref.watch(localDashboardOverlayProvider);
 
     return ColoredBox(
       color: DashboardMockup.bg,
       child: ctxAsync.when(
         loading: () => const Center(
-          child: CircularProgressIndicator(color: DashboardMockup.green600),
+          child: CircularProgressIndicator(
+            color: DashboardMockup.green600,
+          ),
         ),
         error: (e, _) => Center(
           child: Padding(
@@ -116,10 +125,16 @@ class _HomeDashboard extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline,
-                    size: 48, color: AppColors.danger),
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: DashboardMockup.danger,
+                ),
                 const SizedBox(height: 16),
-                Text(userFriendlyError(e), textAlign: TextAlign.center),
+                Text(
+                  userFriendlyError(e),
+                  textAlign: TextAlign.center,
+                ),
                 TextButton(
                   onPressed: () {
                     ref.invalidate(merchantContextProvider);
@@ -133,13 +148,14 @@ class _HomeDashboard extends ConsumerWidget {
         ),
         data: (mc) => RefreshIndicator(
           color: DashboardMockup.green600,
-          backgroundColor: AppColors.surface,
+          backgroundColor: DashboardMockup.card,
           onRefresh: () => _refresh(ref),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
             slivers: [
+              // ── Hero ──────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: DashboardHeroSection(
                   mc: mc,
@@ -147,6 +163,8 @@ class _HomeDashboard extends ConsumerWidget {
                   onNavigate: onNavigate,
                 ),
               ),
+
+              // ── Sheet (overlaps hero) ──────────────────────────────────
               SliverToBoxAdapter(
                 child: Transform.translate(
                   offset: const Offset(0, -DashboardMockup.sheetOverlap),
@@ -160,7 +178,7 @@ class _HomeDashboard extends ConsumerWidget {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
                         DashboardMockup.gutter,
-                        22,
+                        20,
                         DashboardMockup.gutter,
                         24,
                       ),
@@ -172,17 +190,17 @@ class _HomeDashboard extends ConsumerWidget {
                             overlayAsync: overlayAsync,
                             onNavigate: onNavigate,
                           ),
-                          const SizedBox(height: 26),
+                          const SizedBox(height: 22),
                           DashboardTopSellingSection(
                             insightsAsync: insightsAsync,
                             overlayAsync: overlayAsync,
                             onNavigate: onNavigate,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
                           DashboardRecentActivity(
                             activityAsync: activityAsync,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                         ],
                       ),
                     ),
