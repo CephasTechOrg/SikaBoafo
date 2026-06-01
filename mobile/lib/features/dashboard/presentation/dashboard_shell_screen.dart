@@ -111,12 +111,16 @@ class _HomeDashboard extends ConsumerWidget {
     final insightsAsync = ref.watch(dashboardInsightsProvider);
     final overlayAsync  = ref.watch(localDashboardOverlayProvider);
 
+    // Hero-green is the scroll-area background so that:
+    //  • pulling down to refresh extends the dark-green hero naturally
+    //  • the loading skeleton matches the hero colour
     return ColoredBox(
-      color: DashboardMockup.bg,
+      color: DashboardMockup.heroGreen,
       child: ctxAsync.when(
         loading: () => const Center(
           child: CircularProgressIndicator(
-            color: DashboardMockup.green600,
+            color: Colors.white,
+            strokeWidth: 2.5,
           ),
         ),
         error: (e, _) => Center(
@@ -128,18 +132,22 @@ class _HomeDashboard extends ConsumerWidget {
                 const Icon(
                   Icons.error_outline,
                   size: 48,
-                  color: DashboardMockup.danger,
+                  color: Colors.white70,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   userFriendlyError(e),
                   textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70),
                 ),
                 TextButton(
                   onPressed: () {
                     ref.invalidate(merchantContextProvider);
                     ref.invalidate(dashboardSummaryProvider);
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Retry'),
                 ),
               ],
@@ -149,6 +157,8 @@ class _HomeDashboard extends ConsumerWidget {
         data: (mc) => RefreshIndicator(
           color: DashboardMockup.green600,
           backgroundColor: DashboardMockup.card,
+          strokeWidth: 2.5,
+          displacement: 52,
           onRefresh: () => _refresh(ref),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
@@ -164,14 +174,14 @@ class _HomeDashboard extends ConsumerWidget {
                 ),
               ),
 
-              // ── Sheet content — follows the cap baked into the hero ────
+              // ── Sheet content ──────────────────────────────────────────
               SliverToBoxAdapter(
                 child: ColoredBox(
                   color: DashboardMockup.bg,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       DashboardMockup.gutter,
-                      10,
+                      4,
                       DashboardMockup.gutter,
                       24,
                     ),
@@ -183,13 +193,13 @@ class _HomeDashboard extends ConsumerWidget {
                           overlayAsync: overlayAsync,
                           onNavigate: onNavigate,
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 20),
                         DashboardTopSellingSection(
                           insightsAsync: insightsAsync,
                           overlayAsync: overlayAsync,
                           onNavigate: onNavigate,
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                         DashboardRecentActivity(
                           activityAsync: activityAsync,
                         ),

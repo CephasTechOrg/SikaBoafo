@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -268,9 +270,9 @@ class _EntryViewMockup extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Your business,\nsimplified.',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             color: AppColors.ink,
                             fontWeight: FontWeight.w800,
                             fontSize: 32,
@@ -279,9 +281,9 @@ class _EntryViewMockup extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        const Text(
+                        Text(
                           'Track sales, stock, customers and debts — all in one calm, trustworthy workspace built for Ghanaian shops.',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             color: AuthMockup.ink2,
                             fontSize: 15,
                             fontWeight: FontWeight.w400,
@@ -314,10 +316,10 @@ class _EntryViewMockup extends StatelessWidget {
                             const SizedBox(width: 7),
                             Text(
                               'Secure workspace · v2.4'.toUpperCase(),
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: AuthMockup.ink3,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 11.5,
+                                fontSize: 12,
                                 letterSpacing: 0.92,
                               ),
                             ),
@@ -386,24 +388,17 @@ class _PinSignInViewState extends State<_PinSignInView> {
         children: [
           AuthLoginHero(onBack: widget.onBack),
           Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, -AuthMockup.sheetOverlap),
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: AuthMockup.bg,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(AuthMockup.loginSheetRadius),
+            child: ColoredBox(
+              color: AuthMockup.bg,
+              child: SafeArea(
+                top: false,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AuthMockup.gutter,
+                    16,
+                    AuthMockup.gutter,
+                    24,
                   ),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(
-                      AuthMockup.gutter,
-                      28,
-                      AuthMockup.gutter,
-                      24,
-                    ),
                     children: [
                       const AuthSecLabel('Phone Number'),
                       const SizedBox(height: 9),
@@ -438,12 +433,12 @@ class _PinSignInViewState extends State<_PinSignInView> {
                           const Expanded(child: AuthSecLabel('Security PIN')),
                           GestureDetector(
                             onTap: widget.onForgotPin,
-                            child: const Text(
+                            child: Text(
                               'Forgot PIN?',
-                              style: TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: AuthMockup.green700,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13.5,
+                                fontSize: 14,
                               ),
                             ),
                           ),
@@ -492,32 +487,25 @@ class _PinSignInViewState extends State<_PinSignInView> {
                         loading: widget.loading,
                       ),
                       const SizedBox(height: 22),
-                      const Row(
+                      Row(
                         children: [
-                          Expanded(
-                            child: Divider(
-                              height: 1,
-                              color: AuthMockup.line,
-                            ),
+                          const Expanded(
+                            child: Divider(height: 1, color: AuthMockup.line),
                           ),
                           Padding(
-                            padding:
-                                EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
                               'NEW TO SIKABOAFO?',
-                              style: TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 color: AuthMockup.ink3,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 11,
+                                fontSize: 12,
                                 letterSpacing: 0.88,
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: Divider(
-                              height: 1,
-                              color: AuthMockup.line,
-                            ),
+                          const Expanded(
+                            child: Divider(height: 1, color: AuthMockup.line),
                           ),
                         ],
                       ),
@@ -557,7 +545,6 @@ class _PinSignInViewState extends State<_PinSignInView> {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
