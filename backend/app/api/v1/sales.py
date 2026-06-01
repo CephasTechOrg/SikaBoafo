@@ -11,9 +11,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_permission
 from app.core.rbac import PERM_SALES_VOID, PERM_SALES_WRITE
 from app.models.user import User
-
-_SalesWriter = Annotated[User, Depends(require_permission(PERM_SALES_WRITE))]
-_SalesVoider = Annotated[User, Depends(require_permission(PERM_SALES_VOID))]
 from app.schemas.sale import (
     SaleCreateIn,
     SaleLineOut,
@@ -31,6 +28,9 @@ from app.services.sales_service import (
     SalesService,
     SaleUpdateScopeError,
 )
+
+_SalesWriter = Annotated[User, Depends(require_permission(PERM_SALES_WRITE))]
+_SalesVoider = Annotated[User, Depends(require_permission(PERM_SALES_VOID))]
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 

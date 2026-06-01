@@ -545,7 +545,9 @@ def test_initiate_receivable_payment_rejects_when_pending_payment_exists() -> No
         with session_local() as db:
             receivable = db.scalar(select(Receivable).where(Receivable.id == receivable_id))
             assert receivable is not None
-            merchant_id = db.scalar(select(Store.merchant_id).where(Store.id == receivable.store_id))
+            merchant_id = db.scalar(
+                select(Store.merchant_id).where(Store.id == receivable.store_id)
+            )
             payment = Payment(
                 merchant_id=merchant_id,
                 receivable_id=receivable_id,

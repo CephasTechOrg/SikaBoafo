@@ -31,11 +31,11 @@ from app.services.otp_provider import (
     GenerateOtpResult,
     OtpVerificationFailedError,
 )
+from app.services.otp_send_guard import OtpSendGuard
 from app.services.phone_number import normalize_phone_number
 from app.services.pin_hash import hash_pin, is_valid_pin_format
 from app.services.pin_hash import verify_pin as verify_pin_hash
-from app.services.otp_send_guard import OtpSendGuard, OtpSendRateLimitedError
-from app.services.pin_login_guard import PinLoginGuard, PinLoginLockedError
+from app.services.pin_login_guard import PinLoginGuard
 
 
 class PinNotSetError(Exception):

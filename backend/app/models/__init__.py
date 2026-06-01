@@ -11,10 +11,10 @@ from app.models.item import Item
 from app.models.merchant import Merchant
 from app.models.otp_code import OtpCode
 from app.models.otp_send_throttle import OtpSendThrottle
-from app.models.pin_login_lockout import PinLoginLockout
 from app.models.payment import Payment
 from app.models.payment_provider_connection import PaymentProviderConnection
 from app.models.payment_webhook_event import PaymentWebhookEvent
+from app.models.pin_login_lockout import PinLoginLockout
 from app.models.receivable import Receivable, ReceivablePayment
 from app.models.sale import Sale, SaleItem
 from app.models.staff_invite import StaffInvite

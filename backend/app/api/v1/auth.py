@@ -31,14 +31,14 @@ from app.services.auth_service import (
     OtpVerificationFailedError,
     PinNotSetError,
 )
-from app.services.otp_send_guard import OtpSendRateLimitedError
-from app.services.pin_login_guard import PinLoginLockedError
 from app.services.onboarding_service import (
     OnboardingPermissionError,
     OnboardingService,
 )
 from app.services.otp_provider import ArkeselOtpProvider, OtpProviderError
+from app.services.otp_send_guard import OtpSendRateLimitedError
 from app.services.phone_number import InvalidPhoneNumberError
+from app.services.pin_login_guard import PinLoginLockedError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

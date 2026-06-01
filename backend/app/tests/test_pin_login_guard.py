@@ -65,7 +65,10 @@ def test_success_clears_lockout_row() -> None:
         db.commit()
         guard.clear_failures(phone_number=phone)
         db.commit()
-        assert db.scalar(select(PinLoginLockout).where(PinLoginLockout.phone_number == phone)) is None
+        lockout = db.scalar(
+            select(PinLoginLockout).where(PinLoginLockout.phone_number == phone)
+        )
+        assert lockout is None
 
 
 def test_expired_lockout_allows_retry() -> None:

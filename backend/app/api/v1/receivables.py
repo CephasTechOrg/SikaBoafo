@@ -11,11 +11,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_permission
 from app.core.rbac import PERM_RECEIVABLES_CANCEL, PERM_RECEIVABLES_WRITE
 from app.models.user import User
-
-_ReceivablesWriter = Annotated[User, Depends(require_permission(PERM_RECEIVABLES_WRITE))]
-_ReceivablesCanceller = Annotated[
-    User, Depends(require_permission(PERM_RECEIVABLES_CANCEL))
-]
 from app.schemas.receivable import (
     CustomerCreateIn,
     CustomerDetailOut,
@@ -34,6 +29,11 @@ from app.services.receivables_service import (
     ReceivableSnapshot,
     ReceivablesService,
 )
+
+_ReceivablesWriter = Annotated[User, Depends(require_permission(PERM_RECEIVABLES_WRITE))]
+_ReceivablesCanceller = Annotated[
+    User, Depends(require_permission(PERM_RECEIVABLES_CANCEL))
+]
 
 router = APIRouter(prefix="/receivables", tags=["receivables"])
 

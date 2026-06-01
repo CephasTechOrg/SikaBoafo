@@ -11,9 +11,6 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_permission
 from app.core.rbac import PERM_INVENTORY_DELETE, PERM_INVENTORY_WRITE
 from app.models.user import User
-
-_InventoryWriter = Annotated[User, Depends(require_permission(PERM_INVENTORY_WRITE))]
-_InventoryDeleter = Annotated[User, Depends(require_permission(PERM_INVENTORY_DELETE))]
 from app.schemas.inventory import (
     InventoryItemOut,
     InventoryMutationOut,
@@ -33,6 +30,9 @@ from app.services.inventory_service import (
     ItemHasSalesHistoryError,
     MerchantContextMissingError,
 )
+
+_InventoryWriter = Annotated[User, Depends(require_permission(PERM_INVENTORY_WRITE))]
+_InventoryDeleter = Annotated[User, Depends(require_permission(PERM_INVENTORY_DELETE))]
 
 router = APIRouter(prefix="/items", tags=["items"])
 

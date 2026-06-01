@@ -11,6 +11,7 @@ import 'package:biztrack_gh/core/services/secure_token_storage.dart';
 import 'package:biztrack_gh/data/local/app_database.dart';
 import 'package:biztrack_gh/data/local/sync_queue_repository.dart';
 import 'package:biztrack_gh/features/dashboard/data/dashboard_api.dart';
+import 'package:biztrack_gh/features/dashboard/presentation/widgets/dashboard_mockup_nav_bar.dart';
 import 'package:biztrack_gh/features/dashboard/presentation/widgets/dashboard_quick_actions.dart';
 import 'package:biztrack_gh/features/dashboard/providers/dashboard_providers.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
@@ -396,7 +397,7 @@ void main() {
 
     await tester.tap(
       find.descendant(
-        of: find.byType(DashboardQuickActions),
+        of: find.byType(DashboardHeroQuickActions),
         matching: find.text('Debts'),
       ),
     );
@@ -421,7 +422,7 @@ void main() {
 
     await tester.tap(
       find.descendant(
-        of: find.byType(NavigationBar),
+        of: find.byType(DashboardMockupNavBar),
         matching: find.text('More'),
       ),
     );

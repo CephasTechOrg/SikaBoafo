@@ -57,9 +57,9 @@ from app.services.expense_service import (
 from app.services.inventory_service import (
     InvalidInventoryAdjustmentError,
     InvalidItemArchiveError,
-    ItemHasSalesHistoryError,
     InventoryItemNotFoundError,
     InventoryService,
+    ItemHasSalesHistoryError,
     MerchantContextMissingError,
     OptimisticLockError,
 )
@@ -473,7 +473,8 @@ class SyncService:
         lowered = raw.lower()
         if "invoice_number" in lowered:
             return (
-                "Receivable invoice number collision. Retry sync after server invoice counter reset."
+                "Receivable invoice number collision. "
+                "Retry sync after server invoice counter reset."
             )
         if "uq_sync_device_local_op" in lowered:
             return "Operation already applied on server."

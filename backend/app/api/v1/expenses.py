@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_permission
 from app.core.rbac import PERM_EXPENSES_WRITE
 from app.models.user import User
-
-_ExpensesWriter = Annotated[User, Depends(require_permission(PERM_EXPENSES_WRITE))]
 from app.schemas.expense import ExpenseCreateIn, ExpenseOut
 from app.services.expense_service import ExpenseContextMissingError, ExpenseService
+
+_ExpensesWriter = Annotated[User, Depends(require_permission(PERM_EXPENSES_WRITE))]
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 

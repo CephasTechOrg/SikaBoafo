@@ -10,7 +10,12 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.mixins import SyncableWriteMixin, TimestampMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
+from app.models.mixins import (
+    SyncableWriteMixin,
+    TimestampMixin,
+    UpdatedAtMixin,
+    UUIDPrimaryKeyMixin,
+)
 
 if TYPE_CHECKING:
     from app.models.store import Store
