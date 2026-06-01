@@ -170,7 +170,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               SliverAppBar(
                 expandedHeight: 270,
                 pinned: true,
-                backgroundColor: const Color(0xFF071D11),
+                backgroundColor: AppColors.forestNight,
                 elevation: 0,
                 centerTitle: false,
                 title: innerBoxIsScrolled
@@ -195,7 +195,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 17,
-                                fontFamily: 'Constantia',
                               ),
                             ),
                           ),
@@ -1150,7 +1149,7 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return ColoredBox(
       // Match Sales hero background so the rounded cutouts show green.
-      color: const Color(0xFF071D11),
+      color: AppColors.forestNight,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         child: AnimatedContainer(

@@ -1,199 +1,183 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/premium_ui.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../inventory/providers/inventory_providers.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
+import 'dashboard_mockup_ui.dart';
 
 class DashboardTopSellingSection extends ConsumerWidget {
   const DashboardTopSellingSection({
     super.key,
     required this.insightsAsync,
     required this.overlayAsync,
+    required this.onNavigate,
   });
 
   final AsyncValue<DashboardInsights> insightsAsync;
   final AsyncValue<LocalDashboardOverlay> overlayAsync;
+  final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Build imageUrl lookup from local inventory by item name (best effort)
-    final inventory = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
+    final inventory  = ref.watch(inventoryControllerProvider).valueOrNull ?? [];
     final imageByName = <String, String>{
       for (final item in inventory)
         if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
           item.name.trim().toLowerCase(): item.imageUrl!,
     };
 
-    return PremiumReveal(
-      delay: const Duration(milliseconds: 200),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Selling Products',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          PremiumPanel(
-            padding: EdgeInsets.zero,
-            child: insightsAsync.when(
-              loading: () => const Column(
-                children: [
-                  _SkeletonTopRow(),
-                  Divider(height: 1, indent: 68, color: AppColors.border),
-                  _SkeletonTopRow(),
-                  Divider(height: 1, indent: 68, color: AppColors.border),
-                  _SkeletonTopRow(),
-                ],
-              ),
-              error: (e, _) => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: Text(
-                    'Could not load insights',
-                    style: TextStyle(color: AppColors.muted, fontSize: 13),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DashSectionHead(
+          title: 'Top Selling Products',
+          actionLabel: 'See all',
+          onAction: () => onNavigate(2),
+        ),
+        const SizedBox(height: 12),
+        DashboardCard(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: insightsAsync.when(
+            loading: () => const _SkeletonRows(),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  'Could not load insights',
+                  style: DSText.cardLabel(),
                 ),
               ),
-              data: (insights) {
-                final top = insights.monthlyTopSellingItems;
-                if (top.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(Icons.analytics_outlined,
-                              color: AppColors.border, size: 40),
-                          SizedBox(height: 12),
-                          Text(
-                            'No sales data yet',
-                            style: TextStyle(
-                                color: AppColors.muted, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return Column(
-                  children: [
-                    for (int i = 0; i < top.length; i++) ...[
-                      _TopProductRow(
-                        product: top[i],
-                        rank: i + 1,
-                        imageUrl: imageByName[
-                            top[i].itemName.trim().toLowerCase()],
-                      ),
-                      if (i < top.length - 1)
-                        const Divider(
-                            height: 1,
-                            indent: 68,
-                            color: AppColors.border),
-                    ],
-                  ],
-                );
-              },
             ),
+            data: (insights) {
+              final top = insights.monthlyTopSellingItems;
+              if (top.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.analytics_outlined,
+                          color: DashboardMockup.lineSoft,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 12),
+                        Text('No sales data yet', style: DSText.cardLabel()),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (int i = 0; i < top.length; i++) ...[
+                    _ProductRow(
+                      product: top[i],
+                      rank: i + 1,
+                      imageUrl:
+                          imageByName[top[i].itemName.trim().toLowerCase()],
+                    ),
+                    if (i < top.length - 1) const DashRowDivider(),
+                  ],
+                ],
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-// ─── Product row ──────────────────────────────────────────────────────────────
+// ── Product row ──────────────────────────────────────────────────────────────
 
-class _TopProductRow extends StatelessWidget {
-  const _TopProductRow({
+class _ProductRow extends StatelessWidget {
+  const _ProductRow({
     required this.product,
     required this.rank,
     this.imageUrl,
   });
+
   final DashboardTopSellingItem product;
   final int rank;
   final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    final rankColor = rank == 1
-        ? const Color(0xFFC58C02)
-        : rank == 2
-            ? const Color(0xFF888888)
-            : AppColors.forest;
-    final rankBg = rank == 1
-        ? AppColors.warningSoft
-        : rank == 2
-            ? const Color(0xFFF0F0F0)
-            : AppColors.successSoft;
+    final rankBg =
+        rank == 1 ? DashboardMockup.green700 : DashboardMockup.ink;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.all(13),
       child: Row(
         children: [
-          // Product image placeholder with rank badge
+          // ── Thumbnail + rank badge ─────────────────────────────────────
           Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: AppColors.border),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: DashboardMockup.lineSoft),
                 ),
                 clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
                 child: imageUrl != null
                     ? CachedNetworkImage(
                         imageUrl: imageUrl!,
-                        fit: BoxFit.cover,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.contain,
                         placeholder: (_, __) => const Icon(
-                            Icons.inventory_2_outlined,
-                            size: 20,
-                            color: AppColors.muted),
+                          Icons.inventory_2_outlined,
+                          size: 22,
+                          color: DashboardMockup.ink3,
+                        ),
                         errorWidget: (_, __, ___) => const Icon(
-                            Icons.inventory_2_outlined,
-                            size: 20,
-                            color: AppColors.muted),
+                          Icons.inventory_2_outlined,
+                          size: 22,
+                          color: DashboardMockup.ink3,
+                        ),
                       )
-                    : const Icon(Icons.inventory_2_outlined,
-                        size: 20, color: AppColors.muted),
+                    : const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 22,
+                        color: DashboardMockup.ink3,
+                      ),
               ),
-              // Rank badge
               Positioned(
-                top: -5,
-                left: -5,
+                top: -6,
+                left: -6,
                 child: Container(
-                  width: 18,
-                  height: 18,
+                  width: 20,
+                  height: 20,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: rankBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
+                    borderRadius: BorderRadius.circular(7),
                   ),
                   child: Text(
-                    '#$rank',
-                    style: TextStyle(
-                      color: rankColor,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900,
+                    '$rank',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      height: 1,
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 13),
+
+          // ── Name + units ───────────────────────────────────────────────
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,42 +186,25 @@ class _TopProductRow extends StatelessWidget {
                   product.itemName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                    letterSpacing: -0.1,
-                  ),
+                  style: DSText.rowTitle(),
                 ),
-                const SizedBox(height: 3),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.successSoft,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '${product.quantitySold} sold',
-                    style: const TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.forest,
-                      letterSpacing: 0.1,
-                    ),
-                  ),
+                const SizedBox(height: 2),
+                Text(
+                  '${product.quantitySold} units sold',
+                  style: DSText.rowSub(),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+
+          // ── Revenue ────────────────────────────────────────────────────
           Text(
             '₵${product.salesTotal}',
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w900,
-              color: AppColors.ink,
-              letterSpacing: -0.2,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: DashboardMockup.ink,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
@@ -246,55 +213,48 @@ class _TopProductRow extends StatelessWidget {
   }
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ── Skeleton ─────────────────────────────────────────────────────────────────
 
-class _SkeletonTopRow extends StatelessWidget {
-  const _SkeletonTopRow();
+class _SkeletonRows extends StatelessWidget {
+  const _SkeletonRows();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        _SkeletonRow(),
+        DashRowDivider(),
+        _SkeletonRow(),
+        DashRowDivider(),
+        _SkeletonRow(),
+      ],
+    );
+  }
+}
+
+class _SkeletonRow extends StatelessWidget {
+  const _SkeletonRow();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: EdgeInsets.all(13),
       child: Row(
         children: [
-          _SkeletonBox(width: 42, height: 42, borderRadius: 11),
-          SizedBox(width: 12),
+          DashSkeletonBox(width: 48, height: 48, radius: 13),
+          SizedBox(width: 13),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SkeletonBox(width: 120, height: 11),
+                DashSkeletonBox(width: 120, height: 12),
                 SizedBox(height: 6),
-                _SkeletonBox(width: 60, height: 9),
+                DashSkeletonBox(width: 80, height: 10),
               ],
             ),
           ),
-          SizedBox(width: 10),
-          _SkeletonBox(width: 52, height: 13),
+          DashSkeletonBox(width: 52, height: 12),
         ],
-      ),
-    );
-  }
-}
-
-class _SkeletonBox extends StatelessWidget {
-  const _SkeletonBox({
-    required this.width,
-    required this.height,
-    this.borderRadius = 8,
-  });
-  final double width;
-  final double height;
-  final double borderRadius;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6E9EE),
-        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }

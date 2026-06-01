@@ -23,14 +23,7 @@ class SalesBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: hasItems
-            ? const LinearGradient(
-                colors: [Color(0xFF0A3D1A), Color(0xFF155236)],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              )
-            : null,
-        color: hasItems ? null : const Color(0xFFF8F9FC),
+        color: hasItems ? AppColors.forestNight : const Color(0xFFF8F9FC),
         boxShadow: AppShadows.elevated,
       ),
       child: SafeArea(
@@ -102,7 +95,6 @@ class SalesBottomBar extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'Constantia',
                       color: hasItems ? Colors.white : AppColors.ink,
                       letterSpacing: -0.3,
                     ),

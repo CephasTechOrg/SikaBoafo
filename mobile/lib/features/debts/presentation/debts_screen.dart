@@ -104,11 +104,10 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
                   ? const Text(
                       'Debts',
                       style: TextStyle(
-                        fontFamily: 'Constantia',
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20,
-                        letterSpacing: -0.3,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 19,
+                        letterSpacing: -0.2,
                       ),
                     )
                   : null,

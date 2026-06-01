@@ -99,7 +99,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           SliverAppBar(
             expandedHeight: 270,
             pinned: true,
-            backgroundColor: const Color(0xFF041C0B),
+            backgroundColor: AppColors.forestNight,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               background: DecoratedBox(
@@ -393,7 +393,7 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
       height: maxExtent,
       child: ColoredBox(
         // Match the hero/header background so the rounded cutouts show green.
-        color: const Color(0xFF041C0B),
+        color: AppColors.forestNight,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(

@@ -10,7 +10,7 @@ import '../../app/theme/app_theme.dart';
 class AppCard extends StatelessWidget {
   const AppCard({
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(14),
     this.onTap,
     this.elevated = false,
     this.borderColor,
@@ -36,7 +36,7 @@ class AppCard extends StatelessWidget {
         color: backgroundColor ?? AppColors.surface,
         borderRadius: br,
         border: Border.all(color: borderColor ?? AppColors.border),
-        boxShadow: elevated ? AppShadows.elevated : AppShadows.card,
+        boxShadow: elevated ? AppShadows.elevated : AppShadows.subtle,
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -163,15 +163,15 @@ class AppButton extends StatelessWidget {
   final bool fullWidth;
 
   double get _height => switch (size) {
-        AppButtonSize.sm => 36,
-        AppButtonSize.md => 44,
-        AppButtonSize.lg => 52,
+        AppButtonSize.sm => 34,
+        AppButtonSize.md => 42,
+        AppButtonSize.lg => 48,
       };
 
   EdgeInsets get _padding => switch (size) {
-        AppButtonSize.sm => const EdgeInsets.symmetric(horizontal: 12),
-        AppButtonSize.md => const EdgeInsets.symmetric(horizontal: 16),
-        AppButtonSize.lg => const EdgeInsets.symmetric(horizontal: 20),
+        AppButtonSize.sm => const EdgeInsets.symmetric(horizontal: 10),
+        AppButtonSize.md => const EdgeInsets.symmetric(horizontal: 14),
+        AppButtonSize.lg => const EdgeInsets.symmetric(horizontal: 16),
       };
 
   double get _iconSize => switch (size) {
@@ -237,9 +237,7 @@ class AppButton extends StatelessWidget {
           padding: _padding,
           decoration: BoxDecoration(
             color: colors.background,
-            gradient: (!disabled && variant == AppButtonVariant.primary)
-                ? AppGradients.primaryCta
-                : null,
+            gradient: null,
             borderRadius: radius,
             border: colors.border != null ? Border.all(color: colors.border!) : null,
           ),

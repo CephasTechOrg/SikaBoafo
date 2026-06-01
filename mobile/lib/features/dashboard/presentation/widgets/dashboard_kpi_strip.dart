@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../app/router.dart';
-import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/premium_ui.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
+import 'dashboard_mockup_ui.dart';
 
 class DashboardKpiStrip extends StatelessWidget {
   const DashboardKpiStrip({
@@ -22,61 +23,59 @@ class DashboardKpiStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = summaryAsync.valueOrNull;
-
-    final lowStock = summary?.lowStockCount ?? 0;
     final debtOutstanding = summary?.debtOutstandingTotal ?? '0.00';
-    final todaySales = summary?.todaySalesTotal ?? '0.00';
-    final todayProfit = summary?.todayEstimatedProfit ?? '0.00';
+    final lowStock        = summary?.lowStockCount ?? 0;
+    final todaySales      = summary?.todaySalesTotal ?? '0.00';
+    final todayProfit     = summary?.todayEstimatedProfit ?? '0.00';
 
-    return PremiumReveal(
-      delay: const Duration(milliseconds: 100),
-      child: Column(
-        children: [
-          _CoinsCard(
-            todaySales: todaySales,
-            todayProfit: todayProfit,
-            onNavigate: onNavigate,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Unpaid Debt',
-                  value: '₵$debtOutstanding',
-                  color: AppColors.ink,
-                  backgroundColor: AppColors.surfaceAlt,
-                  onTapWithCtx: (ctx) => ctx.push(AppRoute.debts.path),
-                ),
+    return Column(
+      children: [
+        // ── Today's estimated profit ─────────────────────────────────────
+        _ProfitCard(
+          todaySales: todaySales,
+          todayProfit: todayProfit,
+          onNavigate: onNavigate,
+        ),
+        const SizedBox(height: 12),
+
+        // ── Debt + Low-stock tiles ───────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: _StatTile(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Unpaid Debt',
+                value: '₵$debtOutstanding',
+                tone: _Tone.danger,
+                onTap: (ctx) => ctx.push(AppRoute.debts.path),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.inventory_2_outlined,
-                  label: 'Low Stock',
-                  value: lowStock == 0 ? '0' : lowStock.toString(),
-                  color: AppColors.ink,
-                  backgroundColor: AppColors.surfaceAlt,
-                  onTapSimple: () => onNavigate(2),
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatTile(
+                icon: Icons.inventory_2_outlined,
+                label: 'Low Stock',
+                value: lowStock == 0 ? '0' : '$lowStock',
+                tone: _Tone.warn,
+                onTap: (_) => onNavigate(2),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-// ─── Coins / Profit card ──────────────────────────────────────────────────────
+// ── Profit card ──────────────────────────────────────────────────────────────
 
-class _CoinsCard extends StatelessWidget {
-  const _CoinsCard({
+class _ProfitCard extends StatelessWidget {
+  const _ProfitCard({
     required this.todaySales,
     required this.todayProfit,
     required this.onNavigate,
   });
+
   final String todaySales;
   final String todayProfit;
   final ValueChanged<int> onNavigate;
@@ -85,133 +84,106 @@ class _CoinsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sales = _parse(todaySales);
-    final profit = _parse(todayProfit);
-    final ratio = (sales > 0) ? (profit / sales).clamp(0.0, 1.0) : 0.0;
-    final pct = '${(ratio * 100).toStringAsFixed(0)}% margin';
+    final sales     = _parse(todaySales);
+    final profit    = _parse(todayProfit);
+    final ratio     = sales > 0 ? (profit / sales).clamp(0.0, 1.0) : 0.0;
+    final pct       = (ratio * 100).round();
 
     return GestureDetector(
       onTap: () => onNavigate(1),
       child: Container(
-        height: 118,
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF0D4023), Color(0xFF1A6840)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+            colors: [Color(0xFF0F7A4A), Color(0xFF0A5D38)],
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x3A0D4023),
-              blurRadius: 16,
-              offset: Offset(0, 6),
+              color: Color(0x470B4A2E),
+              blurRadius: 24,
+              offset: Offset(0, 10),
             ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            // ── Background Sparkline (Subtle Wave) ────────────
-            Positioned.fill(
+            // Coins watermark
+            Positioned(
+              right: -10,
+              bottom: -16,
               child: Opacity(
-                opacity: 0.22,
-                child: CustomPaint(
-                  painter: _SparklinePainter(),
+                opacity: 0.14,
+                child: Image.asset(
+                  'assets/images/coins.png',
+                  width: 108,
+                  height: 108,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
             ),
-            // Subtle flag pattern overlay
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.06,
-                child: Image.asset('assets/images/flag.png', fit: BoxFit.cover),
-              ),
-            ),
-            // Coins image restored
-            Positioned(
-              right: -6,
-              bottom: -14,
-              width: 108,
-              height: 108,
-              child: Image.asset('assets/images/coins.png', fit: BoxFit.contain),
-            ),
             // Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 118, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "TODAY'S EST. PROFIT",
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.58),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TODAY'S EST. PROFIT",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: Colors.white.withValues(alpha: 0.70),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₵$todayProfit',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.6,
+                    height: 1,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: SizedBox(
+                    height: 6,
+                    width: 230,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ColoredBox(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                        FractionallySizedBox(
+                          widthFactor: ratio,
+                          alignment: Alignment.centerLeft,
+                          child: const ColoredBox(color: Color(0xFF7CE0B0)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '₵$todayProfit',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'Constantia',
-                        letterSpacing: -0.5,
-                        height: 1.0,
-                      ),
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$pct% margin on today\'s sales',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.78),
                   ),
-                  const SizedBox(height: 8),
-                  // Animated profit margin bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LayoutBuilder(
-                      builder: (ctx, bc) => Stack(
-                        children: [
-                          Container(
-                            height: 6,
-                            width: bc.maxWidth,
-                            color: Colors.white.withValues(alpha: 0.18),
-                          ),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 700),
-                            curve: Curves.easeOut,
-                            height: 6,
-                            width: bc.maxWidth * ratio,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF7FE0A0),
-                              borderRadius: BorderRadius.circular(999),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF7FE0A0).withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    pct,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.52),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -220,107 +192,68 @@ class _CoinsCard extends StatelessWidget {
   }
 }
 
-class _SparklinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF7FE0A0).withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
+// ── Small stat tile ──────────────────────────────────────────────────────────
 
-    final path = Path();
-    // A smoother, more elegant wave pattern for the background
-    path.moveTo(0, size.height * 0.7);
-    path.quadraticBezierTo(size.width * 0.2, size.height * 0.4, size.width * 0.4, size.height * 0.6);
-    path.quadraticBezierTo(size.width * 0.6, size.height * 0.8, size.width * 0.8, size.height * 0.3);
-    path.lineTo(size.width, size.height * 0.5);
+enum _Tone { danger, warn }
 
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ─── Stat cards ───────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+class _StatTile extends StatelessWidget {
+  const _StatTile({
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
-    required this.backgroundColor,
-    this.onTapSimple,
-    this.onTapWithCtx,
+    required this.tone,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color color;
-  final Color backgroundColor;
-  final VoidCallback? onTapSimple;
-  final ValueChanged<BuildContext>? onTapWithCtx;
+  final _Tone tone;
+  final ValueChanged<BuildContext>? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumPanel(
-      padding: EdgeInsets.zero,
+    final iconColor = tone == _Tone.danger
+        ? DashboardMockup.danger
+        : DashboardMockup.warn;
+    final iconBg = tone == _Tone.danger
+        ? DashboardMockup.dangerTint
+        : DashboardMockup.warnTint;
+
+    return DashboardCard(
+      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (onTapWithCtx != null) onTapWithCtx!(context);
-            if (onTapSimple != null) onTapSimple!();
-          },
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 18),
+          onTap: onTap != null ? () => onTap!(context) : null,
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.ink,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                child: Icon(icon, color: iconColor, size: 19),
+              ),
+              const SizedBox(height: 11),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DSText.cardValue(),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DSText.cardLabel(),
+              ),
+            ],
           ),
         ),
       ),

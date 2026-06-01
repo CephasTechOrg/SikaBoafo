@@ -259,7 +259,6 @@ class ReviewSaleSheet extends ConsumerWidget {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.forest,
-                                  fontFamily: 'Constantia',
                                   letterSpacing: -0.3,
                                 ),
                               ),

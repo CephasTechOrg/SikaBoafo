@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SikaBofo — Mobile App</title>
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: #ECEEEC; }
+  #root { width: 100vw; height: 100vh; }
+</style>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="22" fill="#073B2A"/>
+    <text x="50" y="63" font-size="34" font-family="sans-serif" font-weight="800" fill="#fff" text-anchor="middle">₵</text>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="app/icons.jsx"></script>
+<script type="text/babel" src="app/data.jsx"></script>
+<script type="text/babel" src="app/components.jsx"></script>
+<script type="text/babel" src="app/screens-main.jsx"></script>
+<script type="text/babel" src="app/screens-sales.jsx"></script>
+<script type="text/babel" src="app/screens-more.jsx"></script>
+<script type="text/babel" src="app/screens-detail.jsx"></script>
+<script type="text/babel" src="app/screens-payment.jsx"></script>
+<script type="text/babel" src="app/charts.jsx"></script>
+<script type="text/babel" src="app/screens-reports.jsx"></script>
+<script type="text/babel" src="app/screens-expenses.jsx"></script>
+<script type="text/babel" src="app/screens-auth.jsx"></script>
+<script type="text/babel" src="app/screens-notifications.jsx"></script>
+<script type="text/babel" src="frames/design-canvas.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+/* A self-contained running instance of the SikaBofo app, opened on `initial`. */
+function AppInstance({ initial, initialReview, paymentDemo }) {
+  const [screen, setScreen] = useState(paymentDemo ? (paymentDemo.type === 'debt' ? 'debts' : 'sales') : initial);
+  const reviewCart = { malt: 1, indomie: 1, milk: 1 };
+  const [cart, setCart] = useState(initialReview ? reviewCart : (initial === 'sales' ? { indomie: 3, malt: 1 } : {}));
+  const [review, setReview] = useState(!!initialReview);
+  const [toast, setToast] = useState(null);
+  const [detailCustomer, setDetailCustomer] = useState(CUSTOMERS[0]);
+
+  const SALE_LINK = 'https://checkout.paystack.com/t0k9kqycpzi5lqz';
+  const DEBT_LINK = 'https://checkout.paystack.com/d4t8mqz1xr0p9wq';
+  const saleCtx = (amt) => ({ type: 'sale', merchant: 'Cephas Ventures', amount: amt, ref: 'INV-2026-0034', party: 'Walk-in customer', method: 'Mobile Money', link: SALE_LINK });
+  const debtCtx = (d) => ({ type: 'debt', merchant: 'Cephas Ventures', amount: d ? d.amt : 300, ref: d ? d.inv : 'INV-2026-0026', party: d ? d.name : 'Cephas Owusu', method: 'Mobile Money', remaining: 0, link: DEBT_LINK });
+  const demoCtx = paymentDemo ? (paymentDemo.type === 'debt' ? debtCtx() : saleCtx(35)) : null;
+  const [payment, setPayment] = useState(paymentDemo ? { ctx: demoCtx, state: paymentDemo.state } : null);
+
+  const addItem = (id) => setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  const incItem = addItem;
+  const decItem = (id) => setCart(c => {
+    const n = (c[id] || 0) - 1; const nc = { ...c };
+    if (n <= 0) delete nc[id]; else nc[id] = n;
+    return nc;
+  });
+  const removeItem = (id) => setCart(c => { const nc = { ...c }; delete nc[id]; return nc; });
+
+  const nav = (s) => { setReview(false); setScreen(s); };
+  const openCustomer = (c) => { setDetailCustomer(c); setScreen('customerDetail'); };
+
+  // payment flow
+  const openSalePayment = () => {
+    const total = Object.entries(cart).reduce((s, [id, q]) => s + byId(id).price * q, 0);
+    setReview(false);
+    setPayment({ ctx: saleCtx(total), state: 'waiting' });
+  };
+  const openDebtPayment = (d) => setPayment({ ctx: debtCtx(d), state: 'waiting' });
+  const checkPayment = () => {
+    setPayment(p => p ? { ...p, state: 'verifying' } : p);
+    setTimeout(() => setPayment(p => p ? { ...p, state: 'success' } : p), 1600);
+  };
+  const retryPayment = () => setPayment(p => p ? { ...p, state: 'waiting' } : p);
+  const finishPayment = () => {
+    const isSale = payment && payment.ctx.type === 'sale';
+    setPayment(null);
+    if (isSale) { setCart({}); }
+    setToast(isSale ? 'Sale recorded · payment received' : 'Repayment recorded');
+    setTimeout(() => setToast(null), 2200);
+  };
+  const closePayment = () => setPayment(null);
+
+  let view;
+  if (screen === 'dashboard') view = <Dashboard onNav={nav} />;
+  else if (screen === 'sales') view = <Sales onNav={nav} cart={cart} addItem={addItem} incItem={incItem} decItem={decItem} openReview={() => setReview(true)} />;
+  else if (screen === 'inventory') view = <Inventory onNav={nav} />;
+  else if (screen === 'more') view = <More onNav={nav} />;
+  else if (screen === 'customers') view = <Customers onNav={nav} onOpen={openCustomer} />;
+  else if (screen === 'debts') view = <Debts onNav={nav} onPay={openDebtPayment} />;
+  else if (screen === 'customerDetail') view = <CustomerDetail customer={detailCustomer} onBack={() => nav('customers')} />;
+  else if (screen === 'settings') view = <Settings onBack={() => nav('more')} />;
+  else if (screen === 'reports') view = <Reports onNav={nav} empty={initial === 'reportsEmpty'} />;
+  else if (screen === 'reportsEmpty') view = <Reports onNav={nav} empty />;
+  else if (screen === 'expenses') view = <Expenses onNav={nav} />;
+  else if (screen === 'welcome') view = <Welcome onNav={nav} />;
+  else if (screen === 'login') view = <Login onNav={nav} />;
+  else if (screen === 'notifications') view = <Notifications onNav={nav} onBack={() => nav('dashboard')} />;
+
+  return (
+    <Phone>
+      {view}
+      {review && <OrderReview cart={cart} incItem={incItem} decItem={decItem} removeItem={removeItem} onClose={() => setReview(false)} onCheckout={openSalePayment} />}
+      {payment && <PaymentSheet ctx={payment.ctx} state={payment.state} onCheck={checkPayment} onRetry={retryPayment} onDone={finishPayment} onClose={closePayment} />}
+      {toast && (
+        <div style={{ position: 'absolute', left: 16, right: 16, bottom: 30, zIndex: 60, background: 'var(--green-900)', color: '#fff', borderRadius: 14, padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 12px 30px rgba(7,28,20,.4)', animation: 'slideup .3s cubic-bezier(.22,1,.36,1)' }}>
+          <Icon name="check" size={20} color="#7CE0B0" />
+          <span style={{ fontSize: 14.5, fontWeight: 600 }}>{toast}</span>
+        </div>
+      )}
+    </Phone>
+  );
+}
+
+const ARTBOARD_STYLE = { background: 'transparent', boxShadow: 'none', borderRadius: 44, overflow: 'visible' };
+const SCREENS = [
+  { id: 'welcome',   label: 'Welcome', initial: 'welcome' },
+  { id: 'login',     label: 'Sign in', initial: 'login' },
+  { id: 'dashboard', label: 'Dashboard', initial: 'dashboard' },
+  { id: 'notifications', label: 'Notifications', initial: 'notifications' },
+  { id: 'sales',     label: 'Sales · POS', initial: 'sales' },
+  { id: 'review',    label: 'Order Review', initial: 'sales', review: true },
+  { id: 'inventory', label: 'Inventory', initial: 'inventory' },
+  { id: 'customers', label: 'Customers', initial: 'customers' },
+  { id: 'customerDetail', label: 'Customer · Debt detail', initial: 'customerDetail' },
+  { id: 'debts',     label: 'Debts', initial: 'debts' },
+  { id: 'reports',   label: 'Reports', initial: 'reports' },
+  { id: 'reportsEmpty', label: 'Reports · Empty states', initial: 'reportsEmpty' },
+  { id: 'expenses',  label: 'Expenses', initial: 'expenses' },
+  { id: 'pay-sale',  label: 'Payment · Scan to Pay', payment: { type: 'sale', state: 'waiting' } },
+  { id: 'pay-verify', label: 'Payment · Verifying', payment: { type: 'sale', state: 'verifying' } },
+  { id: 'pay-success', label: 'Payment · Sale success', payment: { type: 'sale', state: 'success' } },
+  { id: 'pay-failed', label: 'Payment · Expired', payment: { type: 'sale', state: 'failed' } },
+  { id: 'pay-debt',  label: 'Payment · Debt repayment', payment: { type: 'debt', state: 'waiting' } },
+  { id: 'pay-debt-success', label: 'Payment · Repayment success', payment: { type: 'debt', state: 'success' } },
+  { id: 'more',      label: 'More', initial: 'more' },
+  { id: 'settings',  label: 'Settings', initial: 'settings' },
+];
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="sikabofo" title="SikaBofo — Mobile App" subtitle="Ghana small-business inventory & sales · green design system · tap to interact, ⤢ to focus">
+        {SCREENS.map(s => (
+          <DCArtboard key={s.id} id={s.id} label={s.label} width={392} height={830} style={ARTBOARD_STYLE}>
+            <AppInstance initial={s.initial} initialReview={s.review} paymentDemo={s.payment} />
+          </DCArtboard>
+        ))}
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

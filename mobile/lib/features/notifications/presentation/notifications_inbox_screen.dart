@@ -4,48 +4,52 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/mockup_ui.dart';
 import '../providers/notifications_inbox_providers.dart';
 
-class NotificationsInboxScreen extends ConsumerWidget {
+enum _NotifFilter { all, unread }
+
+class NotificationsInboxScreen extends ConsumerStatefulWidget {
   const NotificationsInboxScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsInboxScreen> createState() =>
+      _NotificationsInboxScreenState();
+}
+
+class _NotificationsInboxScreenState extends ConsumerState<NotificationsInboxScreen> {
+  _NotifFilter _filter = _NotifFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
     final inboxAsync = ref.watch(notificationsInboxControllerProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.ink,
-        elevation: 0,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(fontWeight: FontWeight.w900),
+    return MockupScreenScaffold(
+      title: 'Notifications',
+      subtitle: 'Updates and payment activity',
+      heroHeight: 158,
+      onBack: () => context.pop(),
+      actions: [
+        MockupHeaderAction(
+          icon: Icons.done_all_rounded,
+          tooltip: 'Mark all as read',
+          onTap: () => ref
+              .read(notificationsInboxControllerProvider.notifier)
+              .markAllRead(),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Mark all as read',
-            onPressed: () => ref
+        MockupHeaderAction(
+          icon: Icons.delete_sweep_rounded,
+          tooltip: 'Clear all',
+          onTap: () => _confirm(
+            context,
+            title: 'Clear all notifications?',
+            confirmLabel: 'Clear',
+            onConfirm: () => ref
                 .read(notificationsInboxControllerProvider.notifier)
-                .markAllRead(),
-            icon: const Icon(Icons.done_all_rounded),
+                .clearAll(),
           ),
-          IconButton(
-            tooltip: 'Clear all',
-            onPressed: () => _confirm(
-              context,
-              title: 'Clear all notifications?',
-              confirmLabel: 'Clear',
-              onConfirm: () => ref
-                  .read(notificationsInboxControllerProvider.notifier)
-                  .clearAll(),
-            ),
-            icon: const Icon(Icons.delete_sweep_rounded),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+        ),
+      ],
       body: inboxAsync.when(
         loading: () => const Center(
           child: SizedBox(
@@ -63,22 +67,68 @@ class NotificationsInboxScreen extends ConsumerWidget {
             ),
           ),
         ),
-        data: (items) {
-          if (items.isEmpty) {
+        data: (allItems) {
+          final items = _filter == _NotifFilter.unread
+              ? allItems.where((n) => !n.isRead).toList(growable: false)
+              : allItems;
+          if (allItems.isEmpty) {
             return const _EmptyInbox();
           }
+          final grouped = _groupByDay(items);
           return RefreshIndicator(
             onRefresh: () => ref
                 .read(notificationsInboxControllerProvider.notifier)
                 .refresh(),
-            child: ListView.separated(
+            child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final n = items[index];
-                return Dismissible(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 20),
+              children: [
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _FilterChip(
+                      label: 'All',
+                      selected: _filter == _NotifFilter.all,
+                      onTap: () => setState(() => _filter = _NotifFilter.all),
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Unread',
+                      selected: _filter == _NotifFilter.unread,
+                      onTap: () => setState(() => _filter = _NotifFilter.unread),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${items.length} item${items.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (items.isEmpty)
+                  const _EmptyInbox(
+                    title: 'No matching notifications',
+                    subtitle: 'Try switching filter tabs.',
+                  ),
+                for (final entry in grouped.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 2, 2, 8),
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.muted,
+                        letterSpacing: 0.9,
+                      ),
+                    ),
+                  ),
+                  for (final n in entry.value) ...[
+                    Dismissible(
                   key: ValueKey('notif-${n.id}'),
                   direction: DismissDirection.endToStart,
                   background: Container(
@@ -106,7 +156,7 @@ class NotificationsInboxScreen extends ConsumerWidget {
                     );
                     return ok;
                   },
-                  child: _NotificationTile(
+                      child: _NotificationTile(
                     title: n.title,
                     body: n.body,
                     timeLabel: _formatTime(n.createdAtMs),
@@ -124,9 +174,12 @@ class NotificationsInboxScreen extends ConsumerWidget {
                     onDelete: () => ref
                         .read(notificationsInboxControllerProvider.notifier)
                         .deleteOne(n.id),
-                  ),
-                );
-              },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ],
+              ],
             ),
           );
         },
@@ -176,27 +229,33 @@ class NotificationsInboxScreen extends ConsumerWidget {
 }
 
 class _EmptyInbox extends StatelessWidget {
-  const _EmptyInbox();
+  const _EmptyInbox({
+    this.title = 'No notifications yet',
+    this.subtitle = 'When something important happens, it will show up here.',
+  });
+
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.notifications_none_rounded, size: 44, color: AppColors.muted),
-            SizedBox(height: 10),
+            const Icon(Icons.notifications_none_rounded, size: 44, color: AppColors.muted),
+            const SizedBox(height: 10),
             Text(
-              'No notifications yet',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'When something important happens, it will show up here.',
+              subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted),
+              style: const TextStyle(color: AppColors.muted),
             ),
           ],
         ),
@@ -228,25 +287,26 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: unread
                 ? AppColors.forest.withValues(alpha: 0.25)
                 : Colors.black.withValues(alpha: 0.06),
           ),
+          boxShadow: AppShadows.subtle,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 10,
-              height: 10,
-              margin: const EdgeInsets.only(top: 6, right: 12),
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(top: 7, right: 12),
               decoration: BoxDecoration(
                 color: unread ? AppColors.forest : Colors.transparent,
                 borderRadius: BorderRadius.circular(99),
@@ -266,6 +326,7 @@ class _NotificationTile extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: unread ? FontWeight.w900 : FontWeight.w800,
                             color: AppColors.ink,
+                            fontSize: 14.2,
                           ),
                         ),
                       ),
@@ -285,7 +346,7 @@ class _NotificationTile extends StatelessWidget {
                     body,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.muted),
+                    style: const TextStyle(color: AppColors.inkSoft, height: 1.3),
                   ),
                 ],
               ),
@@ -317,5 +378,58 @@ class _NotificationTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.forest : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.forest : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AppColors.inkSoft,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Map<String, List<dynamic>> _groupByDay(List<dynamic> items) {
+  final now = DateTime.now();
+  final grouped = <String, List<dynamic>>{};
+  for (final n in items) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(n.createdAtMs);
+    final key = DateUtils.isSameDay(dt, now)
+        ? 'TODAY'
+        : DateUtils.isSameDay(dt, now.subtract(const Duration(days: 1)))
+            ? 'YESTERDAY'
+            : DateFormat('EEE, MMM d').format(dt).toUpperCase();
+    grouped.putIfAbsent(key, () => []).add(n);
+  }
+  return grouped;
 }
 

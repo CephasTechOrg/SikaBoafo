@@ -288,7 +288,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               onPressed: () => context.pop(),
             ),
-            backgroundColor: const Color(0xFF041C0B),
+            backgroundColor: AppColors.forestNight,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               stretchModes: const [StretchMode.zoomBackground],
@@ -535,7 +535,7 @@ class _SheetCap extends StatelessWidget {
       height: 28,
       child: ColoredBox(
         // Match the hero/header background so the rounded cutouts show green.
-        color: Color(0xFF041C0B),
+        color: AppColors.forestNight,
         child: ClipRRect(
           borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(

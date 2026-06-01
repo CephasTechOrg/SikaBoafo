@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../app/theme/app_theme.dart';
@@ -96,45 +95,60 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             onRetry: _refresh,
           ),
         ),
-        data: (_) => SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // ── Minimal Action Header ────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.ink, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Reports',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.ink,
-                        letterSpacing: -0.5,
+        data: (_) => Column(
+          children: [
+            Container(
+              decoration: const BoxDecoration(gradient: AppGradients.hero),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reports',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Sales, expenses and debt insights',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.heroSubtitle,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: _refresh,
-                      icon: const Icon(Icons.refresh_rounded,
-                          color: AppColors.muted, size: 22),
-                    ),
-                  ],
+                      IconButton(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh_rounded,
+                            color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-
+            ),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Column(
+                  children: [
               // ── Period Tabs ─────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
                 child: PeriodTabs(
                   selected: _periodIndex,
                   onSelected: (i) => setState(() => _periodIndex = i),
@@ -237,8 +251,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -369,7 +386,6 @@ class _KpiCard extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
                 color: AppColors.ink,
-                fontFamily: 'Constantia',
                 letterSpacing: -0.4,
               ),
             ),
@@ -439,7 +455,6 @@ class _GrossProfitBanner extends StatelessWidget {
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
                   color: AppColors.ink,
-                  fontFamily: 'Constantia',
                 ),
               ),
             ],

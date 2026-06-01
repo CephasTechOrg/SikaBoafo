@@ -109,7 +109,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         onPressed: () => Navigator.of(context).maybePop(),
                       )
                     : null,
-                backgroundColor: const Color(0xFF041C0B),
+                backgroundColor: AppColors.forestNight,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground],
@@ -141,7 +141,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               // reveal the header color (no extra edge/underlay colors).
               const SliverToBoxAdapter(
                 child: ColoredBox(
-                  color: Color(0xFF041C0B),
+                  color: AppColors.forestNight,
                   child: SizedBox(height: 18),
                 ),
               ),
@@ -273,7 +273,7 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return ColoredBox(
-      color: const Color(0xFF041C0B),
+      color: AppColors.forestNight,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         child: AnimatedContainer(

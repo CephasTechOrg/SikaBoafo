@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ import '../../../shared/widgets/app_components.dart';
 import '../../../shared/widgets/mockup_ui.dart';
 import '../data/auth_api.dart';
 import '../providers/auth_providers.dart';
+import 'widgets/auth_mockup_ui.dart';
 
 /// Phone + PIN for daily sign-in; SMS OTP for create account and recovery.
 class AuthShellScreen extends ConsumerStatefulWidget {
@@ -174,7 +176,9 @@ class _AuthShellScreenState extends ConsumerState<AuthShellScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: _step == _AuthFlowStep.pinSignIn
+          ? AuthMockup.bg
+          : AppColors.surface,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 260),
         switchInCurve: Curves.easeOutCubic,
@@ -229,72 +233,100 @@ class _EntryViewMockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenH = MediaQuery.sizeOf(context).height;
+    final heroH = (screenH * (446 / 830)).clamp(400.0, 480.0);
+
     return ColoredBox(
       key: const ValueKey('entry_view'),
-      color: AppColors.canvas,
+      color: AppColors.surface,
       child: Column(
         children: [
-          const Expanded(
-            flex: 6,
-            child: _AuthHeroImage(),
+          SizedBox(
+            height: heroH,
+            width: double.infinity,
+            child: const AuthWelcomeHero(),
           ),
           Expanded(
-            flex: 7,
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Your business,\nsimplified.',
-                      textAlign: TextAlign.center,
-                      style:
-                          Theme.of(context).textTheme.displayMedium?.copyWith(
-                                color: AppColors.ink,
-                                fontWeight: FontWeight.w900,
-                                height: 1.08,
-                              ),
+            child: Transform.translate(
+              offset: const Offset(0, -AuthMockup.sheetOverlap),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(AuthMockup.welcomeSheetRadius),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AuthMockup.gutter,
+                      34,
+                      AuthMockup.gutter,
+                      24,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'The modern financial workspace\ndesigned for professionals who demand\nclarity and efficiency.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.muted,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your business,\nsimplified.',
+                          style: TextStyle(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 32,
+                            letterSpacing: -0.96,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Track sales, stock, customers and debts — all in one calm, trustworthy workspace built for Ghanaian shops.',
+                          style: TextStyle(
+                            color: AuthMockup.ink2,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
                             height: 1.5,
                           ),
-                    ),
-                    const SizedBox(height: 18),
-                    MockupCtaButton.primary(
-                      label: 'Sign In',
-                      onPressed: onSignIn,
-                    ),
-                    const SizedBox(height: 12),
-                    MockupCtaButton.secondary(
-                      label: 'Create account',
-                      onPressed: onCreateAccount,
-                    ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.circle,
-                            size: 6, color: AppColors.success),
-                        const SizedBox(width: 8),
-                        Text(
-                          'ENTERPRISE WORKSPACE V2.4',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppColors.muted,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.7,
-                                  ),
                         ),
+                        const Spacer(),
+                        const SizedBox(height: 30),
+                        AuthMockupPrimaryButton(
+                          label: 'Sign In',
+                          onPressed: onSignIn,
+                        ),
+                        const SizedBox(height: 12),
+                        AuthMockupGhostButton(
+                          label: 'Create account',
+                          onPressed: onCreateAccount,
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AuthMockup.green600,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Secure workspace · v2.4'.toUpperCase(),
+                              style: const TextStyle(
+                                color: AuthMockup.ink3,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11.5,
+                                letterSpacing: 0.92,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -305,7 +337,7 @@ class _EntryViewMockup extends StatelessWidget {
   }
 }
 
-class _PinSignInView extends StatelessWidget {
+class _PinSignInView extends StatefulWidget {
   const _PinSignInView({
     required this.phoneCtrl,
     required this.pinCtrl,
@@ -331,150 +363,198 @@ class _PinSignInView extends StatelessWidget {
   final VoidCallback? onCreateAccount;
 
   @override
+  State<_PinSignInView> createState() => _PinSignInViewState();
+}
+
+class _PinSignInViewState extends State<_PinSignInView> {
+  final _phoneFocus = FocusNode();
+  final _pinFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _phoneFocus.dispose();
+    _pinFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ColoredBox(
       key: const ValueKey('pin_sign_in'),
-      color: AppColors.canvas,
+      color: AuthMockup.bg,
       child: Column(
         children: [
+          AuthLoginHero(onBack: widget.onBack),
           Expanded(
-            flex: 6,
-            child: _AuthSettingsHeroHeader(
-              child: LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: IconButton(
-                            onPressed: onBack,
-                            icon: const Icon(Icons.arrow_back_rounded,
-                                color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const MockupAppMark(size: 66),
-                        const SizedBox(height: 14),
-                        Text(
-                          'SikaBoafo',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Welcome back',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.75),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ],
-                    ),
+            child: Transform.translate(
+              offset: const Offset(0, -AuthMockup.sheetOverlap),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AuthMockup.bg,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(AuthMockup.loginSheetRadius),
                   ),
                 ),
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 7,
-            child: SafeArea(
-              top: false,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 22),
-                children: [
-                  AppCard(
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AppTextField(
-                          controller: phoneCtrl,
-                          label: 'Phone Number',
-                          hint: '+233 55 123 4567',
+                child: SafeArea(
+                  top: false,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AuthMockup.gutter,
+                      28,
+                      AuthMockup.gutter,
+                      24,
+                    ),
+                    children: [
+                      const AuthSecLabel('Phone Number'),
+                      const SizedBox(height: 9),
+                      AuthMockupField(
+                        icon: Icons.phone_iphone_rounded,
+                        focusNode: _phoneFocus,
+                        child: TextField(
+                          controller: widget.phoneCtrl,
+                          focusNode: _phoneFocus,
+                          enabled: !widget.loading,
                           keyboardType: TextInputType.phone,
-                          prefixIcon:
-                              const Icon(Icons.phone_iphone_rounded, size: 18),
                           textInputAction: TextInputAction.next,
+                          style: authPhoneFieldStyle,
+                          decoration: const InputDecoration(
+                            hintText: '+233 55 123 4567',
+                            hintStyle: TextStyle(
+                              color: AuthMockup.ink3,
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onSubmitted: (_) =>
+                              FocusScope.of(context).requestFocus(_pinFocus),
                         ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Security PIN',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
-                                    ?.copyWith(color: AppColors.inkSoft),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          const Expanded(child: AuthSecLabel('Security PIN')),
+                          GestureDetector(
+                            onTap: widget.onForgotPin,
+                            child: const Text(
+                              'Forgot PIN?',
+                              style: TextStyle(
+                                color: AuthMockup.green700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.5,
                               ),
                             ),
-                            TextButton(
-                              onPressed: onForgotPin,
-                              child: const Text('Forgot PIN?'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: pinCtrl,
-                          keyboardType: TextInputType.number,
-                          obscureText: pinObscured,
-                          enabled: !loading,
-                          decoration: InputDecoration(
-                            hintText: '••••',
-                            prefixIcon: const Icon(Icons.lock_rounded),
-                            suffixIcon: IconButton(
-                              onPressed: onTogglePin,
-                              icon: Icon(pinObscured
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined),
-                            ),
                           ),
-                        ),
-                        if (error != null && error!.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          _InlineError(message: error!),
                         ],
-                        const SizedBox(height: 16),
-                        MockupCtaButton.primary(
-                          label: loading ? 'Signing In' : 'Sign In',
-                          onPressed: onSubmit,
-                          loading: loading,
-                        ),
-                        const SizedBox(height: 14),
-                        Center(
-                          child: Text(
-                            'NEW TO SIKABOAFO?',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: AppColors.muted,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8,
-                                ),
+                      ),
+                      const SizedBox(height: 9),
+                      AuthMockupField(
+                        icon: Icons.lock_rounded,
+                        focusNode: _pinFocus,
+                        trailing: IconButton(
+                          onPressed: widget.onTogglePin,
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            widget.pinObscured
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 19,
+                            color: AuthMockup.ink3,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        MockupCtaButton.secondary(
-                          label: 'Create account',
-                          onPressed: onCreateAccount,
+                        child: TextField(
+                          controller: widget.pinCtrl,
+                          focusNode: _pinFocus,
+                          enabled: !widget.loading,
+                          keyboardType: TextInputType.number,
+                          obscureText: widget.pinObscured,
+                          maxLength: 4,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          style: authPinFieldStyle,
+                          decoration: authPinInputDecoration(
+                            obscured: widget.pinObscured,
+                          ),
                         ),
+                      ),
+                      if (widget.error != null && widget.error!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _InlineError(message: widget.error!),
                       ],
-                    ),
+                      const SizedBox(height: 24),
+                      AuthMockupPrimaryButton(
+                        label: widget.loading ? 'Signing In' : 'Sign In',
+                        onPressed: widget.onSubmit,
+                        loading: widget.loading,
+                      ),
+                      const SizedBox(height: 22),
+                      const Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              height: 1,
+                              color: AuthMockup.line,
+                            ),
+                          ),
+                          Padding(
+                            padding:
+                                EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'NEW TO SIKABOAFO?',
+                              style: TextStyle(
+                                color: AuthMockup.ink3,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                letterSpacing: 0.88,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              height: 1,
+                              color: AuthMockup.line,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      AuthMockupGhostButton(
+                        label: 'Create account',
+                        onPressed: widget.onCreateAccount,
+                        height: 52,
+                      ),
+                      const SizedBox(height: 22),
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shield_outlined,
+                            size: 14,
+                            color: AuthMockup.green600,
+                          ),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Bank-grade security · your data stays private',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AuthMockup.ink3,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -741,61 +821,6 @@ class _AuthSettingsHeroHeader extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 24 + 18),
               child: child,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AuthHeroImage extends StatelessWidget {
-  const _AuthHeroImage();
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _AuthWaveClipper(),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            'assets/images/businesswoman.png',
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-          ),
-          // Dark gradient only at the top so the logo stays readable
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xAA000000), Colors.transparent],
-                begin: Alignment.topCenter,
-                end: Alignment(0, 0.55),
-              ),
-            ),
-          ),
-          const SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  MockupAppMark(
-                    size: 32,
-                    assetPath: 'assets/images/logo.png',
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    'SikaBoafo',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ],

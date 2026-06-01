@@ -338,9 +338,9 @@ class _CustomerDetailHeader extends StatelessWidget {
                     child: Text(
                       initial,
                       style: const TextStyle(
-                        fontFamily: 'Constantia',
                         fontSize: 22,
                         color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -356,9 +356,8 @@ class _CustomerDetailHeader extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontFamily: 'Constantia',
                             fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: -0.2,
                             height: 1.1,

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/router.dart';
-import '../../../../app/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class DashboardQuickActions extends StatelessWidget {
-  const DashboardQuickActions({super.key, required this.onNavigate});
+import '../../../../app/router.dart';
+import '../../../expenses/presentation/expenses_screen.dart';
+import 'dashboard_mockup_ui.dart';
+
+/// 4-button quick-action row rendered inside the hero on dark green.
+class DashboardHeroQuickActions extends StatelessWidget {
+  const DashboardHeroQuickActions({super.key, required this.onNavigate});
+
   final ValueChanged<int> onNavigate;
 
   @override
@@ -12,47 +17,37 @@ class DashboardQuickActions extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          flex: 5,
-          child: _QuickTile(
+          child: _QuickAction(
             icon: Icons.add_rounded,
             label: 'New Sale',
-            backgroundColor: const Color(0xFF155236),
-            accentColor: const Color(0xFF1B6E4C),
-            foregroundColor: Colors.white,
-            iconColor: Colors.white,
-            iconBackgroundColor: Colors.white.withValues(alpha: 0.15),
-            borderColor: Colors.transparent,
+            primary: true,
             onTap: () => onNavigate(1),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
-          flex: 4,
-          child: _QuickTile(
-            icon: Icons.payments_outlined,
+          child: _QuickAction(
+            icon: Icons.handshake_outlined,
             label: 'Debts',
-            backgroundColor: AppColors.surface,
-            accentColor: const Color(0xFFFDFEFE),
-            foregroundColor: AppColors.ink,
-            iconColor: AppColors.forest,
-            iconBackgroundColor: AppColors.successSoft,
-            borderColor: AppColors.border,
             onTap: () => context.push(AppRoute.debts.path),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
-          flex: 4,
-          child: _QuickTile(
+          child: _QuickAction(
             icon: Icons.inventory_2_outlined,
             label: 'Restock',
-            backgroundColor: AppColors.surface,
-            accentColor: const Color(0xFFFDFEFE),
-            foregroundColor: AppColors.ink,
-            iconColor: AppColors.forest,
-            iconBackgroundColor: AppColors.successSoft,
-            borderColor: AppColors.border,
             onTap: () => onNavigate(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _QuickAction(
+            icon: Icons.receipt_long_outlined,
+            label: 'Expenses',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ExpensesScreen()),
+            ),
           ),
         ),
       ],
@@ -60,81 +55,69 @@ class DashboardQuickActions extends StatelessWidget {
   }
 }
 
-class _QuickTile extends StatelessWidget {
-  const _QuickTile({
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
     required this.icon,
     required this.label,
-    required this.backgroundColor,
-    required this.accentColor,
-    required this.foregroundColor,
-    required this.iconColor,
-    required this.iconBackgroundColor,
-    required this.borderColor,
     required this.onTap,
+    this.primary = false,
   });
 
   final IconData icon;
   final String label;
-  final Color backgroundColor;
-  final Color accentColor;
-  final Color foregroundColor;
-  final Color iconColor;
-  final Color iconBackgroundColor;
-  final Color borderColor;
   final VoidCallback onTap;
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-        boxShadow: backgroundColor == AppColors.surface
-            ? const [
-                BoxShadow(
-                  color: Color(0x120F172A),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: primary
+                      ? DashboardMockup.green600
+                      : Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(17),
+                  border: primary
+                      ? null
+                      : Border.all(
+                          color: Colors.white.withValues(alpha: 0.14),
+                        ),
+                  boxShadow: primary
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x73168A55),
+                            blurRadius: 18,
+                            offset: Offset(0, 8),
+                          ),
+                        ]
+                      : null,
                 ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: iconBackgroundColor,
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 15),
+                child: Icon(icon, color: Colors.white, size: 23),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.92),
                 ),
-                const SizedBox(width: 7),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: foregroundColor,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

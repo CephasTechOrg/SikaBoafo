@@ -1,233 +1,200 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/providers/sync_providers.dart';
-import '../../../../shared/widgets/premium_ui.dart';
-import '../../../../shared/widgets/sync_status_pill.dart';
 import '../../../../app/router.dart';
 import '../../../notifications/providers/notifications_inbox_providers.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';
 import '../../data/dashboard_api.dart';
 import '../../providers/dashboard_providers.dart';
 import '../utils/dashboard_ui_utils.dart';
+import 'dashboard_mockup_ui.dart';
+import 'dashboard_quick_actions.dart';
 
+/// Full hero content: top bar → sales section → quick actions.
 class DashboardHeader extends ConsumerWidget {
   const DashboardHeader({
     super.key,
     required this.mc,
     required this.summaryAsync,
-    required this.onSettings,
     required this.onNavigate,
   });
 
   final MerchantContext mc;
   final AsyncValue<DashboardSummary> summaryAsync;
-  final VoidCallback onSettings;
   final ValueChanged<int> onNavigate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = summaryAsync.valueOrNull;
-    final sales = summary?.todaySalesTotal ?? '--';
+    final summary     = summaryAsync.valueOrNull;
     final overlayAsync = ref.watch(localDashboardOverlayProvider);
-    final overlay = overlayAsync.valueOrNull;
-    final syncAsync = ref.watch(syncStatusControllerProvider);
-    final syncSnapshot = syncAsync.valueOrNull;
-    final syncing = syncSnapshot?.isSyncing ?? syncAsync.isLoading;
-    final overlayMinor = overlay?.todayPendingSalesMinor ?? 0;
-    final overlayText = overlayMinor > 0 ? SalesUiUtils.minorToMoney(overlayMinor) : null;
-    final displaySales =
-        overlayText == null ? sales : DashboardUiUtils.addMoneyStrings(sales, overlayText);
+    final overlay     = overlayAsync.valueOrNull;
+
+    // ── Sales total (with offline overlay) ──────────────────────────────────
+    final rawSales      = summary?.todaySalesTotal ?? '--';
+    final overlayMinor  = overlay?.todayPendingSalesMinor ?? 0;
+    final overlayText   =
+        overlayMinor > 0 ? SalesUiUtils.minorToMoney(overlayMinor) : null;
+    final displaySales  = overlayText == null
+        ? rawSales
+        : DashboardUiUtils.addMoneyStrings(rawSales, overlayText);
+
+    // ── Trend badge ──────────────────────────────────────────────────────────
     final trend = summary != null
         ? DashboardUiUtils.trendBadge(displaySales, summary.yesterdaySalesTotal)
         : null;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+      padding: const EdgeInsets.symmetric(horizontal: DashboardMockup.gutter),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Top bar ───────────────────────────────────────────────────────
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    DashboardUiUtils.initials(mc.businessName),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
+              _BusinessAvatar(name: mc.businessName),
+              const SizedBox(width: 12),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            DashboardUiUtils.greeting(),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.62),
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                          Text(
-                            mc.businessName,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.1,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      DashboardUiUtils.greeting(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.66),
+                        height: 1.2,
                       ),
                     ),
-                    if (syncSnapshot != null) ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: GestureDetector(
-                          onTap: () => showSyncDetailsSheet(context, ref),
-                          child: SyncPill(snapshot: syncSnapshot),
-                        ),
+                    Text(
+                      mc.businessName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.2,
+                        height: 1.15,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-              DashboardHeaderBtn(
-                icon: syncing ? Icons.sync_rounded : Icons.cloud_sync_outlined,
-                onTap: () async {
-                  final controller =
-                      ref.read(syncStatusControllerProvider.notifier);
-                  await controller.syncNow();
-                  if (!context.mounted) return;
-                  final latest =
-                      ref.read(syncStatusControllerProvider).valueOrNull;
-                  final reachable = latest?.backendReachable ?? false;
-                  final failed = latest?.stats.failedCount ?? 0;
-                  final dead = latest?.stats.deadCount ?? 0;
-                  final pending = latest == null
-                      ? 0
-                      : latest.stats.pendingCount + latest.stats.sendingCount;
-
-                  final message = !reachable
-                      ? 'Offline — will sync when back online.'
-                      : failed > 0
-                          ? 'Sync completed with $failed failed items.'
-                          : dead > 0
-                              ? '$dead stopped item${dead == 1 ? '' : 's'} need review.'
-                              : pending > 0
-                                  ? 'Sync in progress — $pending pending.'
-                                  : 'All synced.';
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(message),
-                      behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-              const _NotificationsHeaderButton(),
+              const _NotificationButton(),
             ],
           ),
-          const SizedBox(height: 22),
-          PremiumReveal(
-            child: Column(
-              children: [
-                Text(
-                  'SALES TODAY',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.70),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.0,
-                      ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '₵$displaySales',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -0.8,
-                    height: 1,
-                  ),
-                ),
-                if (overlayText != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Includes ₵$overlayText offline',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-                if (trend != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          trend.startsWith('-')
-                              ? Icons.trending_down_rounded
-                              : Icons.trending_up_rounded,
-                          size: 14,
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          trend,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
+
+          const SizedBox(height: 26),
+
+          // ── Sales label ───────────────────────────────────────────────────
+          const DashSecLabel('Sales Today', onDark: true),
+          const SizedBox(height: 4),
+
+          // ── Sales amount ──────────────────────────────────────────────────
+          Text(
+            '₵$displaySales',
+            style: DSText.heroAmount(),
+          ),
+
+          // ── Offline indicator ─────────────────────────────────────────────
+          if (overlayText != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Includes ₵$overlayText offline',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.75),
+              ),
+            ),
+          ],
+
+          // ── Trend badge ───────────────────────────────────────────────────
+          if (trend != null) ...[
+            const SizedBox(height: 11),
+            _TrendBadge(trend: trend),
+          ],
+
+          const SizedBox(height: 26),
+
+          // ── Quick actions ─────────────────────────────────────────────────
+          DashboardHeroQuickActions(onNavigate: onNavigate),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Business avatar ──────────────────────────────────────────────────────────
+
+class _BusinessAvatar extends StatelessWidget {
+  const _BusinessAvatar({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 1.5,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        DashboardUiUtils.initials(name),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 15.5,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Trend badge pill ─────────────────────────────────────────────────────────
+
+class _TrendBadge extends StatelessWidget {
+  const _TrendBadge({required this.trend});
+
+  final String trend;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUp = !trend.startsWith('-');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+            size: 15,
+            color: const Color(0xFF7CE0B0),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            trend,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFCFEFDD),
             ),
           ),
         ],
@@ -236,8 +203,10 @@ class DashboardHeader extends ConsumerWidget {
   }
 }
 
-class _NotificationsHeaderButton extends ConsumerWidget {
-  const _NotificationsHeaderButton();
+// ── Notification bell button ─────────────────────────────────────────────────
+
+class _NotificationButton extends ConsumerWidget {
+  const _NotificationButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -246,30 +215,52 @@ class _NotificationsHeaderButton extends ConsumerWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Tooltip(
-          message: unread == 0 ? 'No unread notifications' : '$unread unread',
-          child: DashboardHeaderBtn(
-            icon: Icons.notifications_outlined,
+        Material(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(13),
+          child: InkWell(
             onTap: () => context.push(AppRoute.notifications.path),
+            borderRadius: BorderRadius.circular(13),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+              ),
+              child: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
           ),
         ),
         if (unread > 0)
           Positioned(
-            top: -6,
-            right: -6,
+            top: -4,
+            right: -4,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: AppColors.danger,
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: Colors.white, width: 2),
+                color: DashboardMockup.danger,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(
+                  color: const Color(0xFF0A4632),
+                  width: 2,
+                ),
               ),
+              alignment: Alignment.center,
               child: Text(
                 unread > 99 ? '99+' : '$unread',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1,
                 ),
               ),
             ),
@@ -277,148 +268,4 @@ class _NotificationsHeaderButton extends ConsumerWidget {
       ],
     );
   }
-}
-
-class DashboardHeaderBtn extends StatelessWidget {
-  const DashboardHeaderBtn({super.key, required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        splashColor: Colors.white.withValues(alpha: 0.18),
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
-      ),
-    );
-  }
-}
-
-class SyncPill extends StatelessWidget {
-  const SyncPill({super.key, required this.snapshot});
-  final SyncStatusSnapshot snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final descriptor = _resolve(snapshot);
-    if (descriptor == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: descriptor.background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: descriptor.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (descriptor.spinner)
-            const SizedBox(
-              width: 11,
-              height: 11,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.6,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
-              ),
-            )
-          else
-            Icon(descriptor.icon, size: 12, color: Colors.white),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              descriptor.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static SyncPillDescriptor? _resolve(SyncStatusSnapshot s) {
-    if (s.isSyncing) {
-      return SyncPillDescriptor(
-        label: 'Syncing…',
-        icon: Icons.sync_rounded,
-        spinner: true,
-        background: Colors.white.withValues(alpha: 0.18),
-        border: Colors.white.withValues(alpha: 0.22),
-      );
-    }
-    if (!s.backendReachable) {
-      return SyncPillDescriptor(
-        label: 'Offline',
-        icon: Icons.cloud_off_rounded,
-        spinner: false,
-        background: const Color(0xFFB54848).withValues(alpha: 0.85),
-        border: Colors.white.withValues(alpha: 0.22),
-      );
-    }
-    if (s.hasFailures || s.hasConflicts) {
-      final count = s.stats.failedCount + s.stats.conflictCount;
-      return SyncPillDescriptor(
-        label: 'Failed: $count',
-        icon: Icons.error_outline_rounded,
-        spinner: false,
-        background: const Color(0xFFB54848).withValues(alpha: 0.85),
-        border: Colors.white.withValues(alpha: 0.22),
-      );
-    }
-    if (s.hasDead) {
-      return SyncPillDescriptor(
-        label: 'Stopped: ${s.stats.deadCount}',
-        icon: Icons.pause_circle_outline_rounded,
-        spinner: false,
-        background: const Color(0xFF6B7280).withValues(alpha: 0.92),
-        border: Colors.white.withValues(alpha: 0.22),
-      );
-    }
-    if (s.hasPendingWork) {
-      final count = s.stats.pendingCount + s.stats.sendingCount;
-      return SyncPillDescriptor(
-        label: 'Pending: $count',
-        icon: Icons.cloud_upload_outlined,
-        spinner: false,
-        background: const Color(0xFFC68A2E).withValues(alpha: 0.85),
-        border: Colors.white.withValues(alpha: 0.22),
-      );
-    }
-    return null;
-  }
-}
-
-class SyncPillDescriptor {
-  const SyncPillDescriptor({
-    required this.label,
-    required this.icon,
-    required this.spinner,
-    required this.background,
-    required this.border,
-  });
-  final String label;
-  final IconData icon;
-  final bool spinner;
-  final Color background;
-  final Color border;
 }

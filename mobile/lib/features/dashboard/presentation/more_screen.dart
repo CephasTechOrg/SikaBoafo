@@ -32,6 +32,48 @@ class MoreScreen extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              decoration: BoxDecoration(
+                gradient: AppGradients.hero,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Color(0x24FFFFFF),
+                    child: Icon(Icons.storefront_rounded, color: Colors.white),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Business Hub',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Manage operations, staff and reports',
+                          style: TextStyle(
+                            color: AppColors.heroSubtitle,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
 
             const _SectionLabel(label: 'OPERATIONS'),
             const SizedBox(height: 12),

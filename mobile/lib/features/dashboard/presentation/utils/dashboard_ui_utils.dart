@@ -28,6 +28,6 @@ class DashboardUiUtils {
     final diff = todayMinor - yesterdayMinor;
     final pct = (diff / yesterdayMinor * 100).round();
     final sign = pct >= 0 ? '+' : '';
-    return '$sign$pct% from yesterday';
+    return '$sign$pct% vs yesterday';
   }
 }

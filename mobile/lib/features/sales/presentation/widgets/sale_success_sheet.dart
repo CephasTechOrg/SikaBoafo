@@ -84,7 +84,7 @@ class SaleSuccessSheetState extends State<SaleSuccessSheet>
           padding: const EdgeInsets.fromLTRB(24, 36, 24, 28),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: AppShadows.elevated,
           ),
           child: Column(
@@ -186,7 +186,6 @@ class SaleSuccessSheetState extends State<SaleSuccessSheet>
                           fontWeight: FontWeight.w900,
                           color: accent,
                           letterSpacing: -0.8,
-                          fontFamily: 'Constantia',
                         ),
                       ),
                       const SizedBox(height: 12),

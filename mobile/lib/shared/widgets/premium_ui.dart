@@ -25,7 +25,7 @@ class PremiumPageHeader extends StatelessWidget {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -111,7 +111,7 @@ class PremiumSurface extends StatelessWidget {
     required this.child,
     this.padding,
     this.backgroundColor = AppColors.canvas,
-    this.radius = 32,
+    this.radius = 28,
     this.lift = 0,
     this.shadow = true,
     super.key,
@@ -193,7 +193,7 @@ class PremiumSheetFrame extends StatelessWidget {
     this.trailing,
     this.badge,
     this.bottomInset = 0,
-    this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 22),
+    this.padding = const EdgeInsets.fromLTRB(18, 14, 18, 18),
     super.key,
   });
 
@@ -208,10 +208,10 @@ class PremiumSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, 12, 12, bottomInset + 12),
+      padding: EdgeInsets.fromLTRB(10, 10, 10, bottomInset + 10),
       child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
         child: SafeArea(
           top: false,
@@ -230,7 +230,7 @@ class PremiumSheetFrame extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -260,7 +260,7 @@ class PremiumSheetFrame extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 child,
               ],
             ),
