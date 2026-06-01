@@ -15,8 +15,8 @@ class _FakeSecureTokenStorage extends SecureTokenStorage {
 }
 
 class _NoopSyncQueueRunner extends SyncQueueRunner {
-  _NoopSyncQueueRunner({required AppDatabase appDb})
-      : super(appDb: appDb, syncApi: _EmptyApplySyncApi());
+  _NoopSyncQueueRunner({required super.appDb})
+      : super(syncApi: _EmptyApplySyncApi());
 
   @override
   Future<SyncQueueRunSummary> run({int limit = 100}) async {

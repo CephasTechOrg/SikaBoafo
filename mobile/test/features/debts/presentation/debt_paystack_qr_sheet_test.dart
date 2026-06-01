@@ -67,7 +67,7 @@ class _FakeDebtsController extends DebtsController {
 
   @override
   Future<DebtsViewData> build() async {
-    return DebtsViewData(customers: [], receivables: []);
+    return const DebtsViewData(customers: [], receivables: []);
   }
 
   @override

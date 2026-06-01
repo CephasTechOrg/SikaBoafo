@@ -590,6 +590,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String paymentMethodLabel,
   }) async {
     if (!await _ensureCartReadyForOnlinePayment(items)) return;
+    if (!mounted) return;
 
     final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {
@@ -678,6 +679,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     required String totalAmount,
   }) async {
     if (!await _ensureCartReadyForOnlinePayment(items)) return;
+    if (!mounted) return;
 
     final lines = _buildSaleDraftLines(items);
     if (lines.isEmpty) {

@@ -13,7 +13,6 @@ import '../../providers/debt_detail_provider.dart';
 import '../../providers/debts_providers.dart';
 import '../utils/debt_payment_progress.dart';
 import '../utils/debts_ui_tokens.dart';
-import '../utils/debts_ui_utils.dart';
 
 /// Paystack QR + share-link sheet for a single debt.
 ///

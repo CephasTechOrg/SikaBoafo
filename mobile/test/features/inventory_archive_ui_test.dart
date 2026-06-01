@@ -189,7 +189,7 @@ class _FakeInventoryController extends InventoryController {
   }
 
   @override
-  Future<void> refresh() async {
+  Future<void> refresh({bool userInitiated = false}) async {
     state = AsyncValue.data(_items);
   }
 

@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:biztrack_gh/data/local/app_database.dart';
+import 'package:biztrack_gh/data/local/sync_queue_repository.dart';
+import 'package:biztrack_gh/shared/providers/core_providers.dart';
 import 'package:biztrack_gh/features/debts/data/debts_repository.dart';
 import 'package:biztrack_gh/features/debts/presentation/widgets/receive_payment_sheet/receive_payment_sheet.dart';
 import 'package:biztrack_gh/features/debts/providers/debts_providers.dart';
@@ -85,6 +88,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              appDatabaseProvider.overrideWithValue(_LifecycleTestAppDatabase()),
               inventoryControllerProvider.overrideWith(
                 () => _FakeInventoryController(
                   seedItems: const [
@@ -119,12 +123,8 @@ void main() {
         await tester.tap(find.text('Proceed to checkout'));
         await tester.pumpAndSettle();
 
-        // "Cash" also appears on the sales hero carousel; scope to the checkout sheet.
-        final cashInCheckout = find.descendant(
-          of: find.byType(CheckoutSheet),
-          matching: find.text('Cash'),
-        );
-        await tester.tap(cashInCheckout.first);
+        expect(find.byType(CheckoutSheet), findsOneWidget);
+        await tester.tap(find.textContaining('Confirm —'));
         await tester.pump();
 
         await tester.pumpWidget(const SizedBox.shrink());
@@ -136,6 +136,19 @@ void main() {
       },
     );
   });
+}
+
+class _LifecycleTestAppDatabase extends AppDatabase {
+  @override
+  SyncQueueRepository get syncQueue => _LifecycleTestSyncQueue(this);
+}
+
+class _LifecycleTestSyncQueue extends SyncQueueRepository {
+  _LifecycleTestSyncQueue(super.appDb);
+
+  @override
+  Future<bool> hasUnresolvedItemCreatesForIds(Iterable<String> itemIds) async =>
+      false;
 }
 
 class _FakeDebtsController extends DebtsController {
@@ -190,7 +203,7 @@ class _FakeInventoryController extends InventoryController {
   Future<List<LocalInventoryItem>> build() async => seedItems;
 
   @override
-  Future<void> refresh() async {
+  Future<void> refresh({bool userInitiated = false}) async {
     state = AsyncValue.data(seedItems);
   }
 }
