@@ -25,7 +25,10 @@ class DebtsListContentShell extends StatelessWidget {
   final Widget staleBanner;
 
   final Widget searchBar;
-  final Widget tabFilter;
+
+  /// When null, the gap between search bar and cards section is omitted and
+  /// toolbar bottom padding shrinks — used on screens with no filter chips.
+  final Widget? tabFilter;
 
   /// Rows below toolbar (labels, tiles, empty state).
   final List<Widget> children;
@@ -75,14 +78,16 @@ class DebtsListContentShell extends StatelessWidget {
                     horizontalPadding,
                     10,
                     horizontalPadding,
-                    14,
+                    tabFilter != null ? 14 : 10,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       searchBar,
-                      const SizedBox(height: 10),
-                      tabFilter,
+                      if (tabFilter != null) ...[
+                        const SizedBox(height: 10),
+                        tabFilter!,
+                      ],
                     ],
                   ),
                 ),

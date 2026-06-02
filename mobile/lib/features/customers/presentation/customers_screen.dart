@@ -62,7 +62,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             expandedHeight: 218,
             pinned: true,
             automaticallyImplyLeading: false,
-            backgroundColor: const Color(0xFF041509),
+            backgroundColor: DebtsUi.greenDeep,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
               background: CustomersHeader(
@@ -88,6 +88,12 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                 start: 20,
                 bottom: 16,
               ),
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: ColoredBox(
+              color: DebtsUi.greenDeep,
+              child: SizedBox(height: 0),
             ),
           ),
         ],
@@ -175,6 +181,7 @@ class _DataBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return DebtsListContentShell(
       onRefresh: onRefresh,
+      staleBannerTopPadding: 0,
       staleBanner: const StaleBanner(
         screenKey: 'customers',
         kvKey: KvCacheRepository.kDebtsTs,
@@ -185,7 +192,7 @@ class _DataBody extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: onSearchCleared,
       ),
-      tabFilter: const SizedBox.shrink(),
+      tabFilter: null,
       children: [
         if (totalCustomers == 0)
           CustomersEmptyState(onAddCustomer: onAddCustomer)
@@ -196,21 +203,15 @@ class _DataBody extends StatelessWidget {
           )
         else ...[
           const Padding(
-            padding: EdgeInsets.fromLTRB(4, 4, 4, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'ALL CUSTOMERS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: Color(0xFF9AA3AF),
-                    ),
-                  ),
-                ),
-              ],
+            padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              'ALL CUSTOMERS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: Color(0xFF9AA3AF),
+              ),
             ),
           ),
           ...filtered.map(

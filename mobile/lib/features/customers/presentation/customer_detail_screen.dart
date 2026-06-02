@@ -100,76 +100,113 @@ class _LoadedShell extends ConsumerWidget {
         .where((r) => r.status != 'cancelled')
         .toList(growable: false);
 
-    return CustomScrollView(
-      clipBehavior: Clip.none,
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _DetailHeroWithSummaryCard(
-            customer: customer,
-            outstandingMinor: outstandingMinor,
-            openDebtCount: openCount,
-            totalDebtCount: activeReceivables.length,
-            onBack: () => context.pop(),
-            onRefresh: () async {
-              await ref
-                  .read(debtsControllerProvider.notifier)
-                  .refreshFromServer(userInitiated: true);
-              ref.invalidate(_customerDetailProvider(customerId));
-              if (!context.mounted) return;
-              final err =
-                  ref.read(debtsControllerProvider).valueOrNull?.lastSyncError;
-              if (err != null && err.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Sync paused: $err'),
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
-              }
-            },
-          ),
-        ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: ColoredBox(
-            color: DebtsUi.pageBackground,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DebtCustomerSummary(customer: customer),
-                  const SizedBox(height: 12),
-                  if (_hasExtendedContact(customer))
-                    DebtSectionCard(
-                      title: 'Contact details',
-                      icon: LucideIcons.contact,
-                      child: _ContactDetails(customer: customer),
-                    ),
-                  if (_hasExtendedContact(customer))
-                    const SizedBox(height: 12),
-                  DebtSectionCard(
-                    title: 'Debt history',
-                    icon: LucideIcons.history,
-                    countBadge: activeReceivables.length,
-                    child: activeReceivables.isEmpty
-                        ? const DebtSectionEmptyState(
-                            icon: LucideIcons.receipt,
-                            title: 'No debts yet',
-                            message:
-                                'Record a new debt for this customer to start '
-                                'tracking repayments.',
+    return Column(
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            clipBehavior: Clip.none,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: _DetailHeroWithSummaryCard(
+                  customer: customer,
+                  outstandingMinor: outstandingMinor,
+                  openDebtCount: openCount,
+                  totalDebtCount: activeReceivables.length,
+                  onBack: () => context.pop(),
+                  onRefresh: () async {
+                    await ref
+                        .read(debtsControllerProvider.notifier)
+                        .refreshFromServer(userInitiated: true);
+                    ref.invalidate(_customerDetailProvider(customerId));
+                    if (!context.mounted) return;
+                    final err = ref
+                        .read(debtsControllerProvider)
+                        .valueOrNull
+                        ?.lastSyncError;
+                    if (err != null && err.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Sync paused: $err'),
+                        duration: const Duration(seconds: 4),
+                      ));
+                    }
+                  },
+                ),
+              ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: ColoredBox(
+                  color: DebtsUi.pageBackground,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DebtCustomerSummary(customer: customer),
+                        const SizedBox(height: 20),
+                        // ── Debt history section header (mockup .sec-head) ──
+                        Row(
+                          children: [
+                            Icon(LucideIcons.history,
+                                size: 16, color: DebtsUi.greenMid),
+                            const SizedBox(width: 7),
+                            const Expanded(
+                              child: Text(
+                                'Debt history',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: DebtsUi.textPrimary,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ),
+                            if (activeReceivables.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F3F5),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '${activeReceivables.length}',
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (activeReceivables.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                'No debts yet',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: DebtsUi.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           )
-                        : Column(
+                        else
+                          Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              for (var i = 0; i < activeReceivables.length;
+                              for (var i = 0;
+                                  i < activeReceivables.length;
                                   i++) ...[
                                 if (i > 0) const SizedBox(height: 8),
                                 DebtListTile(
                                   record: activeReceivables[i],
                                   showCustomerName: false,
+                                  showBottomRow: false,
                                   onTap: () {
                                     final path = AppRoute.debtDetail.path
                                         .replaceFirst(
@@ -182,18 +219,15 @@ class _LoadedShell extends ConsumerWidget {
                               ],
                             ],
                           ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 18),
-                  DebtsGradientButton(
-                    label: 'Record new debt',
-                    icon: LucideIcons.plus,
-                    onPressed: () => _openNewDebt(context, ref),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
+        _PinnedNewDebtBar(onTap: () => _openNewDebt(context, ref)),
       ],
     );
   }

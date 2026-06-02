@@ -12,6 +12,7 @@ class DebtListTile extends StatelessWidget {
     required this.record,
     required this.onTap,
     this.showCustomerName = true,
+    this.showBottomRow = true,
     this.onRecordPayment,
   });
 
@@ -21,6 +22,10 @@ class DebtListTile extends StatelessWidget {
 
   /// When false (e.g. on customer detail), hides the customer name row.
   final bool showCustomerName;
+
+  /// When false, hides the due-date + action button row at the bottom.
+  /// Use on screens where the action is handled at a higher level (customer detail).
+  final bool showBottomRow;
 
   @override
   Widget build(BuildContext context) {
@@ -137,16 +142,18 @@ class DebtListTile extends StatelessWidget {
                   ),
                 ],
               ),
-              // Bottom row with due label + action button
-              const SizedBox(height: 9),
-              const Divider(height: 1, color: Color(0xFFEEF1F0)),
-              const SizedBox(height: 9),
-              _DueActionRow(
-                dueDateIso: record.dueDateIso,
-                isOverdue: isOverdue,
-                isSettledOrCancelled: isSettled || isCancelled,
-                onAction: onRecordPayment ?? onTap,
-              ),
+              if (showBottomRow) ...[
+                // Bottom row with due label + action button
+                const SizedBox(height: 9),
+                const Divider(height: 1, color: Color(0xFFEEF1F0)),
+                const SizedBox(height: 9),
+                _DueActionRow(
+                  dueDateIso: record.dueDateIso,
+                  isOverdue: isOverdue,
+                  isSettledOrCancelled: isSettled || isCancelled,
+                  onAction: onRecordPayment ?? onTap,
+                ),
+              ],
             ],
           ),
         ),
