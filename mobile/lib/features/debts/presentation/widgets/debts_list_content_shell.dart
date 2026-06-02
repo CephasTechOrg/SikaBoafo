@@ -17,6 +17,8 @@ class DebtsListContentShell extends StatelessWidget {
     this.bottomInset = 110,
     this.horizontalPadding = 18,
     this.staleBannerTopPadding = 8,
+    this.contentTopPadding = 14,
+    this.toolbarTopPadding = 10,
   });
 
   final Future<void> Function() onRefresh;
@@ -39,6 +41,12 @@ class DebtsListContentShell extends StatelessWidget {
   /// Top-padding inside the white rounded surface before the stale banner.
   /// Keep small — the curved sheet should feel close to the hero bottom.
   final double staleBannerTopPadding;
+
+  /// Top-padding above the list children (below the toolbar).
+  final double contentTopPadding;
+
+  /// Top-padding inside the toolbar band (above the search bar).
+  final double toolbarTopPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +84,7 @@ class DebtsListContentShell extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
-                    10,
+                    toolbarTopPadding,
                     horizontalPadding,
                     tabFilter != null ? 14 : 10,
                   ),
@@ -97,7 +105,7 @@ class DebtsListContentShell extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
-                    14,
+                    contentTopPadding,
                     horizontalPadding,
                     0,
                   ),

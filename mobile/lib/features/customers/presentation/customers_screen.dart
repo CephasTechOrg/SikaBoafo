@@ -182,6 +182,8 @@ class _DataBody extends StatelessWidget {
     return DebtsListContentShell(
       onRefresh: onRefresh,
       staleBannerTopPadding: 0,
+      toolbarTopPadding: 6,
+      contentTopPadding: 8,
       staleBanner: const StaleBanner(
         screenKey: 'customers',
         kvKey: KvCacheRepository.kDebtsTs,

@@ -7,12 +7,10 @@ import '../../../shared/utils/user_friendly_error.dart';
 import '../../debts/data/debts_repository.dart';
 import '../../debts/presentation/utils/debts_ui_tokens.dart';
 import '../../debts/presentation/utils/debts_ui_utils.dart';
-import '../../debts/presentation/widgets/debt_customer_summary.dart';
-import '../../debts/presentation/widgets/debt_list_tile.dart';
-import '../../debts/presentation/widgets/debt_section_card.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../debts/presentation/widgets/debts_gradient_button.dart';
+import '../../debts/presentation/widgets/debt_customer_summary.dart';
+
 import '../../debts/presentation/widgets/new_debt_sheet/new_debt_sheet.dart';
 import '../../debts/providers/debts_providers.dart';
 import 'widgets/customer_balance_hero.dart';
@@ -147,7 +145,7 @@ class _LoadedShell extends ConsumerWidget {
                         // ── Debt history section header (mockup .sec-head) ──
                         Row(
                           children: [
-                            Icon(LucideIcons.history,
+                            const Icon(LucideIcons.history,
                                 size: 16, color: DebtsUi.greenMid),
                             const SizedBox(width: 7),
                             const Expanded(
@@ -182,8 +180,8 @@ class _LoadedShell extends ConsumerWidget {
                         ),
                         const SizedBox(height: 10),
                         if (activeReceivables.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
                             child: Center(
                               child: Text(
                                 'No debts yet',
@@ -203,10 +201,9 @@ class _LoadedShell extends ConsumerWidget {
                                   i < activeReceivables.length;
                                   i++) ...[
                                 if (i > 0) const SizedBox(height: 8),
-                                DebtListTile(
+                                _HistoryTile(
                                   record: activeReceivables[i],
-                                  showCustomerName: false,
-                                  showBottomRow: false,
+                                  customerInitials: _initials(customer.name),
                                   onTap: () {
                                     final path = AppRoute.debtDetail.path
                                         .replaceFirst(
@@ -232,10 +229,10 @@ class _LoadedShell extends ConsumerWidget {
     );
   }
 
-  bool _hasExtendedContact(LocalDebtCustomer c) {
-    return (c.email != null && c.email!.trim().isNotEmpty) ||
-        (c.whatsappNumber != null && c.whatsappNumber!.trim().isNotEmpty) ||
-        (c.notes != null && c.notes!.trim().isNotEmpty);
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
   Future<void> _openNewDebt(BuildContext context, WidgetRef ref) async {
@@ -247,6 +244,201 @@ class _LoadedShell extends ConsumerWidget {
       preselectedCustomer: customer,
     );
     ref.invalidate(_customerDetailProvider(customerId));
+  }
+}
+
+/// Debt history card on the customer detail screen.
+/// Matches the mockup's compact `.card` with a rounded-square avatar,
+/// invoice + date left, amount + status badge right, and a chevron.
+class _HistoryTile extends StatelessWidget {
+  const _HistoryTile({
+    required this.record,
+    required this.customerInitials,
+    required this.onTap,
+  });
+
+  final LocalReceivableRecord record;
+  final String customerInitials;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSettled = record.status == 'settled';
+    final isOverdue = !isSettled &&
+        record.status != 'cancelled' &&
+        DebtsUiUtils.isOverdue(record.dueDateIso);
+    final isPartial = record.status == 'partially_paid';
+
+    // Avatar colors — rounded square, status-tinted
+    final Color avatarBg;
+    final Color avatarFg;
+    if (isOverdue) {
+      avatarBg = const Color(0xFFFBECEC);
+      avatarFg = const Color(0xFFD23B3B);
+    } else if (isSettled) {
+      avatarBg = const Color(0xFFEBF4EF);
+      avatarFg = const Color(0xFF2F7D58);
+    } else if (isPartial) {
+      avatarBg = const Color(0xFFFAF3E1);
+      avatarFg = const Color(0xFFBE8A2C);
+    } else {
+      avatarBg = const Color(0xFFF1F3F5);
+      avatarFg = const Color(0xFF6B7280);
+    }
+
+    // Badge
+    final String badgeLabel;
+    final Color badgeBg;
+    final Color badgeFg;
+    if (isOverdue) {
+      badgeLabel = 'Overdue';
+      badgeBg = const Color(0xFFFBECEC);
+      badgeFg = const Color(0xFFD23B3B);
+    } else if (isSettled) {
+      badgeLabel = 'Paid';
+      badgeBg = const Color(0xFFEBF4EF);
+      badgeFg = const Color(0xFF2F7D58);
+    } else if (isPartial) {
+      badgeLabel = 'Partial';
+      badgeBg = const Color(0xFFFAF3E1);
+      badgeFg = const Color(0xFFBE8A2C);
+    } else {
+      badgeLabel = 'Unpaid';
+      badgeBg = const Color(0xFFF1F3F5);
+      badgeFg = const Color(0xFF6B7280);
+    }
+
+    final invoice = (record.invoiceNumber?.isNotEmpty ?? false)
+        ? record.invoiceNumber!
+        : '—';
+    final date = record.dueDateIso != null && record.dueDateIso!.isNotEmpty
+        ? DebtsUiUtils.formatDueLabel(record.dueDateIso!)
+        : DebtsUiUtils.formatDueLabel(
+            DateTime.fromMillisecondsSinceEpoch(record.createdAtMillis)
+                .toIso8601String()
+                .substring(0, 10),
+          );
+    final amount = DebtsUiUtils.formatAmount(record.outstandingAmount);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFEEF1F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Rounded-square avatar (matches mockup history card)
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: avatarBg,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Text(
+                  customerInitials,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: avatarFg,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 13),
+              // Invoice + date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      invoice,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Amount + badge
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    amount,
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w800,
+                      color: isSettled
+                          ? const Color(0xFF9AA3AF)
+                          : const Color(0xFF111827),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Text(
+                      badgeLabel,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: badgeFg,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              const Icon(LucideIcons.chevronRight,
+                  size: 18, color: Color(0xFF9AA3AF)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -511,96 +703,68 @@ class _GlassIconButton extends StatelessWidget {
   }
 }
 
-class _ContactDetails extends StatelessWidget {
-  const _ContactDetails({required this.customer});
+/// Pinned "Record new debt" bar at the bottom — always visible, no scroll needed.
+/// Mirrors the mockup's fixed `.bottom-bar` on the customer detail screen.
+class _PinnedNewDebtBar extends StatelessWidget {
+  const _PinnedNewDebtBar({required this.onTap});
 
-  final LocalDebtCustomer customer;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (customer.email != null && customer.email!.trim().isNotEmpty)
-          _InfoRow(
-            icon: LucideIcons.mail,
-            label: 'Email',
-            value: customer.email!,
-          ),
-        if (customer.whatsappNumber != null &&
-            customer.whatsappNumber!.trim().isNotEmpty)
-          _InfoRow(
-            icon: LucideIcons.messageCircle,
-            label: 'WhatsApp',
-            value: customer.whatsappNumber!,
-          ),
-        if (customer.notes != null && customer.notes!.trim().isNotEmpty)
-          _InfoRow(
-            icon: LucideIcons.fileText,
-            label: 'Notes',
-            value: customer.notes!,
-          ),
-      ],
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: DebtsUi.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
-            ),
-            child: Icon(icon, size: 16, color: DebtsUi.textSecondary),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: DebtsUi.textMuted,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: DebtsUi.textPrimary,
-                    fontWeight: FontWeight.w500,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: DebtsUi.surface,
+        border: Border(top: BorderSide(color: DebtsUi.borderNeutral)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D101828),
+            blurRadius: 20,
+            offset: Offset(0, -6),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                decoration: BoxDecoration(
+                  gradient: DebtsUi.ctaGradient,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x40166B42),
+                      blurRadius: 16,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(LucideIcons.plus, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Record new debt',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
