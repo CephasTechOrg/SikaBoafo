@@ -226,6 +226,18 @@ class NotificationsService {
     );
   }
 
+  /// Schedules a notification for a future time.
+  ///
+  /// Note: this does NOT record an inbox entry now — a scheduled notification
+  /// hasn't been shown yet. The OS displays it at [whenLocal]; recording it as
+  /// "shown" at schedule time wrongly surfaced it in the in-app inbox instantly.
+  ///
+  /// Exact alarms (`exactAllowWhileIdle`) need the `SCHEDULE_EXACT_ALARM` /
+  /// `USE_EXACT_ALARM` permission on Android 12+, which we don't request (and
+  /// Play restricts to clock/alarm apps). Without it the plugin throws
+  /// `exact_alarms_not_permitted`. So we schedule **inexact** by default
+  /// (fine for debt nudges) and fall back to inexact if an exact request is
+  /// ever rejected — the call never throws for a permission reason.
   Future<void> scheduleAt({
     required int id,
     required AppNotificationType type,
@@ -235,33 +247,41 @@ class NotificationsService {
     required AndroidNotificationDetails android,
     String route = '/home',
     String? entityId,
-    bool exact = true,
+    bool exact = false,
   }) async {
     await _initTimezone();
     final payload = jsonEncode(
       AppNotificationPayload(type: type, route: route, entityId: entityId)
           .toJson(),
     );
-    await _recordShown(
-      notificationId: id,
-      type: type,
-      title: title,
-      body: body,
-      route: route,
-      entityId: entityId,
-      payloadJson: payload,
-    );
     final scheduled = tz.TZDateTime.from(whenLocal, tz.local);
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      NotificationDetails(android: android),
-      payload: payload,
-      androidScheduleMode:
-          exact ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexact,
-    );
+
+    Future<void> schedule(AndroidScheduleMode mode) {
+      return _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduled,
+        NotificationDetails(android: android),
+        payload: payload,
+        androidScheduleMode: mode,
+      );
+    }
+
+    final preferred = exact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+    try {
+      await schedule(preferred);
+    } on Exception {
+      // Most commonly `exact_alarms_not_permitted`. Retry inexact so the
+      // reminder is still scheduled and the caller never sees a false error.
+      if (preferred != AndroidScheduleMode.inexactAllowWhileIdle) {
+        await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   Future<void> scheduleDailyAtTime({

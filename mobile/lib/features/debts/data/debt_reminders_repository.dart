@@ -100,7 +100,9 @@ class DebtRemindersRepository {
     );
   }
 
-  Future<void> cancel({required String reminderId}) async {
+  /// Cancels the pending OS notification (if any) and removes the row entirely
+  /// so cancelled reminders don't linger and clutter the list.
+  Future<void> delete({required String reminderId}) async {
     final db = await _appDb.database;
     final rows = await db.query(
       'local_debt_reminders',
@@ -111,9 +113,8 @@ class DebtRemindersRepository {
     if (rows.isEmpty) return;
     final reminder = LocalDebtReminder.fromRow(rows.first);
     await _notifications.cancel(reminder.notificationId);
-    await db.update(
+    await db.delete(
       'local_debt_reminders',
-      {'status': 'cancelled'},
       where: 'id = ?',
       whereArgs: [reminderId],
     );

@@ -463,7 +463,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                     child: Row(
                       children: [
                         const Text(
-                          'Outstanding ',
+                          'To collect ',
                           style: TextStyle(
                             color: DebtsUi.textMuted,
                             fontSize: 13,
@@ -471,7 +471,7 @@ class _DebtPaystackMomoSheetState extends ConsumerState<DebtPaystackMomoSheet> {
                           ),
                         ),
                         Text(
-                          DebtsUiUtils.formatAmount(widget.amountDisplay),
+                          widget.amountDisplay,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,

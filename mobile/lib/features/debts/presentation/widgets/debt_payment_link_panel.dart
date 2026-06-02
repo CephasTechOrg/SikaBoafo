@@ -369,7 +369,24 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     }
   }
 
+  /// The amount baked into the existing link no longer matches what the
+  /// merchant typed — they edited the field, so the active link is stale and
+  /// the QR/share would collect the wrong amount.
+  bool get _amountChangedFromLink {
+    final entered = DebtsUiUtils.amountToMinor(_amountCtrl.text.trim());
+    if (entered <= 0) return false;
+    final linkAmount = widget.record.paymentAmount;
+    if (linkAmount == null || linkAmount.isEmpty) return false;
+    return entered != DebtsUiUtils.amountToMinor(linkAmount);
+  }
+
   Future<void> _openExistingQr() async {
+    // Regenerate first if the merchant changed the amount, so the QR reflects
+    // what they typed instead of the stale link's baked amount.
+    if (_amountChangedFromLink) {
+      await _generate(openQrAfter: true);
+      return;
+    }
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
     if (_linkState.isExpired) {
@@ -390,6 +407,10 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   }
 
   Future<void> _openExistingShare() async {
+    if (_amountChangedFromLink) {
+      await _generate(openQrAfter: false);
+      return;
+    }
     final link = widget.record.paymentLink;
     if (link == null || link.isEmpty) return;
     if (_linkState.isExpired) {

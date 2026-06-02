@@ -48,12 +48,12 @@ class DebtRemindersController {
     return reminder;
   }
 
-  Future<void> cancel({
+  Future<void> delete({
     required String reminderId,
     required String receivableId,
   }) async {
     final repo = _ref.read(debtRemindersRepositoryProvider);
-    await repo.cancel(reminderId: reminderId);
+    await repo.delete(reminderId: reminderId);
     _ref.invalidate(debtRemindersForReceivableProvider(receivableId));
   }
 }

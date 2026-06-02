@@ -100,7 +100,7 @@ class DebtRemindersSection extends ConsumerWidget {
           if (i > 0) const SizedBox(height: 8),
           DebtReminderRow(
             reminder: reminders[i],
-            onCancel: () => _handleCancel(context, ref, reminders[i]),
+            onRemove: () => _handleDelete(context, ref, reminders[i]),
           ),
         ],
       ],
@@ -116,19 +116,19 @@ class DebtRemindersSection extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleCancel(
+  Future<void> _handleDelete(
     BuildContext context,
     WidgetRef ref,
     LocalDebtReminder reminder,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(debtRemindersControllerProvider).cancel(
+      await ref.read(debtRemindersControllerProvider).delete(
             reminderId: reminder.id,
             receivableId: reminder.receivableId,
           );
       messenger.showSnackBar(
-        const SnackBar(content: Text('Reminder cancelled.')),
+        const SnackBar(content: Text('Reminder removed.')),
       );
     } catch (error) {
       messenger.showSnackBar(

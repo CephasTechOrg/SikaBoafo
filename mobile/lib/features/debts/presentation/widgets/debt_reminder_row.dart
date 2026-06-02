@@ -11,11 +11,11 @@ class DebtReminderRow extends StatelessWidget {
   const DebtReminderRow({
     super.key,
     required this.reminder,
-    required this.onCancel,
+    required this.onRemove,
   });
 
   final LocalDebtReminder reminder;
-  final Future<void> Function() onCancel;
+  final Future<void> Function() onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -113,20 +113,18 @@ class DebtReminderRow extends StatelessWidget {
               ],
             ),
           ),
-          if (isActive) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Cancel reminder',
-              icon: const Icon(
-                Icons.close_rounded,
-                size: 18,
-                color: DebtsUi.textMuted,
-              ),
-              onPressed: () => onCancel(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: isActive ? 'Cancel & remove reminder' : 'Remove reminder',
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: DebtsUi.textMuted,
             ),
-          ],
+            onPressed: () => onRemove(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
         ],
       ),
     );
