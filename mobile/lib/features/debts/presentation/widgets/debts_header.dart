@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../data/local/kv_cache_repository.dart';
 import '../../../../shared/widgets/data_freshness_label.dart';
@@ -16,16 +18,16 @@ class DebtsHeader extends StatelessWidget {
     super.key,
     required this.leadingContentInset,
     required this.outstandingMinor,
-    required this.totalDebtsCount,
-    required this.openCount,
+    required this.owingCount,
     required this.overdueCount,
+    required this.collectedFormatted,
   });
 
   final double leadingContentInset;
   final int outstandingMinor;
-  final int totalDebtsCount;
-  final int openCount;
+  final int owingCount;
   final int overdueCount;
+  final String collectedFormatted;
 
   @override
   Widget build(BuildContext context) {
@@ -55,38 +57,46 @@ class DebtsHeader extends StatelessWidget {
             // FlexibleSpaceBar shrinks while scrolling; fixed padding caused
             // bottom overflow in widget tests and on short expanded heights.
             final compact =
-                constraints.hasBoundedHeight && constraints.maxHeight < 190;
-            final topPad = compact ? 40.0 : 50.0;
-            final bottomPad = compact ? 10.0 : 18.0;
-            final sectionGap = compact ? 10.0 : 18.0;
-            final statsGap = compact ? 8.0 : 12.0;
-            final amountSize = compact ? 34.0 : 40.0;
+                constraints.hasBoundedHeight && constraints.maxHeight < 175;
+            final topPad = compact ? 36.0 : 44.0;
+            final bottomPad = compact ? 8.0 : 14.0;
+            final sectionGap = compact ? 8.0 : 12.0;
+            final statsGap = compact ? 6.0 : 8.0;
+            final amountSize = compact ? 30.0 : 36.0;
 
             final content = Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Debts',
-                      style: TextStyle(
-                        fontFamily: 'Constantia',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
                         color: Colors.white,
-                        letterSpacing: -0.3,
+                        letterSpacing: -0.4,
                         height: 1.0,
                       ),
                     ),
-                    SizedBox(width: 10),
-                    Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: DataFreshnessLabel(
-                        kvKey: KvCacheRepository.kDebtsTs,
-                        color: Color(0xCCFFFFFF),
-                      ),
+                    const SizedBox(height: 3),
+                    const Row(
+                      children: [
+                        Text(
+                          'Receivables · ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xB3FFFFFF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        DataFreshnessLabel(
+                          kvKey: KvCacheRepository.kDebtsTs,
+                          color: Color(0xB3FFFFFF),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -95,10 +105,9 @@ class DebtsHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   DebtsUiUtils.formatMinor(outstandingMinor),
-                  style: TextStyle(
-                    fontFamily: 'Constantia',
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: amountSize,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: -1,
                     height: 1.0,
@@ -108,22 +117,22 @@ class DebtsHeader extends StatelessWidget {
                 HeroStatRow(
                   items: [
                     HeroStatItem(
-                      icon: Icons.receipt_long_outlined,
-                      value: '$totalDebtsCount',
-                      label: 'Total',
+                      icon: LucideIcons.users,
+                      value: '$owingCount',
+                      label: 'Owing',
                     ),
                     HeroStatItem(
-                      icon: Icons.schedule_rounded,
-                      value: '$openCount',
-                      label: 'Open',
-                    ),
-                    HeroStatItem(
-                      icon: Icons.warning_amber_rounded,
+                      icon: LucideIcons.alertTriangle,
                       value: '$overdueCount',
                       label: 'Overdue',
                       accentColor: overdueCount > 0
                           ? const Color(0xFFFFD4A8)
                           : null,
+                    ),
+                    HeroStatItem(
+                      icon: LucideIcons.trendingUp,
+                      value: collectedFormatted,
+                      label: 'Collected',
                     ),
                   ],
                 ),

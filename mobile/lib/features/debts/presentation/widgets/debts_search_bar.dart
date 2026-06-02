@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../utils/debts_ui_tokens.dart';
 
@@ -26,27 +27,27 @@ class DebtsSearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
         border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         cursorColor: DebtsUi.textPrimary,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13.5,
           color: DebtsUi.textPrimary,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: 'Search by customer or invoice…',
           hintStyle: const TextStyle(
-            fontSize: 14,
+            fontSize: 13.5,
             color: DebtsUi.textMuted,
             fontWeight: FontWeight.w500,
           ),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
           prefixIcon: const Icon(
-            Icons.search_rounded,
+            LucideIcons.search,
             size: 18,
             color: DebtsUi.textMuted,
           ),
@@ -56,7 +57,7 @@ class DebtsSearchBar extends StatelessWidget {
               ? IconButton(
                   onPressed: onClear,
                   icon: const Icon(
-                    Icons.close_rounded,
+                    LucideIcons.x,
                     size: 18,
                     color: DebtsUi.textMuted,
                   ),

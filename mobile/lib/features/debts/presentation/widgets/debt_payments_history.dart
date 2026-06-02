@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../data/models/local_receivable_payment_record.dart';
 import 'debt_payment_card.dart';
@@ -15,14 +16,12 @@ class DebtPaymentsHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     return DebtSectionCard(
       title: 'Repayments',
-      icon: Icons.history_rounded,
+      icon: LucideIcons.history,
       countBadge: payments.length,
       child: payments.isEmpty
           ? const DebtSectionEmptyState(
-              icon: Icons.refresh_rounded,
+              icon: LucideIcons.receipt,
               title: 'No repayments yet',
-              message:
-                  'Use "Receive payment" below for cash or the Pay online tab.',
             )
           : Column(
               mainAxisSize: MainAxisSize.min,

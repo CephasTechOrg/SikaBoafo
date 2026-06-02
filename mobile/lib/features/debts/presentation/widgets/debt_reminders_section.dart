@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../shared/utils/user_friendly_error.dart';
 import '../../data/models/local_debt_reminder.dart';
@@ -37,7 +38,7 @@ class DebtRemindersSection extends ConsumerWidget {
 
     return DebtSectionCard(
       title: 'Reminders',
-      icon: Icons.notifications_none_rounded,
+      icon: LucideIcons.bell,
       countBadge: activeCount > 0 ? activeCount : null,
       trailing: (activeCount == 0 && canSchedule && !isEmpty)
           ? _SetReminderButton(onTap: () => _openSheet(context, ref))
@@ -90,11 +91,8 @@ class DebtRemindersSection extends ConsumerWidget {
     }
     if (reminders.isEmpty) {
       return DebtSectionEmptyState(
-        icon: Icons.notifications_none_rounded,
-        title: canSchedule ? 'No reminders yet' : 'Not available for this debt.',
-        message: canSchedule
-            ? 'Tap “Set reminder” above to schedule a nudge for this debt.'
-            : 'Reminders aren\'t scheduled on settled or cancelled debts.',
+        icon: LucideIcons.bell,
+        title: canSchedule ? 'No reminders set' : 'Reminders unavailable',
       );
     }
     return Column(
@@ -151,7 +149,7 @@ class _SetReminderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onTap,
-      icon: const Icon(Icons.add_alarm_rounded, size: 16),
+      icon: const Icon(LucideIcons.bell, size: 16),
       label: const Text('Set reminder'),
       style: TextButton.styleFrom(
         foregroundColor: DebtsUi.greenMid,

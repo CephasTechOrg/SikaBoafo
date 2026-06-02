@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../data/local/kv_cache_repository.dart';
 import '../../../shared/providers/session_role_providers.dart';
@@ -158,8 +159,10 @@ class _DetailHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasPhone =
         customer.phoneNumber != null && customer.phoneNumber!.trim().isNotEmpty;
-    final initial =
-        customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?';
+    final nameParts = customer.name.trim().split(RegExp(r'\s+'));
+    final initial = nameParts.length >= 2
+        ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
+        : (customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?');
     final topInset = MediaQuery.of(context).padding.top;
 
     return Stack(
@@ -194,13 +197,13 @@ class _DetailHeader extends StatelessWidget {
                   const Spacer(),
                   if (canCancel)
                     _GlassIconButton(
-                      icon: Icons.more_vert_rounded,
+                      icon: LucideIcons.moreVertical,
                       tooltip: 'More options',
                       onTap: onCancel,
                     ),
                   if (canCancel) const SizedBox(width: 8),
                   _GlassIconButton(
-                    icon: Icons.refresh_rounded,
+                    icon: LucideIcons.refreshCw,
                     tooltip: 'Refresh',
                     onTap: onRefresh,
                   ),
@@ -253,7 +256,7 @@ class _DetailHeader extends StatelessWidget {
                           Row(
                             children: [
                               Icon(
-                                Icons.call_rounded,
+                                LucideIcons.phone,
                                 size: 11,
                                 color: Colors.white.withValues(alpha: 0.55),
                               ),
@@ -298,7 +301,7 @@ class _BackButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.arrow_back_ios_new_rounded,
+              LucideIcons.arrowLeft,
               size: 16,
               color: Colors.white.withValues(alpha: 0.9),
             ),
@@ -516,7 +519,7 @@ class _ReceivePaymentCta extends StatelessWidget {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.payments_rounded, size: 18, color: Colors.white),
+                Icon(LucideIcons.creditCard, size: 18, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
                   'Receive Payment',
@@ -593,7 +596,7 @@ class _ErrorShell extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.error_outline_rounded,
+                        LucideIcons.alertCircle,
                         size: 42,
                         color: DebtsUi.danger,
                       ),
@@ -653,7 +656,7 @@ class _MissingShell extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.search_off_rounded,
+                        LucideIcons.searchX,
                         size: 42,
                         color: DebtsUi.textMuted,
                       ),

@@ -16,7 +16,7 @@ class DebtsListContentShell extends StatelessWidget {
     required this.children,
     this.bottomInset = 110,
     this.horizontalPadding = 18,
-    this.staleBannerTopPadding = 20,
+    this.staleBannerTopPadding = 8,
   });
 
   final Future<void> Function() onRefresh;
@@ -32,6 +32,9 @@ class DebtsListContentShell extends StatelessWidget {
 
   final double bottomInset;
   final double horizontalPadding;
+
+  /// Top-padding inside the white rounded surface before the stale banner.
+  /// Keep small — the curved sheet should feel close to the hero bottom.
   final double staleBannerTopPadding;
 
   @override
@@ -41,7 +44,7 @@ class DebtsListContentShell extends StatelessWidget {
       backgroundColor: DebtsUi.surface,
       onRefresh: onRefresh,
       child: ColoredBox(
-        color: DebtsUi.pageBackground,
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius:
               const BorderRadius.vertical(top: AppRadii.heroRadius),
@@ -60,7 +63,7 @@ class DebtsListContentShell extends StatelessWidget {
                     horizontalPadding,
                     staleBannerTopPadding,
                     horizontalPadding,
-                    10,
+                    4,
                   ),
                   child: staleBanner,
                 ),
@@ -84,17 +87,20 @@ class DebtsListContentShell extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  14,
-                  horizontalPadding,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: children,
+              ColoredBox(
+                color: DebtsUi.pageBackground,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    14,
+                    horizontalPadding,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: children,
+                  ),
                 ),
               ),
             ],

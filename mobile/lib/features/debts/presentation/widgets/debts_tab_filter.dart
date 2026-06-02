@@ -2,27 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../utils/debts_ui_tokens.dart';
 
-enum DebtsFilterTab { all, open, overdue, settled }
+enum DebtsFilterTab { all, unpaid, overdue, paid }
 
 extension DebtsFilterTabX on DebtsFilterTab {
   String get label {
     switch (this) {
       case DebtsFilterTab.all:
         return 'All';
-      case DebtsFilterTab.open:
-        return 'Open';
+      case DebtsFilterTab.unpaid:
+        return 'Unpaid';
       case DebtsFilterTab.overdue:
         return 'Overdue';
-      case DebtsFilterTab.settled:
-        return 'Settled';
+      case DebtsFilterTab.paid:
+        return 'Paid';
     }
   }
 }
 
 /// Horizontally-arranged filter pills (`debts UI mockup` `.filter-tabs`).
 ///
-/// Active tab fills with `green-deep` and shows white text + translucent
-/// badge. Inactive tabs are bordered surface chips with green-pale badges.
+/// Active tab fills with `green-900` (#073B2A) and shows white text.
+/// Inactive tabs are white bordered chips with #6B7280 text.
+/// No count badges — mockup has none.
 class DebtsTabFilter extends StatelessWidget {
   const DebtsTabFilter({
     super.key,
@@ -45,7 +46,6 @@ class DebtsTabFilter extends StatelessWidget {
           for (final tab in DebtsFilterTab.values) ...[
             _Pill(
               label: tab.label,
-              badge: counts[tab],
               selected: activeTab == tab,
               onTap: () => onChanged(tab),
             ),
@@ -60,13 +60,11 @@ class DebtsTabFilter extends StatelessWidget {
 class _Pill extends StatelessWidget {
   const _Pill({
     required this.label,
-    required this.badge,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final int? badge;
   final bool selected;
   final VoidCallback onTap;
 
@@ -77,54 +75,24 @@ class _Pill extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: DebtsUiTokens.tabSwitchAnimation,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 15),
         decoration: BoxDecoration(
-          color: selected ? DebtsUi.tabSelectedFill : DebtsUi.surface,
+          color: selected ? const Color(0xFF073B2A) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? DebtsUi.tabSelectedFill : DebtsUi.borderNeutral,
+            color: selected ? const Color(0xFF073B2A) : const Color(0xFFE5E7EB),
             width: 1.5,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color:
-                    selected ? DebtsUi.tabSelectedFg : DebtsUi.textSecondary,
-              ),
-            ),
-            if (badge != null && badge! > 0) ...[
-              const SizedBox(width: 5),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : DebtsUi.avatarNeutralBg,
-                  borderRadius: BorderRadius.circular(10),
-                  border: selected
-                      ? null
-                      : Border.all(color: DebtsUi.avatarNeutralBorder),
-                ),
-                child: Text(
-                  '$badge',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: selected
-                        ? DebtsUi.tabSelectedFg
-                        : DebtsUi.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ],
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : const Color(0xFF6B7280),
+          ),
         ),
       ),
     );

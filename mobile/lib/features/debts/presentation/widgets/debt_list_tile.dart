@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../data/models/local_receivable_record.dart';
 import '../utils/debts_ui_tokens.dart';
 import '../utils/debts_ui_utils.dart';
 
-/// Single row in the debts list, modelled after `debts UI mockup` `.debt-card`:
-/// rounded-square avatar (neutral for settled/cancelled, gold for open) → name +
-/// `INV · date` meta → amount with status pill stacked beneath → chevron.
+/// Single row in the debts list, modelled after `debts UI mockup` `.debt-card`.
 class DebtListTile extends StatelessWidget {
   const DebtListTile({
     super.key,
     required this.record,
     required this.onTap,
     this.showCustomerName = true,
+    this.onRecordPayment,
   });
 
   final LocalReceivableRecord record;
   final VoidCallback onTap;
+  final VoidCallback? onRecordPayment;
 
   /// When false (e.g. on customer detail), hides the customer name row.
   final bool showCustomerName;
@@ -26,22 +27,45 @@ class DebtListTile extends StatelessWidget {
     final outstanding = DebtsUiUtils.formatAmount(record.outstandingAmount);
     final isSettled = record.status == 'settled';
     final isCancelled = record.status == 'cancelled';
+    final isPartial = record.status == 'partially_paid';
     final isOverdue = !isSettled &&
         !isCancelled &&
         DebtsUiUtils.isOverdue(record.dueDateIso);
     final unsynced =
         record.syncStatus == 'pending' || record.syncStatus == 'sending';
 
-    final customerInitial = (record.customerName ?? '?').isNotEmpty
-        ? record.customerName![0].toUpperCase()
-        : '?';
+    final name = record.customerName ?? '';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    final customerInitials = parts.length >= 2
+        ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+        : (name.isNotEmpty ? name[0].toUpperCase() : '?');
 
     final badge = _resolveBadge(
       isSettled: isSettled,
       isCancelled: isCancelled,
       isOverdue: isOverdue,
-      isPartial: record.status == 'partially_paid',
+      isPartial: isPartial,
     );
+
+    // Avatar bg/fg based on status
+    final Color avatarBg;
+    final Color avatarFg;
+    if (isOverdue) {
+      avatarBg = const Color(0xFFFBECEC);
+      avatarFg = const Color(0xFFD23B3B);
+    } else if (isSettled) {
+      avatarBg = const Color(0xFFEBF4EF);
+      avatarFg = const Color(0xFF2F7D58);
+    } else if (isCancelled) {
+      avatarBg = const Color(0xFFF1F3F5);
+      avatarFg = const Color(0xFF6B7280);
+    } else if (isPartial) {
+      avatarBg = const Color(0xFFFAF3E1);
+      avatarFg = const Color(0xFFBE8A2C);
+    } else {
+      avatarBg = const Color(0xFFF1F3F5);
+      avatarFg = const Color(0xFF6B7280);
+    }
 
     return Material(
       color: Colors.transparent,
@@ -49,69 +73,79 @@ class DebtListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: DebtsUi.surface,
             borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
             border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
             boxShadow: DebtsUi.shadowNeutralSm,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _Avatar(
-                initial: customerInitial,
-                neutral: isSettled || isCancelled,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (showCustomerName) ...[
-                      Text(
-                        record.customerName ?? 'Unknown customer',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: DebtsUi.textPrimary,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                    ],
-                    _MetaLine(record: record, unsynced: unsynced),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    outstanding,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isSettled
-                          ? DebtsUi.textMuted
-                          : DebtsUi.textPrimary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  _Avatar(
+                    initials: customerInitials,
+                    bg: avatarBg,
+                    fg: avatarFg,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showCustomerName) ...[
+                          Text(
+                            record.customerName ?? 'Unknown customer',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: DebtsUi.textPrimary,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                        ],
+                        _MetaLine(record: record, unsynced: unsynced),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  _StatusBadge(badge: badge),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        outstanding,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isSettled
+                              ? DebtsUi.textMuted
+                              : DebtsUi.textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _StatusBadge(badge: badge),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: DebtsUi.textMuted,
+              // Bottom row with due label + action button
+              const SizedBox(height: 9),
+              const Divider(height: 1, color: Color(0xFFEEF1F0)),
+              const SizedBox(height: 9),
+              _DueActionRow(
+                dueDateIso: record.dueDateIso,
+                isOverdue: isOverdue,
+                isSettledOrCancelled: isSettled || isCancelled,
+                onAction: onRecordPayment ?? onTap,
               ),
             ],
           ),
@@ -129,32 +163,40 @@ class DebtListTile extends StatelessWidget {
     if (isCancelled) {
       return const _BadgeStyle(
         label: 'Cancelled',
-        bg: DebtsUi.surface,
-        fg: DebtsUi.textMuted,
-        border: DebtsUi.borderNeutral,
+        bg: Color(0xFFF1F3F5),
+        fg: Color(0xFF6B7280),
+        border: Color(0xFFE5E7EB),
       );
     }
     if (isSettled) {
       return const _BadgeStyle(
-        label: 'Settled',
-        bg: DebtsUi.settledBg,
-        fg: DebtsUi.settledFg,
-        border: DebtsUi.settledBorder,
+        label: 'Paid',
+        bg: Color(0xFFEBF4EF),
+        fg: Color(0xFF2F7D58),
+        border: Color(0xFFC8E6D4),
       );
     }
     if (isOverdue) {
       return const _BadgeStyle(
         label: 'Overdue',
-        bg: DebtsUi.overdueBg,
-        fg: DebtsUi.overdueFg,
-        border: DebtsUi.overdueBorder,
+        bg: Color(0xFFFBECEC),
+        fg: Color(0xFFD23B3B),
+        border: Color(0xFFFCDCDC),
       );
     }
-    return _BadgeStyle(
-      label: isPartial ? 'Partial' : 'Open',
-      bg: DebtsUi.openBg,
-      fg: DebtsUi.openFg,
-      border: DebtsUi.openBorder,
+    if (isPartial) {
+      return const _BadgeStyle(
+        label: 'Partial',
+        bg: Color(0xFFFAF3E1),
+        fg: Color(0xFFBE8A2C),
+        border: Color(0xFFFFE8B0),
+      );
+    }
+    return const _BadgeStyle(
+      label: 'Unpaid',
+      bg: Color(0xFFF1F3F5),
+      fg: Color(0xFF6B7280),
+      border: Color(0xFFE5E7EB),
     );
   }
 }
@@ -229,39 +271,128 @@ class _MetaLine extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.initial, required this.neutral});
+  const _Avatar({
+    required this.initials,
+    required this.bg,
+    required this.fg,
+  });
 
-  final String initial;
-
-  /// Settled / cancelled debts use slate avatar; active use gold accent.
-  final bool neutral;
+  final String initials;
+  final Color bg;
+  final Color fg;
 
   @override
   Widget build(BuildContext context) {
-    final bg =
-        neutral ? DebtsUi.avatarNeutralBg : DebtsUi.avatarGoldBg;
-    final fg =
-        neutral ? DebtsUi.avatarNeutralFg : DebtsUi.avatarGoldFg;
-    final border =
-        neutral ? DebtsUi.avatarNeutralBorder : DebtsUi.avatarGoldBorder;
     return Container(
-      width: 46,
-      height: 46,
+      width: 42,
+      height: 42,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border, width: 1.5),
+        shape: BoxShape.circle,
       ),
       child: Text(
-        initial,
+        initials,
         style: TextStyle(
-          fontFamily: 'Constantia',
-          fontSize: 20,
-          fontWeight: FontWeight.w400,
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
           color: fg,
+          height: 1.0,
         ),
       ),
+    );
+  }
+}
+
+class _DueActionRow extends StatelessWidget {
+  const _DueActionRow({
+    required this.dueDateIso,
+    required this.isOverdue,
+    required this.isSettledOrCancelled,
+    required this.onAction,
+  });
+
+  final String? dueDateIso;
+  final bool isOverdue;
+  final bool isSettledOrCancelled;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final dueLabel = dueDateIso != null && dueDateIso!.isNotEmpty
+        ? DebtsUiUtils.formatDueLabel(dueDateIso!)
+        : null;
+
+    return Row(
+      children: [
+        if (dueLabel != null) ...[
+          Icon(
+            LucideIcons.clock,
+            size: 12,
+            color: isOverdue ? const Color(0xFFD23B3B) : DebtsUi.textMuted,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            dueLabel,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isOverdue ? const Color(0xFFD23B3B) : DebtsUi.textMuted,
+            ),
+          ),
+        ],
+        const Spacer(),
+        if (isSettledOrCancelled)
+          GestureDetector(
+            onTap: onAction,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'View details',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F7A4A),
+                ),
+              ),
+            ),
+          )
+        else
+          GestureDetector(
+            onTap: onAction,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF168A55),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              alignment: Alignment.center,
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.qrCode, size: 13, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text(
+                    'Collect via QR',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

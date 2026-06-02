@@ -23,10 +23,10 @@ abstract final class DebtsUiTokens {
 
 /// Mockup-aligned design tokens for the debts module.
 abstract final class DebtsUi {
-  // Brand greens
-  static const Color greenDeep = Color(0xFF0D3D2B);
-  static const Color greenDark = Color(0xFF145233);
-  static const Color greenMid = Color(0xFF1A6B42);
+  // Brand greens — anchored to mockup's green-900/#073B2A (deep) → green-700/#0F7A4A (primary)
+  static const Color greenDeep = Color(0xFF073B2A);
+  static const Color greenDark = Color(0xFF0A4A34);
+  static const Color greenMid = Color(0xFF0F7A4A);
   static const Color greenBright = Color(0xFF22A05A);
   static const Color greenLight = Color(0xFFD4F0E1);
   static const Color greenPale = Color(0xFFEDF8F2);
@@ -50,7 +50,7 @@ abstract final class DebtsUi {
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surface2 = Color(0xFFF5FAF7);
   /// Main background behind Debts / Customers list + detail feeds (neutral gray).
-  static const Color pageBackground = Color(0xFFF4F6F5);
+  static const Color pageBackground = Color(0xFFF6F8F7);
   /// Toolbar band under rounded header — search + filter pills sit here.
   static const Color toolbarBackground = Color(0xFFF7F8F8);
   /// Borders on list tiles / neutral cards — less mint than [border].
@@ -102,11 +102,12 @@ abstract final class DebtsUi {
   ];
 
   // Gradients
+  // Nearly-vertical gradient matching mockup's linear-gradient(178deg, #0A4A34 0%, #073B2A 70%)
   static const LinearGradient heroGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [greenDeep, greenDark, greenMid],
-    stops: [0.0, 0.6, 1.0],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [greenDark, greenDeep],
+    stops: [0.0, 0.7],
   );
 
   static const LinearGradient ctaGradient = LinearGradient(

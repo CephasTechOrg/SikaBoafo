@@ -48,7 +48,7 @@ class CustomerListTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(13),
+            padding: const EdgeInsets.all(15),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -149,13 +149,10 @@ class CustomerListTile extends StatelessWidget {
                         ],
                       )
                     else
-                      Text(
-                        'Regular',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0F7A4A),
-                        ),
+                      const _TagBadge(
+                        tag: 'Regular',
+                        bg: Color(0xFFEBF4EF),
+                        fg: Color(0xFF2F7D58),
                       ),
                     const SizedBox(width: 6),
                     const Icon(
@@ -187,6 +184,7 @@ class CustomerListTile extends StatelessWidget {
                         child: _StatCell(
                           label: 'Last activity',
                           value: activityLabel,
+                          valueWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -215,9 +213,14 @@ class CustomerListTile extends StatelessWidget {
 }
 
 class _StatCell extends StatelessWidget {
-  const _StatCell({required this.label, required this.value});
+  const _StatCell({
+    required this.label,
+    required this.value,
+    this.valueWeight = FontWeight.w800,
+  });
   final String label;
   final String value;
+  final FontWeight valueWeight;
 
   @override
   Widget build(BuildContext context) {
@@ -237,12 +240,41 @@ class _StatCell extends StatelessWidget {
           value,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 14.5,
-            fontWeight: FontWeight.w800,
+            fontWeight: valueWeight,
             color: const Color(0xFF111827),
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TagBadge extends StatelessWidget {
+  const _TagBadge({required this.tag, required this.bg, required this.fg});
+  final String tag;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 23,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        tag,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: fg,
+          height: 1.0,
+        ),
+      ),
     );
   }
 }

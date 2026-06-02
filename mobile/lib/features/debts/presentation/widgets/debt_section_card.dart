@@ -98,12 +98,12 @@ class DebtSectionEmptyState extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.message,
+    this.message,
   });
 
   final IconData icon;
   final String title;
-  final String message;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -133,16 +133,18 @@ class DebtSectionEmptyState extends StatelessWidget {
               color: DebtsUi.textSecondary,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              color: DebtsUi.textMuted,
-              height: 1.4,
+          if (message != null && message!.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: DebtsUi.textMuted,
+                height: 1.4,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

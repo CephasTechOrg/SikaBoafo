@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_theme.dart';
@@ -50,6 +51,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     final filtered = _applyFilters(allReceivables);
     final outstandingMinor =
         DebtsUiUtils.sumPortfolioOutstandingMinor(allReceivables);
+    final owingCount = _computeOwingCount(allReceivables);
+    final collectedMinor = _computeCollectedMinor(allReceivables);
+    final collectedFormatted = DebtsUiUtils.formatMinor(collectedMinor);
 
     return Scaffold(
       backgroundColor: DebtsUi.pageBackground,
@@ -57,13 +61,13 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 252,
+            expandedHeight: 226,
             pinned: true,
             stretch: true,
             leadingWidth: _kLeadingGutter,
             leading: IconButton(
               icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
+                LucideIcons.arrowLeft,
                 color: Colors.white,
                 size: 20,
               ),
@@ -78,13 +82,13 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
             actions: [
               _GlassIconButton(
                 tooltip: 'Customers',
-                icon: Icons.person_add_alt_1_rounded,
+                icon: LucideIcons.userPlus,
                 onPressed: () => context.push(AppRoute.customers.path),
               ),
               const SizedBox(width: 8),
               _GlassIconButton(
                 tooltip: 'Refresh',
-                icon: Icons.refresh_rounded,
+                icon: LucideIcons.refreshCw,
                 onPressed: _refresh,
               ),
               const SizedBox(width: 12),
@@ -96,9 +100,9 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
               background: DebtsHeader(
                 leadingContentInset: _kLeadingGutter,
                 outstandingMinor: outstandingMinor,
-                totalDebtsCount: counts[DebtsFilterTab.all] ?? 0,
-                openCount: counts[DebtsFilterTab.open] ?? 0,
+                owingCount: owingCount,
                 overdueCount: counts[DebtsFilterTab.overdue] ?? 0,
+                collectedFormatted: collectedFormatted,
               ),
               title: innerBoxIsScrolled
                   ? const Text(
@@ -120,8 +124,8 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
           ),
           const SliverToBoxAdapter(
             child: ColoredBox(
-              color: DebtsUi.pageBackground,
-              child: SizedBox(height: 10),
+              color: DebtsUi.greenDeep,
+              child: SizedBox(height: 0),
             ),
           ),
         ],
@@ -186,29 +190,26 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
   Map<DebtsFilterTab, int> _computeCounts(
     List<LocalReceivableRecord> receivables,
   ) {
-    var open = 0;
+    var unpaid = 0;
     var overdue = 0;
-    var settled = 0;
+    var paid = 0;
     for (final r in receivables) {
       switch (r.status) {
         case 'settled':
-          settled++;
+          paid++;
           break;
         case 'cancelled':
           break;
         default:
-          open++;
+          unpaid++;
           if (DebtsUiUtils.isOverdue(r.dueDateIso)) overdue++;
       }
     }
     return {
-      // `All` shows everything except cancelled debts; cancelled rows stay
-      // accessible from customer detail history but never clutter the
-      // active ledger view.
       DebtsFilterTab.all: receivables.length - _countCancelled(receivables),
-      DebtsFilterTab.open: open,
+      DebtsFilterTab.unpaid: unpaid,
       DebtsFilterTab.overdue: overdue,
-      DebtsFilterTab.settled: settled,
+      DebtsFilterTab.paid: paid,
     };
   }
 
@@ -220,6 +221,21 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     return count;
   }
 
+  int _computeOwingCount(List<LocalReceivableRecord> receivables) {
+    return receivables
+        .where((r) => r.status != 'settled' && r.status != 'cancelled')
+        .length;
+  }
+
+  int _computeCollectedMinor(List<LocalReceivableRecord> receivables) {
+    var total = 0;
+    for (final r in receivables) {
+      total += DebtsUiUtils.amountToMinor(r.originalAmount) -
+          DebtsUiUtils.amountToMinor(r.outstandingAmount);
+    }
+    return total < 0 ? 0 : total;
+  }
+
   List<LocalReceivableRecord> _applyFilters(
     List<LocalReceivableRecord> all,
   ) {
@@ -227,12 +243,12 @@ class _DebtsScreenState extends ConsumerState<DebtsScreen> {
     return all.where((r) {
       final matchesTab = switch (_activeTab) {
         DebtsFilterTab.all => r.status != 'cancelled',
-        DebtsFilterTab.open =>
+        DebtsFilterTab.unpaid =>
           r.status == 'open' || r.status == 'partially_paid',
         DebtsFilterTab.overdue =>
           (r.status == 'open' || r.status == 'partially_paid') &&
               DebtsUiUtils.isOverdue(r.dueDateIso),
-        DebtsFilterTab.settled => r.status == 'settled',
+        DebtsFilterTab.paid => r.status == 'settled',
       };
       if (!matchesTab) return false;
 
@@ -304,21 +320,9 @@ class _DataBody extends StatelessWidget {
             filterLabel: activeTab.label.toLowerCase(),
           )
         else ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
-            child: Text(
-              'RECENT',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: DebtsUi.textMuted,
-              ),
-            ),
-          ),
           ...filtered.map(
             (record) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 9),
               child: DebtListTile(
                 record: record,
                 onTap: () => onTapDebt(record),
@@ -364,7 +368,7 @@ class _DebtsFab extends StatelessWidget {
                 ],
               ),
               child: const Icon(
-                Icons.add_rounded,
+                LucideIcons.plus,
                 color: Colors.white,
                 size: 26,
               ),
@@ -427,7 +431,7 @@ class _LoadingState extends StatelessWidget {
       color: DebtsUi.textMuted,
       backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.pageBackground,
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: ListView(
@@ -463,7 +467,7 @@ class _ErrorState extends StatelessWidget {
       color: DebtsUi.textMuted,
       backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.pageBackground,
+        color: DebtsUi.greenDeep,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: ListView(
@@ -488,7 +492,7 @@ class _ErrorState extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.error_outline_rounded,
+                      LucideIcons.alertCircle,
                       size: 42,
                       color: DebtsUi.danger,
                     ),
