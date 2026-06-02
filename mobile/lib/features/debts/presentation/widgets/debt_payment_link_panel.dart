@@ -56,6 +56,12 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   String? _lastStatusToastKey;
   late final TextEditingController _amountCtrl;
 
+  /// The amount the currently-cached link was generated for. The server
+  /// snapshot doesn't always echo `payment_amount` back (it can be nulled on
+  /// refresh), so we track it locally to reliably detect when the merchant has
+  /// changed the amount and the link must be regenerated.
+  String? _activeLinkAmount;
+
   /// Ticks once a minute so the countdown badge stays fresh without rebuilding
   /// the entire debt detail tree. Cancelled in `dispose`.
   Timer? _expiryTicker;
@@ -67,6 +73,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
     _amountCtrl = TextEditingController(
       text: widget.record.outstandingAmount,
     );
+    _activeLinkAmount = widget.record.paymentAmount;
     _expiryTicker = Timer.periodic(const Duration(minutes: 1), (_) {
       if (!mounted) return;
       setState(() {});
@@ -332,6 +339,9 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
                 receivableId: widget.record.receivableId,
                 amount: _amountCtrl.text.trim(),
               );
+      // Remember what this freshly-generated link is for, so a later refresh
+      // that nulls `payment_amount` can't make us reuse it for a stale amount.
+      _activeLinkAmount = _amountCtrl.text.trim();
       if (!mounted) return;
       if (openQrAfter) {
         await showDebtPaystackQrSheet(
@@ -375,9 +385,15 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
   bool get _amountChangedFromLink {
     final entered = DebtsUiUtils.amountToMinor(_amountCtrl.text.trim());
     if (entered <= 0) return false;
-    final linkAmount = widget.record.paymentAmount;
-    if (linkAmount == null || linkAmount.isEmpty) return false;
-    return entered != DebtsUiUtils.amountToMinor(linkAmount);
+    // Reference = what the cached link was actually generated for. Prefer the
+    // panel's tracked value, then the record's stored amount, then fall back to
+    // the outstanding balance (links default to the full outstanding). Never
+    // returns false just because `payment_amount` was nulled by a refresh —
+    // that was the bug that made the QR always show the outstanding balance.
+    final reference = _activeLinkAmount ??
+        widget.record.paymentAmount ??
+        widget.record.outstandingAmount;
+    return entered != DebtsUiUtils.amountToMinor(reference);
   }
 
   Future<void> _openExistingQr() async {
