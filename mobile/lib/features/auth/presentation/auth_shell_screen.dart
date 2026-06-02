@@ -295,7 +295,7 @@ class _EntryViewMockup extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Track sales, stock, customers and debts — all in one calm, trustworthy workspace built for Ghanaian shops.',
+                      'Sales, stock, debts and customers. Built for Ghanaian shops.',
                       style: GoogleFonts.plusJakartaSans(
                         color: AuthMockup.ink2,
                         fontSize: 15,

@@ -27,7 +27,7 @@ abstract final class DashboardMockup {
   // Layout
   static const double gutter      = 20;
   static const double sheetOverlap = 24;
-  static const double sheetRadius  = 28;
+  static const double sheetRadius  = 20;
   static const double cardRadius   = 20;
   static const double tileRadius   = 14;
   static const double inputRadius  = 14;

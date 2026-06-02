@@ -55,7 +55,17 @@ SELECT c.id,
          FROM receivables_local r
          WHERE r.customer_id = c.id
            AND r.status NOT IN ('settled', 'cancelled')
-       ), '0.00') AS total_outstanding
+       ), '0.00') AS total_outstanding,
+       COALESCE((
+         SELECT MAX(r.created_at)
+         FROM receivables_local r
+         WHERE r.customer_id = c.id
+       ), c.created_at) AS last_activity_at,
+       COALESCE((
+         SELECT printf('%.2f', SUM(CAST(r.original_amount AS REAL)))
+         FROM receivables_local r
+         WHERE r.customer_id = c.id
+       ), '0.00') AS total_purchases
 FROM customers_local c
 LEFT JOIN sync_queue q
   ON q.local_operation_id = c.local_operation_id
@@ -91,7 +101,17 @@ SELECT c.id,
          FROM receivables_local r
          WHERE r.customer_id = c.id
            AND r.status NOT IN ('settled', 'cancelled')
-       ), '0.00') AS total_outstanding
+       ), '0.00') AS total_outstanding,
+       COALESCE((
+         SELECT MAX(r.created_at)
+         FROM receivables_local r
+         WHERE r.customer_id = c.id
+       ), c.created_at) AS last_activity_at,
+       COALESCE((
+         SELECT printf('%.2f', SUM(CAST(r.original_amount AS REAL)))
+         FROM receivables_local r
+         WHERE r.customer_id = c.id
+       ), '0.00') AS total_purchases
 FROM customers_local c
 LEFT JOIN sync_queue q
   ON q.local_operation_id = c.local_operation_id

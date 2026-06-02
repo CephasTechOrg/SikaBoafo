@@ -12,7 +12,7 @@ class ItemGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 240;
-        const cardExtent = 256.0;
+        const cardExtent = 216.0;
         return GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -137,19 +137,27 @@ class ItemCard extends StatelessWidget {
                   ),
                 if (isOutOfStock || isLowStock)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 9,
+                    right: 9,
                     child: Container(
-                      width: 9,
-                      height: 9,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
                         color: isOutOfStock
                             ? AppColors.danger
-                            : AppColors.warning,
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            width: 1.5),
+                            : const Color(0xFFBE8A2C),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        isOutOfStock
+                            ? 'Out'
+                            : '${item.quantityOnHand} left',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ),
@@ -177,56 +185,54 @@ class ItemCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 6),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: GestureDetector(
                           onTap: onPriceTap,
-                          child: Text(
-                            '₵$displayPrice',
-                            style: TextStyle(
-                              color: hasOverride
-                                  ? AppColors.warning
-                                  : AppColors.forestDark,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 17,
-                              letterSpacing: -0.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '₵$displayPrice',
+                                style: TextStyle(
+                                  color: hasOverride
+                                      ? AppColors.warning
+                                      : const Color(0xFF0F7A4A),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 17,
+                                  letterSpacing: -0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (!isLowStock && !isOutOfStock)
+                                Text(
+                                  '${item.quantityOnHand} in stock',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF9AA3AF),
+                                    height: 1.3,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      if (qty > 0) ...[
-                        _SmallQtyBtn(
-                          icon: Icons.remove_rounded,
-                          size: 28,
-                          onTap: onMinus,
-                        ),
-                        SizedBox(
-                          width: 22,
-                          child: Center(
-                            child: Text(
-                              '$qty',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _SmallQtyBtn(
-                          icon: Icons.add_rounded,
-                          size: 28,
-                          enabled: canAdd && qty < item.quantityOnHand,
-                          onTap: onPlus,
-                        ),
-                      ] else
-                        _AddButton(
+                      const SizedBox(width: 8),
+                      if (qty > 0)
+                        _MockupStepper(
+                          qty: qty,
+                          onMinus: onMinus,
+                          onPlus: canAdd && qty < item.quantityOnHand
+                              ? onPlus
+                              : null,
+                        )
+                      else
+                        _MockupAddButton(
                           enabled: canAdd,
                           onTap: onPlus,
                         ),
@@ -264,8 +270,10 @@ class _FallbackImageBox extends StatelessWidget {
   }
 }
 
-class _AddButton extends StatelessWidget {
-  const _AddButton({required this.enabled, required this.onTap});
+// ── Mockup-style add button (green-tint square) ───────────────────────────────
+
+class _MockupAddButton extends StatelessWidget {
+  const _MockupAddButton({required this.enabled, required this.onTap});
   final bool enabled;
   final VoidCallback onTap;
 
@@ -274,19 +282,95 @@ class _AddButton extends StatelessWidget {
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
           color: enabled
-              ? AppColors.forest
-              : AppColors.muted.withValues(alpha: 0.15),
+              ? const Color(0xFFEAF6EF)
+              : const Color(0xFFF1F3F5),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           Icons.add_rounded,
-          color: enabled ? Colors.white : AppColors.muted,
-          size: 20,
+          size: 21,
+          color: enabled ? const Color(0xFF0F7A4A) : const Color(0xFF9AA3AF),
         ),
+      ),
+    );
+  }
+}
+
+// ── Mockup-style stepper (dark-green-900 pill) ────────────────────────────────
+
+class _MockupStepper extends StatelessWidget {
+  const _MockupStepper({
+    required this.qty,
+    required this.onMinus,
+    required this.onPlus,
+  });
+  final int qty;
+  final VoidCallback onMinus;
+  final VoidCallback? onPlus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: const Color(0xFF073B2A),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: onMinus,
+            child: const SizedBox(
+              width: 34,
+              height: 36,
+              child: Center(
+                child: Text(
+                  '−',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 22,
+            child: Center(
+              child: Text(
+                '$qty',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onPlus,
+            child: SizedBox(
+              width: 34,
+              height: 36,
+              child: Center(
+                child: Icon(
+                  Icons.add_rounded,
+                  size: 17,
+                  color: onPlus != null
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.35),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -332,39 +416,3 @@ class CircleQtyBtn extends StatelessWidget {
   }
 }
 
-class _SmallQtyBtn extends StatelessWidget {
-  const _SmallQtyBtn({
-    required this.icon,
-    required this.onTap,
-    this.enabled = true,
-    this.size = 30,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool enabled;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-          border: Border.all(
-            color: enabled ? AppColors.forest : AppColors.border,
-            width: 1.2,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: size * 0.5,
-          color: enabled ? AppColors.forest : AppColors.muted,
-        ),
-      ),
-    );
-  }
-}

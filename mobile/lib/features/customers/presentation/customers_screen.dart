@@ -15,7 +15,6 @@ import '../../debts/providers/debts_providers.dart';
 import 'widgets/add_customer_sheet.dart';
 import 'widgets/customer_list_tile.dart';
 import 'widgets/customers_empty_state.dart';
-import 'widgets/customers_filter_tab.dart';
 import 'widgets/customers_header.dart';
 import 'widgets/customers_search_bar.dart';
 
@@ -28,10 +27,7 @@ class CustomersScreen extends ConsumerStatefulWidget {
 
 class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   final _searchCtrl = TextEditingController();
-  CustomersFilterTab _activeTab = CustomersFilterTab.all;
   String _query = '';
-
-  static const _kLeadingGutter = 56.0;
 
   @override
   void dispose() {
@@ -42,69 +38,39 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   @override
   Widget build(BuildContext context) {
     final debtsAsync = ref.watch(debtsControllerProvider);
-    final viewData = debtsAsync.valueOrNull;
-    final customers = viewData?.customers ?? const <LocalDebtCustomer>[];
-    final receivables = viewData?.receivables ?? const <LocalReceivableRecord>[];
+    final viewData   = debtsAsync.valueOrNull;
+    final customers  = viewData?.customers ?? const <LocalDebtCustomer>[];
 
-    final outstandingMinor =
-        DebtsUiUtils.sumPortfolioOutstandingMinor(receivables);
-    final clearedCount = customers
-        .where((c) => DebtsUiUtils.amountToMinor(c.totalOutstanding) == 0)
+    final withDebtCount = customers
+        .where((c) => DebtsUiUtils.amountToMinor(c.totalOutstanding) > 0)
         .length;
-    final withDebtCount = customers.length - clearedCount;
-
-    final counts = {
-      CustomersFilterTab.all: customers.length,
-      CustomersFilterTab.withBalance: withDebtCount,
-      CustomersFilterTab.cleared: clearedCount,
-    };
-
     final filtered = _applyFilters(customers);
 
+    void doBack() {
+      if (ModalRoute.of(context)?.canPop ?? false) {
+        context.pop();
+      } else {
+        context.go(AppRoute.home.path);
+      }
+    }
+
     return Scaffold(
-      backgroundColor: DebtsUi.pageBackground,
-      floatingActionButton: _CustomersFab(
-        onPressed: () => showAddCustomerSheet(context),
-      ),
+      backgroundColor: const Color(0xFFF6F8F7),
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        headerSliverBuilder: (ctx, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 230,
+            expandedHeight: 218,
             pinned: true,
-            stretch: true,
-            leadingWidth: _kLeadingGutter,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () {
-                if (ModalRoute.of(context)?.canPop ?? false) {
-                  context.pop();
-                } else {
-                  context.go(AppRoute.home.path);
-                }
-              },
-            ),
-            actions: [
-              _GlassIconButton(
-                tooltip: 'Refresh',
-                icon: Icons.refresh_rounded,
-                onPressed: _refresh,
-              ),
-              const SizedBox(width: 12),
-            ],
-            backgroundColor: DebtsUi.greenDeep,
+            automaticallyImplyLeading: false,
+            backgroundColor: const Color(0xFF041509),
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
               background: CustomersHeader(
-                leadingContentInset: _kLeadingGutter,
-                outstandingMinor: outstandingMinor,
                 customerCount: customers.length,
-                clearedCount: clearedCount,
                 withDebtCount: withDebtCount,
+                activeCount: customers.length,
+                onBack: doBack,
+                onAdd: () => showAddCustomerSheet(context),
               ),
               title: innerBoxIsScrolled
                   ? const Text(
@@ -112,22 +78,16 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
-                        fontSize: 19,
+                        fontSize: 18,
                         letterSpacing: -0.2,
                       ),
                     )
                   : null,
               centerTitle: false,
               titlePadding: const EdgeInsetsDirectional.only(
-                start: _kLeadingGutter,
+                start: 20,
                 bottom: 16,
               ),
-            ),
-          ),
-          const SliverToBoxAdapter(
-            child: ColoredBox(
-              color: DebtsUi.pageBackground,
-              child: SizedBox(height: 10),
             ),
           ),
         ],
@@ -143,8 +103,6 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
             data: (_) => _DataBody(
               filtered: filtered,
               totalCustomers: customers.length,
-              counts: counts,
-              activeTab: _activeTab,
               query: _query,
               searchCtrl: _searchCtrl,
               onSearchChanged: (v) => setState(() => _query = v),
@@ -152,7 +110,6 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                 _searchCtrl.clear();
                 setState(() => _query = '');
               },
-              onTabChanged: (tab) => setState(() => _activeTab = tab),
               onAddCustomer: () => showAddCustomerSheet(context),
               onRefresh: _refresh,
               onTapCustomer: (c) =>
@@ -182,19 +139,11 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
 
   List<LocalDebtCustomer> _applyFilters(List<LocalDebtCustomer> all) {
     final lower = _query.trim().toLowerCase();
+    if (lower.isEmpty) return all;
     return all.where((c) {
-      final minor = DebtsUiUtils.amountToMinor(c.totalOutstanding);
-      final matchesTab = switch (_activeTab) {
-        CustomersFilterTab.all => true,
-        CustomersFilterTab.withBalance => minor > 0,
-        CustomersFilterTab.cleared => minor == 0,
-      };
-      if (!matchesTab) return false;
-      if (lower.isEmpty) return true;
       if (c.name.toLowerCase().contains(lower)) return true;
       final phone = c.phoneNumber;
-      if (phone != null && phone.toLowerCase().contains(lower)) return true;
-      return false;
+      return phone != null && phone.toLowerCase().contains(lower);
     }).toList(growable: false);
   }
 }
@@ -203,13 +152,10 @@ class _DataBody extends StatelessWidget {
   const _DataBody({
     required this.filtered,
     required this.totalCustomers,
-    required this.counts,
-    required this.activeTab,
     required this.query,
     required this.searchCtrl,
     required this.onSearchChanged,
     required this.onSearchCleared,
-    required this.onTabChanged,
     required this.onAddCustomer,
     required this.onRefresh,
     required this.onTapCustomer,
@@ -217,13 +163,10 @@ class _DataBody extends StatelessWidget {
 
   final List<LocalDebtCustomer> filtered;
   final int totalCustomers;
-  final Map<CustomersFilterTab, int> counts;
-  final CustomersFilterTab activeTab;
   final String query;
   final TextEditingController searchCtrl;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onSearchCleared;
-  final ValueChanged<CustomersFilterTab> onTabChanged;
   final VoidCallback onAddCustomer;
   final Future<void> Function() onRefresh;
   final ValueChanged<LocalDebtCustomer> onTapCustomer;
@@ -242,35 +185,37 @@ class _DataBody extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: onSearchCleared,
       ),
-      tabFilter: CustomersTabFilter(
-        activeTab: activeTab,
-        onChanged: onTabChanged,
-        counts: counts,
-      ),
+      tabFilter: const SizedBox.shrink(),
       children: [
         if (totalCustomers == 0)
           CustomersEmptyState(onAddCustomer: onAddCustomer)
         else if (filtered.isEmpty)
           CustomersEmptyState.filtered(
             onAddCustomer: onAddCustomer,
-            filterLabel: activeTab.label.toLowerCase(),
+            filterLabel: 'customer',
           )
         else ...[
           const Padding(
-            padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
-            child: Text(
-              'YOUR CUSTOMERS',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: DebtsUi.textMuted,
-              ),
+            padding: EdgeInsets.fromLTRB(4, 4, 4, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ALL CUSTOMERS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                      color: Color(0xFF9AA3AF),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           ...filtered.map(
             (c) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 11),
               child: CustomerListTile(
                 customer: c,
                 onTap: () => onTapCustomer(c),
@@ -283,85 +228,6 @@ class _DataBody extends StatelessWidget {
   }
 }
 
-class _CustomersFab extends StatelessWidget {
-  const _CustomersFab({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Add customer',
-      child: SizedBox(
-        width: 56,
-        height: 56,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: onPressed,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: DebtsUi.ctaGradient,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x66166B42),
-                    blurRadius: 24,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassIconButton extends StatelessWidget {
-  const _GlassIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-            ),
-            alignment: Alignment.center,
-            child: Icon(icon, size: 18, color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _LoadingState extends StatelessWidget {
   const _LoadingState({required this.onRefresh});

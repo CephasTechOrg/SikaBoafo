@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../debts/presentation/utils/debts_ui_tokens.dart';
 
@@ -35,7 +36,7 @@ class CustomersSearchBar extends StatelessWidget {
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
-          hintText: 'Search by name or phone…',
+          hintText: 'Search customers by name or phone',
           hintStyle: const TextStyle(
             fontSize: 14,
             color: DebtsUi.textMuted,
@@ -44,7 +45,7 @@ class CustomersSearchBar extends StatelessWidget {
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           prefixIcon: const Icon(
-            Icons.search_rounded,
+            LucideIcons.search,
             size: 18,
             color: DebtsUi.textMuted,
           ),
@@ -54,7 +55,7 @@ class CustomersSearchBar extends StatelessWidget {
               ? IconButton(
                   onPressed: onClear,
                   icon: const Icon(
-                    Icons.close_rounded,
+                    LucideIcons.x,
                     size: 18,
                     color: DebtsUi.textMuted,
                   ),

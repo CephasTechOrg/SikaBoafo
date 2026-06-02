@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-const _sheetCapH = 20.0;
+import '../../../../data/local/kv_cache_repository.dart';
+import '../../../../shared/widgets/data_freshness_label.dart';
+
+const _sheetCapH = 10.0;
 const _sheetBg   = Color(0xFFF6F8F7);
 
-/// TitleHero-pattern hero for the Customers screen.
-/// Matches mockup: dark-green gradient, back button, title + subtitle,
-/// user-plus button, three HeroStat tiles.
-class CustomersHeader extends StatelessWidget {
-  const CustomersHeader({
+/// Static green hero for the Inventory screen — replaces the old carousel.
+/// Shows "Inventory" + freshness label + refresh button + two stat tiles.
+class InventoryMockupHero extends ConsumerWidget {
+  const InventoryMockupHero({
     super.key,
-    required this.customerCount,
-    required this.withDebtCount,
-    required this.activeCount,
-    required this.onBack,
-    required this.onAdd,
+    required this.activeItemsCount,
+    required this.lowStockCount,
+    required this.onRefresh,
   });
 
-  final int customerCount;
-  final int withDebtCount;
-  final int activeCount;
-  final VoidCallback onBack;
-  final VoidCallback onAdd;
+  final int activeItemsCount;
+  final int lowStockCount;
+  final VoidCallback onRefresh;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final topPad = MediaQuery.paddingOf(context).top;
 
     return Stack(
@@ -48,7 +47,7 @@ class CustomersHeader extends StatelessWidget {
               center: const Alignment(0.80, -0.65),
               radius: 0.82,
               colors: [
-                const Color(0xFF49D17B).withValues(alpha: 0.22),
+                const Color(0xFF49D17B).withValues(alpha: 0.24),
                 Colors.transparent,
               ],
             ),
@@ -59,25 +58,20 @@ class CustomersHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(16, topPad + 8, 16, 0),
+              padding: EdgeInsets.fromLTRB(20, topPad + 14, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Top bar: back + title + add button ──────────────────────
+                  // ── Title row ───────────────────────────────────────────────
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Back button
-                      _HeroBtn(icon: LucideIcons.arrowLeft, onTap: onBack),
-                      const SizedBox(width: 10),
-                      // Title + subtitle
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 4),
                             Text(
-                              'Customers',
+                              'Inventory',
                               style: GoogleFonts.plusJakartaSans(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
@@ -87,47 +81,37 @@ class CustomersHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              'Client directory & balances',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: Colors.white.withValues(alpha: 0.68),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                                height: 1.3,
-                              ),
+                            DataFreshnessLabel(
+                              kvKey: KvCacheRepository.kInventoryTs,
+                              color: Colors.white.withValues(alpha: 0.65),
                             ),
                           ],
                         ),
                       ),
-                      // Add customer button
-                      _HeroBtn(icon: LucideIcons.userPlus, onTap: onAdd),
+                      // Refresh button
+                      _HeroBtn(
+                        icon: LucideIcons.refreshCw,
+                        onTap: onRefresh,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   // ── Stat tiles ──────────────────────────────────────────────
                   Row(
                     children: [
                       Expanded(
                         child: _HeroStat(
-                          icon: LucideIcons.users,
-                          value: '$customerCount',
-                          label: 'Total',
+                          icon: LucideIcons.package,
+                          value: '$activeItemsCount',
+                          label: 'Active items',
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _HeroStat(
-                          icon: LucideIcons.wallet,
-                          value: '$withDebtCount',
-                          label: 'Owing',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _HeroStat(
-                          icon: LucideIcons.trendingUp,
-                          value: '$activeCount',
-                          label: 'Active',
+                          icon: LucideIcons.alertTriangle,
+                          value: '$lowStockCount',
+                          label: 'Low stock',
                         ),
                       ),
                     ],
@@ -136,7 +120,7 @@ class CustomersHeader extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            // ── White rounded cap ─────────────────────────────────────────────
+            // ── White rounded cap ───────────────────────────────────────────
             const SizedBox(
               height: _sheetCapH,
               child: DecoratedBox(
@@ -155,7 +139,7 @@ class CustomersHeader extends StatelessWidget {
   }
 }
 
-// ── Shared hero icon button ───────────────────────────────────────────────────
+// ── Hero icon button ──────────────────────────────────────────────────────────
 
 class _HeroBtn extends StatelessWidget {
   const _HeroBtn({required this.icon, required this.onTap});
@@ -173,14 +157,14 @@ class _HeroBtn extends StatelessWidget {
         child: SizedBox(
           width: 42,
           height: 42,
-          child: Icon(icon, color: Colors.white, size: 19),
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );
   }
 }
 
-// ── Hero stat tile ────────────────────────────────────────────────────────────
+// ── Stat tile ─────────────────────────────────────────────────────────────────
 
 class _HeroStat extends StatelessWidget {
   const _HeroStat({
@@ -195,39 +179,47 @@ class _HeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 17, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 17, color: Colors.white.withValues(alpha: 0.85)),
-              const SizedBox(width: 8),
               Text(
                 value,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 19,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                   height: 1,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.72),
-            ),
           ),
         ],
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'sales_carousel.dart';
+import 'sales_mockup_hero.dart';
 
 class SalesHeader extends StatelessWidget {
   const SalesHeader({
@@ -25,26 +25,10 @@ class SalesHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x160F172A),
-            blurRadius: 30,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: SalesHeroCarousel(
-        businessName: businessName,
-        todayRevenueMinor: todayRevenueMinor,
-        cashTotalMinor: cashTotalMinor,
-        momoTotalMinor: momoTotalMinor,
-        todayTxnsCount: todayTxnsCount,
-        topSellingItemName: topSellingItemName,
-        topSellingQty: topSellingQty,
-        topSellingImageUrl: topSellingImageUrl,
-      ),
+    return SalesMockupHero(
+      topSellingItemName: topSellingItemName,
+      topSellingQty:      topSellingQty,
+      topSellingImageUrl: topSellingImageUrl,
     );
   }
 }

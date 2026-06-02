@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../debts/presentation/utils/debts_ui_tokens.dart';
 import '../../../debts/presentation/utils/debts_ui_utils.dart';
@@ -102,13 +103,13 @@ class CustomerBalanceHero extends StatelessWidget {
           Row(
             children: [
               _StatBox(
-                icon: Icons.receipt_long_outlined,
+                icon: LucideIcons.receipt,
                 label: 'OPEN DEBTS',
                 value: '$openDebtCount',
               ),
               const SizedBox(width: 10),
               _StatBox(
-                icon: Icons.history_rounded,
+                icon: LucideIcons.history,
                 label: 'ALL TIME',
                 value: '$totalDebtCount',
               ),

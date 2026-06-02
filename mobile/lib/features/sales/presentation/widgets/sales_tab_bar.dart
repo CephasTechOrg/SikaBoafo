@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 enum SalesViewTab { newSale, history }
 
@@ -13,6 +13,7 @@ class SalesTabBar extends StatelessWidget {
 
   final SalesViewTab activeTab;
   final ValueChanged<SalesViewTab> onChanged;
+  // darkMode kept for API compat but not used — all tabs now follow mockup style.
   final bool darkMode;
 
   @override
@@ -20,30 +21,23 @@ class SalesTabBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: darkMode ? Colors.transparent : Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: darkMode
-              ? Colors.white.withValues(alpha: 0.18)
-              : AppColors.border,
-        ),
-        boxShadow: darkMode ? null : AppShadows.subtle,
+        color: const Color(0xFFEBEFED),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
           Expanded(
-            child: _SalesTabPill(
+            child: _Tab(
               label: 'New Sale',
               selected: activeTab == SalesViewTab.newSale,
-              darkMode: darkMode,
               onTap: () => onChanged(SalesViewTab.newSale),
             ),
           ),
+          const SizedBox(width: 4),
           Expanded(
-            child: _SalesTabPill(
+            child: _Tab(
               label: 'History',
               selected: activeTab == SalesViewTab.history,
-              darkMode: darkMode,
               onTap: () => onChanged(SalesViewTab.history),
             ),
           ),
@@ -53,47 +47,44 @@ class SalesTabBar extends StatelessWidget {
   }
 }
 
-class _SalesTabPill extends StatelessWidget {
-  const _SalesTabPill({
+class _Tab extends StatelessWidget {
+  const _Tab({
     required this.label,
     required this.selected,
-    required this.darkMode,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
-  final bool darkMode;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final Color pillColor;
-    final Color textColor;
-    if (darkMode) {
-      pillColor = selected ? Colors.white : Colors.transparent;
-      textColor = selected ? AppColors.forest : Colors.white.withValues(alpha: 0.78);
-    } else {
-      pillColor = selected ? const Color(0xFF0C3A24) : Colors.transparent;
-      textColor = selected ? Colors.white : AppColors.inkSoft;
-    }
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        height: 42,
         decoration: BoxDecoration(
-          color: pillColor,
-          borderRadius: BorderRadius.circular(999),
+          color: selected ? const Color(0xFF073B2A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x40073B2A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
+        alignment: Alignment.center,
         child: Text(
           label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 13,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13.5,
             fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : const Color(0xFF6B7280),
           ),
         ),
       ),

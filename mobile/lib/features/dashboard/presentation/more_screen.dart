@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/router.dart';
 import '../../expenses/presentation/expenses_screen.dart';
@@ -45,7 +46,7 @@ class MoreScreen extends ConsumerWidget {
                   Text(
                     'Manage your business operations and settings',
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w500,
                       color: DashboardMockup.ink2,
                       height: 1.4,
@@ -71,7 +72,7 @@ class MoreScreen extends ConsumerWidget {
                   const _SectionLabel('Operations'),
                   const SizedBox(height: 12),
                   _MoreRow(
-                    icon: Icons.receipt_long_outlined,
+                    icon: LucideIcons.receipt,
                     title: 'Expenses',
                     sub: 'Track costs and daily spending',
                     onTap: () => Navigator.of(context).push(
@@ -82,14 +83,14 @@ class MoreScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 11),
                   _MoreRow(
-                    icon: Icons.handshake_outlined,
+                    icon: LucideIcons.heartHandshake,
                     title: 'Debts',
                     sub: 'Manage receivables and repayments',
                     onTap: () => context.push(AppRoute.debts.path),
                   ),
                   const SizedBox(height: 11),
                   _MoreRow(
-                    icon: Icons.people_alt_outlined,
+                    icon: LucideIcons.users,
                     title: 'Customers',
                     sub: 'Client directory and history',
                     onTap: () => context.push(AppRoute.customers.path),
@@ -101,14 +102,14 @@ class MoreScreen extends ConsumerWidget {
                   const _SectionLabel('Business Management'),
                   const SizedBox(height: 12),
                   _MoreRow(
-                    icon: Icons.bar_chart_rounded,
+                    icon: LucideIcons.barChart,
                     title: 'Reports',
                     sub: 'Deep insights into performance',
                     onTap: () => context.push(AppRoute.reports.path),
                   ),
                   const SizedBox(height: 11),
                   _MoreRow(
-                    icon: Icons.settings_outlined,
+                    icon: LucideIcons.settings,
                     title: 'Settings',
                     sub: 'Profile, staff, and preferences',
                     onTap: () => context.push(AppRoute.settings.path),
@@ -230,7 +231,7 @@ class _BusinessCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(11),
               ),
               child: const Icon(
-                Icons.edit_outlined,
+                LucideIcons.pencil,
                 size: 18,
                 color: Colors.white,
               ),
@@ -282,20 +283,23 @@ class _MoreRow extends StatelessWidget {
     const iconColor = DashboardMockup.green700;
     const iconBg    = DashboardMockup.greenTint;
 
-    return Material(
-      color: DashboardMockup.card,
-      borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
-      child: InkWell(
-        onTap: onTap,
+    return DecoratedBox(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
-            border: Border.all(color: DashboardMockup.lineSoft),
-            boxShadow: DashboardMockup.cardShadow,
-          ),
-          child: Row(
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Material(
+        color: DashboardMockup.card,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              border: Border.all(color: DashboardMockup.lineSoft),
+            ),
+            child: Row(
             children: [
               // Icon container
               Container(
@@ -339,14 +343,15 @@ class _MoreRow extends StatelessWidget {
 
               // Chevron
               const Icon(
-                Icons.chevron_right_rounded,
+                LucideIcons.chevronRight,
                 size: 20,
                 color: DashboardMockup.ink3,
               ),
             ],
-          ),
-        ),
-      ),
-    );
+            ),      // Row
+          ),        // Container
+        ),          // InkWell
+      ),            // Material
+    );              // DecoratedBox
   }
 }

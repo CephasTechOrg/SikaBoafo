@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../app/router.dart';
 import '../../../expenses/presentation/expenses_screen.dart';
@@ -18,7 +19,7 @@ class DashboardHeroQuickActions extends StatelessWidget {
       children: [
         Expanded(
           child: _QuickAction(
-            icon: Icons.add_rounded,
+            icon: LucideIcons.plus,
             label: 'New Sale',
             primary: true,
             onTap: () => onNavigate(1),
@@ -27,7 +28,7 @@ class DashboardHeroQuickActions extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: _QuickAction(
-            icon: Icons.handshake_outlined,
+            icon: LucideIcons.wallet,
             label: 'Debts',
             onTap: () => context.push(AppRoute.debts.path),
           ),
@@ -35,7 +36,7 @@ class DashboardHeroQuickActions extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: _QuickAction(
-            icon: Icons.inventory_2_outlined,
+            icon: LucideIcons.packagePlus,
             label: 'Restock',
             onTap: () => onNavigate(2),
           ),
@@ -43,7 +44,7 @@ class DashboardHeroQuickActions extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: _QuickAction(
-            icon: Icons.receipt_long_outlined,
+            icon: LucideIcons.receipt,
             label: 'Expenses',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const ExpensesScreen()),

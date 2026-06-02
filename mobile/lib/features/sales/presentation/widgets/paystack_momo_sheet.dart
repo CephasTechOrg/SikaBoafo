@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../data/sales_payments_api.dart';
@@ -52,8 +53,8 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   int _pollCount = 0;
   static const _maxPolls = 40;
   static const _otpLength = 6;
-  /// After submitting an OTP, lock resubmit briefly so merchants don’t spam Paystack
-  /// while the customer’s network is still delivering the prompt.
+  /// After submitting an OTP, lock resubmit briefly so merchants don't spam Paystack
+  /// while the customer's network is still delivering the prompt.
   static const _otpResubmitCooldown = Duration(seconds: 28);
 
   @override
@@ -362,6 +363,19 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
   @override
   Widget build(BuildContext context) {
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    final title = !_promptSent
+        ? 'Pay with MoMo'
+        : _needsOtp
+            ? 'Enter verification code'
+            : 'Waiting for approval';
+
+    final subtitle = !_promptSent
+        ? 'For customers without a smartphone. Enter their MoMo number and network below.'
+        : _needsOtp
+            ? 'Some networks send a 6-digit OTP or USSD voucher. Enter the code the customer receives.'
+            : 'Ask the customer to check their phone and approve the MoMo prompt.';
+
     return AnimatedPadding(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOut,
@@ -374,290 +388,532 @@ class _PaystackMomoSheetState extends ConsumerState<PaystackMomoSheet> {
             constraints: BoxConstraints(
               maxHeight: MediaQuery.sizeOf(context).height * 0.92,
             ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(28),
-              boxShadow: AppShadows.elevated,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1F101828),
+                  blurRadius: 30,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderStrong,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  !_promptSent
-                      ? 'Pay with MoMo number'
-                      : _needsOtp
-                          ? 'Enter customer verification code'
-                          : 'Waiting for customer approval',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  !_promptSent
-                      ? 'For customers without a smartphone. Enter their MoMo number and network.'
-                      : _needsOtp
-                          ? 'Some networks send a 6-digit OTP or USSD voucher. '
-                              'Follow Paystack’s instructions, then enter the code below.'
-                          : 'Ask the customer to check their phone and approve the MoMo prompt.',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 12.5,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text('Amount ', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                      Text(
-                        '₵${widget.amountDisplay}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: AppColors.ink,
-                        ),
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Grip ───────────────────────────────────────────────────
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1D5DB),
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                    ],
-                  ),
-                ),
-                if (widget.paystackTestMode && !_promptSent) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
                     ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Merchant badge pill ─────────────────────────────────────
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8F7),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF073B2A),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.phone_android_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'MoMo Push Payment',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 14,
+                            color: Color(0xFF168A55),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Title + subtitle ────────────────────────────────────────
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF111827),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13.5,
+                      color: const Color(0xFF6B7280),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Amount block ────────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFBFDFC), Color(0xFFF3F8F5)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Test keys — sandbox MoMo only',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: AppColors.ink,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AMOUNT DUE',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.9,
+                                  color: const Color(0xFF9AA3AF),
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '₵${widget.amountDisplay}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF111827),
+                                  letterSpacing: -0.4,
+                                  height: 1,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Paystack will not send a real network prompt to customer phones while you use test (sk_test_) keys. '
-                          'For Ghana MTN tests, use number 0551234987 and network MTN (Paystack test docs). '
-                          'Telecel and other real numbers need live keys in Settings → Paystack.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            height: 1.35,
-                            color: AppColors.inkSoft,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAF6EF),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'MoMo',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F7A4A),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-                if (!_promptSent) ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    key: _phoneFieldKey,
-                    controller: _phoneCtrl,
-                    focusNode: _phoneFocusNode,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]'))],
-                    scrollPadding: EdgeInsets.only(
-                      bottom: keyboardInset + 120,
-                      left: 16,
-                      right: 16,
-                      top: 24,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Customer MoMo number',
-                      hintText: widget.paystackTestMode
-                          ? 'Test MTN: 0551234987'
-                          : 'e.g. 055 123 4567',
-                      filled: true,
-                      fillColor: AppColors.surfaceAlt,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Network',
-                      filled: true,
-                      fillColor: AppColors.surfaceAlt,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: _provider,
-                        items: const [
-                          DropdownMenuItem(value: 'mtn', child: Text('MTN')),
-                          DropdownMenuItem(value: 'atl', child: Text('AirtelTigo')),
-                          DropdownMenuItem(value: 'vod', child: Text('Telecel')),
+
+                  // ── Test mode warning ───────────────────────────────────────
+                  if (widget.paystackTestMode && !_promptSent) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF3E1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE8D49A)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Test keys — sandbox MoMo only',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: const Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            'Use MTN test number 0551234987. Real customer phones need live keys in Settings → Paystack.',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              height: 1.4,
+                              color: const Color(0xFF6B7280),
+                            ),
+                          ),
                         ],
-                        onChanged: (v) {
-                          if (v != null) setState(() => _provider = v);
-                        },
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: _sending ? null : _sendPrompt,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(_sending ? 'Sending…' : 'Send MoMo prompt'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.forest,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ],
+
+                  // ── Phone entry form ────────────────────────────────────────
+                  if (!_promptSent) ...[
+                    const SizedBox(height: 16),
+                    _MomoField(
+                      label: 'Customer MoMo number',
+                      hint: widget.paystackTestMode ? 'Test MTN: 0551234987' : 'e.g. 055 123 4567',
+                      controller: _phoneCtrl,
+                      focusNode: _phoneFocusNode,
+                      fieldKey: _phoneFieldKey,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]'))],
+                      scrollPadding: EdgeInsets.only(
+                        bottom: keyboardInset + 120,
+                        left: 16, right: 16, top: 24,
+                      ),
                     ),
-                  ),
-                ] else ...[
-                  const SizedBox(height: 16),
-                  if (_paystackDisplayText != null &&
-                      _paystackDisplayText!.trim().isNotEmpty) ...[
-                    Text(
-                      _paystackDisplayText!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                        height: 1.35,
+                    const SizedBox(height: 10),
+                    // Network selector
+                    Container(
+                      height: 54,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8F7),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cell_tower_rounded, size: 18, color: Color(0xFF9AA3AF)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: _provider,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF111827),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'mtn', child: Text('MTN')),
+                                  DropdownMenuItem(value: 'atl', child: Text('AirtelTigo')),
+                                  DropdownMenuItem(value: 'vod', child: Text('Telecel')),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) setState(() => _provider = v);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.icon(
+                      onPressed: _sending ? null : _sendPrompt,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.send_rounded, size: 18),
+                      label: Text(_sending ? 'Sending…' : 'Send MoMo prompt'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F7A4A),
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        textStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+
+                  // ── Post-prompt states ──────────────────────────────────────
+                  ] else ...[
+                    const SizedBox(height: 16),
+                    // Paystack status message
+                    if (_paystackDisplayText != null &&
+                        _paystackDisplayText!.trim().isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8F7),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          _paystackDisplayText!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF111827),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+
+                    // OTP input
+                    if (_needsOtp) ...[
+                      _buildOtpOvalSlots(),
+                      const SizedBox(height: 8),
+                      Text(
+                        _otpCooldownActive
+                            ? 'Wait a moment before submitting again.'
+                            : 'Tap the boxes to type. One digit per box.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5,
+                          color: _otpCooldownActive
+                              ? const Color(0xFF6B7280)
+                              : const Color(0xFF9AA3AF),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _canSubmitOtp ? _submitOtp : null,
+                        icon: _submittingOtp
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : Icon(
+                                Icons.verified_rounded,
+                                size: 18,
+                                color: _canSubmitOtp
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.5),
+                              ),
+                        label: Text(
+                          _submittingOtp ? 'Submitting…'
+                              : _otpCooldownActive ? 'Wait…'
+                              : 'Submit code',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F7A4A),
+                          disabledBackgroundColor: const Color(0xFF0F7A4A).withValues(alpha: 0.45),
+                          disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          textStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 14.5, fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Status band
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF6F8F7),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          if (_checking)
+                            const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: Color(0xFF0F7A4A),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.phone_android_rounded,
+                                size: 18, color: Color(0xFF168A55)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _checking ? 'Checking payment…' : 'Waiting for customer',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF111827),
+                                  ),
+                                ),
+                                Text(
+                                  _checking
+                                      ? 'Confirming with Paystack, please wait'
+                                      : 'We\'ll confirm once the customer approves',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12.5,
+                                    color: const Color(0xFF6B7280),
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 14),
-                  ],
-                  if (_needsOtp) ...[
-                    _buildOtpOvalSlots(),
-                    const SizedBox(height: 8),
-                    Text(
-                      _otpCooldownActive
-                          ? 'Wait a moment before submitting again so the customer can receive the prompt.'
-                          : 'Tap the boxes to type. One digit per box.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: _otpCooldownActive ? AppColors.inkSoft : AppColors.muted,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     FilledButton.icon(
-                      onPressed: _canSubmitOtp ? _submitOtp : null,
-                      icon: _submittingOtp
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(
-                              Icons.verified_rounded,
-                              size: 18,
-                              color: _canSubmitOtp ? Colors.white : Colors.white.withValues(alpha: 0.5),
-                            ),
-                      label: Text(
-                        _submittingOtp
-                            ? 'Submitting…'
-                            : _otpCooldownActive
-                                ? 'Wait…'
-                                : 'Submit code',
-                      ),
+                      onPressed: _checking ? null : () => _check(auto: false),
+                      icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                      label: const Text('I\'ve received payment'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        disabledBackgroundColor: AppColors.forest.withValues(alpha: 0.45),
-                        disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
-                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: const Color(0xFF0F7A4A),
+                        minimumSize: const Size.fromHeight(52),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        textStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5, fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
                   ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _checking
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.phone_android_rounded,
-                              size: 16, color: AppColors.success),
-                      const SizedBox(width: 8),
-                      Text(
-                        _checking ? 'Checking…' : 'Waiting for payment',
-                        style: const TextStyle(fontSize: 13, color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+
+                  // ── Cancel / close ──────────────────────────────────────────
+                  const SizedBox(height: 6),
                   SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _checking ? null : () => _check(auto: false),
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: const Text('Check status'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    height: 46,
+                    child: TextButton(
+                      onPressed: () {
+                        _timer?.cancel();
+                        _otpCooldownTimer?.cancel();
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF6B7280),
+                        textStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5, fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      child: Text(_promptSent ? 'Close' : 'Cancel'),
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () {
-                    _timer?.cancel();
-                    _otpCooldownTimer?.cancel();
-                    Navigator.of(context).pop();
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.inkSoft,
-                    minimumSize: const Size.fromHeight(44),
-                  ),
-                  child: Text(_promptSent ? 'Close' : 'Cancel'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ),
+    );
+  }
+}
+
+// ── Reusable styled text field ────────────────────────────────────────────────
+
+class _MomoField extends StatelessWidget {
+  const _MomoField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.focusNode,
+    required this.fieldKey,
+    this.keyboardType,
+    this.inputFormatters,
+    this.scrollPadding,
+  });
+
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final GlobalKey fieldKey;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final EdgeInsets? scrollPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF6B7280),
+          ),
+        ),
+        const SizedBox(height: 7),
+        Container(
+          key: fieldKey,
+          height: 54,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F8F7),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14),
+                child: Icon(Icons.phone_iphone_rounded,
+                    size: 18, color: Color(0xFF9AA3AF)),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: keyboardType,
+                  inputFormatters: inputFormatters,
+                  scrollPadding: scrollPadding ?? EdgeInsets.zero,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111827),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: hint,
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      color: const Color(0xFF9AA3AF),
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: const EdgeInsets.only(right: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

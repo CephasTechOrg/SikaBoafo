@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../app/router.dart';
 import '../../../../shared/providers/sync_providers.dart';
@@ -126,7 +127,7 @@ class DashboardHeader extends ConsumerWidget {
 
           // ── Quick actions ─────────────────────────────────────────────────
           DashboardHeroQuickActions(onNavigate: onNavigate),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
         ],
       ),
     );
@@ -187,7 +188,7 @@ class _TrendBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isUp ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+            isUp ? LucideIcons.trendingUp : LucideIcons.trendingDown,
             size: 15,
             color: const Color(0xFF7CE0B0),
           ),
@@ -234,7 +235,7 @@ class _NotificationButton extends ConsumerWidget {
                 ),
               ),
               child: const Icon(
-                Icons.notifications_outlined,
+                LucideIcons.bell,
                 color: Colors.white,
                 size: 20,
               ),
@@ -347,7 +348,7 @@ class _SyncStatusButtonState extends ConsumerState<_SyncStatusButton>
                 child: RotationTransition(
                   turns: _spin,
                   child: Icon(
-                    Icons.sync_rounded,
+                    LucideIcons.refreshCw,
                     color: Colors.white.withValues(alpha: iconOpacity),
                     size: 20,
                   ),

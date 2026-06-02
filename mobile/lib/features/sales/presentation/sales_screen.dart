@@ -28,7 +28,6 @@ import '../providers/sales_cart_provider.dart';
 import '../../settings/providers/notification_prefs_provider.dart';
 import 'widgets/sales_search_bar.dart';
 import 'widgets/sales_tab_bar.dart';
-import 'widgets/sales_bottom_bar.dart';
 import '../../settings/presentation/connect_paystack_screen.dart';
 import 'widgets/paystack_momo_sheet.dart';
 import 'widgets/paystack_qr_sheet.dart';
@@ -42,6 +41,7 @@ import 'widgets/sales_header.dart';
 import 'widgets/sales_new_sale_view.dart';
 import 'widgets/sales_history_view.dart';
 import 'utils/sales_ui_utils.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class SalesScreen extends ConsumerStatefulWidget {
   const SalesScreen({super.key});
@@ -162,15 +162,15 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF6F8F7),
       body: Stack(
         children: [
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 270,
+                expandedHeight: 218,
                 pinned: true,
-                backgroundColor: AppColors.forestNight,
+                backgroundColor: const Color(0xFF041509),
                 elevation: 0,
                 centerTitle: false,
                 title: innerBoxIsScrolled
@@ -219,6 +219,10 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                 pinned: true,
                 delegate: _SliverTabDelegate(
                   activeTab: _activeTab,
+                  itemCount: itemCount,
+                  totalAmount: totalAmount,
+                  hasItems: hasItems,
+                  onCartTap: () => _showReviewSaleSheet(items: allItems),
                   child: SalesTabBar(
                     activeTab: _activeTab,
                     onChanged: (tab) => setState(() => _activeTab = tab),
@@ -243,13 +247,13 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     ]);
                   },
                   child: DecoratedBox(
-                    decoration: const BoxDecoration(color: AppColors.surface),
+                    decoration: const BoxDecoration(color: Color(0xFFF6F8F7)),
                     child: ListView(
-                      padding: EdgeInsets.fromLTRB(
+                      padding: const EdgeInsets.fromLTRB(
                         16,
                         0,
                         16,
-                        _activeTab == SalesViewTab.newSale ? 110 : 28,
+                        28,
                       ),
                       children: [
                         if (_activeTab == SalesViewTab.newSale) ...[
@@ -331,20 +335,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
               ),
             ),
           ),
-          if (_activeTab == SalesViewTab.newSale)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SalesBottomBar(
-                itemCount: itemCount,
-                totalAmount: totalAmount,
-                paymentMethod: _paymentLabel(cart.paymentMethod),
-                hasItems: hasItems,
-                isBusy: isBusy,
-                onConfirm: () => _showReviewSaleSheet(items: allItems),
-              ),
-            ),
         ],
       ),
     );
@@ -1074,13 +1064,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
     }
   }
 
-  String _paymentLabel(String raw) {
-    return switch (raw) {
-      'mobile_money' => 'Mobile Money',
-      'bank_transfer' => 'Bank Transfer',
-      _ => 'Cash',
-    };
-  }
 
   List<DashboardTopSellingItem> _mergeTopSelling(
     List<DashboardTopSellingItem> server,
@@ -1135,27 +1118,38 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
 }
 
 class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
-  _SliverTabDelegate({required this.activeTab, required this.child});
+  _SliverTabDelegate({
+    required this.activeTab,
+    required this.child,
+    required this.itemCount,
+    required this.totalAmount,
+    required this.hasItems,
+    required this.onCartTap,
+  });
+
   final SalesViewTab activeTab;
   final Widget child;
+  final int itemCount;
+  final String totalAmount;
+  final bool hasItems;
+  final VoidCallback onCartTap;
 
   @override
-  double get minExtent => 78;
+  double get minExtent => 60;
   @override
-  double get maxExtent => 78;
+  double get maxExtent => 60;
 
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return ColoredBox(
-      // Match Sales hero background so the rounded cutouts show green.
-      color: AppColors.forestNight,
+      color: const Color(0xFF041509),
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: const Color(0xFFF6F8F7),
             boxShadow: overlapsContent
                 ? const [
                     BoxShadow(
@@ -1167,8 +1161,30 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
                 : null,
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-            child: SizedBox(height: maxExtent - 22, child: child),
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+            child: Row(
+              children: [
+                // ── Segmented tabs ──────────────────────────────────────────
+                Expanded(
+                  child: SizedBox(height: maxExtent - 16, child: child),
+                ),
+                // ── Cart pill (shown when cart has items) ───────────────────
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: hasItems
+                      ? Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _CartPill(
+                            itemCount: itemCount,
+                            totalAmount: totalAmount,
+                            onTap: onCartTap,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1177,7 +1193,107 @@ class _SliverTabDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverTabDelegate oldDelegate) =>
-      oldDelegate.activeTab != activeTab;
+      oldDelegate.activeTab != activeTab ||
+      oldDelegate.itemCount != itemCount ||
+      oldDelegate.totalAmount != totalAmount ||
+      oldDelegate.hasItems != hasItems;
+}
+
+// ── Compact cart pill ─────────────────────────────────────────────────────────
+
+class _CartPill extends StatelessWidget {
+  const _CartPill({
+    required this.itemCount,
+    required this.totalAmount,
+    required this.onTap,
+  });
+
+  final int itemCount;
+  final String totalAmount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF073B2A),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x40073B2A),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Cart icon + count badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  LucideIcons.shoppingCart,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                Positioned(
+                  top: -5,
+                  right: -6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 16),
+                    height: 16,
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF168A55),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF073B2A),
+                        width: 1.5,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$itemCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            // Amount
+            Text(
+              '₵$totalAmount',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              size: 15,
+              color: Colors.white70,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _TopAgg {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import 'dashboard_mockup_ui.dart';
 
@@ -14,26 +15,10 @@ class DashboardMockupNavBar extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   static const _items = <_NavItem>[
-    _NavItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Dashboard',
-    ),
-    _NavItem(
-      icon: Icons.point_of_sale_outlined,
-      activeIcon: Icons.point_of_sale_rounded,
-      label: 'Sales',
-    ),
-    _NavItem(
-      icon: Icons.inventory_2_outlined,
-      activeIcon: Icons.inventory_2_rounded,
-      label: 'Inventory',
-    ),
-    _NavItem(
-      icon: Icons.grid_view_outlined,
-      activeIcon: Icons.grid_view_rounded,
-      label: 'More',
-    ),
+    _NavItem(icon: LucideIcons.home,         label: 'Dashboard'),
+    _NavItem(icon: LucideIcons.shoppingBag,  label: 'Sales'),
+    _NavItem(icon: LucideIcons.package,      label: 'Inventory'),
+    _NavItem(icon: LucideIcons.layoutGrid,   label: 'More'),
   ];
 
   @override
@@ -64,8 +49,8 @@ class DashboardMockupNavBar extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          selected ? item.activeIcon : item.icon,
-                          size: 23,
+                          item.icon,
+                          size: 22,
                           color: selected
                               ? DashboardMockup.green900
                               : DashboardMockup.ink3,
@@ -89,13 +74,7 @@ class DashboardMockupNavBar extends StatelessWidget {
 }
 
 class _NavItem {
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
-
+  const _NavItem({required this.icon, required this.label});
   final IconData icon;
-  final IconData activeIcon;
   final String label;
 }

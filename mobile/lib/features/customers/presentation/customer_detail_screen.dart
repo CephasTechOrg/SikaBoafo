@@ -10,6 +10,8 @@ import '../../debts/presentation/utils/debts_ui_utils.dart';
 import '../../debts/presentation/widgets/debt_customer_summary.dart';
 import '../../debts/presentation/widgets/debt_list_tile.dart';
 import '../../debts/presentation/widgets/debt_section_card.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../debts/presentation/widgets/debts_gradient_button.dart';
 import '../../debts/presentation/widgets/new_debt_sheet/new_debt_sheet.dart';
 import '../../debts/providers/debts_providers.dart';
@@ -142,18 +144,18 @@ class _LoadedShell extends ConsumerWidget {
                   if (_hasExtendedContact(customer))
                     DebtSectionCard(
                       title: 'Contact details',
-                      icon: Icons.contact_page_outlined,
+                      icon: LucideIcons.contact,
                       child: _ContactDetails(customer: customer),
                     ),
                   if (_hasExtendedContact(customer))
                     const SizedBox(height: 12),
                   DebtSectionCard(
                     title: 'Debt history',
-                    icon: Icons.history_rounded,
+                    icon: LucideIcons.history,
                     countBadge: activeReceivables.length,
                     child: activeReceivables.isEmpty
                         ? const DebtSectionEmptyState(
-                            icon: Icons.receipt_long_outlined,
+                            icon: LucideIcons.receipt,
                             title: 'No debts yet',
                             message:
                                 'Record a new debt for this customer to start '
@@ -184,7 +186,7 @@ class _LoadedShell extends ConsumerWidget {
                   const SizedBox(height: 18),
                   DebtsGradientButton(
                     label: 'Record new debt',
-                    icon: Icons.add_rounded,
+                    icon: LucideIcons.plus,
                     onPressed: () => _openNewDebt(context, ref),
                   ),
                 ],
@@ -279,8 +281,12 @@ class _CustomerDetailHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasPhone = customer.phoneNumber != null &&
         customer.phoneNumber!.trim().isNotEmpty;
-    final initial =
-        customer.name.isNotEmpty ? customer.name[0].toUpperCase() : '?';
+    final parts   = customer.name.trim().split(RegExp(r'\s+'));
+    final initial = parts.length >= 2
+        ? '${parts.first[0]}${parts.last[0]}'.toUpperCase()
+        : customer.name.isNotEmpty
+            ? customer.name[0].toUpperCase()
+            : '?';
     final topInset = MediaQuery.of(context).padding.top;
 
     return Stack(
@@ -314,7 +320,7 @@ class _CustomerDetailHeader extends StatelessWidget {
                   _BackButton(onTap: onBack),
                   const Spacer(),
                   _GlassIconButton(
-                    icon: Icons.refresh_rounded,
+                    icon: LucideIcons.refreshCw,
                     tooltip: 'Refresh',
                     onTap: onRefresh,
                   ),
@@ -324,12 +330,12 @@ class _CustomerDetailHeader extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.25),
                         width: 1.5,
@@ -338,9 +344,10 @@ class _CustomerDetailHeader extends StatelessWidget {
                     child: Text(
                       initial,
                       style: const TextStyle(
-                        fontSize: 22,
+                        fontSize: 20,
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
                       ),
                     ),
                   ),
@@ -368,7 +375,7 @@ class _CustomerDetailHeader extends StatelessWidget {
                           Row(
                             children: [
                               Icon(
-                                Icons.call_rounded,
+                                LucideIcons.phone,
                                 size: 11,
                                 color: Colors.white.withValues(alpha: 0.55),
                               ),
@@ -413,7 +420,7 @@ class _BackButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.arrow_back_ios_new_rounded,
+              LucideIcons.arrowLeft,
               size: 16,
               color: Colors.white.withValues(alpha: 0.9),
             ),
@@ -482,20 +489,20 @@ class _ContactDetails extends StatelessWidget {
       children: [
         if (customer.email != null && customer.email!.trim().isNotEmpty)
           _InfoRow(
-            icon: Icons.email_outlined,
+            icon: LucideIcons.mail,
             label: 'Email',
             value: customer.email!,
           ),
         if (customer.whatsappNumber != null &&
             customer.whatsappNumber!.trim().isNotEmpty)
           _InfoRow(
-            icon: Icons.chat_rounded,
+            icon: LucideIcons.messageCircle,
             label: 'WhatsApp',
             value: customer.whatsappNumber!,
           ),
         if (customer.notes != null && customer.notes!.trim().isNotEmpty)
           _InfoRow(
-            icon: Icons.notes_rounded,
+            icon: LucideIcons.fileText,
             label: 'Notes',
             value: customer.notes!,
           ),
@@ -624,7 +631,7 @@ class _ErrorShell extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.error_outline_rounded,
+                        LucideIcons.alertCircle,
                         size: 42,
                         color: DebtsUi.danger,
                       ),

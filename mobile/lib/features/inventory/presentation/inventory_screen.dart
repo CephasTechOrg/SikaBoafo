@@ -1,6 +1,6 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/session_role_providers.dart';
@@ -8,25 +8,10 @@ import '../../../shared/widgets/product_image_catalog.dart';
 import '../data/inventory_api.dart';
 import '../data/inventory_repository.dart';
 import '../providers/inventory_providers.dart';
-import 'widgets/inventory_carousel.dart';
+import 'widgets/inventory_mockup_hero.dart';
 import 'widgets/inventory_item_card.dart';
 import 'widgets/inventory_sheets.dart';
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
-int _priceToMinor(String? value) {
-  if (value == null || value.isEmpty) return 0;
-  try {
-    final parts = value.split('.');
-    if (parts.length == 1) return (int.tryParse(parts[0]) ?? 0) * 100;
-    final major = (int.tryParse(parts[0]) ?? 0) * 100;
-    final minor =
-        (int.tryParse(parts[1].padRight(2, '0').substring(0, 2)) ?? 0);
-    return major + minor;
-  } catch (_) {
-    return 0;
-  }
-}
+import 'package:lucide_icons/lucide_icons.dart';
 
 // ─── screen ──────────────────────────────────────────────────────────────────
 
@@ -57,11 +42,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final activeItems = items.where((item) => item.isActive).toList();
     final archivedItems = items.where((item) => !item.isActive).toList();
 
-    int totalValueMinor = 0;
     int lowStockCount = 0;
     final categories = <String>{};
     for (final item in activeItems) {
-      totalValueMinor += _priceToMinor(item.defaultPrice) * item.quantityOnHand;
       if (item.lowStockThreshold != null &&
           item.quantityOnHand <= item.lowStockThreshold!) {
         lowStockCount++;
@@ -85,91 +68,90 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final filteredActive = activeItems.where(matchesFilters).toList();
     final filteredArchived = archivedItems.where(matchesFilters).toList();
 
+    // Count items per category for the chip badges
+    final Map<String, int> categoryCounts = {};
+    for (final item in activeItems) {
+      if (item.category != null) {
+        categoryCounts[item.category!] =
+            (categoryCounts[item.category!] ?? 0) + 1;
+      }
+    }
+
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF6F8F7),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openAddItemSheet(context),
-        backgroundColor: AppColors.forest,
+        backgroundColor: const Color(0xFF0F7A4A),
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add_rounded),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // ── Collapsing Hero Header ────────────────────────
+          // ── Hero ─────────────────────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 270,
+            expandedHeight: 200,
             pinned: true,
-            backgroundColor: AppColors.forestNight,
+            backgroundColor: const Color(0xFF041509),
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              background: DecoratedBox(
-                decoration: const BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x160F172A),
-                      blurRadius: 30,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: InventoryCarousel(
-                  totalValueMinor: totalValueMinor,
-                  activeItemsCount: activeItems.length,
-                  lowStockCount: lowStockCount,
-                  categoriesCount: categories.length,
-                ),
+              background: InventoryMockupHero(
+                activeItemsCount: activeItems.length,
+                lowStockCount: lowStockCount,
+                onRefresh: () => ref
+                    .read(inventoryControllerProvider.notifier)
+                    .refresh(userInitiated: true),
               ),
               title: innerBoxIsScrolled
-                  ? const Text('Inventory',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18))
+                  ? Text(
+                      'Inventory',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    )
                   : null,
               centerTitle: false,
               titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
             ),
           ),
 
-          // ── Sticky Search & Filters ───────────────────────
+          // ── Sticky search + category chips ────────────────────────────────
           SliverPersistentHeader(
             pinned: true,
             delegate: _SliverFilterDelegate(
-              child: ClipRRect(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                  child: Container(
-                    color: AppColors.canvas.withValues(alpha: 0.85),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _SearchBar(
-                          controller: _searchCtrl,
-                          onChanged: (v) => setState(() {
-                            _searchQuery = v;
-                            // Clearing the search bar also resets the category
-                            // filter — an empty search with a hidden category
-                            // filter is invisible to the user and causes
-                            // confusing "no results" states.
-                            if (v.isEmpty) _filterCategory = null;
-                          }),
-                        ),
-                        if (categories.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          _CategoryFilter(
-                            categories: categories.toList()..sort(),
-                            selected: _filterCategory,
-                            onChanged: (c) =>
-                                setState(() => _filterCategory = c),
-                          ),
-                        ],
-                      ],
+              child: Container(
+                color: const Color(0xFFF6F8F7),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SearchBar(
+                      controller: _searchCtrl,
+                      onChanged: (v) => setState(() {
+                        _searchQuery = v;
+                        if (v.isEmpty) _filterCategory = null;
+                      }),
                     ),
-                  ),
+                    if (categories.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _CategoryFilter(
+                        categories: categories.toList()..sort(),
+                        categoryCounts: categoryCounts,
+                        totalCount: activeItems.length,
+                        selected: _filterCategory,
+                        onChanged: (c) =>
+                            setState(() => _filterCategory = c),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              height: 76.0 + (categories.isNotEmpty ? 44.0 : 0.0),
+              height: 72.0 + (categories.isNotEmpty ? 42.0 : 0.0),
             ),
           ),
         ],
@@ -181,7 +163,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 .read(inventoryControllerProvider.notifier)
                 .refresh(userInitiated: true),
             child: DecoratedBox(
-              decoration: const BoxDecoration(color: AppColors.surface),
+              decoration: const BoxDecoration(color: Color(0xFFF6F8F7)),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                 children: [
@@ -392,13 +374,13 @@ class _SliverFilterDelegate extends SliverPersistentHeaderDelegate {
     return SizedBox(
       height: maxExtent,
       child: ColoredBox(
-        // Match the hero/header background so the rounded cutouts show green.
-        color: AppColors.forestNight,
+        // Match new hero gradient base so the rounded cutout is seamless.
+        color: const Color(0xFF041509),
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: DecoratedBox(
             decoration: const BoxDecoration(
-              color: AppColors.surface,
+              color: Color(0xFFF6F8F7),
               boxShadow: [
                 BoxShadow(
                   color: Color(0x1F0F172A),
@@ -434,7 +416,7 @@ class _SearchBar extends StatelessWidget {
       decoration: InputDecoration(
         hintText: 'Search items by name, category or SKU…',
         prefixIcon: const Icon(
-          Icons.search_rounded,
+          LucideIcons.search,
           size: 20,
           color: AppColors.forest,
         ),
@@ -472,10 +454,14 @@ class _SearchBar extends StatelessWidget {
 class _CategoryFilter extends StatelessWidget {
   const _CategoryFilter({
     required this.categories,
+    required this.categoryCounts,
+    required this.totalCount,
     required this.selected,
     required this.onChanged,
   });
   final List<String> categories;
+  final Map<String, int> categoryCounts;
+  final int totalCount;
   final String? selected;
   final ValueChanged<String?> onChanged;
 
@@ -487,6 +473,7 @@ class _CategoryFilter extends StatelessWidget {
         children: [
           _Chip(
             label: 'All',
+            count: totalCount,
             selected: selected == null,
             onTap: () => onChanged(null),
           ),
@@ -495,6 +482,7 @@ class _CategoryFilter extends StatelessWidget {
               padding: const EdgeInsets.only(left: 8),
               child: _Chip(
                 label: c,
+                count: categoryCounts[c] ?? 0,
                 selected: selected == c,
                 onTap: () => onChanged(selected == c ? null : c),
               ),
@@ -507,9 +495,14 @@ class _CategoryFilter extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip(
-      {required this.label, required this.selected, required this.onTap});
+  const _Chip({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
+  final int count;
   final bool selected;
   final VoidCallback onTap;
 
@@ -519,22 +512,55 @@ class _Chip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        padding: const EdgeInsets.fromLTRB(12, 6, 10, 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.mint : AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? const Color(0xFF073B2A) : Colors.white,
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.forest : AppColors.border,
-            width: selected ? 1.5 : 1.0,
+            color: selected
+                ? const Color(0xFF073B2A)
+                : const Color(0xFFE5E7EB),
           ),
+          boxShadow: selected
+              ? const [
+                  BoxShadow(
+                    color: Color(0x3A073B2A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? AppColors.forest : AppColors.muted,
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: selected ? Colors.white : const Color(0xFF6B7280),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.20)
+                    : const Color(0xFFF1F3F5),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                style: GoogleFonts.plusJakartaSans(
+                  color: selected ? Colors.white : const Color(0xFF9AA3AF),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

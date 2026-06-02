@@ -50,7 +50,7 @@ class DashboardHeroSection extends StatelessWidget {
             ),
 
             // Short green breathing room between quick-actions and cap
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
 
             // White rounded cap — the visible "curve" of the sheet
             const _SheetCap(),

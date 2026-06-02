@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-
-import '../../../../app/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SalesBottomBar extends StatelessWidget {
-  const SalesBottomBar({super.key, 
+  const SalesBottomBar({
+    super.key,
     required this.itemCount,
     required this.totalAmount,
     required this.paymentMethod,
@@ -22,119 +22,123 @@ class SalesBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: hasItems ? AppColors.forestNight : const Color(0xFFF8F9FC),
-        boxShadow: AppShadows.elevated,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D101828),
+            blurRadius: 20,
+            offset: Offset(0, -6),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
           child: Row(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: hasItems
-                      ? Colors.white.withValues(alpha: 0.15)
-                      : AppColors.forest.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: Icon(
-                        Icons.shopping_cart_outlined,
-                        color: hasItems ? Colors.white : AppColors.forest,
-                        size: 20,
-                      ),
+              // ── Cart icon with badge ──────────────────────────────────────
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: hasItems
+                          ? const Color(0xFFEAF6EF)
+                          : const Color(0xFFF1F3F5),
+                      borderRadius: BorderRadius.circular(13),
                     ),
-                    if (itemCount > 0)
-                      Positioned(
-                        right: -3,
-                        top: -3,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '$itemCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                            ),
+                    child: Icon(
+                      Icons.shopping_cart_outlined,
+                      size: 22,
+                      color: hasItems
+                          ? const Color(0xFF0F7A4A)
+                          : const Color(0xFF9AA3AF),
+                    ),
+                  ),
+                  if (itemCount > 0)
+                    Positioned(
+                      top: -5,
+                      right: -5,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 19),
+                        height: 19,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF168A55),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$itemCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
                           ),
                         ),
                       ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+
+              // ── Amount + label ────────────────────────────────────────────
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '₵$totalAmount',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF111827),
+                        letterSpacing: -0.3,
+                        height: 1.1,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    Text(
+                      hasItems
+                          ? '$itemCount ${itemCount == 1 ? 'item' : 'items'} · $paymentMethod'
+                          : 'Cart is empty',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF6B7280),
+                        height: 1.3,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    itemCount == 0 ? 'Cart is empty' : 'Ready to checkout',
-                    style: TextStyle(
-                      color: hasItems ? Colors.white : AppColors.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
+
+              // ── Checkout button ───────────────────────────────────────────
+              FilledButton.icon(
+                onPressed: (hasItems && !isBusy) ? onConfirm : null,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                iconAlignment: IconAlignment.end,
+                label: Text(isBusy ? 'Saving…' : 'Checkout'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF168A55),
+                  disabledBackgroundColor: const Color(0xFFCCCCCC),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  Text(
-                    '₵$totalAmount',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: hasItems ? Colors.white : AppColors.ink,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  Text(
-                    hasItems ? 'Payment at checkout' : paymentMethod,
-                    style: TextStyle(
-                      color: hasItems
-                          ? Colors.white.withValues(alpha: 0.65)
-                          : AppColors.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              SizedBox(
-                height: 46,
-                child: FilledButton.icon(
-                  onPressed: (hasItems && !isBusy) ? onConfirm : null,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                  iconAlignment: IconAlignment.end,
-                  label: Text(isBusy ? 'Saving...' : 'Checkout'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: hasItems ? Colors.white : AppColors.forest,
-                    foregroundColor: hasItems ? AppColors.forest : Colors.white,
-                    disabledBackgroundColor: const Color(0xFFCCCCCC),
-                    minimumSize: Size.zero,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  textStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
