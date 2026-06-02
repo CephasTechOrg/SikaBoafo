@@ -426,57 +426,61 @@ class _LoadedShell extends ConsumerWidget {
     final isTerminal = record.isTerminal;
     final canCancelDebt = (ref.watch(isMerchantOwnerProvider).valueOrNull ?? true) && !isTerminal;
 
-    return CustomScrollView(
-      clipBehavior: Clip.none,
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _DetailHeroWithStatusCard(
-            customer: detail.customer,
-            record: record,
-            onBack: () => context.pop(),
-            onRefresh: () =>
-                _refreshDetailFromServer(context, ref, receivableId),
-            canCancel: canCancelDebt,
-            onCancel: () =>
-                _confirmAndCancelReceivableDebt(context, ref, record),
-          ),
-        ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: ColoredBox(
-            color: DebtsUi.pageBackground,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const StaleBanner(
-                    screenKey: 'debt_detail',
-                    kvKey: KvCacheRepository.kDebtsTs,
-                  ),
-                  const SizedBox(height: 12),
-                  DebtMetaRow(record: record),
-                  const SizedBox(height: 12),
-                  DebtCustomerSummary(customer: detail.customer),
-                  const SizedBox(height: 12),
-                  DebtRemindersSection(
-                    record: record,
-                    customerName: detail.customer.name,
-                  ),
-                  const SizedBox(height: 12),
-                  DebtPaymentsHistory(payments: detail.payments),
-                  if (!isTerminal) ...[
-                    const SizedBox(height: 18),
-                    _ReceivePaymentCta(
-                      onTap: () => _handleReceivePayment(context, record),
-                    ),
-                  ],
-                ],
+    return Column(
+      children: [
+        Expanded(
+          child: CustomScrollView(
+            clipBehavior: Clip.none,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: _DetailHeroWithStatusCard(
+                  customer: detail.customer,
+                  record: record,
+                  onBack: () => context.pop(),
+                  onRefresh: () =>
+                      _refreshDetailFromServer(context, ref, receivableId),
+                  canCancel: canCancelDebt,
+                  onCancel: () =>
+                      _confirmAndCancelReceivableDebt(context, ref, record),
+                ),
               ),
-            ),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: ColoredBox(
+                  color: DebtsUi.pageBackground,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const StaleBanner(
+                          screenKey: 'debt_detail',
+                          kvKey: KvCacheRepository.kDebtsTs,
+                        ),
+                        const SizedBox(height: 12),
+                        DebtMetaRow(record: record),
+                        const SizedBox(height: 12),
+                        DebtCustomerSummary(customer: detail.customer),
+                        const SizedBox(height: 12),
+                        DebtRemindersSection(
+                          record: record,
+                          customerName: detail.customer.name,
+                        ),
+                        const SizedBox(height: 12),
+                        DebtPaymentsHistory(payments: detail.payments),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+        if (!isTerminal)
+          _PinnedPaymentBar(
+            onTap: () => _handleReceivePayment(context, record),
+          ),
       ],
     );
   }
@@ -489,47 +493,65 @@ class _LoadedShell extends ConsumerWidget {
   }
 }
 
-class _ReceivePaymentCta extends StatelessWidget {
-  const _ReceivePaymentCta({required this.onTap});
+/// Fixed bottom action bar — keeps "Receive Payment" reachable without
+/// scrolling past the cards (mirrors the mockup's fixed `.bottom-bar`).
+class _PinnedPaymentBar extends StatelessWidget {
+  const _PinnedPaymentBar({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              gradient: DebtsUi.ctaGradient,
+    return Container(
+      decoration: const BoxDecoration(
+        color: DebtsUi.surface,
+        border: Border(top: BorderSide(color: DebtsUi.borderNeutral)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D101828),
+            blurRadius: 20,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x59166B42),
-                  blurRadius: 20,
-                  offset: Offset(0, 6),
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                decoration: BoxDecoration(
+                  gradient: DebtsUi.ctaGradient,
+                  borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x40166B42),
+                      blurRadius: 16,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(LucideIcons.creditCard, size: 18, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'Receive Payment',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(LucideIcons.creditCard, size: 18, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Receive Payment',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

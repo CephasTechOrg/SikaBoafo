@@ -32,15 +32,12 @@ class DebtRemindersSection extends ConsumerWidget {
     final reminders = remindersAsync.valueOrNull ?? const <LocalDebtReminder>[];
     final canSchedule = !record.isTerminal;
     final activeCount = reminders.where((r) => r.isActive).length;
-    final isEmpty = !remindersAsync.isLoading &&
-        !remindersAsync.hasError &&
-        reminders.isEmpty;
 
     return DebtSectionCard(
       title: 'Reminders',
       icon: LucideIcons.bell,
       countBadge: activeCount > 0 ? activeCount : null,
-      trailing: (activeCount == 0 && canSchedule && !isEmpty)
+      trailing: (activeCount == 0 && canSchedule)
           ? _SetReminderButton(onTap: () => _openSheet(context, ref))
           : null,
       child: _buildBody(
@@ -92,7 +89,8 @@ class DebtRemindersSection extends ConsumerWidget {
     if (reminders.isEmpty) {
       return DebtSectionEmptyState(
         icon: LucideIcons.bell,
-        title: canSchedule ? 'No reminders set' : 'Reminders unavailable',
+        title: canSchedule ? 'Tap to set a reminder' : 'Reminders unavailable',
+        onTap: canSchedule ? () => _openSheet(context, ref) : null,
       );
     }
     return Column(

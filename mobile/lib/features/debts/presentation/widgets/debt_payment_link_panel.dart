@@ -561,38 +561,7 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ),
           const SizedBox(height: 12),
         ],
-        TextField(
-          controller: _amountCtrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-          ],
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: DebtsUi.greenDark,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-          decoration: InputDecoration(
-            prefixText: 'GHS ',
-            prefixStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: DebtsUi.textMuted,
-            ),
-            hintText: '0.00',
-            filled: true,
-            fillColor: DebtsUi.greenMid.withValues(alpha: 0.07),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 10,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
+        _AmountToCollectField(controller: _amountCtrl),
         const SizedBox(height: 14),
         if (!_isSynced)
           DebtPaymentPendingSyncNotice(
@@ -713,6 +682,8 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
           ),
           const SizedBox(height: 10),
         ],
+        _AmountToCollectField(controller: _amountCtrl),
+        const SizedBox(height: 12),
         if (expired || countdownLabel != null) ...[
           DebtPaymentExpiryBadge(expired: expired, label: countdownLabel),
           const SizedBox(height: 10),
@@ -805,6 +776,11 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ],
           ),
           const SizedBox(height: 8),
+          DebtPaymentMomoPushButton(
+            onTap: (_generating || _openingMomo) ? null : _openMomoPush,
+            busy: _openingMomo,
+          ),
+          const SizedBox(height: 8),
           Center(
             child: TextButton.icon(
               onPressed:
@@ -823,6 +799,66 @@ class _DebtPaymentLinkPanelState extends ConsumerState<DebtPaymentLinkPanel> {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Shared "amount to collect" input used in both the generate and active-link
+/// states of the pay-online panel, so the merchant can always set a partial
+/// amount before pushing a prompt, showing the QR, or sharing the link.
+class _AmountToCollectField extends StatelessWidget {
+  const _AmountToCollectField({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Amount to collect',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: DebtsUi.textSecondary,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+          ],
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: DebtsUi.greenDark,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+          decoration: InputDecoration(
+            prefixText: 'GHS ',
+            prefixStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: DebtsUi.textMuted,
+            ),
+            hintText: '0.00',
+            filled: true,
+            fillColor: DebtsUi.greenMid.withValues(alpha: 0.07),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
       ],
     );
   }

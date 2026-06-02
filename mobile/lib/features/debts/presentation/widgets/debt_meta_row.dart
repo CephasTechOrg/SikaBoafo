@@ -32,27 +32,28 @@ class DebtMetaRow extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            _InfoBox(
-              icon: Icons.receipt_long_outlined,
-              label: 'INVOICE',
-              value: invoice,
-            ),
-            const SizedBox(width: 10),
-            _InfoBox(
-              icon: Icons.calendar_today_outlined,
-              label: 'CREATED',
-              value: created,
-            ),
-            const SizedBox(width: 10),
-            _InfoBox(
-              icon: Icons.event_outlined,
-              label: 'DUE',
-              value: due,
-              tone: isOverdue ? DebtsUi.danger : null,
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: DebtsUi.surface,
+            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+            border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
+            boxShadow: DebtsUi.shadowNeutralSm,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _InfoCell(label: 'INVOICE', value: invoice),
+              const _CellDivider(),
+              _InfoCell(label: 'CREATED', value: created),
+              const _CellDivider(),
+              _InfoCell(
+                label: 'DUE',
+                value: due,
+                tone: isOverdue ? DebtsUi.danger : null,
+              ),
+            ],
+          ),
         ),
         if (isOverdue && daysUntilDue != null) ...[
           const SizedBox(height: 10),
@@ -84,68 +85,64 @@ class DebtMetaRow extends StatelessWidget {
   }
 }
 
-class _InfoBox extends StatelessWidget {
-  const _InfoBox({
-    required this.icon,
+/// One cell in the light meta strip (Invoice | Created | Due).
+class _InfoCell extends StatelessWidget {
+  const _InfoCell({
     required this.label,
     required this.value,
     this.tone,
   });
 
-  final IconData icon;
   final String label;
   final String value;
   final Color? tone;
 
   @override
   Widget build(BuildContext context) {
-    final accent = tone ?? DebtsUi.textMuted;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: DebtsUi.surface,
-          borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
-          border: Border.all(color: DebtsUi.border, width: 1.5),
-          boxShadow: DebtsUi.shadowSm,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 11, color: accent),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: DebtsUi.textMuted,
-                    ),
-                  ),
-                ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: DebtsUi.textMuted,
             ),
-            const SizedBox(height: 5),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: tone ?? DebtsUi.textPrimary,
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: tone ?? DebtsUi.textPrimary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+/// Thin vertical divider between meta cells.
+class _CellDivider extends StatelessWidget {
+  const _CellDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 30,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      color: DebtsUi.borderNeutral,
     );
   }
 }

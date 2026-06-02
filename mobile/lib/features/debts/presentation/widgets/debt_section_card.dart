@@ -99,15 +99,19 @@ class DebtSectionEmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     this.message,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String? message;
 
+  /// When set, the whole empty cell becomes tappable (e.g. "Set reminder").
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -146,6 +150,16 @@ class DebtSectionEmptyState extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DebtsUi.radiusSm),
+        child: content,
       ),
     );
   }
