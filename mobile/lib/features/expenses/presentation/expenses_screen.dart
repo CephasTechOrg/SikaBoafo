@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../debts/presentation/utils/debts_ui_tokens.dart';
 import '../data/expenses_repository.dart';
 import '../providers/expenses_providers.dart';
 import 'expenses_category_meta.dart';
@@ -34,7 +35,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   final _otherNameCtrl = TextEditingController();
 
   void _onAmountChanged() => setState(() {});
-
   void _onOtherNameChanged() => setState(() {});
 
   @override
@@ -88,37 +88,32 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         _category != 'other' || _otherNameCtrl.text.trim().isNotEmpty;
     final canSave = amountOk && otherOk;
     final canPop = ModalRoute.of(context)?.canPop ?? false;
-    const kLeadingGutter = 56.0;
-    final heroInset = canPop ? kLeadingGutter : 20.0;
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF6F8F7),
       body: Stack(
         children: [
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 210,
+                expandedHeight:
+                    MediaQuery.of(context).padding.top + 264,
                 pinned: true,
                 stretch: true,
-                leadingWidth: canPop ? kLeadingGutter : null,
-                leading: canPop
-                    ? IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white, size: 20),
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      )
-                    : null,
-                backgroundColor: AppColors.forestNight,
+                automaticallyImplyLeading: false,
+                backgroundColor: DebtsUi.greenDeep,
                 elevation: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   stretchModes: const [StretchMode.zoomBackground],
                   background: ExpensesHeader(
-                    leadingContentInset: heroInset,
                     monthMinor: monthMinor,
                     todayMinor: todayMinor,
                     todayEntryCount: todayEntryCount,
                     monthCategoryCount: monthCategories.length,
+                    canPop: canPop,
+                    onBack: () => Navigator.of(context).maybePop(),
+                    onRefresh: () =>
+                        ref.read(expensesControllerProvider.notifier).refresh(),
                   ),
                   title: innerBoxIsScrolled
                       ? const Text(
@@ -131,17 +126,17 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         )
                       : null,
                   centerTitle: false,
-                  titlePadding: EdgeInsetsDirectional.only(
-                    start: heroInset,
+                  titlePadding: const EdgeInsetsDirectional.only(
+                    start: 20,
                     bottom: 16,
                   ),
                 ),
               ),
-              // Extend the hero background slightly so the rounded sheet corners
-              // reveal the header color (no extra edge/underlay colors).
+              // Extend the hero background so the rounded sheet corners
+              // reveal the header colour.
               const SliverToBoxAdapter(
                 child: ColoredBox(
-                  color: AppColors.forestNight,
+                  color: DebtsUi.greenDeep,
                   child: SizedBox(height: 18),
                 ),
               ),
@@ -164,7 +159,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 onRefresh: () =>
                     ref.read(expensesControllerProvider.notifier).refresh(),
                 child: DecoratedBox(
-                  decoration: const BoxDecoration(color: AppColors.surface),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF6F8F7),
+                  ),
                   child: ListView(
                     padding: EdgeInsets.fromLTRB(
                       16,
@@ -264,22 +261,22 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
 
   @override
-  double get minExtent => 78;
+  double get minExtent => 66;
 
   @override
-  double get maxExtent => 78;
+  double get maxExtent => 66;
 
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return ColoredBox(
-      color: AppColors.forestNight,
+      color: DebtsUi.greenDeep,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          color: const Color(0xFFF6F8F7),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: DecoratedBox(
             decoration: BoxDecoration(
               boxShadow: overlapsContent
@@ -292,7 +289,7 @@ class _SliverExpensesTabDelegate extends SliverPersistentHeaderDelegate {
                     ]
                   : null,
             ),
-            child: SizedBox(height: maxExtent - 22, child: child),
+            child: SizedBox(height: maxExtent - 20, child: child),
           ),
         ),
       ),

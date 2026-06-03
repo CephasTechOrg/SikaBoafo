@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/premium_ui.dart';
 import '../expenses_category_meta.dart';
-import 'expense_category_chips.dart';
 
+/// "Log expense" tab content — matches the mockup exactly.
 class ExpensesLogView extends StatelessWidget {
   const ExpensesLogView({
     super.key,
@@ -23,280 +22,352 @@ class ExpensesLogView extends StatelessWidget {
   final TextEditingController otherNameCtrl;
   final ValueChanged<String> onCategoryChanged;
 
+  // Design tokens (local constants matching mockup)
+  static const Color _ink = Color(0xFF111827);
+  static const Color _ink2 = Color(0xFF6B7280);
+  static const Color _ink3 = Color(0xFF9AA3AF);
+  static const Color _line = Color(0xFFE5E7EB);
+  static const Color _card = Colors.white;
+  static const Color _warn = Color(0xFFBE8A2C);
+  static const Color _warnTint = Color(0xFFFAF3E1);
+  static const Color _green600 = Color(0xFF168A55);
+  static const Color _activeChipBg = Color(0xFF073B2A);
+
+  // Icon mapping per category key
+  static IconData _iconFor(String key) => switch (key) {
+        'inventory_purchase' => LucideIcons.package,
+        'transport' => LucideIcons.truck,
+        'utilities' => LucideIcons.zap,
+        'rent' => LucideIcons.building,
+        'salary' => LucideIcons.users,
+        'tax' => LucideIcons.landmark,
+        _ => LucideIcons.grid,
+      };
+
   @override
   Widget build(BuildContext context) {
-    return PremiumReveal(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.warningSoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.add_chart_rounded,
-                  size: 18,
-                  color: Color(0xFFB45309),
-                ),
+    final amountFilled = amountCtrl.text.trim().isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section intro ──────────────────────────────────────────────
+        const SizedBox(height: 18),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: _warnTint,
+                borderRadius: BorderRadius.circular(11),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Record spending',
-                      style: TextStyle(
-                        color: AppColors.ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
+              child: const Icon(
+                LucideIcons.clipboardList,
+                size: 19,
+                color: _warn,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Record spending',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
                     ),
-                    const SizedBox(height: 4),
+                  ),
+                  SizedBox(height: 1),
+                  Text(
+                    'Pick a category and enter the amount.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: _ink2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        // ── Category ───────────────────────────────────────────────────
+        const _SecLabel(text: 'Category', topMargin: 20, bottomMargin: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: kExpenseCategories.entries.map((entry) {
+            final isSel = entry.key == category;
+            return GestureDetector(
+              onTap: () => onCategoryChanged(entry.key),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                decoration: BoxDecoration(
+                  color: isSel ? _activeChipBg : _card,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isSel ? Colors.transparent : _line,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _iconFor(entry.key),
+                      size: 15,
+                      color: isSel ? Colors.white : _ink2,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
-                      category == 'other'
-                          ? 'For Other, name the expense, enter amount, optional note — then Save below.'
-                          : 'Pick a category, enter amount, add a note — then tap Save below.',
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12.5,
+                      entry.value.label,
+                      style: TextStyle(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        height: 1.35,
+                        color: isSel ? Colors.white : _ink2,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (catMinors.isNotEmpty) ...[
-            _CategoryBreakdownCard(catMinors: catMinors),
-            const SizedBox(height: 18),
-          ],
-          const PremiumSectionHeading(title: 'Details'),
-          const SizedBox(height: 12),
-          PremiumPanel(
-            child: Column(
+            );
+          }).toList(),
+        ),
+
+        // ── Other name field (only when 'other' is selected) ───────────
+        if (category == 'other') ...[
+          const _SecLabel(text: 'Name', topMargin: 18, bottomMargin: 10),
+          _NoteContainer(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Category',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                  ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(LucideIcons.tag, size: 18, color: _ink3),
                 ),
-                const SizedBox(height: 8),
-                ExpenseCategoryChips(
-                  selected: category,
-                  onChanged: onCategoryChanged,
-                ),
-                if (category == 'other') ...[
-                  const SizedBox(height: 14),
-                  _EField(
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
                     controller: otherNameCtrl,
-                    label: 'Other — what is this?',
-                    hint: 'e.g. Office supplies, Bank charges',
-                    prefixIcon: Icons.label_outline_rounded,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      color: _ink,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Office supplies, Bank charges',
+                      hintStyle: TextStyle(color: _ink3, fontSize: 14.5),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
-                ],
-                const SizedBox(height: 16),
-                _EField(
-                  controller: amountCtrl,
-                  label: 'Amount (GHS)',
-                  hint: '0.00',
-                  prefixIcon: Icons.payments_rounded,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                ),
-                const SizedBox(height: 12),
-                _EField(
-                  controller: noteCtrl,
-                  label: 'Note (optional)',
-                  hint: 'What was this expense for?',
-                  prefixIcon: Icons.notes_rounded,
-                  maxLines: 2,
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
 
-class _CategoryBreakdownCard extends StatelessWidget {
-  const _CategoryBreakdownCard({required this.catMinors});
-  final Map<String, int> catMinors;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = catMinors.values.fold(0, (a, b) => a + b);
-    if (total == 0) return const SizedBox.shrink();
-
-    final sorted = catMinors.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.warningSoft,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.pie_chart_rounded,
-                    color: Color(0xFFB45309), size: 17),
+        // ── Amount ─────────────────────────────────────────────────────
+        const _SecLabel(text: 'Amount', topMargin: 20, bottomMargin: 10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: amountFilled ? _green600 : _line,
+              width: 1.5,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 4,
+                offset: Offset(0, 1),
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Spending by category',
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Text(
+                '₵',
                 style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: amountFilled ? _ink : _ink3,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: amountCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                    letterSpacing: -0.4,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '0.00',
+                    hintStyle: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      color: _ink3,
+                      letterSpacing: -0.4,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              const Text(
+                'GHS',
+                style: TextStyle(
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.ink,
+                  color: _ink3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          ...sorted.take(6).map((entry) {
-            final meta = expenseMetaFor(entry.key);
-            final pct = entry.value / total;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: meta.bg,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(meta.icon, color: meta.color, size: 17),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              meta.label,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                              ),
-                            ),
-                            Text(
-                              '${(pct * 100).toStringAsFixed(1)}%',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.muted,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: pct,
-                            minHeight: 6,
-                            backgroundColor: meta.bg,
-                            valueColor: AlwaysStoppedAnimation<Color>(meta.color),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '₵${(entry.value / 100).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ],
+        ),
+
+        // ── Note ───────────────────────────────────────────────────────
+        const _SecLabelOptional(topMargin: 18, bottomMargin: 10),
+        _NoteContainer(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(LucideIcons.fileText, size: 18, color: _ink3),
               ),
-            );
-          }),
-        ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: noteCtrl,
+                  maxLines: null,
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    color: _ink,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Add a note for this expense…',
+                    hintStyle: TextStyle(color: _ink3, fontSize: 14.5),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+      ],
+    );
+  }
+}
+
+/// Shared container for the note / other-name text fields.
+class _NoteContainer extends StatelessWidget {
+  const _NoteContainer({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Section label — "CATEGORY", "AMOUNT", etc.
+class _SecLabel extends StatelessWidget {
+  const _SecLabel({
+    required this.text,
+    required this.topMargin,
+    required this.bottomMargin,
+  });
+  final String text;
+  final double topMargin;
+  final double bottomMargin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: topMargin, bottom: bottomMargin),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.10 * 12,
+          color: Color(0xFF9AA3AF),
+        ),
       ),
     );
   }
 }
 
-class _EField extends StatelessWidget {
-  const _EField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.prefixIcon,
-    this.keyboardType,
-    this.maxLines = 1,
+/// Special "NOTE · optional" label.
+class _SecLabelOptional extends StatelessWidget {
+  const _SecLabelOptional({
+    required this.topMargin,
+    required this.bottomMargin,
   });
-  final TextEditingController controller;
-  final String label, hint;
-  final IconData prefixIcon;
-  final TextInputType? keyboardType;
-  final int maxLines;
+  final double topMargin;
+  final double bottomMargin;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, size: 18),
-        filled: true,
-        fillColor: AppColors.surfaceAlt,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+    return Padding(
+      padding: EdgeInsets.only(top: topMargin, bottom: bottomMargin),
+      child: RichText(
+        text: const TextSpan(
+          children: [
+            TextSpan(
+              text: 'NOTE',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: Color(0xFF9AA3AF),
+              ),
+            ),
+            TextSpan(
+              text: ' · optional',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0,
+                color: Color(0xFF9AA3AF),
+              ),
+            ),
+          ],
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.forest, width: 1.4),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     );
   }

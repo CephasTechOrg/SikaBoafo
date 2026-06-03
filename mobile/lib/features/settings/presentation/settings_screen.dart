@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/router.dart';
-import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/session_role_providers.dart';
 import '../../../shared/utils/user_friendly_error.dart';
-import '../../../shared/widgets/premium_ui.dart';
-import '../../../shared/widgets/streak_hero_header.dart';
-import '../../dashboard/providers/dashboard_providers.dart';
 import '../../auth/data/auth_api.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../dashboard/presentation/widgets/dashboard_mockup_ui.dart';
+import '../../dashboard/providers/dashboard_providers.dart';
 import '../providers/biometric_pref_provider.dart';
 import '../providers/notification_prefs_provider.dart';
 import '../../../core/services/biometric_service.dart';
@@ -48,7 +48,8 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         actionsAlignment: MainAxisAlignment.end,
-        title: Text(enable ? 'Enable biometric unlock?' : 'Disable biometric unlock?'),
+        title: Text(
+            enable ? 'Enable biometric unlock?' : 'Disable biometric unlock?'),
         content: Text(
           enable
               ? 'You will be able to unlock SikaBoafo with fingerprint/Face ID on this device.'
@@ -57,16 +58,12 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(
-              minimumSize: const Size(92, 44),
-            ),
+            style: TextButton.styleFrom(minimumSize: const Size(92, 44)),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(92, 44),
-            ),
+            style: FilledButton.styleFrom(minimumSize: const Size(92, 44)),
             child: const Text('Yes'),
           ),
         ],
@@ -86,14 +83,12 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(
-              minimumSize: const Size(92, 44),
-            ),
+            style: TextButton.styleFrom(minimumSize: const Size(92, 44)),
             child: const Text('Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
+              backgroundColor: DashboardMockup.danger,
               foregroundColor: Colors.white,
               minimumSize: const Size(92, 44),
             ),
@@ -149,7 +144,7 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(ctx).pop(ok);
             },
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
+              backgroundColor: DashboardMockup.danger,
               foregroundColor: Colors.white,
               minimumSize: const Size(92, 44),
             ),
@@ -176,7 +171,6 @@ class SettingsScreen extends ConsumerWidget {
       );
       return;
     }
-
     if (!context.mounted) return;
     await ref.read(sessionServiceProvider).signOut();
     if (!context.mounted) return;
@@ -186,8 +180,8 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _toggleBiometric(BuildContext context, WidgetRef ref) async {
     final enabled = ref.read(biometricPrefProvider).valueOrNull ?? false;
     final bio = ref.read(biometricServiceProvider);
-    // Re-check real availability right before toggling.
-    final availability = await ref.read(_biometricAvailabilityProvider.future);
+    final availability =
+        await ref.read(_biometricAvailabilityProvider.future);
 
     if (availability != BiometricAvailability.available) {
       if (!context.mounted) return;
@@ -217,10 +211,9 @@ class SettingsScreen extends ConsumerWidget {
         reason: 'Enable biometric unlock for SikaBoafo.',
       );
       if (!ok) {
-        // If the device never showed a prompt, local_auth may consider the
-        // biometric not enrolled/supported. Refresh the availability and surface it.
         ref.invalidate(_biometricAvailabilityProvider);
-        final after = await ref.read(_biometricAvailabilityProvider.future);
+        final after =
+            await ref.read(_biometricAvailabilityProvider.future);
         if (!context.mounted) return;
         final msg = switch (after) {
           BiometricAvailability.notEnrolled =>
@@ -231,30 +224,30 @@ class SettingsScreen extends ConsumerWidget {
         };
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
-            behavior: SnackBarBehavior.floating,
-          ),
+              content: Text(msg), behavior: SnackBarBehavior.floating),
         );
         return;
       }
     }
 
-    final persisted = await ref.read(biometricPrefProvider.notifier).setEnabled(next);
+    final persisted =
+        await ref.read(biometricPrefProvider.notifier).setEnabled(next);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           persisted == next
-              ? (next ? 'Biometric unlock enabled.' : 'Biometric unlock disabled.')
+              ? (next
+                  ? 'Biometric unlock enabled.'
+                  : 'Biometric unlock disabled.')
               : 'Saved, but could not verify the setting. Please try again.',
         ),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-
-    // Keep the tile caption accurate after a toggle.
     ref.invalidate(_biometricAvailabilityProvider);
   }
 
@@ -262,116 +255,135 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ctxAsync = ref.watch(merchantContextProvider);
     final businessName = ctxAsync.valueOrNull?.businessName;
-    final subtitle = businessName ?? 'Manage your account';
+    final subtitle = businessName ?? 'Account & preferences';
     final biometricAsync = ref.watch(biometricPrefProvider);
     final availabilityAsync = ref.watch(_biometricAvailabilityProvider);
     final notifPrefsAsync = ref.watch(notificationPrefsProvider);
     final isOwnerAsync = ref.watch(isMerchantOwnerProvider);
     final showOwnerOnly = isOwnerAsync.valueOrNull ?? true;
 
-    const kLeadingGutter = 56.0;
+    final topPad = MediaQuery.paddingOf(context).top;
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 210,
-            pinned: true,
-            stretch: true,
-            leadingWidth: kLeadingGutter,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => context.pop(),
+      backgroundColor: DashboardMockup.bg,
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // ── Header ────────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              DashboardMockup.gutter,
+              topPad + 14,
+              DashboardMockup.gutter,
+              0,
             ),
-            backgroundColor: AppColors.forestNight,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
-              background: StreakHeroHeader(
-                leadingContentInset: kLeadingGutter,
-                title: 'Settings',
-                subtitle: subtitle,
-                badge: const PremiumBadge(
-                  label: 'Account & device',
-                  icon: Icons.tune_rounded,
-                  foreground: Colors.white,
-                  background: Color(0x24FFFFFF),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: DashboardMockup.lineSoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      LucideIcons.arrowLeft,
+                      size: 18,
+                      color: DashboardMockup.ink,
+                    ),
+                  ),
                 ),
-              ),
-              title: innerBoxIsScrolled
-                  ? const Text(
-                      'Settings',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Settings',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: DashboardMockup.ink,
+                          letterSpacing: -0.5,
+                          height: 1.1,
+                        ),
                       ),
-                    )
-                  : null,
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: kLeadingGutter,
-                bottom: 16,
-              ),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: DashboardMockup.ink2,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SliverToBoxAdapter(child: _SheetCap()),
-        ],
-        body: MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+
+          // ── Sections ──────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              DashboardMockup.gutter,
+              24,
+              DashboardMockup.gutter,
+              bottomPad + 32,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionLabel('Business'),
-                const SizedBox(height: 12),
+                // Business (owner only)
                 if (showOwnerOnly) ...[
+                  const _SecLabel('Business'),
+                  const SizedBox(height: 12),
                   _SettingsTile(
-                    icon: Icons.business_outlined,
-                    iconBg: AppColors.infoSoft,
-                    iconColor: AppColors.navy,
+                    icon: LucideIcons.building,
+                    iconBg: DashboardMockup.greenTint,
+                    iconColor: DashboardMockup.green700,
                     label: 'Business Profile',
-                    caption: 'Edit name, type and store details',
-                    onTap: () => context.push(AppRoute.businessProfile.path),
+                    sub: 'Edit name, type and store details',
+                    onTap: () =>
+                        context.push(AppRoute.businessProfile.path),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   _SettingsTile(
-                    icon: Icons.group_outlined,
-                    iconBg: AppColors.successSoft,
-                    iconColor: AppColors.forest,
+                    icon: LucideIcons.users,
+                    iconBg: DashboardMockup.greenTint,
+                    iconColor: DashboardMockup.green700,
                     label: 'Staff & Team',
-                    caption: 'Invite teammates and manage access',
+                    sub: 'Invite teammates and manage access',
                     onTap: () => context.push(AppRoute.staff.path),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   _SettingsTile(
-                    icon: Icons.payment_outlined,
-                    iconBg: AppColors.warningSoft,
-                    iconColor: AppColors.warning,
+                    icon: LucideIcons.creditCard,
+                    iconBg: DashboardMockup.warnTint,
+                    iconColor: DashboardMockup.warn,
                     label: 'Paystack Payments',
-                    caption: 'Connect your Paystack account',
+                    sub: 'Connect your Paystack account',
                     onTap: () => context.push(AppRoute.paystack.path),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   _SettingsTile(
-                    icon: Icons.history_rounded,
-                    iconBg: AppColors.surfaceAlt,
-                    iconColor: AppColors.ink,
-                    label: 'Activity',
-                    caption: 'Review owner audit trail',
+                    icon: LucideIcons.clipboardList,
+                    iconBg: DashboardMockup.lineSoft,
+                    iconColor: DashboardMockup.ink2,
+                    label: 'Activity Log',
+                    sub: 'Review owner audit trail',
                     onTap: () => context.push(AppRoute.activity.path),
                   ),
+                  const SizedBox(height: 28),
                 ],
-                const SizedBox(height: 24),
-                const _SectionLabel('Notifications'),
+
+                // Notifications
+                const _SecLabel('Notifications'),
                 const SizedBox(height: 12),
                 notifPrefsAsync.when(
                   loading: () => const Center(
@@ -380,76 +392,77 @@ class SettingsScreen extends ConsumerWidget {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (e, _) => _InlineError(message: userFriendlyError(e)),
+                  error: (e, _) =>
+                      _InlineError(message: userFriendlyError(e)),
                   data: (prefs) => Column(
                     children: [
                       _SwitchTile(
-                        icon: Icons.sync_rounded,
-                        iconBg: AppColors.infoSoft,
-                        iconColor: AppColors.navy,
+                        icon: LucideIcons.refreshCw,
+                        iconBg: DashboardMockup.greenTint,
+                        iconColor: DashboardMockup.green700,
                         label: 'Sync status',
-                        caption: 'Offline and syncing updates',
+                        sub: 'Offline and syncing updates',
                         value: prefs.syncStatusEnabled,
                         onChanged: (v) => ref
                             .read(notificationPrefsProvider.notifier)
                             .setSyncStatusEnabled(v),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 11),
                       _SwitchTile(
-                        icon: Icons.event_note_rounded,
-                        iconBg: AppColors.warningSoft,
-                        iconColor: AppColors.warning,
+                        icon: LucideIcons.bell,
+                        iconBg: DashboardMockup.warnTint,
+                        iconColor: DashboardMockup.warn,
                         label: 'Debt reminders',
-                        caption: 'Custom reminders you set per debt',
+                        sub: 'Custom reminders you set per debt',
                         value: prefs.debtRemindersEnabled,
                         onChanged: (v) => ref
                             .read(notificationPrefsProvider.notifier)
                             .setDebtRemindersEnabled(v),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 11),
                       _SwitchTile(
-                        icon: Icons.inventory_2_outlined,
-                        iconBg: AppColors.warningSoft,
-                        iconColor: AppColors.warning,
+                        icon: LucideIcons.package,
+                        iconBg: DashboardMockup.warnTint,
+                        iconColor: DashboardMockup.warn,
                         label: 'Low stock',
-                        caption: 'Alerts when stock hits your thresholds',
+                        sub: 'Alerts when stock hits your thresholds',
                         value: prefs.lowStockEnabled,
                         onChanged: (v) => ref
                             .read(notificationPrefsProvider.notifier)
                             .setLowStockEnabled(v),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 11),
                       _SwitchTile(
-                        icon: Icons.payments_outlined,
-                        iconBg: AppColors.successSoft,
-                        iconColor: AppColors.forest,
+                        icon: LucideIcons.wallet,
+                        iconBg: DashboardMockup.greenTint,
+                        iconColor: DashboardMockup.green700,
                         label: 'Payment events',
-                        caption: 'Paystack success/failure alerts',
+                        sub: 'Paystack success/failure alerts',
                         value: prefs.paymentEventsEnabled,
                         onChanged: (v) => ref
                             .read(notificationPrefsProvider.notifier)
                             .setPaymentEventsEnabled(v),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 11),
                       _SwitchTile(
-                        icon: Icons.summarize_outlined,
-                        iconBg: AppColors.surfaceAlt,
-                        iconColor: AppColors.ink,
+                        icon: LucideIcons.barChart2,
+                        iconBg: DashboardMockup.lineSoft,
+                        iconColor: DashboardMockup.ink2,
                         label: 'Daily summary',
-                        caption: 'A daily snapshot of sales and activity',
+                        sub: 'A daily snapshot of sales and activity',
                         value: prefs.dailySummaryEnabled,
                         onChanged: (v) => ref
                             .read(notificationPrefsProvider.notifier)
                             .setDailySummaryEnabled(v),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 11),
                       _SettingsTile(
-                        icon: Icons.schedule_rounded,
-                        iconBg: AppColors.surfaceAlt,
-                        iconColor: AppColors.ink,
+                        icon: LucideIcons.clock,
+                        iconBg: DashboardMockup.lineSoft,
+                        iconColor: DashboardMockup.ink2,
                         label: 'Daily summary time',
-                        caption:
-                            _formatTimeOfDay(context, prefs.dailySummaryTime),
+                        sub: _formatTimeOfDay(
+                            context, prefs.dailySummaryTime),
                         onTap: () async {
                           final picked = await showTimePicker(
                             context: context,
@@ -464,55 +477,58 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                const _SectionLabel('Account'),
+                const SizedBox(height: 28),
+
+                // Account
+                const _SecLabel('Account'),
                 const SizedBox(height: 12),
                 _SettingsTile(
-                icon: Icons.fingerprint_rounded,
-                iconBg: AppColors.surfaceAlt,
-                iconColor: AppColors.ink,
-                label: 'Biometric unlock',
-                caption: _biometricCaption(
-                  availabilityAsync.valueOrNull,
-                  biometricAsync,
+                  icon: LucideIcons.fingerprint,
+                  iconBg: DashboardMockup.lineSoft,
+                  iconColor: DashboardMockup.ink2,
+                  label: 'Biometric unlock',
+                  sub: _biometricCaption(
+                    availabilityAsync.valueOrNull,
+                    biometricAsync,
+                  ),
+                  onTap: availabilityAsync.valueOrNull ==
+                          BiometricAvailability.available
+                      ? () => _toggleBiometric(context, ref)
+                      : () {
+                          final msg =
+                              switch (availabilityAsync.valueOrNull) {
+                            BiometricAvailability.notEnrolled =>
+                              'No biometrics enrolled. Enable Face/Fingerprint in phone settings first.',
+                            BiometricAvailability.notSupported =>
+                              'Biometrics not supported on this device.',
+                            _ => 'Biometrics not available right now.',
+                          };
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(msg),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
                 ),
-                onTap: availabilityAsync.valueOrNull ==
-                        BiometricAvailability.available
-                    ? () => _toggleBiometric(context, ref)
-                    : () {
-                        final msg = switch (availabilityAsync.valueOrNull) {
-                          BiometricAvailability.notEnrolled =>
-                            'No biometrics enrolled. Enable Face/Fingerprint in phone settings first.',
-                          BiometricAvailability.notSupported =>
-                            'Biometrics not supported on this device.',
-                          _ => 'Biometrics not available right now.',
-                        };
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(msg),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 11),
                 _SettingsTile(
-                  icon: Icons.logout_rounded,
-                  iconBg: AppColors.dangerSoft,
-                  iconColor: AppColors.danger,
-                  label: 'Sign Out',
-                  caption: 'End this session on this device',
+                  icon: LucideIcons.logOut,
+                  iconBg: DashboardMockup.dangerTint,
+                  iconColor: DashboardMockup.danger,
+                  label: 'Sign out',
+                  sub: 'End this session on this device',
                   isDestructive: true,
                   onTap: () => _signOut(context, ref),
                 ),
                 if (showOwnerOnly) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 11),
                   _SettingsTile(
-                    icon: Icons.delete_forever_rounded,
-                    iconBg: AppColors.dangerSoft,
-                    iconColor: AppColors.danger,
+                    icon: LucideIcons.trash2,
+                    iconBg: DashboardMockup.dangerTint,
+                    iconColor: DashboardMockup.danger,
                     label: 'Delete account',
-                    caption: 'Permanently delete your account access',
+                    sub: 'Permanently delete your account access',
                     isDestructive: true,
                     onTap: () => _deleteAccount(context, ref),
                   ),
@@ -520,32 +536,122 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class _SheetCap extends StatelessWidget {
-  const _SheetCap();
+// ── Section label ─────────────────────────────────────────────────────────────
+
+class _SecLabel extends StatelessWidget {
+  const _SecLabel(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 28,
-      child: ColoredBox(
-        // Match the hero/header background so the rounded cutouts show green.
-        color: AppColors.forestNight,
-        child: ClipRRect(
-          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: DashboardMockup.ink3,
+      ),
+    );
+  }
+}
+
+// ── Navigation tile ───────────────────────────────────────────────────────────
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.label,
+    required this.sub,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String label;
+  final String sub;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor =
+        isDestructive ? DashboardMockup.danger : DashboardMockup.ink;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius:
+            BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Material(
+        color: DashboardMockup.card,
+        borderRadius:
+            BorderRadius.circular(DashboardMockup.cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1F0F172A),
-                  blurRadius: 28,
-                  offset: Offset(0, -8),
+              border: Border.all(color: DashboardMockup.lineSoft),
+              borderRadius:
+                  BorderRadius.circular(DashboardMockup.cardRadius),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, size: 22, color: iconColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: labelColor,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        sub,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: DashboardMockup.ink2,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  LucideIcons.chevronRight,
+                  size: 20,
+                  color: DashboardMockup.ink3,
                 ),
               ],
             ),
@@ -556,109 +662,7 @@ class _SheetCap extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
-          ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.label,
-    required this.onTap,
-    this.caption,
-    this.isDestructive = false,
-  });
-
-  final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
-  final String label;
-  final String? caption;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  @override
-  Widget build(BuildContext context) {
-    final labelColor = isDestructive ? AppColors.danger : AppColors.ink;
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: labelColor,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    if (caption != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        caption!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.muted,
-                size: 22,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ── Toggle tile ───────────────────────────────────────────────────────────────
 
 class _SwitchTile extends StatelessWidget {
   const _SwitchTile({
@@ -666,7 +670,7 @@ class _SwitchTile extends StatelessWidget {
     required this.iconBg,
     required this.iconColor,
     required this.label,
-    required this.caption,
+    required this.sub,
     required this.value,
     required this.onChanged,
   });
@@ -675,68 +679,83 @@ class _SwitchTile extends StatelessWidget {
   final Color iconBg;
   final Color iconColor;
   final String label;
-  final String caption;
+  final String sub;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: () => onChanged(!value),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(14),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius:
+            BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Material(
+        color: DashboardMockup.card,
+        borderRadius:
+            BorderRadius.circular(DashboardMockup.cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(15, 15, 8, 15),
+            decoration: BoxDecoration(
+              border: Border.all(color: DashboardMockup.lineSoft),
+              borderRadius:
+                  BorderRadius.circular(DashboardMockup.cardRadius),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, size: 22, color: iconColor),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        letterSpacing: -0.2,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: DashboardMockup.ink,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      caption,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.muted,
-                        height: 1.35,
+                      const SizedBox(height: 2),
+                      Text(
+                        sub,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: DashboardMockup.ink2,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Switch(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: AppColors.forest,
-              ),
-            ],
+                Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: DashboardMockup.green700,
+                  inactiveThumbColor: DashboardMockup.ink3,
+                  inactiveTrackColor: DashboardMockup.lineSoft,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -744,9 +763,10 @@ class _SwitchTile extends StatelessWidget {
   }
 }
 
+// ── Inline error ──────────────────────────────────────────────────────────────
+
 class _InlineError extends StatelessWidget {
   const _InlineError({required this.message});
-
   final String message;
 
   @override
@@ -754,19 +774,26 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.dangerSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
+        color: DashboardMockup.dangerTint,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
         border: Border.all(color: const Color(0xFFF2C9C0)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.danger),
+          const Icon(
+            LucideIcons.alertCircle,
+            color: DashboardMockup.danger,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: AppColors.danger),
+              style: const TextStyle(
+                color: DashboardMockup.danger,
+                fontSize: 14,
+              ),
             ),
           ),
         ],

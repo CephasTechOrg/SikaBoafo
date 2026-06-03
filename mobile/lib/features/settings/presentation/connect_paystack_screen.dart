@@ -1,16 +1,18 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dio/dio.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/env/app_config.dart';
-import '../../../app/theme/app_theme.dart';
-import '../../../shared/providers/core_providers.dart';
-import '../../../shared/widgets/premium_ui.dart';
-import '../../../shared/widgets/streak_hero_header.dart';
 import '../../../data/local/kv_cache_repository.dart';
+import '../../../shared/providers/core_providers.dart';
+import '../../dashboard/presentation/widgets/dashboard_mockup_ui.dart';
 import '../data/settings_api.dart';
+
+// ── Providers ─────────────────────────────────────────────────────────────────
 
 final paystackSettingsApiProvider = Provider<SettingsApi>(
   (ref) => SettingsApi(
@@ -23,6 +25,8 @@ final paystackConnectionProvider = FutureProvider<PaystackConnectionSettings>(
   (ref) => ref.watch(paystackSettingsApiProvider).fetchPaystackConnection(),
 );
 
+// ── Screen ────────────────────────────────────────────────────────────────────
+
 class ConnectPaystackScreen extends ConsumerStatefulWidget {
   const ConnectPaystackScreen({super.key});
 
@@ -31,42 +35,15 @@ class ConnectPaystackScreen extends ConsumerStatefulWidget {
       _ConnectPaystackScreenState();
 }
 
-class _SheetCap extends StatelessWidget {
-  const _SheetCap();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 28,
-      child: ColoredBox(
-        color: Color(0xFF041C0B),
-        child: ClipRRect(
-          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1F0F172A),
-                  blurRadius: 28,
-                  offset: Offset(0, -8),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
-  final TextEditingController _accountLabelCtrl = TextEditingController();
-  final TextEditingController _publicKeyCtrl = TextEditingController();
-  final TextEditingController _secretKeyCtrl = TextEditingController();
-  String _mode = 'test';
-  bool _saving = false;
-  bool _disconnecting = false;
+class _ConnectPaystackScreenState
+    extends ConsumerState<ConnectPaystackScreen> {
+  final _accountLabelCtrl = TextEditingController();
+  final _publicKeyCtrl    = TextEditingController();
+  final _secretKeyCtrl    = TextEditingController();
+  String _mode            = 'test';
+  bool   _saving          = false;
+  bool   _disconnecting   = false;
+  bool   _obscureSecret   = true;
 
   @override
   void dispose() {
@@ -74,6 +51,39 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     _publicKeyCtrl.dispose();
     _secretKeyCtrl.dispose();
     super.dispose();
+  }
+
+  static InputDecoration _field(String label, {String? hint, String? helper,
+      Widget? suffix, Widget? prefix}) {
+    final radius = BorderRadius.circular(14);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      helperText: helper,
+      helperMaxLines: 2,
+      suffixIcon: suffix,
+      prefixIcon: prefix,
+      hintStyle: const TextStyle(color: DashboardMockup.ink3, fontSize: 14.5),
+      helperStyle: const TextStyle(color: DashboardMockup.ink3, fontSize: 12),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      labelStyle: const TextStyle(
+        color: DashboardMockup.ink3, fontSize: 14, fontWeight: FontWeight.w500),
+      floatingLabelStyle: const TextStyle(
+        color: DashboardMockup.green700, fontSize: 12.5, fontWeight: FontWeight.w600),
+      border: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: const BorderSide(color: DashboardMockup.line)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: const BorderSide(color: DashboardMockup.line)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide:
+              const BorderSide(color: DashboardMockup.green700, width: 1.5)),
+    );
   }
 
   @override
@@ -84,138 +94,225 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     );
 
     final connectionAsync = ref.watch(paystackConnectionProvider);
-    final connection = connectionAsync.valueOrNull;
-    final isConnected = connection?.isConnected ?? false;
+    final connection      = connectionAsync.valueOrNull;
+    final isConnected     = connection?.isConnected ?? false;
     final activeModeState = _activeModeState(connection);
+    final busy            = _saving || _disconnecting;
 
-    const kLeadingGutter = 56.0;
-    final subtitle = isConnected
+    final topPad    = MediaQuery.paddingOf(context).top;
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final subtitle  = isConnected
         ? 'Connected · ${connection?.mode == 'live' ? 'Live' : 'Test'} mode'
-        : 'Not connected — save credentials to start';
+        : 'Not connected';
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 210,
-            pinned: true,
-            stretch: true,
-            leadingWidth: kLeadingGutter,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => context.pop(),
-            ),
-            backgroundColor: const Color(0xFF041C0B),
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
-              background: StreakHeroHeader(
-                leadingContentInset: kLeadingGutter,
-                title: 'Paystack',
-                subtitle: subtitle,
-                badge: const PremiumBadge(
-                  label: 'Payments',
-                  icon: Icons.payments_outlined,
-                  foreground: Colors.white,
-                  background: Color(0x24FFFFFF),
-                ),
-              ),
-              title: innerBoxIsScrolled
-                  ? const Text(
-                      'Paystack',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
+      backgroundColor: DashboardMockup.bg,
+      body: RefreshIndicator(
+        color: DashboardMockup.green700,
+        onRefresh: () async {
+          ref.invalidate(paystackConnectionProvider);
+          await ref.read(paystackConnectionProvider.future);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          children: [
+            // ── Header ──────────────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  DashboardMockup.gutter, topPad + 14,
+                  DashboardMockup.gutter, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.pop(),
+                    child: Container(
+                      width: 36, height: 36,
+                      decoration: BoxDecoration(
+                        color: DashboardMockup.lineSoft,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    )
-                  : null,
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: kLeadingGutter,
-                bottom: 16,
+                      child: const Icon(LucideIcons.arrowLeft,
+                          size: 18, color: DashboardMockup.ink),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Paystack',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 26, fontWeight: FontWeight.w800,
+                              color: DashboardMockup.ink,
+                              letterSpacing: -0.5, height: 1.1)),
+                        Text(subtitle,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13.5, fontWeight: FontWeight.w500,
+                              color: DashboardMockup.ink2, height: 1.3)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SliverToBoxAdapter(child: _SheetCap()),
-        ],
-        body: MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
-            child: connectionAsync.when(
-              loading: () => _buildLoadingSkeleton(),
-              error: (error, _) => _buildErrorPanel(error),
-              data: (_) => RefreshIndicator(
-                color: AppColors.forest,
-                onRefresh: () async {
-                  ref.invalidate(paystackConnectionProvider);
-                  await ref.read(paystackConnectionProvider.future);
-                },
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+
+            // ── Content ─────────────────────────────────────────────────
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  DashboardMockup.gutter, 24,
+                  DashboardMockup.gutter, bottomPad + 32),
+              child: connectionAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: SizedBox(width: 28, height: 28,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: DashboardMockup.green700)),
+                  ),
+                ),
+                error: (e, _) => _ErrorCard(
+                  onRetry: () => ref.invalidate(paystackConnectionProvider)),
+                data: (_) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ConnectionPill(isConnected: isConnected),
-                    const SizedBox(height: 14),
+                    // ── Connection status ──────────────────────────────
                     if (isConnected) ...[
-                      _StatusRows(connection: connection!),
-                      const SizedBox(height: 14),
+                      _StatusCard(connection: connection!),
+                      const SizedBox(height: 24),
                     ],
-                    _CredentialsForm(
-                      accountLabelCtrl: _accountLabelCtrl,
-                      publicKeyCtrl: _publicKeyCtrl,
-                      secretKeyCtrl: _secretKeyCtrl,
-                      mode: _mode,
-                      saving: _saving,
-                      disconnecting: _disconnecting,
-                      isConnected: isConnected,
-                      activeModeState: activeModeState,
-                      onModeChanged: (value) => setState(() => _mode = value),
-                      onSave: _saving ? null : _saveConnection,
-                      onDisconnect: (isConnected && !_disconnecting && !_saving)
-                          ? _disconnectConnection
-                          : null,
+
+                    // ── Credentials ────────────────────────────────────
+                    const _SecLabel('Credentials'),
+                    const SizedBox(height: 12),
+                    _FormCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Mode toggle
+                          Row(children: [
+                            _ModeChip(
+                              label: 'Test Mode',
+                              selected: _mode == 'test',
+                              onTap: busy ? null
+                                  : () => setState(() => _mode = 'test'),
+                            ),
+                            const SizedBox(width: 8),
+                            _ModeChip(
+                              label: 'Live Mode',
+                              selected: _mode == 'live',
+                              onTap: busy ? null
+                                  : () => setState(() => _mode = 'live'),
+                            ),
+                          ]),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: _accountLabelCtrl,
+                            enabled: !busy,
+                            textCapitalization: TextCapitalization.words,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: DashboardMockup.ink),
+                            decoration: _field('Account label',
+                                hint: 'e.g. Main Business Account'),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _publicKeyCtrl,
+                            enabled: !busy,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: DashboardMockup.ink),
+                            decoration: _field(
+                              'Public key',
+                              hint: _mode == 'live'
+                                  ? 'pk_live_…' : 'pk_test_…',
+                              helper: activeModeState?.publicKeyMasked != null
+                                  ? 'Saved: ${activeModeState!.publicKeyMasked}'
+                                  : 'Paystack Dashboard → Settings → API Keys',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _secretKeyCtrl,
+                            enabled: !busy,
+                            obscureText: _obscureSecret,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: DashboardMockup.ink),
+                            decoration: _field(
+                              activeModeState?.configured == true
+                                  ? 'Secret key (leave blank to keep)'
+                                  : 'Secret key *',
+                              hint: _mode == 'live'
+                                  ? 'sk_live_…' : 'sk_test_…',
+                              helper: activeModeState?.secretKeyMasked != null
+                                  ? 'Saved: ${activeModeState!.secretKeyMasked}'
+                                  : 'Encrypted and stored securely.',
+                              suffix: IconButton(
+                                icon: Icon(
+                                  _obscureSecret
+                                      ? LucideIcons.eye
+                                      : LucideIcons.eyeOff,
+                                  size: 18,
+                                  color: DashboardMockup.ink3,
+                                ),
+                                onPressed: busy ? null
+                                    : () => setState(
+                                        () => _obscureSecret = !_obscureSecret),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Save button
+                          _ActionButton(
+                            label: _saving ? 'Verifying…' : 'Save & Verify',
+                            icon: _saving ? null : LucideIcons.check,
+                            loading: _saving,
+                            color: DashboardMockup.green600,
+                            onPressed: (_saving || _disconnecting)
+                                ? null : _saveConnection,
+                          ),
+                          if (isConnected) ...[
+                            const SizedBox(height: 10),
+                            _ActionButton(
+                              label: _disconnecting
+                                  ? 'Disconnecting…' : 'Disconnect',
+                              icon: _disconnecting ? null : LucideIcons.x,
+                              loading: _disconnecting,
+                              color: DashboardMockup.dangerTint,
+                              textColor: DashboardMockup.danger,
+                              onPressed: (_saving || _disconnecting)
+                                  ? null : _disconnectConnection,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    const _WebhookRow(),
+
+                    // ── Webhook ────────────────────────────────────────
+                    const SizedBox(height: 24),
+                    const _SecLabel('Webhook'),
+                    const SizedBox(height: 12),
+                    _WebhookTile(
+                      url: AppConfig.apiV1('/webhooks/paystack').toString(),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Paste this in Paystack Dashboard → Settings → Webhooks',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5, fontWeight: FontWeight.w500,
+                        color: DashboardMockup.ink3),
+                    ),
                   ],
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildLoadingSkeleton() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-      children: [
-        const _SkeletonPanel(height: 90),
-        const SizedBox(height: 14),
-        const _SkeletonPanel(height: 300),
-        const SizedBox(height: 14),
-        const _SkeletonPanel(height: 60),
-      ],
-    );
-  }
-
-  Widget _buildErrorPanel(Object error) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-      children: [
-        _LoadErrorPanel(
-          onRetry: () => ref.invalidate(paystackConnectionProvider),
-        ),
-      ],
     );
   }
 
@@ -223,44 +320,41 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _accountLabelCtrl.text = connection.accountLabel ?? '';
-      _publicKeyCtrl.text = '';
-      _secretKeyCtrl.text = '';
+      _publicKeyCtrl.text    = '';
+      _secretKeyCtrl.text    = '';
       setState(() => _mode = connection.mode);
     });
   }
 
-  PaystackModeState? _activeModeState(PaystackConnectionSettings? connection) {
-    if (connection == null) return null;
-    return _mode == 'live' ? connection.live : connection.test;
+  PaystackModeState? _activeModeState(PaystackConnectionSettings? c) {
+    if (c == null) return null;
+    return _mode == 'live' ? c.live : c.test;
   }
 
   Future<void> _saveConnection() async {
-    final publicKey = _publicKeyCtrl.text.trim();
-    final secretKey = _secretKeyCtrl.text.trim();
-    final activeModeState = _activeModeState(
-      ref.read(paystackConnectionProvider).valueOrNull,
-    );
-    if (publicKey.isNotEmpty && !publicKey.startsWith('pk_')) {
+    final pub = _publicKeyCtrl.text.trim();
+    final sec = _secretKeyCtrl.text.trim();
+    final modeState =
+        _activeModeState(ref.read(paystackConnectionProvider).valueOrNull);
+
+    if (pub.isNotEmpty && !pub.startsWith('pk_')) {
       _showError('Public key must start with "pk_test_" or "pk_live_".');
       return;
     }
-    if (secretKey.isEmpty && !(activeModeState?.configured ?? false)) {
-      _showError(
-          'Secret key is required to connect this mode for the first time.');
+    if (sec.isEmpty && !(modeState?.configured ?? false)) {
+      _showError('Secret key is required to connect for the first time.');
       return;
     }
-    if (secretKey.isNotEmpty) {
-      if (secretKey.startsWith('pk_')) {
-        _showError('Enter the Paystack secret key, not the public key.');
+    if (sec.isNotEmpty) {
+      if (sec.startsWith('pk_')) {
+        _showError('Enter the secret key, not the public key.');
         return;
       }
-      final expectedPrefix = _mode == 'live' ? 'sk_live_' : 'sk_test_';
-      if (!secretKey.startsWith(expectedPrefix)) {
-        _showError(
-          _mode == 'live'
-              ? 'Live mode requires an "sk_live_" secret key.'
-              : 'Test mode requires an "sk_test_" secret key.',
-        );
+      final prefix = _mode == 'live' ? 'sk_live_' : 'sk_test_';
+      if (!sec.startsWith(prefix)) {
+        _showError(_mode == 'live'
+            ? 'Live mode requires an "sk_live_" key.'
+            : 'Test mode requires an "sk_test_" key.');
         return;
       }
     }
@@ -268,8 +362,8 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
     setState(() => _saving = true);
     try {
       await ref.read(paystackSettingsApiProvider).savePaystackConnection(
-            publicKey: publicKey.isEmpty ? null : publicKey,
-            secretKey: secretKey.isEmpty ? null : secretKey,
+            publicKey: pub.isEmpty ? null : pub,
+            secretKey: sec.isEmpty ? null : sec,
             mode: _mode,
             accountLabel: _accountLabelCtrl.text,
           );
@@ -277,21 +371,21 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       _secretKeyCtrl.clear();
       ref.invalidate(paystackConnectionProvider);
       if (!mounted) return;
-      _showSuccess('Paystack credentials saved successfully.');
+      _showSuccess('Paystack credentials saved.');
     } catch (error) {
       if (!mounted) return;
-      _showError(_humanizeSettingsError(error));
+      _showError(_humanizeError(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _disconnectConnection() async {
-    final confirmed = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => const _DisconnectConfirmDialog(),
+      builder: (_) => const _DisconnectDialog(),
     );
-    if (confirmed != true || !mounted) return;
+    if (ok != true || !mounted) return;
 
     setState(() => _disconnecting = true);
     try {
@@ -303,206 +397,192 @@ class _ConnectPaystackScreenState extends ConsumerState<ConnectPaystackScreen> {
       _showSuccess('Paystack disconnected.');
     } catch (error) {
       if (!mounted) return;
-      _showError(_humanizeSettingsError(error));
+      _showError(_humanizeError(error));
     } finally {
       if (mounted) setState(() => _disconnecting = false);
     }
   }
 
-  String _humanizeSettingsError(Object error) {
+  String _humanizeError(Object error) {
     if (error is DioException) {
-      final data = error.response?.data;
+      final data   = error.response?.data;
+      final status = error.response?.statusCode;
       if (data is Map<String, dynamic> && data['detail'] is String) {
-        final detail = (data['detail'] as String).trim();
-        if (detail.isNotEmpty) return detail;
+        final d = (data['detail'] as String).trim();
+        if (d.isNotEmpty) return d;
       }
-      final statusCode = error.response?.statusCode;
-      if (statusCode == 503) {
-        return 'Server configuration error. Please contact support.';
-      }
-      if (statusCode == 502) {
-        return 'Could not reach Paystack to verify the key. Check your internet and try again.';
-      }
-      if (statusCode == 400) {
-        return 'Invalid key. Check you copied the correct secret key for this mode.';
-      }
-      if (statusCode == 401 || statusCode == 403) {
-        return 'Permission denied. Only the merchant owner can update payment settings.';
-      }
-      if (statusCode == 404) {
-        return 'Merchant profile not found. Try logging out and back in.';
+      if (status == 503) return 'Server error. Please contact support.';
+      if (status == 502) return 'Cannot reach Paystack. Check your internet.';
+      if (status == 400) return 'Invalid key. Check you copied the correct one.';
+      if (status == 401 || status == 403) {
+        return 'Permission denied. Only the owner can update payment settings.';
       }
       if (error.type == DioExceptionType.connectionError) {
-        return 'No internet connection. Check your network and try again.';
+        return 'No internet. Check your network and try again.';
       }
-      return error.message ?? 'Something went wrong. Please try again.';
     }
-    final raw = error.toString();
-    final detailMatch = RegExp(r'"detail"\s*:\s*"([^"]+)"').firstMatch(raw);
-    if (detailMatch != null) return detailMatch.group(1)!;
     return 'Something went wrong. Please try again.';
   }
 
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: DashboardMockup.green700,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.danger,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: DashboardMockup.danger,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 }
 
-// ─── Connection pill ─────────────────────────────────────────────────────────
+// ── Status card (when connected) ──────────────────────────────────────────────
 
-class _ConnectionPill extends StatelessWidget {
-  const _ConnectionPill({required this.isConnected});
-
-  final bool isConnected;
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({required this.connection});
+  final PaystackConnectionSettings connection;
 
   @override
   Widget build(BuildContext context) {
-    final background =
-        isConnected ? AppColors.successSoft : AppColors.warningSoft;
-    final foreground = isConnected ? AppColors.success : AppColors.warning;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    final test = connection.test;
+    final live = connection.live;
+    final label = connection.accountLabel;
+
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
       ),
-      child: Text(
-        isConnected ? 'Connected' : 'Not Connected',
-        style: TextStyle(
-          color: foreground,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DashboardMockup.card,
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+          border: Border.all(color: DashboardMockup.lineSoft),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: DashboardMockup.greenTint,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(LucideIcons.checkCircle,
+                      size: 20, color: DashboardMockup.green700),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Connected',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15, fontWeight: FontWeight.w700,
+                            color: DashboardMockup.ink)),
+                      if (label != null && label.isNotEmpty)
+                        Text(label,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13, fontWeight: FontWeight.w500,
+                              color: DashboardMockup.ink2)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: DashboardMockup.greenTint,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    connection.mode == 'live' ? 'Live' : 'Test',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w700,
+                      color: DashboardMockup.green700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: DashboardMockup.lineSoft),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: _ModePill(label: 'Test', state: test)),
+              const SizedBox(width: 8),
+              Expanded(child: _ModePill(label: 'Live', state: live)),
+            ]),
+          ],
         ),
       ),
     );
   }
 }
 
-// ─── Status rows ─────────────────────────────────────────────────────────────
-
-class _StatusRows extends StatelessWidget {
-  const _StatusRows({required this.connection});
-
-  final PaystackConnectionSettings connection;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.successSoft,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (connection.accountLabel != null) ...[
-            _StatusRow(label: 'Account', value: connection.accountLabel!),
-            const Divider(height: 14),
-          ],
-          _ModeStatusRow(label: 'Test mode', state: connection.test),
-          _ModeStatusRow(label: 'Live mode', state: connection.live),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  const _StatusRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Flexible(
-            flex: 3,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Flexible(
-            flex: 5,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.ink,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeStatusRow extends StatelessWidget {
-  const _ModeStatusRow({required this.label, required this.state});
-
+class _ModePill extends StatelessWidget {
+  const _ModePill({required this.label, required this.state});
   final String label;
   final PaystackModeState? state;
 
   @override
   Widget build(BuildContext context) {
+    final ok = (state?.configured ?? false) && state?.verifiedAt != null;
     final configured = state?.configured ?? false;
-    final verified = state?.verifiedAt != null;
-    final masked = state?.secretKeyMasked;
+    final bg = ok
+        ? DashboardMockup.greenTint
+        : configured
+            ? DashboardMockup.warnTint
+            : DashboardMockup.lineSoft;
+    final fg = ok
+        ? DashboardMockup.green700
+        : configured
+            ? DashboardMockup.warn
+            : DashboardMockup.ink3;
+    final icon = ok
+        ? LucideIcons.check
+        : configured
+            ? LucideIcons.clock
+            : LucideIcons.minus;
+    final status = ok
+        ? 'Verified'
+        : configured
+            ? 'Saved'
+            : 'Not set up';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         children: [
-          Icon(
-            configured && verified
-                ? Icons.check_circle_outline_rounded
-                : Icons.radio_button_unchecked_rounded,
-            size: 16,
-            color: configured && verified ? AppColors.success : AppColors.muted,
-          ),
-          const SizedBox(width: 8),
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              configured
-                  ? '$label · ${verified ? 'Verified' : 'Saved'}${masked != null ? ' · $masked' : ''}'
-                  : '$label · Not configured',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: configured ? AppColors.ink : AppColors.muted,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+                Text(status,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11, fontWeight: FontWeight.w500,
+                      color: fg.withValues(alpha: 0.75))),
+              ],
             ),
           ),
         ],
@@ -511,196 +591,132 @@ class _ModeStatusRow extends StatelessWidget {
   }
 }
 
-// ─── Credentials form ─────────────────────────────────────────────────────────
+// ── Webhook tile ──────────────────────────────────────────────────────────────
 
-class _CredentialsForm extends StatefulWidget {
-  const _CredentialsForm({
-    required this.accountLabelCtrl,
-    required this.publicKeyCtrl,
-    required this.secretKeyCtrl,
-    required this.mode,
-    required this.saving,
-    required this.disconnecting,
-    required this.isConnected,
-    required this.activeModeState,
-    required this.onModeChanged,
-    required this.onSave,
-    required this.onDisconnect,
-  });
-
-  final TextEditingController accountLabelCtrl;
-  final TextEditingController publicKeyCtrl;
-  final TextEditingController secretKeyCtrl;
-  final String mode;
-  final bool saving;
-  final bool disconnecting;
-  final bool isConnected;
-  final PaystackModeState? activeModeState;
-  final ValueChanged<String> onModeChanged;
-  final VoidCallback? onSave;
-  final VoidCallback? onDisconnect;
+class _WebhookTile extends StatefulWidget {
+  const _WebhookTile({required this.url});
+  final String url;
 
   @override
-  State<_CredentialsForm> createState() => _CredentialsFormState();
+  State<_WebhookTile> createState() => _WebhookTileState();
 }
 
-class _CredentialsFormState extends State<_CredentialsForm> {
-  bool _obscureSecret = true;
+class _WebhookTileState extends State<_WebhookTile> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.url));
+    setState(() => _copied = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final alreadyConfigured = widget.activeModeState?.configured ?? false;
-    final busy = widget.saving || widget.disconnecting;
+    final display = widget.url
+        .replaceFirst(RegExp(r'^https?://'), '')
+        .replaceFirst(RegExp(r'^www\.'), '');
 
-    return PremiumPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Mode toggle
-          Container(
-            padding: const EdgeInsets.all(4),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Material(
+        color: DashboardMockup.card,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _copy,
+          child: Container(
+            padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: DashboardMockup.lineSoft),
+              borderRadius:
+                  BorderRadius.circular(DashboardMockup.cardRadius),
             ),
             child: Row(
               children: [
-                _ModeTab(
-                  label: 'Test Mode',
-                  selected: widget.mode == 'test',
-                  onTap: busy ? null : () => widget.onModeChanged('test'),
+                Container(
+                  width: 46, height: 46,
+                  decoration: BoxDecoration(
+                    color: DashboardMockup.warnTint,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(LucideIcons.link,
+                      size: 20, color: DashboardMockup.warn),
                 ),
-                _ModeTab(
-                  label: 'Live Mode',
-                  selected: widget.mode == 'live',
-                  onTap: busy ? null : () => widget.onModeChanged('live'),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Webhook URL',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15.5, fontWeight: FontWeight.w700,
+                            color: DashboardMockup.ink, height: 1.2)),
+                      const SizedBox(height: 2),
+                      Text(display,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5, fontWeight: FontWeight.w500,
+                            color: DashboardMockup.ink3),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _copied
+                        ? DashboardMockup.greenTint
+                        : DashboardMockup.warnTint,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _copied ? LucideIcons.check : LucideIcons.copy,
+                        size: 14,
+                        color: _copied
+                            ? DashboardMockup.green700
+                            : DashboardMockup.warn,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _copied ? 'Copied' : 'Copy',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _copied
+                              ? DashboardMockup.green700
+                              : DashboardMockup.warn,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: widget.accountLabelCtrl,
-            enabled: !busy,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Account label (optional)',
-              hintText: 'e.g. Main Business Account',
-              prefixIcon: Icon(Icons.label_outline_rounded),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: widget.publicKeyCtrl,
-            enabled: !busy,
-            decoration: InputDecoration(
-              labelText: 'Public key (optional)',
-              hintText: widget.mode == 'live' ? 'pk_live_...' : 'pk_test_...',
-              prefixIcon: const Icon(Icons.vpn_key_outlined),
-              helperText: widget.activeModeState?.publicKeyMasked != null
-                  ? 'Saved: ${widget.activeModeState!.publicKeyMasked}'
-                  : 'Found in Paystack Dashboard → Settings → API Keys',
-            ),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: widget.secretKeyCtrl,
-            enabled: !busy,
-            obscureText: _obscureSecret,
-            decoration: InputDecoration(
-              labelText: alreadyConfigured
-                  ? 'Secret key (leave empty to keep current)'
-                  : 'Secret key *',
-              hintText: widget.mode == 'live' ? 'sk_live_...' : 'sk_test_...',
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscureSecret
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  size: 20,
-                ),
-                onPressed: busy
-                    ? null
-                    : () => setState(() => _obscureSecret = !_obscureSecret),
-                tooltip: _obscureSecret ? 'Show key' : 'Hide key',
-              ),
-              helperText: widget.activeModeState?.secretKeyMasked != null
-                  ? 'Saved key: ${widget.activeModeState!.secretKeyMasked}'
-                  : 'Required. Encrypted and stored securely — never shown back in full.',
-            ),
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: widget.onSave,
-              icon: widget.saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.verified_rounded),
-              label: Text(widget.saving ? 'Verifying...' : 'Save & Verify'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-          if (widget.isConnected) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: widget.onDisconnect,
-                icon: widget.disconnecting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.link_off_rounded),
-                label: Text(
-                  widget.disconnecting
-                      ? 'Disconnecting...'
-                      : 'Disconnect Paystack',
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.danger,
-                  side: const BorderSide(color: AppColors.danger),
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
-// ─── Mode tab ────────────────────────────────────────────────────────────────
+// ── Mode chip ─────────────────────────────────────────────────────────────────
 
-class _ModeTab extends StatelessWidget {
-  const _ModeTab({
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
     required this.label,
     required this.selected,
     required this.onTap,
   });
-
   final String label;
   final bool selected;
   final VoidCallback? onTap;
@@ -708,31 +724,33 @@ class _ModeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.navy : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 40,
+          decoration: BoxDecoration(
+            color: selected
+                ? DashboardMockup.green900
+                : Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? Colors.transparent
+                  : DashboardMockup.line,
             ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : onTap == null
-                        ? AppColors.mutedSoft
-                        : AppColors.inkSoft,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: selected
+                  ? Colors.white
+                  : onTap == null
+                      ? DashboardMockup.ink3
+                      : DashboardMockup.ink2,
             ),
           ),
         ),
@@ -741,194 +759,187 @@ class _ModeTab extends StatelessWidget {
   }
 }
 
-// ─── Webhook row ─────────────────────────────────────────────────────────────
+// ── Action button ─────────────────────────────────────────────────────────────
 
-class _WebhookRow extends StatelessWidget {
-  const _WebhookRow();
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.loading,
+    required this.color,
+    required this.onPressed,
+    this.icon,
+    this.textColor = Colors.white,
+  });
+  final String label;
+  final IconData? icon;
+  final bool loading;
+  final Color color;
+  final Color textColor;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final webhookUrl = AppConfig.apiV1('/webhooks/paystack').toString();
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.warningSoft,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.webhook_rounded, color: AppColors.warning, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Webhook URL',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  webhookUrl,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.navy,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Paste this in Paystack Dashboard → Settings → Webhook URL',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.muted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Material(
-            color: AppColors.warning.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: webhookUrl));
-                ScaffoldMessenger.of(
-                  // ignore: use_build_context_synchronously
-                  // The context is valid here since this is a tap handler
-                  // and the widget is still mounted when tap fires.
-                  // ignore: use_build_context_synchronously
-                  context,
-                ).showSnackBar(
-                  const SnackBar(
-                    content: Text('Webhook URL copied'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.copy_rounded,
-                        size: 14, color: AppColors.warning),
-                    SizedBox(width: 5),
-                    Text(
-                      'Copy',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.warning,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: TextButton(
+        onPressed: loading ? null : onPressed,
+        style: TextButton.styleFrom(
+          backgroundColor: loading ? DashboardMockup.lineSoft : color,
+          foregroundColor: loading ? DashboardMockup.ink3 : textColor,
+          disabledBackgroundColor: DashboardMockup.lineSoft,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          textStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 14.5, fontWeight: FontWeight.w700),
+        ),
+        child: loading
+            ? SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: loading
+                        ? DashboardMockup.ink3
+                        : textColor))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 17),
+                    const SizedBox(width: 6),
                   ],
-                ),
+                  Text(label),
+                ],
               ),
-            ),
-          ),
-        ],
       ),
     );
   }
 }
 
-// ─── Skeleton / error ─────────────────────────────────────────────────────────
+// ── Form card ─────────────────────────────────────────────────────────────────
 
-class _SkeletonPanel extends StatelessWidget {
-  const _SkeletonPanel({required this.height});
-
-  final double height;
+class _FormCard extends StatelessWidget {
+  const _FormCard({required this.child});
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
       ),
-      child: const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DashboardMockup.card,
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+          border: Border.all(color: DashboardMockup.lineSoft),
         ),
+        child: child,
       ),
     );
   }
 }
 
-class _LoadErrorPanel extends StatelessWidget {
-  const _LoadErrorPanel({required this.onRetry});
+// ── Section label ─────────────────────────────────────────────────────────────
 
+class _SecLabel extends StatelessWidget {
+  const _SecLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12, fontWeight: FontWeight.w700,
+        letterSpacing: 1.2, color: DashboardMockup.ink3),
+    );
+  }
+}
+
+// ── Error card ────────────────────────────────────────────────────────────────
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.onRetry});
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumPanel(
-      backgroundColor: AppColors.dangerSoft,
-      borderColor: AppColors.danger,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.cloud_off_outlined,
-              size: 36, color: AppColors.danger),
-          const SizedBox(height: 12),
-          Text(
-            'Could not load your Paystack settings.',
-            style: Theme.of(context).textTheme.titleSmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Check your internet connection and try again.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Retry'),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: DashboardMockup.card,
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+          border: Border.all(color: const Color(0xFFF2C9C0)),
+        ),
+        child: Column(
+          children: [
+            const Icon(LucideIcons.wifiOff,
+                size: 32, color: DashboardMockup.ink3),
+            const SizedBox(height: 12),
+            Text('Could not load Paystack settings.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15, fontWeight: FontWeight.w700,
+                  color: DashboardMockup.ink),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            Text('Check your connection and try again.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5, color: DashboardMockup.ink2),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                backgroundColor: DashboardMockup.greenTint,
+                foregroundColor: DashboardMockup.green700,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                textStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5, fontWeight: FontWeight.w700),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.refreshCw, size: 15),
+                  SizedBox(width: 6),
+                  Text('Try again'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─── Disconnect confirmation dialog ──────────────────────────────────────────
+// ── Disconnect dialog ─────────────────────────────────────────────────────────
 
-class _DisconnectConfirmDialog extends StatefulWidget {
-  const _DisconnectConfirmDialog();
+class _DisconnectDialog extends StatefulWidget {
+  const _DisconnectDialog();
 
   @override
-  State<_DisconnectConfirmDialog> createState() =>
-      _DisconnectConfirmDialogState();
+  State<_DisconnectDialog> createState() => _DisconnectDialogState();
 }
 
-class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
-  final TextEditingController _ctrl = TextEditingController();
+class _DisconnectDialogState extends State<_DisconnectDialog> {
+  final _ctrl = TextEditingController();
   bool _confirmed = false;
 
   @override
   void initState() {
     super.initState();
     _ctrl.addListener(() {
-      final matches = _ctrl.text == 'DISCONNECT';
-      if (matches != _confirmed) setState(() => _confirmed = matches);
+      final ok = _ctrl.text == 'DISCONNECT';
+      if (ok != _confirmed) setState(() => _confirmed = ok);
     });
   }
 
@@ -941,28 +952,23 @@ class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 36, height: 36,
             decoration: BoxDecoration(
-              color: AppColors.dangerSoft,
+              color: DashboardMockup.dangerTint,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
-              Icons.link_off_rounded,
-              color: AppColors.danger,
-              size: 20,
-            ),
+            child: const Icon(LucideIcons.x,
+                color: DashboardMockup.danger, size: 18),
           ),
           const SizedBox(width: 12),
           const Expanded(
-            child: Text(
-              'Disconnect Paystack',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
+            child: Text('Disconnect Paystack',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -973,34 +979,24 @@ class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.dangerSoft,
+              color: DashboardMockup.dangerTint,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppColors.danger.withValues(alpha: 0.25),
-              ),
+                color: DashboardMockup.danger.withValues(alpha: 0.2)),
             ),
             child: const Text(
-              'This will remove your encrypted Paystack credentials from the server. '
-              'Payments will stop working immediately until you reconnect.',
+              'This removes your Paystack credentials. Payments will stop until you reconnect.',
               style: TextStyle(
-                color: AppColors.danger,
-                fontSize: 13,
-                height: 1.4,
-              ),
+                color: DashboardMockup.danger, fontSize: 13, height: 1.4),
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Type DISCONNECT to confirm:',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
-            ),
-          ),
+          const Text('Type DISCONNECT to confirm:',
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600,
+                  color: DashboardMockup.ink)),
           const SizedBox(height: 8),
           TextField(
-            key: const Key('disconnect_confirm_input'),
             controller: _ctrl,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,
@@ -1010,12 +1006,9 @@ class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
                   ? 'Type exactly: DISCONNECT'
                   : null,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+                  horizontal: 14, vertical: 12),
             ),
           ),
         ],
@@ -1026,13 +1019,13 @@ class _DisconnectConfirmDialogState extends State<_DisconnectConfirmDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _confirmed ? () => Navigator.of(context).pop(true) : null,
+          onPressed:
+              _confirmed ? () => Navigator.of(context).pop(true) : null,
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.danger,
-            disabledBackgroundColor: AppColors.dangerSoft,
+            backgroundColor: DashboardMockup.danger,
+            disabledBackgroundColor: DashboardMockup.dangerTint,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+                borderRadius: BorderRadius.circular(12)),
           ),
           child: const Text('Disconnect'),
         ),

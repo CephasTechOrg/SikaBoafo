@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
-/// Minimal hero header aligned with [InventoryHeader] — single metric + stat pills, no carousel.
+import '../../../debts/presentation/utils/debts_ui_tokens.dart';
+import '../../../debts/presentation/widgets/hero_stat_row.dart';
+
+/// Hero block at the top of the Expenses screen.
+///
+/// Matches the mockup's TitleHero pattern used by Debts/Customers/Reports.
 class ExpensesHeader extends StatelessWidget {
   const ExpensesHeader({
     super.key,
-    required this.leadingContentInset,
     required this.monthMinor,
     required this.todayMinor,
     required this.todayEntryCount,
     required this.monthCategoryCount,
+    required this.canPop,
+    required this.onBack,
+    required this.onRefresh,
   });
 
-  /// Left padding so hero text clears the sliver [leading] control (~56 when shown).
-  final double leadingContentInset;
   final int monthMinor;
   final int todayMinor;
   final int todayEntryCount;
-  /// Distinct expense categories used this calendar month (from local list).
   final int monthCategoryCount;
+  final bool canPop;
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
 
   String _fmtMoney(int minor) {
     final major = minor ~/ 100;
@@ -27,205 +36,153 @@ class ExpensesHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF041C0B),
-                    Color(0xFF083A1A),
-                    Color(0xFF0F5A30),
-                    Color(0xFF196E3D),
-                  ],
-                  stops: [0.0, 0.28, 0.62, 1.0],
-                  begin: Alignment.bottomLeft,
-                  end: Alignment.topRight,
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.68, -0.72),
-                  radius: 0.92,
-                  colors: [
-                    const Color(0xFF27A84E).withValues(alpha: 0.40),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 1.0],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF010A04).withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 1.0,
-            child: ColoredBox(color: Color(0x18FFFFFF)),
-          ),
-          Positioned(
-            right: -6,
-            bottom: -6,
-            child: Opacity(
-              opacity: 0.14,
-              child: Icon(
-                Icons.receipt_long_rounded,
-                size: 120,
-                color: Colors.white.withValues(alpha: 0.9),
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(leadingContentInset, 46, 20, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Expenses',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'THIS MONTH',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _fmtMoney(monthMinor),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Constantia',
-                    letterSpacing: -0.8,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _StatPill(
-                        icon: Icons.today_rounded,
-                        value: _fmtMoney(todayMinor),
-                        label: 'today',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.edit_note_rounded,
-                        value: '$todayEntryCount',
-                        label: 'entries today',
-                      ),
-                      const SizedBox(width: 10),
-                      _StatPill(
-                        icon: Icons.category_rounded,
-                        value: '$monthCategoryCount',
-                        label: 'categories',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final topInset = MediaQuery.of(context).padding.top;
 
-class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.icon,
-    required this.value,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.55), size: 13),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.none,
+      children: [
+        // Background gradient
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: DebtsUi.heroGradient),
+          ),
+        ),
+        // Glow orb top-right
+        Positioned(
+          top: -20,
+          right: -20,
+          width: 160,
+          height: 160,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.04),
+            ),
+          ),
+        ),
+        // Content
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, topInset + 14, 20, 20),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top row: back button + spacer + refresh button
+              Row(
+                children: [
+                  if (canPop)
+                    GestureDetector(
+                      onTap: onBack,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          LucideIcons.arrowLeft,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: onRefresh,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: const Icon(
+                        LucideIcons.refreshCw,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Title
               Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+                'Expenses',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  height: 1.1,
+                  color: Colors.white,
+                  letterSpacing: -0.4,
+                  height: 1.0,
                 ),
               ),
+              const SizedBox(height: 3),
+              // Subtitle
               Text(
-                label,
+                'Track daily spending',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.50),
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontWeight: FontWeight.w500,
                 ),
+              ),
+              const SizedBox(height: 16),
+              // Metric label
+              Text(
+                'SPENT THIS MONTH',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                  color: Colors.white.withValues(alpha: 0.60),
+                ),
+              ),
+              const SizedBox(height: 3),
+              // Metric value
+              Text(
+                _fmtMoney(monthMinor),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 38,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -1.5,
+                  height: 1.0,
+                  textStyle: const TextStyle(
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // HeroStat row
+              HeroStatRow(
+                items: [
+                  HeroStatItem(
+                    icon: LucideIcons.receipt,
+                    value: _fmtMoney(todayMinor),
+                    label: 'Today',
+                  ),
+                  HeroStatItem(
+                    icon: LucideIcons.fileText,
+                    value: '$todayEntryCount',
+                    label: 'Entries',
+                  ),
+                  HeroStatItem(
+                    icon: LucideIcons.layoutGrid,
+                    value: '$monthCategoryCount',
+                    label: 'Categories',
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

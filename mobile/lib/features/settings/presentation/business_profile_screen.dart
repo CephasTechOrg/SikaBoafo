@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/router.dart';
-import '../../../app/theme/app_theme.dart';
-import '../../../shared/widgets/app_components.dart';
-import '../../../shared/widgets/premium_ui.dart';
-import '../../../shared/widgets/streak_hero_header.dart';
-import 'connect_paystack_screen.dart' show paystackConnectionProvider;
 import '../../dashboard/data/dashboard_api.dart';
+import '../../dashboard/presentation/widgets/dashboard_mockup_ui.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
+import 'connect_paystack_screen.dart' show paystackConnectionProvider;
 
 class BusinessProfileScreen extends ConsumerStatefulWidget {
   const BusinessProfileScreen({super.key});
@@ -19,36 +18,8 @@ class BusinessProfileScreen extends ConsumerStatefulWidget {
       _BusinessProfileScreenState();
 }
 
-class _SheetCap extends StatelessWidget {
-  const _SheetCap();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 28,
-      child: ColoredBox(
-        color: Color(0xFF041C0B),
-        child: ClipRRect(
-          borderRadius: BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1F0F172A),
-                  blurRadius: 28,
-                  offset: Offset(0, -8),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
+class _BusinessProfileScreenState
+    extends ConsumerState<BusinessProfileScreen> {
   static const _defaultTimezones = <String>[
     'Africa/Accra',
     'Africa/Lagos',
@@ -56,17 +27,16 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     'UTC',
   ];
 
-  final TextEditingController _businessNameCtrl = TextEditingController();
-  final TextEditingController _businessTypeCtrl = TextEditingController();
-  final TextEditingController _storeNameCtrl = TextEditingController();
-  final TextEditingController _storeLocationCtrl = TextEditingController();
+  final _businessNameCtrl = TextEditingController();
+  final _businessTypeCtrl = TextEditingController();
+  final _storeNameCtrl    = TextEditingController();
+  final _storeLocationCtrl = TextEditingController();
 
-  bool _hydrated = false;
+  bool   _hydrated       = false;
   List<String> _timezoneOptions = _defaultTimezones;
-  String _timezone = 'Africa/Accra';
-
-  bool _savingBusiness = false;
-  bool _savingStore = false;
+  String _timezone       = 'Africa/Accra';
+  bool   _savingBusiness = false;
+  bool   _savingStore    = false;
 
   @override
   void dispose() {
@@ -77,41 +47,12 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     super.dispose();
   }
 
-  static InputDecoration _inputDecoration(
-    BuildContext context, {
-    required String label,
-    String? hint,
-  }) {
-    final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.border),
-    );
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      filled: true,
-      fillColor: AppColors.surfaceAlt,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w700,
-          ),
-      floatingLabelBehavior: FloatingLabelBehavior.auto,
-      border: border,
-      enabledBorder: border,
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.forest, width: 1.6),
-      ),
-    );
-  }
-
   void _hydrate(MerchantContext mc) {
     if (_hydrated) return;
     _hydrated = true;
-    _businessNameCtrl.text = mc.businessName;
-    _businessTypeCtrl.text = mc.businessType ?? '';
-    _storeNameCtrl.text = mc.storeName;
+    _businessNameCtrl.text  = mc.businessName;
+    _businessTypeCtrl.text  = mc.businessType ?? '';
+    _storeNameCtrl.text     = mc.storeName;
     _storeLocationCtrl.text = mc.storeLocation ?? '';
     _timezoneOptions = [
       ..._defaultTimezones,
@@ -120,133 +61,143 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
     _timezone = mc.timezone;
   }
 
+  static InputDecoration _field(String label, {String? hint}) {
+    final borderRadius = BorderRadius.circular(14);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: const TextStyle(color: DashboardMockup.ink3, fontSize: 14.5),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      labelStyle: const TextStyle(
+        color: DashboardMockup.ink3,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      floatingLabelStyle: const TextStyle(
+        color: DashboardMockup.green700,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: const BorderSide(color: DashboardMockup.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: const BorderSide(color: DashboardMockup.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide:
+            const BorderSide(color: DashboardMockup.green700, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mcAsync = ref.watch(merchantContextProvider);
-    final mc = mcAsync.valueOrNull;
+    final mcAsync   = ref.watch(merchantContextProvider);
+    final mc        = mcAsync.valueOrNull;
     if (mc != null) _hydrate(mc);
 
-    const kLeadingGutter = 56.0;
-    final subtitle = mc?.businessName ?? 'Store settings and payments';
+    final topPad    = MediaQuery.paddingOf(context).top;
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final subtitle  = mc?.businessName ?? 'Account & store settings';
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          SliverAppBar(
-            expandedHeight: 210,
-            pinned: true,
-            stretch: true,
-            leadingWidth: kLeadingGutter,
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              onPressed: () => context.pop(),
+      backgroundColor: DashboardMockup.bg,
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // ── Header ──────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              DashboardMockup.gutter, topPad + 14,
+              DashboardMockup.gutter, 0,
             ),
-            actions: [
-              IconButton(
-                tooltip: 'Staff',
-                icon: const Icon(Icons.group_outlined,
-                    color: Colors.white, size: 22),
-                onPressed: () => context.push(AppRoute.staff.path),
-              ),
-              IconButton(
-                tooltip: 'Paystack',
-                icon: const Icon(Icons.payment_outlined,
-                    color: Colors.white, size: 22),
-                onPressed: () => context.push(AppRoute.paystack.path),
-              ),
-            ],
-            backgroundColor: const Color(0xFF041C0B),
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              stretchModes: const [StretchMode.zoomBackground],
-              background: StreakHeroHeader(
-                leadingContentInset: kLeadingGutter,
-                title: 'Business Profile',
-                subtitle: subtitle,
-                badge: const PremiumBadge(
-                  label: 'Business & store',
-                  icon: Icons.business_outlined,
-                  foreground: Colors.white,
-                  background: Color(0x24FFFFFF),
-                ),
-              ),
-              title: innerBoxIsScrolled
-                  ? const Text(
-                      'Business Profile',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
-                    )
-                  : null,
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: kLeadingGutter,
-                bottom: 16,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: _SheetCap()),
-        ],
-        body: MediaQuery.removePadding(
-          context: context,
-          removeTop: true,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.surface),
-            child: mcAsync.when(
-              loading: () => const Center(
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: AppColors.forest,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: DashboardMockup.lineSoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      LucideIcons.arrowLeft,
+                      size: 18,
+                      color: DashboardMockup.ink,
+                    ),
                   ),
                 ),
-              ),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: AppCard(
-                  elevated: true,
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Could not load business profile',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.ink,
+                      Text(
+                        'Business Profile',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: DashboardMockup.ink,
+                          letterSpacing: -0.5,
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 6),
                       Text(
-                        e.toString(),
-                        style:
-                            const TextStyle(color: AppColors.muted, height: 1.35),
-                      ),
-                      const SizedBox(height: 12),
-                      AppButton.secondary(
-                        label: 'Try again',
-                        icon: Icons.refresh_rounded,
-                        onPressed: () => ref.invalidate(merchantContextProvider),
+                        subtitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: DashboardMockup.ink2,
+                          height: 1.3,
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+
+          // ── Content ─────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              DashboardMockup.gutter, 24,
+              DashboardMockup.gutter, bottomPad + 32,
+            ),
+            child: mcAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: DashboardMockup.green700,
+                    ),
+                  ),
+                ),
               ),
-              data: (_) => ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+              error: (e, _) => _ErrorCard(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(merchantContextProvider),
+              ),
+              data: (_) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionLabel(context, 'Business'),
-                  const SizedBox(height: 10),
+                  // ── Business ─────────────────────────────────────────
+                  const _SecLabel('Business'),
+                  const SizedBox(height: 12),
                   _FormCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -256,12 +207,9 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                           textCapitalization: TextCapitalization.words,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
+                            color: DashboardMockup.ink,
                           ),
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Business name',
-                          ),
+                          decoration: _field('Business name'),
                         ),
                         const SizedBox(height: 12),
                         TextField(
@@ -269,28 +217,28 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                           textCapitalization: TextCapitalization.words,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
+                            color: DashboardMockup.ink,
                           ),
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Business type',
-                            hint: 'e.g. retail, services',
+                          decoration: _field(
+                            'Business type',
+                            hint: 'e.g. Retail, Services',
                           ),
                         ),
                         const SizedBox(height: 16),
-                        AppButton.primary(
+                        _SaveButton(
                           label: 'Save business',
-                          icon: Icons.check_rounded,
-                          fullWidth: true,
+                          icon: LucideIcons.check,
                           loading: _savingBusiness,
                           onPressed: _savingBusiness ? null : _saveBusiness,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _sectionLabel(context, 'Payments'),
-                  const SizedBox(height: 10),
+
+                  // ── Payments ─────────────────────────────────────────
+                  const SizedBox(height: 24),
+                  const _SecLabel('Payments'),
+                  const SizedBox(height: 12),
                   Consumer(
                     builder: (context, ref, _) {
                       final connectionAsync =
@@ -298,23 +246,26 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                       final connected =
                           connectionAsync.valueOrNull?.isConnected ?? false;
                       final mode = connectionAsync.valueOrNull?.mode;
-                      return _ActionLinkTile(
-                        icon: Icons.payments_outlined,
-                        iconBg: AppColors.infoSoft,
-                        iconColor: AppColors.navy,
-                        title: 'Paystack',
-                        caption: !connectionAsync.hasValue
-                            ? 'Loading status…'
-                            : connected
-                                ? 'Connected · ${mode == 'live' ? 'Live' : 'Test'}'
-                                : 'Not connected',
+                      final caption = !connectionAsync.hasValue
+                          ? 'Loading status…'
+                          : connected
+                              ? 'Connected · ${mode == 'live' ? 'Live' : 'Test'}'
+                              : 'Not connected — tap to set up';
+                      return _LinkTile(
+                        icon: LucideIcons.creditCard,
+                        iconBg: DashboardMockup.warnTint,
+                        iconColor: DashboardMockup.warn,
+                        label: 'Paystack',
+                        sub: caption,
                         onTap: () => context.push(AppRoute.paystack.path),
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
-                  _sectionLabel(context, 'Default store'),
-                  const SizedBox(height: 10),
+
+                  // ── Default store ─────────────────────────────────────
+                  const SizedBox(height: 24),
+                  const _SecLabel('Default store'),
+                  const SizedBox(height: 12),
                   _FormCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -324,12 +275,9 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                           textCapitalization: TextCapitalization.words,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
+                            color: DashboardMockup.ink,
                           ),
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Store name',
-                          ),
+                          decoration: _field('Store name'),
                         ),
                         const SizedBox(height: 12),
                         TextField(
@@ -337,11 +285,10 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                           textCapitalization: TextCapitalization.words,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
+                            color: DashboardMockup.ink,
                           ),
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Location',
+                          decoration: _field(
+                            'Location',
                             hint: 'Address or area (optional)',
                           ),
                         ),
@@ -349,33 +296,32 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
                         DropdownButtonFormField<String>(
                           key: ValueKey(_timezone),
                           initialValue: _timezone,
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Timezone',
-                          ),
-                          dropdownColor: AppColors.surface,
+                          decoration: _field('Timezone'),
+                          dropdownColor: DashboardMockup.card,
+                          borderRadius: BorderRadius.circular(16),
                           items: _timezoneOptions
                               .map(
-                                (value) => DropdownMenuItem(
-                                  value: value,
+                                (tz) => DropdownMenuItem(
+                                  value: tz,
                                   child: Text(
-                                    value,
+                                    tz,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.w600),
+                                      fontWeight: FontWeight.w600,
+                                      color: DashboardMockup.ink,
+                                    ),
                                   ),
                                 ),
                               )
                               .toList(growable: false),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() => _timezone = value);
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() => _timezone = v);
                           },
                         ),
                         const SizedBox(height: 16),
-                        AppButton.primary(
+                        _SaveButton(
                           label: 'Save store',
-                          icon: Icons.place_rounded,
-                          fullWidth: true,
+                          icon: LucideIcons.mapPin,
                           loading: _savingStore,
                           onPressed: _savingStore ? null : _saveStore,
                         ),
@@ -386,33 +332,21 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  static Widget _sectionLabel(BuildContext context, String text) {
-    return Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppColors.muted,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
-          ),
-    );
-  }
-
   Future<void> _saveBusiness() async {
-    final businessName = _businessNameCtrl.text.trim();
-    if (businessName.length < 2) {
+    final name = _businessNameCtrl.text.trim();
+    if (name.length < 2) {
       _showMessage('Business name must be at least 2 characters.');
       return;
     }
-
     setState(() => _savingBusiness = true);
     try {
       await ref.read(dashboardApiProvider).updateMerchantProfile(
-            businessName: businessName,
+            businessName: name,
             businessType: _businessTypeCtrl.text,
           );
       _invalidateDashboardState();
@@ -427,16 +361,15 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
   }
 
   Future<void> _saveStore() async {
-    final storeName = _storeNameCtrl.text.trim();
-    if (storeName.length < 2) {
+    final name = _storeNameCtrl.text.trim();
+    if (name.length < 2) {
       _showMessage('Store name must be at least 2 characters.');
       return;
     }
-
     setState(() => _savingStore = true);
     try {
       await ref.read(dashboardApiProvider).updateDefaultStore(
-            name: storeName,
+            name: name,
             location: _storeLocationCtrl.text,
             timezone: _timezone,
           );
@@ -464,110 +397,146 @@ class _BusinessProfileScreenState extends ConsumerState<BusinessProfileScreen> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 }
 
+// ── Section label ─────────────────────────────────────────────────────────────
+
+class _SecLabel extends StatelessWidget {
+  const _SecLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.plusJakartaSans(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: DashboardMockup.ink3,
+      ),
+    );
+  }
+}
+
+// ── Form card container ───────────────────────────────────────────────────────
+
 class _FormCard extends StatelessWidget {
   const _FormCard({required this.child});
-
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
       ),
-      child: child,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: DashboardMockup.card,
+          borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+          border: Border.all(color: DashboardMockup.lineSoft),
+        ),
+        child: child,
+      ),
     );
   }
 }
 
-class _ActionLinkTile extends StatelessWidget {
-  const _ActionLinkTile({
+// ── Link tile (Paystack) ──────────────────────────────────────────────────────
+
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({
     required this.icon,
     required this.iconBg,
     required this.iconColor,
-    required this.title,
-    required this.caption,
+    required this.label,
+    required this.sub,
     required this.onTap,
   });
 
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
-  final String title;
-  final String caption;
+  final String label;
+  final String sub;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppShadows.subtle,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(14),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Material(
+        color: DashboardMockup.card,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              border: Border.all(color: DashboardMockup.lineSoft),
+              borderRadius:
+                  BorderRadius.circular(DashboardMockup.cardRadius),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(icon, size: 22, color: iconColor),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        letterSpacing: -0.2,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: DashboardMockup.ink,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      caption,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.muted,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 2),
+                      Text(
+                        sub,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: DashboardMockup.ink2,
+                          height: 1.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.muted,
-                size: 22,
-              ),
-            ],
+                const SizedBox(width: 8),
+                const Icon(
+                  LucideIcons.chevronRight,
+                  size: 20,
+                  color: DashboardMockup.ink3,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -575,3 +544,141 @@ class _ActionLinkTile extends StatelessWidget {
   }
 }
 
+// ── Save button ───────────────────────────────────────────────────────────────
+
+class _SaveButton extends StatelessWidget {
+  const _SaveButton({
+    required this.label,
+    required this.icon,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null && !loading;
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: TextButton(
+        onPressed: enabled ? onPressed : null,
+        style: TextButton.styleFrom(
+          backgroundColor:
+              enabled ? DashboardMockup.green600 : DashboardMockup.lineSoft,
+          foregroundColor:
+              enabled ? Colors.white : DashboardMockup.ink3,
+          disabledBackgroundColor: DashboardMockup.lineSoft,
+          disabledForegroundColor: DashboardMockup.ink3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: DashboardMockup.green700,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 17),
+                  const SizedBox(width: 6),
+                  Text(label),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+// ── Error card ────────────────────────────────────────────────────────────────
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: DashboardMockup.card,
+        borderRadius: BorderRadius.circular(DashboardMockup.cardRadius),
+        border: Border.all(color: const Color(0xFFF2C9C0)),
+        boxShadow: DashboardMockup.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.alertCircle,
+                color: DashboardMockup.danger,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Could not load business profile',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: DashboardMockup.ink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(
+              color: DashboardMockup.ink2,
+              fontSize: 13.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 40,
+            child: TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                backgroundColor: DashboardMockup.greenTint,
+                foregroundColor: DashboardMockup.green700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                textStyle: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.refreshCw, size: 15),
+                  SizedBox(width: 6),
+                  Text('Try again'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

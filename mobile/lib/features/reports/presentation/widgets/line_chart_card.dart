@@ -33,11 +33,11 @@ class LineChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (points.isEmpty) {
-      return AppCard(
-        padding: const EdgeInsets.all(16),
+      return const AppCard(
+        padding: EdgeInsets.all(16),
         radius: 20,
-        borderColor: const Color(0xFFEEF1F0),
-        child: const SizedBox(
+        borderColor: Color(0xFFEEF1F0),
+        child: SizedBox(
           height: 160,
           child: Center(
             child: Text(

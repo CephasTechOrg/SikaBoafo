@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../../app/theme/app_theme.dart';
-import '../../../../shared/widgets/premium_ui.dart';
 import '../../data/expenses_repository.dart';
 import '../expenses_category_meta.dart';
 
+/// "History" tab content — matches the mockup's single-card layout.
 class ExpensesHistoryView extends StatelessWidget {
   const ExpensesHistoryView({
     super.key,
@@ -18,241 +18,212 @@ class ExpensesHistoryView extends StatelessWidget {
   final bool isLoadingEmpty;
   final Future<void> Function(LocalExpenseRecord row) onEditExpense;
 
+  // Design tokens
+  static const Color _ink3 = Color(0xFF9AA3AF);
+  static const Color _lineSoft = Color(0xFFEEF1F0);
+
+  // Category → LucideIcons mapping
+  static IconData _iconFor(String key) => switch (key) {
+        'inventory_purchase' => LucideIcons.package,
+        'transport' => LucideIcons.truck,
+        'utilities' => LucideIcons.zap,
+        'rent' => LucideIcons.building,
+        'salary' => LucideIcons.users,
+        'tax' => LucideIcons.landmark,
+        _ => LucideIcons.grid,
+      };
+
   @override
   Widget build(BuildContext context) {
-    return PremiumReveal(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Expense history',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Tap an entry to edit. Sync status updates after save.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (isLoadingEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 40),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (expenses.isEmpty)
-            const _EmptyHistoryCard()
-          else
-            ...expenses.map(
-              (row) => _ExpenseHistoryTile(
-                row,
-                onTap: () => onEditExpense(row),
+    final count = expenses.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        // Section header: "THIS MONTH" | "{n} entries"
+        Row(
+          children: [
+            const Text(
+              'THIS MONTH',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.10 * 12,
+                color: _ink3,
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
+            const Spacer(),
+            Text(
+              '$count ${count == 1 ? 'entry' : 'entries'}',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: _ink3,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
-class _EmptyHistoryCard extends StatelessWidget {
-  const _EmptyHistoryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        children: [
+        if (isLoadingEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          // Single card wrapping all rows
           Container(
-            width: 64,
-            height: 64,
             decoration: BoxDecoration(
-              color: AppColors.warningSoft,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _lineSoft),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0A101828),
+                  blurRadius: 2,
+                  offset: Offset(0, 1),
+                ),
+                BoxShadow(
+                  color: Color(0x0A101828),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(Icons.receipt_long_outlined,
-                color: Color(0xFFB45309), size: 30),
+            child: expenses.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'No expenses this month',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _ink3,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (var i = 0; i < expenses.length; i++) ...[
+                        if (i > 0)
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: _lineSoft,
+                          ),
+                        _ExpenseRow(
+                          row: expenses[i],
+                          iconData: _iconFor(expenses[i].category),
+                          onTap: () => onEditExpense(expenses[i]),
+                        ),
+                      ],
+                    ],
+                  ),
           ),
-          const SizedBox(height: 14),
-          const Text(
-            'No expenses yet',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Switch to Log expense to record your first cost.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
-        ],
-      ),
+
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
 
-class _ExpenseHistoryTile extends StatelessWidget {
-  const _ExpenseHistoryTile(this.row, {required this.onTap});
+class _ExpenseRow extends StatelessWidget {
+  const _ExpenseRow({
+    required this.row,
+    required this.iconData,
+    required this.onTap,
+  });
 
   final LocalExpenseRecord row;
+  final IconData iconData;
   final VoidCallback onTap;
+
+  static const Color _ink = Color(0xFF111827);
+  static const Color _ink2 = Color(0xFF6B7280);
+  static const Color _ink3 = Color(0xFF9AA3AF);
+  static const Color _warn = Color(0xFFBE8A2C);
+  static const Color _warnTint = Color(0xFFFAF3E1);
 
   @override
   Widget build(BuildContext context) {
     final dt = DateTime.fromMillisecondsSinceEpoch(row.createdAtMillis);
     final meta = expenseMetaFor(row.category);
-    final syncColor = switch (row.syncStatus) {
-      'applied' || 'duplicate' => AppColors.success,
-      'failed' => AppColors.danger,
-      'conflict' => AppColors.amber,
-      _ => AppColors.amber,
-    };
-    final syncLabel = switch (row.syncStatus) {
-      'applied' || 'duplicate' => 'Synced',
-      'failed' => 'Failed',
-      'conflict' => 'Conflict',
-      _ => 'Pending',
-    };
+    final displayNote = expenseNoteDisplayLine(row.category, row.note);
+    final dateStr = DateFormat('MMM d').format(dt.toLocal());
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: AppColors.surface,
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppShadows.subtle,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(13),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _warnTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(iconData, size: 19, color: _warn),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
+            const SizedBox(width: 13),
+            // Middle: category + note
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: meta.bg,
-                      borderRadius: BorderRadius.circular(14),
+                  Text(
+                    meta.label,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
                     ),
-                    child: Icon(meta.icon, color: meta.color, size: 22),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                meta.label,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '₵${row.amount}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                color: meta.color,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                expenseNoteDisplayLine(row.category, row.note),
-                                style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 12,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              DateFormat('MMM d, HH:mm').format(dt.toLocal()),
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: syncColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              syncLabel,
-                              style: TextStyle(
-                                color: syncColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 2),
+                  Text(
+                    displayNote,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: _ink2,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 12),
+            // Right: amount + date
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '−₵${row.amount}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateStr,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: _ink3,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
