@@ -13,6 +13,8 @@ class DebtAgingCard extends StatelessWidget {
     final total = aging.total == 0 ? 1 : aging.total;
     return AppCard(
       padding: const EdgeInsets.all(16),
+      radius: 20,
+      borderColor: const Color(0xFFEEF1F0),
       child: Column(
         children: [
           AgingRow(

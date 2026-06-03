@@ -61,3 +61,9 @@ class ReportInsightsOut(BaseModel):
     month: ReportPeriodOut
     monthly_payment_breakdown: list[ReportPaymentBreakdownOut]
     monthly_top_selling_items: list[ReportTopSellingItemOut]
+
+
+class ReportTrendPointOut(BaseModel):
+    label: str
+    sales: Decimal
+    expenses: Decimal

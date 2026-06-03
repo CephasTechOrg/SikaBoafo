@@ -23,20 +23,27 @@ class BarChartCard extends StatelessWidget {
 
     return AppCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      radius: 20,
+      borderColor: const Color(0xFFEEF1F0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
+              const Expanded(
                 child: Text(
                   'Sales vs Expenses',
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                    letterSpacing: -0.18,
+                  ),
                 ),
               ),
               AppStatusPill(
                 label: period,
-                variant: AppPillVariant.neutral,
+                variant: AppPillVariant.brand,
                 dense: true,
               ),
             ],

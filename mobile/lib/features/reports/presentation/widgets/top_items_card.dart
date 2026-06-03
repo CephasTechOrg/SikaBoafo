@@ -21,6 +21,8 @@ class TopItemsCard extends StatelessWidget {
 
     return AppCard(
       padding: EdgeInsets.zero,
+      radius: 20,
+      borderColor: const Color(0xFFEEF1F0),
       child: Column(
         children: items.asMap().entries.map((e) {
           final rank = e.key + 1;

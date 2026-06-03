@@ -75,15 +75,25 @@ class DebtListTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             color: DebtsUi.surface,
-            borderRadius: BorderRadius.circular(DebtsUi.radiusMd),
-            border: Border.all(color: DebtsUi.borderNeutral, width: 1.5),
-            boxShadow: DebtsUi.shadowNeutralSm,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 2,
+                offset: Offset(0, 1),
+              ),
+              BoxShadow(
+                color: Color(0x0A101828),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -96,7 +106,7 @@ class DebtListTile extends StatelessWidget {
                     bg: avatarBg,
                     fg: avatarFg,
                   ),
-                  const SizedBox(width: 11),
+                  const SizedBox(width: 13),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,8 +301,8 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 42,
-      height: 42,
+      width: 46,
+      height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bg,

@@ -331,3 +331,10 @@ final dashboardInsightsProvider =
     StreamProvider.autoDispose<DashboardInsights>((ref) {
   return ref.watch(dashboardApiProvider).streamInsights();
 });
+
+/// Fetches trend data for the given period ('today', 'week', 'month').
+/// Auto-disposed so each period change re-fetches fresh data.
+final dashboardTrendProvider = FutureProvider.autoDispose
+    .family<List<DashboardTrendPoint>, String>((ref, period) async {
+  return ref.watch(dashboardApiProvider).fetchTrend(period);
+});

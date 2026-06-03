@@ -122,6 +122,23 @@ class DashboardApi {
     }
   }
 
+  /// Fetches trend data from the backend.
+  /// [period] must be 'today', 'week', or 'month'.
+  Future<List<DashboardTrendPoint>> fetchTrend(String period) async {
+    final response = await _apiClient.dio.get<dynamic>(
+      '/reports/trend',
+      queryParameters: {'period': period},
+    );
+    final data = response.data;
+    if (data is! List) {
+      throw const FormatException('Unexpected trend payload.');
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(DashboardTrendPoint.fromJson)
+        .toList(growable: false);
+  }
+
   Stream<DashboardInsights> streamInsights({int topN = 3}) async* {
     final cached = await _cache?.get(_cacheInsightsKey);
     if (cached != null) {
@@ -381,6 +398,26 @@ class DashboardInsights {
               .map(DashboardTopSellingItem.fromJson)
               .toList(growable: false)
           : const [],
+    );
+  }
+}
+
+class DashboardTrendPoint {
+  const DashboardTrendPoint({
+    required this.label,
+    required this.sales,
+    required this.expenses,
+  });
+
+  final String label;
+  final double sales;
+  final double expenses;
+
+  factory DashboardTrendPoint.fromJson(Map<String, dynamic> json) {
+    return DashboardTrendPoint(
+      label: (json['label'] ?? '') as String,
+      sales: double.tryParse('${json['sales'] ?? 0}') ?? 0,
+      expenses: double.tryParse('${json['expenses'] ?? 0}') ?? 0,
     );
   }
 }

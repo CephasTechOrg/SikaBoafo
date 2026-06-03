@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
-from app.schemas.report import ReportActivityOut, ReportInsightsOut, ReportSummaryOut
+from app.schemas.report import ReportActivityOut, ReportInsightsOut, ReportSummaryOut, ReportTrendPointOut
 from app.services.reports_service import ReportContextMissingError, ReportsService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -63,6 +63,33 @@ def list_recent_activity(
             item_name=row.item_name,
         )
         for row in rows
+    ]
+
+
+@router.get("/trend", response_model=list[ReportTrendPointOut])
+def get_trend(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    period: Annotated[str, Query(pattern="^(today|week|month)$")] = "today",
+    as_of_utc: Annotated[datetime | None, Query()] = None,
+) -> list[ReportTrendPointOut]:
+    """Sales-vs-expenses trend.
+    - period=today  → 24 hourly buckets (midnight→11 PM store-local time)
+    - period=week   → 7 daily buckets (Mon→Sun of current local week)
+    - period=month  → daily buckets for every day in the current local month
+    """
+    service = ReportsService(db=db)
+    try:
+        points = service.get_trend_for_user(
+            user_id=current_user.id,
+            period=period,
+            as_of_utc=as_of_utc,
+        )
+    except ReportContextMissingError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return [
+        ReportTrendPointOut(label=p.label, sales=p.sales, expenses=p.expenses)
+        for p in points
     ]
 
 

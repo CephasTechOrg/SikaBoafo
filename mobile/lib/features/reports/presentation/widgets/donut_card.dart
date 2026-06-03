@@ -24,99 +24,121 @@ class DonutCard extends StatelessWidget {
       return (color: color, fraction: e.value.value / total);
     }).toList(growable: false);
 
-    final centerLabel = totalMinor == 0
-        ? '\u20B50'
-        : '\u20B5${(totalMinor / 100).toStringAsFixed(0)}';
+    final centerAmount = totalMinor == 0
+        ? '₵0'
+        : '₵${(totalMinor / 100).toStringAsFixed(0)}';
 
     return AppCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(16),
+      radius: 20,
+      borderColor: const Color(0xFFEEF1F0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            'By Category',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 14),
-          Center(
-            child: SizedBox(
-              width: 120,
-              height: 120,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(120, 120),
-                    painter: DonutPainter(slices: pieSlices),
-                  ),
-                  Text(
-                    centerLabel,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: AppColors.ink,
-                      letterSpacing: -0.2,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (categoryMinors.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                'No expense data',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            )
-          else
-            ...slices.take(4).toList().asMap().entries.map((e) {
-              final color = kPieColors[e.key % kPieColors.length];
-              final label = _catLabel(e.value.key);
-              final pct = totalMinor == 0
-                  ? 0
-                  : (e.value.value / totalMinor * 100).round();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
+          // ── Left: donut 124×124 ──────────────────────────────────────────
+          SizedBox(
+            width: 124,
+            height: 124,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size(124, 124),
+                  painter: DonutPainter(slices: pieSlices),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          color: AppColors.inkSoft,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '$pct%',
-                      style: const TextStyle(
+                    const Text(
+                      'TOTAL',
+                      style: TextStyle(
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        color: AppColors.ink,
+                        color: Color(0xFF9AA3AF),
+                        letterSpacing: 0.05 * 10.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      centerAmount,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
                         fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
                 ),
-              );
-            }),
+              ],
+            ),
+          ),
+          const SizedBox(width: 18),
+          // ── Right: legend ────────────────────────────────────────────────
+          Expanded(
+            child: categoryMinors.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No expense data',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: slices.take(5).toList().asMap().entries.map((e) {
+                      final color = kPieColors[e.key % kPieColors.length];
+                      final label = _catLabel(e.value.key);
+                      final amount = e.value.value / 100.0;
+                      final amountStr =
+                          '₵${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)}';
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: e.key < (slices.length > 5 ? 4 : slices.length - 1)
+                              ? 9
+                              : 0,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 9,
+                              height: 9,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6B7280),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              amountStr,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+          ),
         ],
       ),
     );

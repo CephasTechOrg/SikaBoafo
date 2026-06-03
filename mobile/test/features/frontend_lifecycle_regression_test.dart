@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:biztrack_gh/data/local/app_database.dart';
 import 'package:biztrack_gh/data/local/sync_queue_repository.dart';
@@ -112,16 +113,19 @@ void main() {
         );
 
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 500));
 
         await tester.tap(find.byIcon(Icons.add_rounded).first);
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
-        await tester.tap(find.textContaining('Checkout'));
-        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(LucideIcons.shoppingCart));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
 
         await tester.tap(find.text('Proceed to checkout'));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
 
         expect(find.byType(CheckoutSheet), findsOneWidget);
         await tester.tap(find.textContaining('Confirm —'));

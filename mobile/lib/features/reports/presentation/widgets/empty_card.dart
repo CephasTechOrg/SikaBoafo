@@ -12,6 +12,8 @@ class EmptyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(16),
+      radius: 20,
+      borderColor: const Color(0xFFEEF1F0),
       child: Row(
         children: [
           Container(

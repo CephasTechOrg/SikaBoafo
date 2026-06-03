@@ -269,23 +269,6 @@ class _HistoryTile extends StatelessWidget {
         DebtsUiUtils.isOverdue(record.dueDateIso);
     final isPartial = record.status == 'partially_paid';
 
-    // Avatar colors — rounded square, status-tinted
-    final Color avatarBg;
-    final Color avatarFg;
-    if (isOverdue) {
-      avatarBg = const Color(0xFFFBECEC);
-      avatarFg = const Color(0xFFD23B3B);
-    } else if (isSettled) {
-      avatarBg = const Color(0xFFEBF4EF);
-      avatarFg = const Color(0xFF2F7D58);
-    } else if (isPartial) {
-      avatarBg = const Color(0xFFFAF3E1);
-      avatarFg = const Color(0xFFBE8A2C);
-    } else {
-      avatarBg = const Color(0xFFF1F3F5);
-      avatarFg = const Color(0xFF6B7280);
-    }
-
     // Badge
     final String badgeLabel;
     final Color badgeBg;
@@ -326,7 +309,7 @@ class _HistoryTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             color: DebtsUi.surface,
             borderRadius: BorderRadius.circular(20),
@@ -346,21 +329,21 @@ class _HistoryTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Rounded-square avatar (matches mockup history card)
+              // Circular avatar — same style as the customer list tile
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: avatarBg,
-                  borderRadius: BorderRadius.circular(13),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEAF6EF),
+                  shape: BoxShape.circle,
                 ),
                 child: Text(
                   customerInitials,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: avatarFg,
+                    color: Color(0xFF0F7A4A),
                     height: 1,
                   ),
                 ),

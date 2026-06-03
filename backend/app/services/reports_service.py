@@ -94,6 +94,14 @@ class ReportInsightsSnapshot:
 
 
 @dataclass(slots=True)
+class ReportTrendPoint:
+    """One bucket in a sales-vs-expenses trend series."""
+    label: str
+    sales: Decimal
+    expenses: Decimal
+
+
+@dataclass(slots=True)
 class ReportsService:
     db: Session
 
@@ -214,6 +222,126 @@ class ReportsService:
                 limit=top_n,
             ),
         )
+
+    def get_trend_for_user(
+        self,
+        *,
+        user_id: UUID,
+        period: str,
+        as_of_utc: datetime | None = None,
+    ) -> list[ReportTrendPoint]:
+        """Return hourly (today) or daily (week/month) sales-vs-expenses buckets.
+
+        All bucket boundaries are computed in the store's local timezone so that
+        "today" means the merchant's local calendar day, not UTC midnight.
+        """
+        store = self._get_default_store_for_user(user_id=user_id)
+        tz = ZoneInfo(store.timezone)
+        now_utc = self._normalize_utc(as_of_utc)
+        now_local = now_utc.astimezone(tz)
+
+        if period == "today":
+            # 24 hourly buckets: 12 AM → 11 PM (local time)
+            day_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+            bucket_count = 24
+
+            def _bucket_idx(local_dt: datetime) -> int:
+                return local_dt.hour
+
+            def _label(h: int) -> str:
+                if h == 0:
+                    return "12AM"
+                if h < 12:
+                    return f"{h}AM"
+                if h == 12:
+                    return "12PM"
+                return f"{h - 12}PM"
+
+            labels = [_label(h) for h in range(bucket_count)]
+            period_start_utc = day_start_local.astimezone(UTC)
+            period_end_utc = period_start_utc + timedelta(days=1)
+
+        elif period == "week":
+            # 7 daily buckets: Mon → Sun of the current local week
+            week_start_local = (
+                now_local - timedelta(days=now_local.weekday())
+            ).replace(hour=0, minute=0, second=0, microsecond=0)
+            bucket_count = 7
+            day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            labels = [day_names[(week_start_local + timedelta(days=d)).weekday()]
+                      for d in range(bucket_count)]
+
+            def _bucket_idx(local_dt: datetime) -> int:  # type: ignore[misc]
+                return (local_dt.date() - week_start_local.date()).days
+
+            period_start_utc = week_start_local.astimezone(UTC)
+            period_end_utc = period_start_utc + timedelta(days=7)
+
+        elif period == "month":
+            # Daily buckets for every day in the current local month
+            month_start_local = now_local.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            if month_start_local.month == 12:
+                next_month_local = month_start_local.replace(year=month_start_local.year + 1, month=1)
+            else:
+                next_month_local = month_start_local.replace(month=month_start_local.month + 1)
+            bucket_count = (next_month_local - month_start_local).days
+            labels = [str(d + 1) for d in range(bucket_count)]
+
+            def _bucket_idx(local_dt: datetime) -> int:  # type: ignore[misc]
+                return local_dt.day - 1
+
+            period_start_utc = month_start_local.astimezone(UTC)
+            period_end_utc = next_month_local.astimezone(UTC)
+
+        else:
+            return []
+
+        # Initialise empty buckets
+        sales_buckets = [Decimal("0.00")] * bucket_count
+        exp_buckets = [Decimal("0.00")] * bucket_count
+
+        # Fetch all sales in the period (two queries, no N+1)
+        sales_rows = self.db.execute(
+            select(Sale.total_amount, Sale.created_at).where(
+                Sale.store_id == store.id,
+                Sale.sale_status == SALE_STATUS_RECORDED,
+                Sale.payment_status.in_([PAYMENT_STATUS_RECORDED, PAYMENT_STATUS_SUCCEEDED]),
+                Sale.created_at >= period_start_utc,
+                Sale.created_at < period_end_utc,
+            )
+        ).all()
+
+        expenses_rows = self.db.execute(
+            select(Expense.amount, Expense.created_at).where(
+                Expense.store_id == store.id,
+                Expense.created_at >= period_start_utc,
+                Expense.created_at < period_end_utc,
+            )
+        ).all()
+
+        for amount, created_at in sales_rows:
+            # created_at may arrive as a naive UTC datetime from the ORM
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            local_dt = created_at.astimezone(tz)
+            idx = _bucket_idx(local_dt)
+            if 0 <= idx < bucket_count:
+                sales_buckets[idx] += self._money(amount)
+
+        for amount, created_at in expenses_rows:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            local_dt = created_at.astimezone(tz)
+            idx = _bucket_idx(local_dt)
+            if 0 <= idx < bucket_count:
+                exp_buckets[idx] += self._money(amount)
+
+        return [
+            ReportTrendPoint(label=labels[i], sales=sales_buckets[i], expenses=exp_buckets[i])
+            for i in range(bucket_count)
+        ]
 
     def _get_default_store_for_user(self, *, user_id: UUID) -> Store:
         try:

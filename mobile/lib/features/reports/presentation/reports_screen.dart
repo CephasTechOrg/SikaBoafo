@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/app_components.dart';
 import '../../debts/data/debts_repository.dart';
+import '../../debts/presentation/utils/debts_ui_tokens.dart';
 import '../../debts/providers/debts_providers.dart';
 import '../../expenses/data/expenses_repository.dart';
 import '../../expenses/providers/expenses_providers.dart';
@@ -12,11 +14,11 @@ import '../../dashboard/data/dashboard_api.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import 'widgets/period_tabs.dart';
 import 'widgets/bar_chart_card.dart';
+import 'widgets/line_chart_card.dart';
 import 'widgets/donut_card.dart';
 import 'widgets/top_customers_card.dart';
 import 'widgets/payment_breakdown_card.dart';
 import 'widgets/top_items_card.dart';
-import 'widgets/section_header.dart';
 import 'widgets/offline_card.dart';
 import 'widgets/reports_loading.dart';
 import 'widgets/error_view.dart';
@@ -34,7 +36,7 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   int _periodIndex = 0; // 0=Today 1=Week 2=Month
-  static const _periods = ['Today', 'This Week', 'This Month'];
+  static const _periodKeys = ['today', 'week', 'month'];
 
   @override
   Widget build(BuildContext context) {
@@ -49,25 +51,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         debtsAsync.valueOrNull?.receivables ?? const <LocalReceivableRecord>[];
     final expenses = expensesAsync.valueOrNull ?? const <LocalExpenseRecord>[];
 
-    final (salesStr, expensesStr, profitStr, grossProfitStr) =
-        switch (_periodIndex) {
+    final (salesStr, expensesStr, profitStr) = switch (_periodIndex) {
       1 when insights != null => (
           insights.week.salesTotal,
           insights.week.expensesTotal,
           insights.week.estimatedProfit,
-          insights.week.grossProfit,
         ),
       2 when insights != null => (
           insights.month.salesTotal,
           insights.month.expensesTotal,
           insights.month.estimatedProfit,
-          insights.month.grossProfit,
         ),
       _ => (
           summary?.todaySalesTotal ?? '0.00',
           summary?.todayExpensesTotal ?? '0.00',
           summary?.todayEstimatedProfit ?? '0.00',
-          summary?.todayGrossProfit ?? '0.00',
         ),
     };
 
@@ -78,15 +76,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final catTotal = catMinors.values.fold(0, (a, b) => a + b);
 
     final openRecs = receivables
-        .where((r) => r.status == 'open')
+        .where((r) => r.status == 'open' || r.status == 'partially_paid')
         .toList(growable: false)
       ..sort((a, b) => toMinor(b.outstandingAmount)
           .compareTo(toMinor(a.outstandingAmount)));
 
-    final hasGrossProfit = (double.tryParse(grossProfitStr) ?? 0) > 0;
+    // Sum of outstanding amounts for the Receivables KPI card
+    final receivablesMinor =
+        openRecs.fold(0, (sum, r) => sum + toMinor(r.outstandingAmount));
 
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: const Color(0xFFF6F8F7),
       body: summaryAsync.when(
         loading: () => const Center(child: ReportsLoading()),
         error: (e, _) => Center(
@@ -97,161 +97,108 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ),
         data: (_) => Column(
           children: [
-            Container(
-              decoration: const BoxDecoration(gradient: AppGradients.hero),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Reports',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -0.4,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Sales, expenses and debt insights',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.heroSubtitle,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _refresh,
-                        icon: const Icon(Icons.refresh_rounded,
-                            color: Colors.white, size: 20),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            _ReportsHero(onBack: () => Navigator.of(context).maybePop(), onRefresh: _refresh),
             Expanded(
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: Column(
-                  children: [
-              // ── Period Tabs ─────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                child: PeriodTabs(
-                  selected: _periodIndex,
-                  onSelected: (i) => setState(() => _periodIndex = i),
-                ),
-              ),
+              child: ColoredBox(
+                color: const Color(0xFFF6F8F7),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  child: RefreshIndicator(
+                    color: DebtsUi.greenMid,
+                    onRefresh: () async => _refresh(),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                      children: [
+                        const SizedBox(height: 14),
 
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.forest,
-                  onRefresh: () async => _refresh(),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                    children: [
-                      // ── KPI Cards ─────────────────────────────────
-                      _PremiumKpiRow(
-                        salesStr: salesStr,
-                        expensesStr: expensesStr,
-                        profitStr: profitStr,
-                        grossProfitStr: grossProfitStr,
-                        hasGrossProfit: hasGrossProfit,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── Bar Chart ─────────────────────────────────
-                      BarChartCard(
-                        sales: double.tryParse(salesStr) ?? 0,
-                        expenses: double.tryParse(expensesStr) ?? 0,
-                        profit: double.tryParse(profitStr) ?? 0,
-                        period: _periods[_periodIndex],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── Expense Breakdown + Top Customers (side by side) ──
-                      IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: DonutCard(
-                                categoryMinors: catMinors,
-                                totalMinor: catTotal,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TopCustomersCard(
-                                receivables: openRecs.take(4).toList(),
-                              ),
-                            ),
-                          ],
+                        // ── Period Tabs (inside sheet) ─────────────────────
+                        PeriodTabs(
+                          selected: _periodIndex,
+                          onSelected: (i) => setState(() => _periodIndex = i),
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                      // ── Payment Breakdown ─────────────────────────
-                      const SectionHeader(
-                        title: 'Payment Breakdown',
-                        subtitle: 'Monthly insights',
-                      ),
-                      const SizedBox(height: 12),
-                      insightsAsync.when(
-                        loading: () => const AppSkeletonCard(lines: 3),
-                        error: (_, __) => const OfflineCard(),
-                        data: (ins) => PaymentBreakdownCard(
-                          breakdown: ins.monthlyPaymentBreakdown,
+                        // ── KPI Grid (2×2) ─────────────────────────────────
+                        _KpiGrid(
+                          salesStr: salesStr,
+                          expensesStr: expensesStr,
+                          profitStr: profitStr,
+                          receivablesMinor: receivablesMinor,
                         ),
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
-                      // ── Top Selling Items ─────────────────────────
-                      const SectionHeader(
-                        title: 'Top Selling Items',
-                        subtitle: 'Monthly performance',
-                      ),
-                      const SizedBox(height: 12),
-                      insightsAsync.when(
-                        loading: () => const AppSkeletonCard(lines: 3),
-                        error: (_, __) => const OfflineCard(),
-                        data: (ins) =>
-                            TopItemsCard(items: ins.monthlyTopSellingItems),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Debt aging (open receivables) ─────────────────
-                      const SectionHeader(
-                        title: 'Debt Aging',
-                        subtitle: 'Open receivables by due date',
-                      ),
-                      const SizedBox(height: 12),
-                      debtsAsync.when(
-                        loading: () => const AppSkeletonCard(lines: 4),
-                        error: (_, __) => const OfflineCard(),
-                        data: (_) => DebtAgingCard(
-                          aging: computeAging(receivables),
+                        // ── Line Chart (trend) — falls back to bar chart if
+                        // the /reports/trend endpoint isn't live yet on this
+                        // backend deployment.
+                        ref.watch(dashboardTrendProvider(
+                          _periodKeys[_periodIndex],
+                        )).when(
+                          loading: () => const AppSkeletonCard(lines: 4),
+                          error: (_, __) => BarChartCard(
+                            sales: double.tryParse(salesStr) ?? 0,
+                            expenses: double.tryParse(expensesStr) ?? 0,
+                            profit: double.tryParse(profitStr) ?? 0,
+                            period: _periodKeys[_periodIndex],
+                          ),
+                          data: (points) => LineChartCard(
+                            points: points,
+                            period: _periodKeys[_periodIndex],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                        const SizedBox(height: 14),
+
+                        // ── Expenses by Category ───────────────────────────
+                        const _SectionTitle('Expenses by Category'),
+                        const SizedBox(height: 12),
+                        DonutCard(
+                          categoryMinors: catMinors,
+                          totalMinor: catTotal,
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Payment Methods ────────────────────────────────
+                        const _SectionTitle('Payment Methods'),
+                        const SizedBox(height: 12),
+                        insightsAsync.when(
+                          loading: () => const AppSkeletonCard(lines: 3),
+                          error: (_, __) => const OfflineCard(),
+                          data: (ins) => PaymentBreakdownCard(
+                            breakdown: ins.monthlyPaymentBreakdown,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Top Selling Items ──────────────────────────────
+                        const _SectionTitle('Top Selling Items', pill: 'By revenue'),
+                        const SizedBox(height: 12),
+                        insightsAsync.when(
+                          loading: () => const AppSkeletonCard(lines: 3),
+                          error: (_, __) => const OfflineCard(),
+                          data: (ins) =>
+                              TopItemsCard(items: ins.monthlyTopSellingItems),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // ── Top Receivables ────────────────────────────────
+                        const _SectionTitle('Top Receivables', pill: 'By balance'),
+                        const SizedBox(height: 12),
+                        TopCustomersCard(receivables: openRecs.take(3).toList()),
+                        const SizedBox(height: 14),
+
+                        // ── Debt Aging ─────────────────────────────────────
+                        const _SectionTitle('Debt Aging', pill: 'Receivables'),
+                        const SizedBox(height: 12),
+                        debtsAsync.when(
+                          loading: () => const AppSkeletonCard(lines: 4),
+                          error: (_, __) => const OfflineCard(),
+                          data: (_) => DebtAgingCard(
+                            aging: computeAging(receivables),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-                  ],
                 ),
               ),
             ),
@@ -269,19 +216,130 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 }
 
-// ── Premium KPI Row ───────────────────────────────────────────────────────────
+// ── Reports Hero ──────────────────────────────────────────────────────────────
 
-class _PremiumKpiRow extends StatelessWidget {
-  const _PremiumKpiRow({
+class _ReportsHero extends StatelessWidget {
+  const _ReportsHero({required this.onBack, required this.onRefresh});
+
+  final VoidCallback onBack;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top + 14;
+    return Stack(
+      children: [
+        // ── Gradient background ──────────────────────────────────────────────
+        Container(
+          decoration: const BoxDecoration(gradient: DebtsUi.heroGradient),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, topPad, 20, 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Back button (36×36, radius 12)
+                GestureDetector(
+                  onTap: onBack,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      LucideIcons.arrowLeft,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Title + subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 2),
+                      Text(
+                        'Reports',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.4,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Business insights',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.72),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Refresh glass button (38×38, circle)
+                GestureDetector(
+                  onTap: onRefresh,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      LucideIcons.refreshCw,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // ── Glow orb top-right ───────────────────────────────────────────────
+        Positioned(
+          top: -20,
+          right: -20,
+          child: Container(
+            width: 160,
+            height: 160,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.04),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── KPI Grid (2×2, 4 cards) ────────────────────────────────────────────────
+
+class _KpiGrid extends StatelessWidget {
+  const _KpiGrid({
     required this.salesStr,
     required this.expensesStr,
     required this.profitStr,
-    required this.grossProfitStr,
-    required this.hasGrossProfit,
+    required this.receivablesMinor,
   });
 
-  final String salesStr, expensesStr, profitStr, grossProfitStr;
-  final bool hasGrossProfit;
+  final String salesStr, expensesStr, profitStr;
+  final int receivablesMinor;
 
   static final _compact = NumberFormat.compactCurrency(
     symbol: '₵',
@@ -294,184 +352,195 @@ class _PremiumKpiRow extends StatelessWidget {
     return _compact.format(v);
   }
 
+  String _fmtMinor(int minor) {
+    return _compact.format(minor / 100.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Row(
           children: [
-            _KpiCard(
-              label: 'Sales',
-              value: _fmt(salesStr),
-              icon: Icons.trending_up_rounded,
-              accentColor: const Color(0xFF22C55E), // green
-              iconBg: const Color(0xFF22C55E).withValues(alpha: 0.12),
+            Expanded(
+              child: _KpiCard(
+                icon: LucideIcons.trendingUp,
+                label: 'Sales',
+                value: _fmt(salesStr),
+                tone: _KpiTone.green,
+              ),
             ),
-            const SizedBox(width: 10),
-            _KpiCard(
-              label: 'Expenses',
-              value: _fmt(expensesStr),
-              icon: Icons.receipt_long_outlined,
-              accentColor: const Color(0xFFF87171), // soft red
-              iconBg: const Color(0xFFF87171).withValues(alpha: 0.12),
-            ),
-            const SizedBox(width: 10),
-            _KpiCard(
-              label: 'Est. Profit',
-              value: _fmt(profitStr),
-              icon: Icons.auto_graph_rounded,
-              accentColor: const Color(0xFFFBBF24), // amber
-              iconBg: const Color(0xFFFBBF24).withValues(alpha: 0.12),
+            const SizedBox(width: 11),
+            Expanded(
+              child: _KpiCard(
+                icon: LucideIcons.receipt,
+                label: 'Expenses',
+                value: _fmt(expensesStr),
+                tone: _KpiTone.warn,
+              ),
             ),
           ],
         ),
-        if (hasGrossProfit) ...[
-          const SizedBox(height: 12),
-          _GrossProfitBanner(value: '₵$grossProfitStr'),
-        ],
+        const SizedBox(height: 11),
+        Row(
+          children: [
+            Expanded(
+              child: _KpiCard(
+                icon: LucideIcons.coins,
+                label: 'Est. Profit',
+                value: _fmt(profitStr),
+                tone: _KpiTone.green,
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: _KpiCard(
+                icon: LucideIcons.wallet,
+                label: 'Receivables',
+                value: _fmtMinor(receivablesMinor),
+                tone: _KpiTone.neutral,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
+enum _KpiTone { green, warn, neutral }
+
 class _KpiCard extends StatelessWidget {
   const _KpiCard({
+    required this.icon,
     required this.label,
     required this.value,
-    required this.icon,
-    required this.accentColor,
-    required this.iconBg,
+    required this.tone,
   });
 
-  final String label, value;
   final IconData icon;
-  final Color accentColor, iconBg;
+  final String label, value;
+  final _KpiTone tone;
+
+  Color get _iconBg => switch (tone) {
+        _KpiTone.green => const Color(0xFFEAF6EF),
+        _KpiTone.warn => const Color(0xFFFAF3E1),
+        _KpiTone.neutral => const Color(0xFFF1F3F5),
+      };
+
+  Color get _iconFg => switch (tone) {
+        _KpiTone.green => const Color(0xFF0F7A4A),
+        _KpiTone.warn => const Color(0xFFBE8A2C),
+        _KpiTone.neutral => const Color(0xFF6B7280),
+      };
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(10),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFEEF1F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A101828),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+          BoxShadow(
+            color: Color(0x0A101828),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: _iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, color: _iconFg, size: 17),
               ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: accentColor, size: 16),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 11),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+              letterSpacing: -0.3,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: AppColors.ink,
-                letterSpacing: -0.4,
-              ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF6B7280),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.muted,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GrossProfitBanner extends StatelessWidget {
-  const _GrossProfitBanner({required this.value});
-  final String value;
+// ── Section Title ─────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, {this.pill});
+
+  final String title;
+  final String? pill;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+              letterSpacing: -0.01 * 18,
+            ),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
+        ),
+        if (pill != null)
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFEAF6EF),
+              borderRadius: BorderRadius.circular(999),
             ),
-            child: const Icon(Icons.insights_rounded,
-                color: AppColors.navy, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Gross Profit',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.muted,
-                ),
+            child: Text(
+              pill!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F7A4A),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.ink,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          const Text(
-            'Revenue minus\ncost of items sold',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.mutedSoft,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

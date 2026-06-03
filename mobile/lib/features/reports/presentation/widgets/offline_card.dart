@@ -28,7 +28,7 @@ class OfflineCard extends StatelessWidget {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Weekly/monthly data unavailable offline.',
+              'Could not load this data. Pull down to retry.',
               style: TextStyle(color: AppColors.inkSoft, fontSize: 13),
             ),
           ),

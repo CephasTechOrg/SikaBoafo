@@ -56,13 +56,19 @@ class DebtsHeader extends StatelessWidget {
           builder: (context, constraints) {
             // FlexibleSpaceBar shrinks while scrolling; fixed padding caused
             // bottom overflow in widget tests and on short expanded heights.
-            final compact =
-                constraints.hasBoundedHeight && constraints.maxHeight < 175;
-            final topPad = compact ? 36.0 : 44.0;
-            final bottomPad = compact ? 8.0 : 14.0;
-            final sectionGap = compact ? 8.0 : 12.0;
-            final statsGap = compact ? 6.0 : 8.0;
-            final amountSize = compact ? 30.0 : 36.0;
+            final bounded = constraints.hasBoundedHeight;
+            final compact = bounded && constraints.maxHeight < 175;
+            final topPad = compact ? 32.0 : 44.0;
+            final bottomPad = compact ? 4.0 : 14.0;
+            final sectionGap = compact ? 6.0 : 12.0;
+            final statsGap = compact ? 4.0 : 8.0;
+            final amountSize = compact ? 28.0 : 36.0;
+
+            final availableHeight = bounded
+                ? constraints.maxHeight - topPad - bottomPad
+                : null;
+            final showStats =
+                availableHeight == null || availableHeight >= 150;
 
             final content = Column(
               mainAxisSize: MainAxisSize.min,
@@ -113,29 +119,31 @@ class DebtsHeader extends StatelessWidget {
                     height: 1.0,
                   ),
                 ),
-                SizedBox(height: statsGap),
-                HeroStatRow(
-                  items: [
-                    HeroStatItem(
-                      icon: LucideIcons.users,
-                      value: '$owingCount',
-                      label: 'Owing',
-                    ),
-                    HeroStatItem(
-                      icon: LucideIcons.alertTriangle,
-                      value: '$overdueCount',
-                      label: 'Overdue',
-                      accentColor: overdueCount > 0
-                          ? const Color(0xFFFFD4A8)
-                          : null,
-                    ),
-                    HeroStatItem(
-                      icon: LucideIcons.trendingUp,
-                      value: collectedFormatted,
-                      label: 'Collected',
-                    ),
-                  ],
-                ),
+                if (showStats) ...[
+                  SizedBox(height: statsGap),
+                  HeroStatRow(
+                    items: [
+                      HeroStatItem(
+                        icon: LucideIcons.users,
+                        value: '$owingCount',
+                        label: 'Owing',
+                      ),
+                      HeroStatItem(
+                        icon: LucideIcons.alertTriangle,
+                        value: '$overdueCount',
+                        label: 'Overdue',
+                        accentColor: overdueCount > 0
+                            ? const Color(0xFFFFD4A8)
+                            : null,
+                      ),
+                      HeroStatItem(
+                        icon: LucideIcons.trendingUp,
+                        value: collectedFormatted,
+                        label: 'Collected',
+                      ),
+                    ],
+                  ),
+                ],
               ],
             );
 
@@ -149,12 +157,17 @@ class DebtsHeader extends StatelessWidget {
               child: content,
             );
 
-            if (!compact) {
+            if (!bounded) {
               return padded;
             }
 
             return Padding(
-              padding: EdgeInsets.fromLTRB(leadingContentInset, topPad, 20, bottomPad),
+              padding: EdgeInsets.fromLTRB(
+                leadingContentInset,
+                topPad,
+                20,
+                bottomPad,
+              ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.topLeft,
