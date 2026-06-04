@@ -7,7 +7,7 @@ class MockupHeroHeader extends StatelessWidget {
   const MockupHeroHeader({
     required this.child,
     this.waveHeight = 42,
-    this.backgroundAssetPath = 'assets/images/sikaboafo.png',
+    this.backgroundAssetPath = 'assets/images/logo.png',
     super.key,
   });
 
@@ -75,7 +75,7 @@ class MockupHeroHeader extends StatelessWidget {
 class HeroBackdrop extends StatelessWidget {
   const HeroBackdrop({
     super.key,
-    this.swirlAssetPath = 'assets/images/sikaboafo.png',
+    this.swirlAssetPath = 'assets/images/logo.png',
     this.swirlOpacity = 0.55,
     this.topShade = 0.60,
     this.midShade = 0.20,
@@ -367,7 +367,7 @@ class MockupScreenScaffold extends StatelessWidget {
     this.heroExtra,
     this.heroHeight = 168,
     this.bottomNavSafeArea = false,
-    this.backgroundAssetPath = 'assets/images/sikaboafo.png',
+    this.backgroundAssetPath = 'assets/images/logo.png',
     this.bottomBar,
     super.key,
   });
