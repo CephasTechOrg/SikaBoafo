@@ -7,7 +7,7 @@ class MockupHeroHeader extends StatelessWidget {
   const MockupHeroHeader({
     required this.child,
     this.waveHeight = 42,
-    this.backgroundAssetPath = 'assets/images/logo.png',
+    this.backgroundAssetPath,
     super.key,
   });
 
@@ -75,7 +75,7 @@ class MockupHeroHeader extends StatelessWidget {
 class HeroBackdrop extends StatelessWidget {
   const HeroBackdrop({
     super.key,
-    this.swirlAssetPath = 'assets/images/logo.png',
+    this.swirlAssetPath,
     this.swirlOpacity = 0.55,
     this.topShade = 0.60,
     this.midShade = 0.20,
@@ -84,7 +84,10 @@ class HeroBackdrop extends StatelessWidget {
     this.tintOpacity = 0,
   });
 
-  final String swirlAssetPath;
+  /// Optional texture laid over the green gradient. Null (default) = clean
+  /// brand-green hero with no image — avoids washing the green out with a
+  /// logo/photo that isn't designed as a full-bleed background.
+  final String? swirlAssetPath;
 
   /// 0–1: how visible the swirl texture is (lower = more solid green).
   final double swirlOpacity;
@@ -112,14 +115,15 @@ class HeroBackdrop extends StatelessWidget {
         const DecoratedBox(
           decoration: BoxDecoration(gradient: AppGradients.hero),
         ),
-        Opacity(
-          opacity: swirlOpacity,
-          child: Image.asset(
-            swirlAssetPath,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
+        if (swirlAssetPath != null)
+          Opacity(
+            opacity: swirlOpacity,
+            child: Image.asset(
+              swirlAssetPath!,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
           ),
-        ),
         if (tintOpacity > 0)
           DecoratedBox(
             decoration: BoxDecoration(
@@ -367,7 +371,7 @@ class MockupScreenScaffold extends StatelessWidget {
     this.heroExtra,
     this.heroHeight = 168,
     this.bottomNavSafeArea = false,
-    this.backgroundAssetPath = 'assets/images/logo.png',
+    this.backgroundAssetPath,
     this.bottomBar,
     super.key,
   });

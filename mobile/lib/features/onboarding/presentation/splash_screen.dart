@@ -82,26 +82,37 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.hero),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              // ── Centred brand mark ──────────────────────────────────────
-              Expanded(
-                child: Center(
+              // ── Brand mark, pinned to the screen's vertical centre ──────
+              // Same position the native splash painted the logo, so it does
+              // not jump or flash on the native → Flutter hand-off.
+              Center(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.82, end: 1),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, value, child) =>
+                      Transform.scale(scale: value, child: child),
+                  child: const MockupAppMark(
+                    size: 88,
+                    assetPath: 'assets/images/logo.png',
+                  ),
+                ),
+              ),
+
+              // ── Name + tagline, fading in just beneath the centred logo ──
+              Align(
+                alignment: const Alignment(0, 0.30),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOut,
+                  builder: (_, value, child) =>
+                      Opacity(opacity: value, child: child),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.82, end: 1),
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeOutCubic,
-                        builder: (_, value, child) =>
-                            Transform.scale(scale: value, child: child),
-                        child: const MockupAppMark(
-                          size: 88,
-                          assetPath: 'assets/images/logo.png',
-                        ),
-                      ),
-                      const SizedBox(height: 20),
                       const Text(
                         'SikaBoafo',
                         style: TextStyle(
@@ -128,34 +139,37 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               ),
 
               // ── Bottom: loading dots + lock badge ───────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const _PulsingDots(),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.lock_rounded,
-                          size: 12,
-                          color: Colors.white.withValues(alpha: 0.40),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'End-to-end encrypted',
-                          style: TextStyle(
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _PulsingDots(),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.lock_rounded,
+                            size: 12,
                             color: Colors.white.withValues(alpha: 0.40),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.3,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(width: 6),
+                          Text(
+                            'End-to-end encrypted',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.40),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

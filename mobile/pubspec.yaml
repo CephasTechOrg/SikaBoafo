@@ -62,16 +62,18 @@ flutter:
         - asset: assets/fonts/Constantia-Bold.ttf
           weight: 700
 
-# Native splash is a plain brand-green (#113726 == AppColors.navy) screen with
-# NO logo. The logo + "Business made simple" should appear only once, via the
-# in-app Flutter splash. Showing the logo natively too made it flash twice.
-# Same green as the in-app splash gradient's top, so the hand-off is seamless.
+# Seamless single-splash: the native window paints brand-green (#113726 ==
+# AppColors.navy) with the logo centred, instantly. The in-app Flutter splash
+# uses the same green + same logo in the same spot, then fades in "Business made
+# simple" beneath it — so the logo never disappears/reappears.
 flutter_native_splash:
   color: "#113726"
+  image: assets/images/logo.png
   android: true
   ios: true
   android_12:
     color: "#113726"
+    image: assets/images/logo.png
 
 flutter_launcher_icons:
   android: true
