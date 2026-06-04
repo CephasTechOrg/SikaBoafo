@@ -2,8 +2,16 @@
 
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Placeholder secrets that must never be used in production.
+_INSECURE_SECRETS = frozenset(
+    {
+        "change-me-in-production",
+        "change-me-min-16-chars-for-dev",
+    }
+)
 
 
 class Settings(BaseSettings):
@@ -79,6 +87,21 @@ class Settings(BaseSettings):
     def cors_allow_credentials(self) -> bool:
         """Browsers reject credentials with a wildcard origin."""
         return self.cors_origin_list != ["*"]
+
+    @model_validator(mode="after")
+    def _guard_production_secrets(self) -> "Settings":
+        """Fail fast if production is deployed with a placeholder SECRET_KEY.
+
+        Without this, a missing ``SECRET_KEY`` env var silently falls back to a
+        publicly known default, making auth tokens forgeable.
+        """
+        if self.app_env.strip().lower() == "production":
+            if self.secret_key in _INSECURE_SECRETS:
+                raise ValueError(
+                    "SECRET_KEY must be a strong, unique value in production; "
+                    "the default placeholder is not allowed."
+                )
+        return self
 
 
 @lru_cache

@@ -1,0 +1,14 @@
+# Release signing config — copy to `key.properties` (gitignored) and fill in.
+# Generate the keystore first (keep the .jks and these passwords SECRET, backed
+# up, and OUT of git — losing them means you can never update the app on Play):
+#
+#   keytool -genkey -v -keystore upload-keystore.jks \
+#       -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# Put upload-keystore.jks somewhere outside the repo and point storeFile at it
+# (absolute path recommended).
+
+storePassword=your-store-password
+keyPassword=your-key-password
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks

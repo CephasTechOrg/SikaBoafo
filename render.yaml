@@ -24,7 +24,10 @@ services:
           name: biztrackgh-db
           property: connectionString
       - key: SECRET_KEY
-        sync: false
+        # Render generates a strong random value on first deploy, so production
+        # never falls back to the insecure placeholder. (config.py also refuses
+        # to boot in production if SECRET_KEY is a known placeholder.)
+        generateValue: true
       - key: CORS_ORIGINS
         sync: false
       - key: PAYSTACK_SECRET_KEY_TEST
