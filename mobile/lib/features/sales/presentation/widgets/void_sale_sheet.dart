@@ -1,23 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../data/sales_repository.dart';
 
-/// Confirmation sheet for voiding a sale. Returns `true` if the user
-/// confirms, `false`/`null` if they cancel.
-class VoidSaleSheet extends ConsumerWidget {
+/// Confirmation sheet for voiding a sale. Pops with the entered reason string
+/// (possibly empty) when confirmed, or `null` when cancelled/dismissed.
+///
+/// Owns its own [TextEditingController] so it is disposed during the normal
+/// widget unmount — avoiding the `_dependents.isEmpty` crash that can happen
+/// when a method-scoped controller is disposed as the sheet tears down.
+class VoidSaleSheet extends StatefulWidget {
   const VoidSaleSheet({
     super.key,
     required this.sale,
-    required this.reasonController,
   });
 
   final LocalSaleRecord sale;
-  final TextEditingController reasonController;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<VoidSaleSheet> createState() => _VoidSaleSheetState();
+}
+
+class _VoidSaleSheetState extends State<VoidSaleSheet> {
+  final TextEditingController _reasonController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final viewBottom = MediaQuery.of(context).viewInsets.bottom;
 
     return SafeArea(
@@ -89,7 +103,7 @@ class VoidSaleSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
               TextField(
-                controller: reasonController,
+                controller: _reasonController,
                 style: const TextStyle(fontSize: 14, color: AppColors.ink),
                 decoration: InputDecoration(
                   hintText: 'Reason (optional)',
@@ -121,8 +135,7 @@ class VoidSaleSheet extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () =>
-                          Navigator.of(context).pop(false),
+                      onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.muted,
                         side:
@@ -143,7 +156,7 @@ class VoidSaleSheet extends ConsumerWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: () =>
-                          Navigator.of(context).pop(true),
+                          Navigator.of(context).pop(_reasonController.text),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.danger,
                         foregroundColor: Colors.white,

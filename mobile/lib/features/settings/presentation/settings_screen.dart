@@ -106,54 +106,14 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<bool?> _confirmDeleteAccount(BuildContext context) {
-    final ctrl = TextEditingController();
+    // Dialog is a StatefulWidget that owns its TextEditingController, so the
+    // framework disposes it during the normal unmount. Disposing a controller
+    // manually after the dialog closes can race the route teardown and trip the
+    // `_dependents.isEmpty` red screen (same issue as the sales price dialog).
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        actionsAlignment: MainAxisAlignment.end,
-        title: const Text('Delete account permanently?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This permanently deletes your account. It cannot be undone — '
-              'your account can never be recovered, and you will be signed out '
-              'immediately on this device.\n\n'
-              'Are you sure you want to do this? Type DELETE to confirm.',
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirmation',
-                hintText: 'DELETE',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            style: TextButton.styleFrom(minimumSize: const Size(92, 44)),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final ok = ctrl.text.trim().toUpperCase() == 'DELETE';
-              Navigator.of(ctx).pop(ok);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: DashboardMockup.danger,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(92, 44),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    ).whenComplete(ctrl.dispose);
+      builder: (_) => const _DeleteAccountConfirmDialog(),
+    );
   }
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
@@ -806,4 +766,91 @@ class _InlineError extends StatelessWidget {
 String _formatTimeOfDay(BuildContext context, TimeOfDay t) {
   final localizations = MaterialLocalizations.of(context);
   return localizations.formatTimeOfDay(t, alwaysUse24HourFormat: false);
+}
+
+/// Permanent-delete confirmation. Owns its [TextEditingController] so the
+/// framework disposes it during the normal unmount — avoiding the
+/// `_dependents.isEmpty` red screen seen when a method-scoped controller is
+/// disposed as the dialog (with an autofocused field) tears down. Returns
+/// `true` when the user types DELETE and confirms.
+class _DeleteAccountConfirmDialog extends StatefulWidget {
+  const _DeleteAccountConfirmDialog();
+
+  @override
+  State<_DeleteAccountConfirmDialog> createState() =>
+      _DeleteAccountConfirmDialogState();
+}
+
+class _DeleteAccountConfirmDialogState
+    extends State<_DeleteAccountConfirmDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+  bool _canDelete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    final ok = _ctrl.text.trim().toUpperCase() == 'DELETE';
+    if (ok != _canDelete) setState(() => _canDelete = ok);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.removeListener(_onChanged);
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      actionsAlignment: MainAxisAlignment.end,
+      title: const Text('Delete account permanently?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'This permanently deletes your account. It cannot be undone — '
+            'your account can never be recovered, and you will be signed out '
+            'immediately on this device.\n\n'
+            'Are you sure you want to do this? Type DELETE to confirm.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Confirmation',
+              hintText: 'DELETE',
+            ),
+            onSubmitted: (_) {
+              if (_canDelete) Navigator.of(context).pop(true);
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          style: TextButton.styleFrom(minimumSize: const Size(92, 44)),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed:
+              _canDelete ? () => Navigator.of(context).pop(true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: DashboardMockup.danger,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(92, 44),
+          ),
+          child: const Text('Delete'),
+        ),
+      ],
+    );
+  }
 }

@@ -1028,18 +1028,19 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _showVoidSaleDialog(LocalSaleRecord sale) async {
-    final reasonCtrl = TextEditingController();
+    // VoidSaleSheet owns its TextEditingController and pops the reason string
+    // (or null when cancelled/dismissed), so no controller is disposed here.
+    final reason = await showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => VoidSaleSheet(sale: sale),
+    );
+    if (!mounted || reason == null) return;
     try {
-      final shouldVoid = await showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => VoidSaleSheet(sale: sale, reasonController: reasonCtrl),
-      );
-      if (shouldVoid != true) return;
       await ref.read(salesControllerProvider.notifier).voidSale(
             saleId: sale.saleId,
-            reason: reasonCtrl.text,
+            reason: reason,
           );
       if (!mounted) return;
       final wasMobileMoney = sale.paymentMethodLabel == 'mobile_money';
@@ -1058,8 +1059,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(humanizeSaleSyncError(error))),
       );
-    } finally {
-      reasonCtrl.dispose();
     }
   }
 
