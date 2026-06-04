@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -222,14 +223,27 @@ class _ProductCatalogSheetState
   }
 
   String _friendlyError(Object err) {
-    final msg = err.toString();
-    if (msg.contains('Invalid API key') || msg.contains('anon')) {
-      return 'Supabase anon key not configured.\nAdd SUPABASE_ANON_KEY to your build config.';
+    // Surface the real cause in debug so catalog failures (paused Supabase
+    // project, missing Storage RLS policy, bad bucket name) are diagnosable.
+    if (kDebugMode) {
+      debugPrint('[product-catalog] load failed: ${err.runtimeType}: $err');
     }
-    if (msg.contains('network') || msg.contains('SocketException')) {
-      return 'No internet connection. Check your network and try again.';
+    final lower = err.toString().toLowerCase();
+    if (lower.contains('api key') || lower.contains('jwt') || lower.contains('unauthorized')) {
+      return 'Product catalog is unavailable right now.\nPlease try again later.';
     }
-    return 'Failed to load product catalog.\nTap to retry.';
+    // Only genuine connectivity / unreachable-server cases. Phrased so it does
+    // not falsely blame the user's network when the catalog server is down.
+    if (lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection refused') ||
+        lower.contains('connection closed') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout')) {
+      return "Can't reach the catalog right now.\nCheck your connection or try again later.";
+    }
+    return "Couldn't load the product catalog.\nTap retry to try again.";
   }
 }
 

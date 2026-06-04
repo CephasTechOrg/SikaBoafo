@@ -62,17 +62,16 @@ flutter:
         - asset: assets/fonts/Constantia-Bold.ttf
           weight: 700
 
-# Brand splash: dark-green (#113726 == AppColors.navy, the top of the hero
-# gradient shown by the Flutter splash) so the native window that paints before
-# the engine loads matches the in-app splash with no colour/logo flash.
+# Native splash is a plain brand-green (#113726 == AppColors.navy) screen with
+# NO logo. The logo + "Business made simple" should appear only once, via the
+# in-app Flutter splash. Showing the logo natively too made it flash twice.
+# Same green as the in-app splash gradient's top, so the hand-off is seamless.
 flutter_native_splash:
   color: "#113726"
-  image: assets/images/logo.png
   android: true
   ios: true
   android_12:
     color: "#113726"
-    image: assets/images/logo.png
 
 flutter_launcher_icons:
   android: true

@@ -204,6 +204,10 @@ def delete_account(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_merchant_owner)],
 ) -> AccountDeleteOut:
+    # Immediate, permanent delete (no recovery) — the UI warns the user clearly.
+    # TODO(retention): later, switch to deactivate + `deletion_requested_at`, allow
+    # recovery on login within a window, and purge via a scheduled Render cron job
+    # (no long-running worker needed). Keep this anonymization as the purge step.
     # Soft-delete: deactivate and anonymize PII while preserving referential integrity.
     if not current_user.is_active:
         return AccountDeleteOut()

@@ -111,15 +111,16 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         actionsAlignment: MainAxisAlignment.end,
-        title: const Text('Delete account?'),
+        title: const Text('Delete account permanently?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'This will permanently delete your account access on this device. '
-              'You will be signed out immediately.\n\n'
-              'Type DELETE to confirm.',
+              'This permanently deletes your account. It cannot be undone — '
+              'your account can never be recovered, and you will be signed out '
+              'immediately on this device.\n\n'
+              'Are you sure you want to do this? Type DELETE to confirm.',
             ),
             const SizedBox(height: 12),
             TextField(

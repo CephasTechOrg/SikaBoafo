@@ -234,14 +234,27 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
             body: MediaQuery.removePadding(
               context: context,
               removeTop: true,
-              child: inventoryAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) =>
-                    Center(child: Text(humanizeInventoryError(error))),
-                data: (_) => RefreshIndicator(
+              // Show the list whenever we have data — even if a later background
+              // refresh errors — matching the inventory screen. A full-screen
+              // loader/error only appears before the first successful load, so a
+              // transient sync failure (e.g. server cold-start) no longer wrongly
+              // replaces the whole page with "something went wrong".
+              child: !inventoryAsync.hasValue
+                  ? Center(
+                      child: inventoryAsync.hasError
+                          ? Text(humanizeInventoryError(inventoryAsync.error!))
+                          : const CircularProgressIndicator(),
+                    )
+                  : RefreshIndicator(
                   onRefresh: () async {
+                    // userInitiated: true suppresses the global "Inventory
+                    // refresh failed" snackbar for a manual pull-to-refresh — a
+                    // failed background sync must not look like an error when the
+                    // cached data is still shown.
                     await Future.wait([
-                      ref.read(inventoryControllerProvider.notifier).refresh(),
+                      ref
+                          .read(inventoryControllerProvider.notifier)
+                          .refresh(userInitiated: true),
                       ref
                           .read(salesControllerProvider.notifier)
                           .refresh(includeVoided: _showVoided),
@@ -333,7 +346,6 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                     ),
                   ),
                 ),
-              ),
             ),
           ),
         ],
@@ -955,69 +967,33 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
     if (_priceDialogOpen) return;
     _priceDialogOpen = true;
-    final cart = ref.read(salesCartProvider);
     final key = item.id;
-    final ctrl = TextEditingController(
-      text: cart.priceOverrideByItemId[key] ?? item.defaultPrice,
-    );
-    // ValueNotifier holds error state outside the builder so it survives
-    // rebuilds and never calls setState on a dismissed dialog.
-    final errorNotifier = ValueNotifier<String?>(null);
+    final initialPrice =
+        ref.read(salesCartProvider).priceOverrideByItemId[key] ??
+            item.defaultPrice;
     try {
-      await showDialog<void>(
+      // The dialog owns its TextEditingController via a StatefulWidget so the
+      // framework disposes it at the correct point in the element lifecycle.
+      // Disposing a controller manually after `showDialog` resolves can race
+      // the dialog route teardown and trip the framework assertion
+      // `_dependents.isEmpty` (the red screen). We also defer the cart mutation
+      // until the dialog has fully closed, so no provider rebuild happens while
+      // the dialog's TextField is still mounted.
+      final result = await showDialog<_PriceOverrideResult>(
         context: context,
-        builder: (ctx) => ValueListenableBuilder<String?>(
-          valueListenable: errorNotifier,
-          builder: (ctx, errorText, _) => AlertDialog(
-            title: Text('Set price — ${item.name}'),
-            content: TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'Unit price (GHS)',
-                prefixText: 'GHS ',
-                errorText: errorText,
-              ),
-              onChanged: (_) => errorNotifier.value = null,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  ref.read(salesCartProvider.notifier).removeOverride(key);
-                  Navigator.of(ctx).pop();
-                },
-                child: const Text('Reset to default'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final raw = ctrl.text.trim();
-                  final match =
-                      RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-                  final parsed = double.tryParse(raw) ?? 0;
-                  if (match == null || parsed <= 0) {
-                    errorNotifier.value = 'Enter a valid price above 0';
-                    return;
-                  }
-                  ref
-                      .read(salesCartProvider.notifier)
-                      .overridePrice(key, raw);
-                  Navigator.of(ctx).pop();
-                },
-                child: const Text('Apply'),
-              ),
-            ],
-          ),
+        builder: (_) => _PriceOverrideDialog(
+          itemName: item.name,
+          initialPrice: initialPrice,
         ),
       );
+      if (!mounted || result == null) return;
+      final notifier = ref.read(salesCartProvider.notifier);
+      if (result.reset) {
+        notifier.removeOverride(key);
+      } else if (result.price != null) {
+        notifier.overridePrice(key, result.price!);
+      }
     } finally {
-      errorNotifier.dispose();
-      ctrl.dispose();
       _priceDialogOpen = false;
     }
   }
@@ -1429,6 +1405,90 @@ class _PaymentLoadingDialog extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Result returned by [_PriceOverrideDialog]: either a new [price] string, or
+/// [reset] to clear the override. `null` (no result) means dismissed.
+class _PriceOverrideResult {
+  const _PriceOverrideResult({this.price, this.reset = false});
+
+  final String? price;
+  final bool reset;
+}
+
+/// Stateful price-override dialog. Owns its [TextEditingController] so the
+/// framework disposes it during the normal element unmount — avoiding the
+/// `_dependents.isEmpty` assertion caused by disposing a controller while the
+/// dialog's TextField is still wired into inherited widgets (Focus/Theme).
+class _PriceOverrideDialog extends StatefulWidget {
+  const _PriceOverrideDialog({
+    required this.itemName,
+    required this.initialPrice,
+  });
+
+  final String itemName;
+  final String initialPrice;
+
+  @override
+  State<_PriceOverrideDialog> createState() => _PriceOverrideDialogState();
+}
+
+class _PriceOverrideDialogState extends State<_PriceOverrideDialog> {
+  late final TextEditingController _ctrl =
+      TextEditingController(text: widget.initialPrice);
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _apply() {
+    final raw = _ctrl.text.trim();
+    final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
+    final parsed = double.tryParse(raw) ?? 0;
+    if (match == null || parsed <= 0) {
+      setState(() => _errorText = 'Enter a valid price above 0');
+      return;
+    }
+    Navigator.of(context).pop(_PriceOverrideResult(price: raw));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Set price — ${widget.itemName}'),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        ],
+        decoration: InputDecoration(
+          labelText: 'Unit price (GHS)',
+          prefixText: 'GHS ',
+          errorText: _errorText,
+        ),
+        onChanged: (_) {
+          if (_errorText != null) setState(() => _errorText = null);
+        },
+        onSubmitted: (_) => _apply(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context)
+              .pop(const _PriceOverrideResult(reset: true)),
+          child: const Text('Reset to default'),
+        ),
+        FilledButton(
+          onPressed: _apply,
+          child: const Text('Apply'),
+        ),
+      ],
     );
   }
 }

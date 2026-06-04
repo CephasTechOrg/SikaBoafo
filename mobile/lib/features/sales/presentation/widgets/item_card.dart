@@ -171,6 +171,7 @@ class ItemCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: onPriceTap,
                     child: Text(
                       item.name,
@@ -191,6 +192,7 @@ class ItemCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: onPriceTap,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,6 +326,7 @@ class _MockupStepper extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: onMinus,
             child: const SizedBox(
               width: 34,
@@ -355,6 +358,7 @@ class _MockupStepper extends StatelessWidget {
             ),
           ),
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: onPlus,
             child: SizedBox(
               width: 34,
