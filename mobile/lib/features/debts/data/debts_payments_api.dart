@@ -231,14 +231,16 @@ String humanizeDebtsPaymentsError(Object error) {
         error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout) {
-      return 'Cannot reach backend. Try again when online.';
+      return 'No internet connection. Please check your network and try again.';
     }
     final code = error.response?.statusCode;
-    if (code != null) {
-      return 'Payment request failed (HTTP $code). ${error.message ?? ''}'
-          .trim();
+    if (code == 401 || code == 403) {
+      return 'Session expired. Please sign in again.';
     }
-    return error.message ?? 'Payment request failed.';
+    if (code != null && code >= 500) {
+      return 'Server is having trouble right now. Please try again shortly.';
+    }
+    return 'Payment request failed. Please try again.';
   }
   return 'Payment request failed.';
 }

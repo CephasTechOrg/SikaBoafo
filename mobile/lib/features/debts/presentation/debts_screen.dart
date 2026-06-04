@@ -431,7 +431,7 @@ class _LoadingState extends StatelessWidget {
       color: DebtsUi.textMuted,
       backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.greenDeep,
+        color: DebtsUi.pageBackground,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: ListView(
@@ -467,7 +467,7 @@ class _ErrorState extends StatelessWidget {
       color: DebtsUi.textMuted,
       backgroundColor: DebtsUi.surface,
       child: ColoredBox(
-        color: DebtsUi.greenDeep,
+        color: DebtsUi.pageBackground,
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: AppRadii.heroRadius),
           child: ListView(

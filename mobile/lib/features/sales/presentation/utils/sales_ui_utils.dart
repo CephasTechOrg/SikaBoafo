@@ -19,9 +19,9 @@ class SalesUiUtils {
     final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
     if (match == null) return 0;
     final parts = raw.split('.');
-    final major = int.parse(parts[0]);
+    final major = int.tryParse(parts[0]) ?? 0;
     final decimals = parts.length == 2 ? parts[1].padRight(2, '0') : '00';
-    return (major * 100) + int.parse(decimals);
+    return (major * 100) + (int.tryParse(decimals) ?? 0);
   }
 
   static int moneyToMinorSafe(String value) {

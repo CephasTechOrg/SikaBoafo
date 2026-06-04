@@ -148,17 +148,41 @@ String humanizeDioError(Object error) {
   if (error is DioException) {
     final detail = error.response?.data;
     if (detail is Map<String, dynamic> && detail['detail'] is String) {
-      final d = detail['detail'] as String;
+      final d = (detail['detail'] as String).trim();
       if (d == 'pin_not_set') {
-        return 'No PIN for this number yet. Use Create account, or Forgot PIN after '
-            'trying to sign in.';
+        return 'No PIN set for this number. Use Create account or tap Forgot PIN.';
       }
-      return d;
+      if (d == 'invalid_credentials' || d == 'Invalid credentials') {
+        return 'Incorrect phone number or PIN. Please try again.';
+      }
+      // Filter out developer-facing error strings before showing to user.
+      final looksDev = d.isEmpty ||
+          d.contains('Traceback') ||
+          d.contains('Exception') ||
+          d.contains('Error:') ||
+          d.contains('psycopg') ||
+          d.contains('sqlalchemy');
+      if (!looksDev) return d;
     }
-    if (error.type == DioExceptionType.connectionError) {
-      return 'Cannot reach server. Check API_BASE_URL and network.';
+    final status = error.response?.statusCode;
+    if (_isOfflineish(error)) {
+      return 'No internet connection. Please check your network and try again.';
     }
-    return error.message ?? 'Request failed.';
+    if (status == 401) return 'Incorrect phone number or PIN.';
+    if (status == 403) return 'Access denied. Please contact support.';
+    if (status == 404) return 'Account not found. Check your phone number.';
+    if (status == 429) return 'Too many attempts. Please wait a moment.';
+    if (status != null && status >= 500) {
+      return 'Server is having trouble right now. Please try again shortly.';
+    }
+    return 'Something went wrong. Please try again.';
   }
-  return 'Unexpected error. Please try again.';
+  return 'Something went wrong. Please try again.';
+}
+
+bool _isOfflineish(DioException e) {
+  return e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.receiveTimeout ||
+      e.type == DioExceptionType.sendTimeout;
 }

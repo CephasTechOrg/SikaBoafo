@@ -189,7 +189,7 @@ class _BusinessProfileScreenState
                 ),
               ),
               error: (e, _) => _ErrorCard(
-                message: e.toString(),
+                message: humanizeDashboardError(e),
                 onRetry: () => ref.invalidate(merchantContextProvider),
               ),
               data: (_) => Column(

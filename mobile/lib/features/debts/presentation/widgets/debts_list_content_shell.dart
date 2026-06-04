@@ -54,71 +54,86 @@ class DebtsListContentShell extends StatelessWidget {
       color: DebtsUi.textMuted,
       backgroundColor: DebtsUi.surface,
       onRefresh: onRefresh,
-      child: ColoredBox(
-        color: DebtsUi.greenDeep,
-        child: ClipRRect(
-          borderRadius:
-              const BorderRadius.vertical(top: AppRadii.heroRadius),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(bottom: bottomInset),
-            children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: DebtsUi.surface,
-                  borderRadius:
-                      BorderRadius.vertical(top: AppRadii.heroRadius),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    staleBannerTopPadding,
-                    horizontalPadding,
-                    4,
-                  ),
-                  child: staleBanner,
-                ),
-              ),
-              ColoredBox(
-                color: DebtsUi.toolbarBackground,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    toolbarTopPadding,
-                    horizontalPadding,
-                    tabFilter != null ? 14 : 10,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      searchBar,
-                      if (tabFilter != null) ...[
-                        const SizedBox(height: 10),
-                        tabFilter!,
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              ColoredBox(
-                color: DebtsUi.pageBackground,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    contentTopPadding,
-                    horizontalPadding,
-                    0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: children,
-                  ),
-                ),
-              ),
-            ],
+      child: Stack(
+        children: [
+          // Green fills only behind the rounded top corners so the sheet
+          // reads as curving over the hero. Everything below the corners is
+          // page gray, so the bottom inset + overscroll bounce never bleed
+          // green (the issue the green base used to cause).
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 32,
+            child: ColoredBox(color: DebtsUi.greenDeep),
           ),
-        ),
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: AppRadii.heroRadius),
+            child: ColoredBox(
+              color: DebtsUi.pageBackground,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: bottomInset),
+                children: [
+                  DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: DebtsUi.surface,
+                      borderRadius:
+                          BorderRadius.vertical(top: AppRadii.heroRadius),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        staleBannerTopPadding,
+                        horizontalPadding,
+                        4,
+                      ),
+                      child: staleBanner,
+                    ),
+                  ),
+                  ColoredBox(
+                    color: DebtsUi.toolbarBackground,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        toolbarTopPadding,
+                        horizontalPadding,
+                        tabFilter != null ? 14 : 10,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          searchBar,
+                          if (tabFilter != null) ...[
+                            const SizedBox(height: 10),
+                            tabFilter!,
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  ColoredBox(
+                    color: DebtsUi.pageBackground,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        contentTopPadding,
+                        horizontalPadding,
+                        0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: children,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

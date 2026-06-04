@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
   // Brand — unchanged
@@ -145,7 +146,7 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.canvas,
-    fontFamily: 'SegoeUI',
+    fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
   );
 
   final textTheme = base.textTheme.copyWith(
@@ -342,6 +343,23 @@ ThemeData buildAppTheme() {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.sm),
         ),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      titleTextStyle: textTheme.titleMedium?.copyWith(
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        color: AppColors.ink,
+      ),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
+        color: AppColors.inkSoft,
+        height: 1.45,
       ),
     ),
     bottomSheetTheme: const BottomSheetThemeData(

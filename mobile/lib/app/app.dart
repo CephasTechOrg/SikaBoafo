@@ -129,6 +129,34 @@ class _BizTrackAppState extends ConsumerState<BizTrackApp>
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const _AppScrollBehavior(),
+      builder: (context, child) {
+        // Clamp system font scaling so large-text accessibility settings
+        // don't overflow fixed-height rows and chips across all screens.
+        final clamped = MediaQuery.of(context).copyWith(
+          textScaler: MediaQuery.of(context).textScaler.clamp(
+            minScaleFactor: 0.85,
+            maxScaleFactor: 1.15,
+          ),
+        );
+        return MediaQuery(data: clamped, child: child!);
+      },
     );
+  }
+}
+
+/// App-wide scroll behavior: removes the Android overscroll glow so brand
+/// surfaces (green heroes, gray sheets) never show a coloured glow on pull.
+/// Keeps every scrollable screen consistent with the mockup look.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }

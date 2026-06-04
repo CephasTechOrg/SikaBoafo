@@ -114,16 +114,22 @@ class _HomeDashboard extends ConsumerWidget {
     // Hero-green is the scroll-area background so that:
     //  • pulling down to refresh extends the dark-green hero naturally
     //  • the loading skeleton matches the hero colour
-    return ColoredBox(
-      color: DashboardMockup.heroGreen,
-      child: ctxAsync.when(
-        loading: () => const Center(
+    // The loaded scroll uses a gray base so the bottom inset + overscroll
+    // bounce stay gray; a green band sits behind the hero so pulling down to
+    // refresh still extends the hero green at the top.
+    return ctxAsync.when(
+      loading: () => const ColoredBox(
+        color: DashboardMockup.heroGreen,
+        child: Center(
           child: CircularProgressIndicator(
             color: Colors.white,
             strokeWidth: 2.5,
           ),
         ),
-        error: (e, _) => Center(
+      ),
+      error: (e, _) => ColoredBox(
+        color: DashboardMockup.heroGreen,
+        child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -154,63 +160,86 @@ class _HomeDashboard extends ConsumerWidget {
             ),
           ),
         ),
-        data: (mc) => RefreshIndicator(
-          color: DashboardMockup.green600,
-          backgroundColor: DashboardMockup.card,
-          strokeWidth: 2.5,
-          displacement: 52,
-          onRefresh: () => _refresh(ref),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
+      ),
+      data: (mc) => ColoredBox(
+        color: DashboardMockup.bg,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.sizeOf(context).height * 0.55,
+              child: const ColoredBox(color: DashboardMockup.heroGreen),
             ),
-            slivers: [
-              // ── Hero ──────────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: DashboardHeroSection(
-                  mc: mc,
-                  summaryAsync: summaryAsync,
-                  onNavigate: onNavigate,
+            // Disable the Android stretch/glow overscroll indicator so the
+            // hero green doesn't bleed outside its region on pull-to-refresh.
+            ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context)
+                  .copyWith(overscroll: false),
+              child: RefreshIndicator(
+              color: DashboardMockup.green600,
+              backgroundColor: DashboardMockup.card,
+              strokeWidth: 2.5,
+              displacement: 52,
+              onRefresh: () => _refresh(ref),
+              child: CustomScrollView(
+                // Clamping (not bouncing) so content never overshoots its
+                // bounds — no green/gray gap can be revealed on pull or fling.
+                // RefreshIndicator still works; the glow is killed above.
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
                 ),
-              ),
-
-              // ── Sheet content ──────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: ColoredBox(
-                  color: DashboardMockup.bg,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      DashboardMockup.gutter,
-                      0,
-                      DashboardMockup.gutter,
-                      24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DashboardKpiStrip(
-                          summaryAsync: summaryAsync,
-                          overlayAsync: overlayAsync,
-                          onNavigate: onNavigate,
-                        ),
-                        const SizedBox(height: 20),
-                        DashboardTopSellingSection(
-                          insightsAsync: insightsAsync,
-                          overlayAsync: overlayAsync,
-                          onNavigate: onNavigate,
-                        ),
-                        const SizedBox(height: 18),
-                        DashboardRecentActivity(
-                          activityAsync: activityAsync,
-                        ),
-                        const SizedBox(height: 4),
-                      ],
+                slivers: [
+                  // ── Hero ──────────────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: DashboardHeroSection(
+                      mc: mc,
+                      summaryAsync: summaryAsync,
+                      onNavigate: onNavigate,
                     ),
                   ),
-                ),
+
+                  // ── Sheet content ──────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: ColoredBox(
+                      color: DashboardMockup.bg,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          DashboardMockup.gutter,
+                          0,
+                          DashboardMockup.gutter,
+                          24,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            DashboardKpiStrip(
+                              summaryAsync: summaryAsync,
+                              overlayAsync: overlayAsync,
+                              onNavigate: onNavigate,
+                            ),
+                            const SizedBox(height: 20),
+                            DashboardTopSellingSection(
+                              insightsAsync: insightsAsync,
+                              overlayAsync: overlayAsync,
+                              onNavigate: onNavigate,
+                            ),
+                            const SizedBox(height: 18),
+                            DashboardRecentActivity(
+                              activityAsync: activityAsync,
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            ), // ScrollConfiguration
+          ],
         ),
       ),
     );

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/mockup_ui.dart';
+import '../../dashboard/presentation/widgets/dashboard_mockup_ui.dart';
 import '../providers/notifications_inbox_providers.dart';
 
 enum _NotifFilter { all, unread }
@@ -58,12 +60,13 @@ class _NotificationsInboxScreenState extends ConsumerState<NotificationsInboxScr
             child: CircularProgressIndicator(strokeWidth: 2.4),
           ),
         ),
-        error: (e, _) => Center(
+        error: (e, _) => const Center(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(24),
             child: Text(
-              'Failed to load notifications.\n${e.toString()}',
+              'Could not load notifications. Pull down to try again.',
               textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, height: 1.5),
             ),
           ),
         ),
@@ -161,12 +164,15 @@ class _NotificationsInboxScreenState extends ConsumerState<NotificationsInboxScr
                     body: n.body,
                     timeLabel: _formatTime(n.createdAtMs),
                     unread: !n.isRead,
+                    type: n.type,
                     onTap: () async {
                       await ref
                           .read(notificationsInboxControllerProvider.notifier)
                           .markRead(n.id);
                       if (!context.mounted) return;
-                      context.go(n.route);
+                      // push preserves the notifications screen in the stack
+                      // so the user can press back to return here.
+                      context.push(n.route);
                     },
                     onMarkRead: () => ref
                         .read(notificationsInboxControllerProvider.notifier)
@@ -270,6 +276,7 @@ class _NotificationTile extends StatelessWidget {
     required this.body,
     required this.timeLabel,
     required this.unread,
+    required this.type,
     required this.onTap,
     required this.onMarkRead,
     required this.onDelete,
@@ -279,44 +286,74 @@ class _NotificationTile extends StatelessWidget {
   final String body;
   final String timeLabel;
   final bool unread;
+  final String type;
   final VoidCallback onTap;
   final VoidCallback onMarkRead;
   final VoidCallback onDelete;
 
+  static _TonePair _tone(String type) => switch (type) {
+        'debt' || 'receivable' => const _TonePair(
+            DashboardMockup.warnTint, DashboardMockup.warn),
+        'payment' => const _TonePair(
+            DashboardMockup.greenTint, DashboardMockup.green700),
+        'stock' || 'inventory' => const _TonePair(
+            DashboardMockup.warnTint, DashboardMockup.warn),
+        'sale' => const _TonePair(
+            DashboardMockup.greenTint, DashboardMockup.green700),
+        'danger' || 'error' => const _TonePair(
+            DashboardMockup.dangerTint, DashboardMockup.danger),
+        _ => const _TonePair(Color(0xFFF1F3F5), Color(0xFF6B7280)),
+      };
+
+  static IconData _icon(String type) => switch (type) {
+        'debt' || 'receivable' => LucideIcons.wallet,
+        'payment' => LucideIcons.checkCircle,
+        'stock' || 'inventory' => LucideIcons.package,
+        'sale' => LucideIcons.receipt,
+        'danger' || 'error' => LucideIcons.alertCircle,
+        _ => LucideIcons.bell,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final tone = _tone(type);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: DashboardMockup.card,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: unread
-                ? AppColors.forest.withValues(alpha: 0.25)
-                : Colors.black.withValues(alpha: 0.06),
+                ? DashboardMockup.green700.withValues(alpha: 0.22)
+                : DashboardMockup.lineSoft,
           ),
-          boxShadow: AppShadows.subtle,
+          boxShadow: DashboardMockup.cardShadow,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Type icon
             Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(top: 7, right: 12),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: unread ? AppColors.forest : Colors.transparent,
-                borderRadius: BorderRadius.circular(99),
+                color: tone.bg,
+                borderRadius: BorderRadius.circular(11),
               ),
+              child: Icon(_icon(type), size: 19, color: tone.fg),
             ),
+            const SizedBox(width: 12),
+            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
                     children: [
                       Expanded(
                         child: Text(
@@ -324,53 +361,52 @@ class _NotificationTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontWeight: unread ? FontWeight.w900 : FontWeight.w800,
-                            color: AppColors.ink,
-                            fontSize: 14.2,
+                            fontWeight:
+                                unread ? FontWeight.w700 : FontWeight.w600,
+                            color: unread
+                                ? DashboardMockup.ink
+                                : DashboardMockup.ink2,
+                            fontSize: 14.5,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Text(
                         timeLabel,
                         style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          color: DashboardMockup.ink3,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   Text(
                     body,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.inkSoft, height: 1.3),
+                    style: const TextStyle(
+                      color: DashboardMockup.ink2,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
             ),
-            PopupMenuButton<String>(
-              tooltip: 'More',
-              onSelected: (value) {
-                if (value == 'read') onMarkRead();
-                if (value == 'delete') onDelete();
-              },
-              itemBuilder: (context) => [
-                if (unread)
-                  const PopupMenuItem(
-                    value: 'read',
-                    child: Text('Mark as read'),
-                  ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Delete'),
+            // Unread dot on right (mockup pattern)
+            Padding(
+              padding: const EdgeInsets.only(left: 10, top: 4),
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: unread
+                      ? DashboardMockup.green600
+                      : Colors.transparent,
+                  shape: BoxShape.circle,
                 ),
-              ],
-              child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Icon(Icons.more_vert_rounded, color: AppColors.muted),
               ),
             ),
           ],
@@ -378,6 +414,12 @@ class _NotificationTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TonePair {
+  const _TonePair(this.bg, this.fg);
+  final Color bg;
+  final Color fg;
 }
 
 class _FilterChip extends StatelessWidget {

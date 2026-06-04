@@ -57,6 +57,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   bool _showVoided = false;
   bool _cartReadyForOnlinePay = true;
   bool _cartSyncingForOnlinePay = false;
+  bool _priceDialogOpen = false;
 
   @override
   void dispose() {
@@ -952,51 +953,73 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   }
 
   Future<void> _showPriceOverrideDialog(LocalInventoryItem item) async {
+    if (_priceDialogOpen) return;
+    _priceDialogOpen = true;
     final cart = ref.read(salesCartProvider);
     final key = item.id;
     final ctrl = TextEditingController(
       text: cart.priceOverrideByItemId[key] ?? item.defaultPrice,
     );
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Set price — ${item.name}'),
-          content: TextField(
-            controller: ctrl,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+    // ValueNotifier holds error state outside the builder so it survives
+    // rebuilds and never calls setState on a dismissed dialog.
+    final errorNotifier = ValueNotifier<String?>(null);
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => ValueListenableBuilder<String?>(
+          valueListenable: errorNotifier,
+          builder: (ctx, errorText, _) => AlertDialog(
+            title: Text('Set price — ${item.name}'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(
+                    RegExp(r'^\d*\.?\d{0,2}')),
+              ],
+              decoration: InputDecoration(
+                labelText: 'Unit price (GHS)',
+                prefixText: 'GHS ',
+                errorText: errorText,
+              ),
+              onChanged: (_) => errorNotifier.value = null,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  ref.read(salesCartProvider.notifier).removeOverride(key);
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text('Reset to default'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final raw = ctrl.text.trim();
+                  final match =
+                      RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
+                  final parsed = double.tryParse(raw) ?? 0;
+                  if (match == null || parsed <= 0) {
+                    errorNotifier.value = 'Enter a valid price above 0';
+                    return;
+                  }
+                  ref
+                      .read(salesCartProvider.notifier)
+                      .overridePrice(key, raw);
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text('Apply'),
+              ),
             ],
-            decoration: const InputDecoration(
-              labelText: 'Unit price (GHS)',
-              prefixText: 'GHS ',
-            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                ref.read(salesCartProvider.notifier).removeOverride(key);
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Reset to default'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final raw = ctrl.text.trim();
-                final match = RegExp(r'^\d+(\.\d{1,2})?$').firstMatch(raw);
-                if (match == null || double.tryParse(raw) == 0) return;
-                ref.read(salesCartProvider.notifier).overridePrice(key, raw);
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Apply'),
-            ),
-          ],
         ),
-      ),
-    );
-    ctrl.dispose();
+      );
+    } finally {
+      errorNotifier.dispose();
+      ctrl.dispose();
+      _priceDialogOpen = false;
+    }
   }
 
   Future<void> _showEditSaleDialog(LocalSaleRecord sale) async {
