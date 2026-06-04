@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../app/router.dart';
 import '../../../../shared/providers/sync_providers.dart';
+import '../../../../shared/widgets/sync_status_pill.dart';
 import '../../../notifications/providers/notifications_inbox_providers.dart';
 import '../../../sales/presentation/utils/sales_ui_utils.dart';
 import '../../data/dashboard_api.dart';
@@ -339,7 +340,10 @@ class _SyncStatusButtonState extends ConsumerState<_SyncStatusButton>
           color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(13),
           child: InkWell(
-            onTap: () => ref.invalidate(syncStatusControllerProvider),
+            // Open the full sync detail sheet (status, Sync now, retry failed,
+            // conflict resolution). Previously this only silently refreshed the
+            // status provider, leaving the sheet unreachable.
+            onTap: () => showSyncDetailsSheet(context, ref),
             borderRadius: BorderRadius.circular(13),
             child: SizedBox(
               width: 42,
