@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
@@ -12,6 +13,11 @@ Future<void> main() async {
   runGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
     installErrorHandlers();
+
+    // Use only the bundled Plus Jakarta Sans (assets/google_fonts/) — never
+    // fetch the font over the network. Keeps the offline-first app fast and
+    // correct on first launch with no connection.
+    GoogleFonts.config.allowRuntimeFetching = false;
 
     await _initSupabase();
 

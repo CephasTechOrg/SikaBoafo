@@ -997,6 +997,7 @@ class _DisconnectDialogState extends State<_DisconnectDialog> {
                   color: DashboardMockup.ink)),
           const SizedBox(height: 8),
           TextField(
+            key: const Key('disconnect_confirm_input'),
             controller: _ctrl,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,

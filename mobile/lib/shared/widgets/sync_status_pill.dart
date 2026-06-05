@@ -54,9 +54,9 @@ Future<void> _showSyncDetails(BuildContext context, WidgetRef ref) async {
                               runSpacing: 10,
                               children: [
                                 _MetricCard(
-                                  label: 'Backend',
+                                  label: 'Server',
                                   value: snapshot?.backendReachable == true
-                                      ? 'Reachable'
+                                      ? 'Online'
                                       : 'Offline',
                                 ),
                                 _MetricCard(

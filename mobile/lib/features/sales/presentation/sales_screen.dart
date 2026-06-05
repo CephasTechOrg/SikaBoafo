@@ -69,6 +69,11 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(salesCartProvider);
+    // Size the hero to its content (status-bar inset + title + top-seller banner)
+    // plus a small gap, instead of a fixed height. This keeps the space between
+    // the top-seller card and the bottom of the green header tight and
+    // consistent across devices, instead of a large variable gap.
+    final topPad = MediaQuery.paddingOf(context).top;
     final merchantAsync = ref.watch(merchantContextProvider);
     final inventoryAsync = ref.watch(inventoryControllerProvider);
     final salesAsync = ref.watch(salesControllerProvider);
@@ -169,7 +174,7 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
           NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) => [
               SliverAppBar(
-                expandedHeight: 218,
+                expandedHeight: topPad + 170,
                 pinned: true,
                 backgroundColor: const Color(0xFF041509),
                 elevation: 0,

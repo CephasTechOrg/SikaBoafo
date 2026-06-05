@@ -233,7 +233,7 @@ void main() {
 
       // Section headers scroll off-screen — use skipOffstage: false.
       expect(
-          find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
+          find.text('Payment Methods', skipOffstage: false), findsOneWidget);
       expect(
           find.text('Top Selling Items', skipOffstage: false), findsOneWidget);
       expect(find.text('Cash', skipOffstage: false), findsOneWidget);
@@ -260,7 +260,7 @@ void main() {
       await _pump(tester);
 
       expect(
-        find.text('Weekly/monthly data unavailable offline.',
+        find.text('Could not load this data. Pull down to retry.',
             skipOffstage: false),
         findsAtLeastNWidgets(1),
       );

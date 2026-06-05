@@ -72,7 +72,7 @@ void main() {
   });
 
   group('humanizeDebtsPaymentsError', () {
-    test('maps timeout-like Dio errors to backend unreachable message', () {
+    test('maps timeout-like Dio errors to a friendly offline message', () {
       final request = RequestOptions(path: '/payments/test');
       final timeoutError = DioException(
         requestOptions: request,
@@ -80,7 +80,7 @@ void main() {
       );
 
       final message = humanizeDebtsPaymentsError(timeoutError);
-      expect(message, contains('Cannot reach backend'));
+      expect(message, contains('No internet connection'));
     });
   });
 }

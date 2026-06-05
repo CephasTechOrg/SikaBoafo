@@ -116,12 +116,14 @@ void main() {
     await tester.pumpWidget(_buildScreen(fakeApi));
     await tester.pumpAndSettle();
 
-    expect(find.text('Not Connected'), findsWidgets);
+    expect(find.text('Not connected'), findsWidgets);
     expect(find.text('Save & Verify'), findsOneWidget);
-    expect(
-      find.text(AppConfig.apiV1('/webhooks/paystack').toString()),
-      findsOneWidget,
-    );
+    // The webhook tile shows the URL with the scheme stripped for readability.
+    final webhookDisplay = AppConfig.apiV1('/webhooks/paystack')
+        .toString()
+        .replaceFirst(RegExp(r'^https?://'), '')
+        .replaceFirst(RegExp(r'^www\.'), '');
+    expect(find.text(webhookDisplay), findsOneWidget);
   });
 
   testWidgets('requires secret key for unconfigured selected mode',
@@ -153,7 +155,7 @@ void main() {
     expect(fakeApi.saveCalls, 0);
     expect(
         find.text(
-            'Secret key is required to connect this mode for the first time.'),
+            'Secret key is required to connect for the first time.'),
         findsOneWidget);
   });
 
@@ -223,9 +225,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Connected'), findsWidgets);
-    expect(find.text('Disconnect Paystack'), findsOneWidget);
+    expect(find.text('Disconnect'), findsOneWidget);
 
-    final disconnectButton = find.text('Disconnect Paystack');
+    final disconnectButton = find.text('Disconnect');
     await tester.ensureVisible(disconnectButton);
     await tester.tap(disconnectButton);
     await tester.pumpAndSettle();
@@ -246,6 +248,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fakeApi.disconnectCalls, 1);
-    expect(find.text('Not Connected'), findsWidgets);
+    expect(find.text('Not connected'), findsWidgets);
   });
 }

@@ -46,6 +46,12 @@ flutter:
   assets:
     - assets/images/
     - assets/images/inventory.png
+    # Bundled Plus Jakarta Sans so the app never fetches the font over the
+    # network (offline-first). Drop the .ttf files here using google_fonts'
+    # naming, e.g. PlusJakartaSans-Regular.ttf / -Medium / -SemiBold / -Bold /
+    # -ExtraBold (see assets/google_fonts/README.md). Once present, google_fonts
+    # uses them automatically instead of downloading.
+    - assets/google_fonts/
   fonts:
     - family: SegoeUI
       fonts:

@@ -339,6 +339,13 @@ void main() {
   testWidgets(
     'authenticated protected route opens the requested destination',
     (tester) async {
+      // Tall viewport so the Reports ListView eagerly builds lower sections
+      // (e.g. Payment Methods) instead of leaving them unbuilt off-screen.
+      tester.view.physicalSize = const Size(800, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       final storage = _MemorySecureTokenStorage()
         ..refreshToken = 'refresh-token'
         ..sessionGateCompletedAt = DateTime.now();
@@ -352,7 +359,10 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
 
       expect(find.text('Reports'), findsWidgets);
-      expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
+      expect(find.text('Payment Methods', skipOffstage: false), findsOneWidget);
+
+      // Drain any pending splash timer so the test teardown is clean.
+      await tester.pump(const Duration(seconds: 2));
     },
   );
 
@@ -434,6 +444,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
 
     expect(find.text('Reports'), findsWidgets);
-    expect(find.text('Payment Breakdown', skipOffstage: false), findsOneWidget);
+    expect(find.text('Payment Methods', skipOffstage: false), findsOneWidget);
   });
 }
